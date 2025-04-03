@@ -1,24 +1,41 @@
-# 💻 100 Days of Code – C#/.NET + Secure Coding Journey
+# 💻 100 Days of Code – Full Stack with C#/.NET & Next.js
 
 Hi, I’m **Carlos Abril Jr.** 👋  
-I’m a Sys Admin and Full Stack Developer expanding my skills in **C#/.NET** with a strong focus on **secure coding practices**. I’ve built several apps using React and Node.js, but this challenge is all about leveling up my backend development with C# and improving my overall software security mindset.
+I’m a Sys Admin and Full Stack Developer expanding my backend skills in **C#/.NET** and building modern frontends with **Next.js 14**. I’m using the #100DaysOfCode challenge to sharpen my skills in secure coding, API design, and full-stack app development.
 
 ---
 
 ## 🎯 Goals
-- Strengthen my knowledge of **C#** and **ASP.NET Core**
-- Build secure, real-world APIs and tools
-- Apply what I learned from my cybersecurity bootcamp
-- Track and share my progress over 100 days
+
+- Dive deeper into **C#** and **ASP.NET Core Web API**
+- Build secure, scalable full-stack applications
+- Strengthen frontend architecture using **Next.js App Router**
+- Apply real-world secure coding practices throughout the stack
+- Share daily/weekly progress to stay accountable
 
 ---
 
 ## 🧰 Tech Stack
+
+### 🔙 Backend
 - **Language**: C#
-- **Framework**: .NET 8 / ASP.NET Core Web API
-- **Database**: SQL Server (or SQLite during prototyping)
-- **Tools**: Visual Studio Code, GitHub, Entity Framework, Postman, Docker (optional), Cursor (AI)
-- **Practices**: Secure coding principles, clean architecture, SOLID principles
+- **Framework**: ASP.NET Core Web API (.NET 8)
+- **ORM**: Entity Framework Core
+- **Database**: SQL Server / SQLite
+- **Security**: Secure coding patterns, validation, error handling
+
+### 🔜 Frontend
+- **Framework**: Next.js 14 (App Router)
+- **Language**: JavaScript / React
+- **Styling**: Tailwind CSS (optional)
+- **API Handling**: Fetch / Axios
+
+### ⚙️ Dev Tools
+- VS Code + Cursor (AI-powered coding)
+- Git & GitHub
+- Postman (API testing)
+- Docker (optional)
+- SQL Management Studio / DB tools
 
 ---
 
@@ -26,27 +43,30 @@ I’m a Sys Admin and Full Stack Developer expanding my skills in **C#/.NET** wi
 
 | Day | Summary |
 |-----|---------|
-| 1   | Created GitHub repo + wrote README. Set goals and laid out the roadmap. |
-| 2   | Set up .NET 8 SDK + VS Code. Started Task Tracker API. Reviewed controllers and routing. |
-| 3   | _Coming soon..._ |
+| 1   | Created GitHub repo + README. Defined stack and roadmap for challenge. |
+| 2   | Set up .NET 8 API project in VS Code. Created initial controllers + routes. |
+| 3   | Coming soon... |
 
 ---
 
 ## 🧠 Reflections & Lessons
-I’ll be sharing deeper writeups on what I’m learning—from API design to Entity Framework, security patterns, and architecture choices.
+
+This challenge is not just about consistency—it's about writing better code, thinking about **security** early, and building software that can scale. I’ll include key takeaways, fixes, and ah-ha moments here weekly.
 
 ---
 
 ## 🔗 Connect with Me
+
 - [LinkedIn](https://www.linkedin.com/in/abrilcjr/)
 - [GitHub](https://github.com/cabril87)
 
 ---
 
 ## 🚀 Inspired by
-- #100DaysOfCode
-- My experience in system administration and cybersecurity
-- The goal of writing better, more secure software
+
+- #100DaysOfCode movement
+- Real-world dev challenges
+- The goal to transition into a full-time developer role with strong backend skills
 
 ---
 
