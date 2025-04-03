@@ -15,6 +15,26 @@ I’m a Sys Admin and Full Stack Developer expanding my backend skills in **C#/.
 
 ---
 
+## 🏗️ Planned Projects
+
+1. **Task Tracker API**  
+   - Build a simple CRUD API with ASP.NET Core for creating and managing tasks  
+   - Implement **Entity Framework** for database operations  
+   - Add basic **authentication/authorization** to practice secure coding
+
+2. **Inventory Management System**  
+   - A more complex API with user roles, authentication, and data validation  
+   - Integrate a **Next.js** frontend to manage inventory items and suppliers  
+   - Employ security best practices (input validation, form sanitization, etc.)
+
+3. **(Optional) Portfolio Rebuild**  
+   - Rebuild my personal portfolio in **Next.js**  
+   - Integrate a blog section or project gallery that consumes a .NET backend
+
+Feel free to suggest any other ideas or if you have a favorite project you want to see built!
+
+---
+
 ## 🧰 Tech Stack
 
 ### 🔙 Backend
@@ -71,4 +91,3 @@ This challenge is not just about consistency—it's about writing better code, t
 ---
 
 Thanks for following along!
-
