@@ -39,7 +39,7 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 
 ### 🔙 Backend
 - **Language**: C#
-- **Framework**: ASP.NET Core Web API (.NET 8)
+- **Framework**: ASP.NET Core Web API (.NET 9)
 - **ORM**: Entity Framework Core
 - **Database**: SQL Server / SQLite
 - **Security**: Secure coding patterns, validation, error handling
@@ -64,8 +64,9 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | Day | Summary |
 |-----|---------|
 | 1   | Created GitHub repo + README. Defined stack and roadmap for challenge. |
-| 2   | Set up .NET 8 API project in VS Code. Created initial controllers + routes. |
-| 3   | Coming soon... |
+| 2   | **Project Setup Only:** Created ASP.NET Core Web API and tested default endpoints (no DB config yet). |
+| 3   | **Database Integration:** Installed EF Core & Dapper; configured MSSQL; added DbContext; tested DB.   |
+| 4   | Coming soon... |
 
 ---
 
