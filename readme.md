@@ -86,7 +86,6 @@ This challenge is not just about consistency—it's about writing better code, t
 
 - #100DaysOfCode movement
 - Real-world dev challenges
-- The goal to transition into a full-time developer role with strong backend skills
 
 ---
 
