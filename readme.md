@@ -66,8 +66,9 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | 1   | Created GitHub repo + README. Defined stack and roadmap for challenge. |
 | 2   | **Project Setup Only:** Created ASP.NET Core Web API and tested default endpoints (no DB config yet). |
 | 3   | **Database Integration:** Installed EF Core & Dapper; configured MSSQL; added DbContext; tested DB.   |
-| 4   | **Data Model Expansion & Relationships:** Adding User and Category models; implementing entity relationships; setting up authentication/authorization framework. |
-| 5   | Coming soon... |
+| 4   | **Data Model Expansion:** Added User, Category, Tag, and TaskTag models with relationships. Implemented entity configurations and proper foreign key constraints. Set up seed data for initial testing. |
+| 5   | **DTOs & API Security:** Implementing DTOs for data validation and security. Adding authentication/authorization with JWT. Creating secure controllers with proper input validation. |
+| 6   | Coming soon... |
 
 ---
 

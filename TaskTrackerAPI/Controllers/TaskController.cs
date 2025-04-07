@@ -19,14 +19,14 @@ namespace TaskTrackerAPI.Controllers
 
         // GET: api/Tasks
         [HttpGet]
-                    public async Task<ActionResult<IEnumerable<Models.Task>>> GetTasks()
+                    public async Task<ActionResult<IEnumerable<TaskItem>>> GetTasks()
         {
             return await _context.Tasks.ToListAsync();
         }
 
         // GET: api/Tasks/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Models.Task>> GetTask(int id)
+        public async Task<ActionResult<TaskItem>> GetTask(int id)
         {
             var task = await _context.Tasks.FindAsync(id);
 
