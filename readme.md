@@ -69,7 +69,8 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | 4   | **Data Model Expansion:** Added User, Category, Tag, and TaskTag models with relationships. Implemented entity configurations and proper foreign key constraints. Set up seed data for initial testing. |
 | 5   | **DTOs & API Security:** Created DTOs for all models (User, TaskItem, Category, Tag) to properly separate data concerns and improve security. Implemented validation attributes for input sanitization. Set up authentication infrastructure with JWT token support. Created AuthController with register and login endpoints. |
 | 6   | **Task Controller Implementation:** Create TaskItemsController with CRUD operations (GET all tasks, GET by ID, POST new task, PUT/PATCH for updates, DELETE). Implement user-specific task filtering so users can only see their own tasks. Add basic query parameters for filtering tasks by status and category. |
-| 7   | Coming soon... |
+| 7   | **Category Management:** Implementing CategoryController with basic CRUD operations and proper user isolation. Adding validation to ensure users can only manage their own categories. |
+| 8   | Coming soon... |
 
 ---
 
