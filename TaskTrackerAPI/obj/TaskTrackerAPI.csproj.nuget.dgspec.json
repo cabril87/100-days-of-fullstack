@@ -58,9 +58,9 @@
               "target": "Package",
               "version": "[2.1.66, )"
             },
-            "Microsoft.AspNetCore.OpenApi": {
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
-              "version": "[9.0.3, )"
+              "version": "[9.0.4, )"
             },
             "Microsoft.Data.SqlClient": {
               "target": "Package",

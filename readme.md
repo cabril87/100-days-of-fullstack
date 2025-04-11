@@ -71,6 +71,12 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | 6   | **Task Controller Implementation:** Create TaskItemsController with CRUD operations (GET all tasks, GET by ID, POST new task, PUT/PATCH for updates, DELETE). Implement user-specific task filtering so users can only see their own tasks. | Add basic query parameters for filtering tasks by status and category. |
 | 7   | **Category Management:** Implementing CategoryController with basic CRUD operations and proper user isolation. Adding validation to ensure users can only manage their own categories. |
 | 8   | **Tag Management:** Implementing TagController with CRUD operations. Adding endpoints to get all tasks with a specific tag. Ensuring proper user isolation for tag operations. |
+| **Auth Controller (Part 1):** Implementing AuthController with user registration endpoint. Setting up password hashing and validation. Creating JWT token configuration. |
+| 10  | **Auth Controller (Part 2):** Adding login endpoint with JWT token generation. Implementing input validation and error handling. Setting up configuration for token lifetime and secret key. |
+| 11  | **Auth Controller (Part 3):** Adding refresh token functionality. Implementing user profile endpoints. Setting up role-based authorization for admin operations. |
+| 12  | **Repository Pattern (Part 1):** Creating IUserRepository and implementation. Refactoring AuthController to use the repository. |
+| 13  | **Repository Pattern (Part 2):** Implementing ITaskItemRepository. Refactoring TaskItemsController to use the repository. |
+| 14  | **Repository Pattern (Part 3):** Creating ICategoryRepository and ITagRepository. Refactoring remaining controllers to use repositories. |
 | 9   | Coming soon... |
 
 ---

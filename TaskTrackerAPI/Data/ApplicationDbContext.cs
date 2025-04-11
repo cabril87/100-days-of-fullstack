@@ -7,9 +7,11 @@ namespace TaskTrackerAPI.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
+    private readonly IConfiguration _config;
+
+    public ApplicationDbContext(IConfiguration config)
     {
+        _config = config;
     }
 
     public DbSet<User> Users { get; set; } = null!;
@@ -17,6 +19,16 @@ public class ApplicationDbContext : DbContext
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<TaskTag> TaskTags { get; set; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer(_config.GetConnectionString("DefaultConnection"),
+                options => options.EnableRetryOnFailure());
+        }
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
