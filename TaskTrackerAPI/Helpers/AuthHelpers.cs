@@ -1,11 +1,11 @@
 // Helpers/AuthHelper.cs
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using TaskTrackerAPI.Models;
+using Konscious.Security.Cryptography;
 
 namespace TaskTrackerAPI.Helpers;
 
@@ -21,27 +21,67 @@ public class AuthHelper
     public void CreatePasswordHash(string password, out string passwordHash, out string salt)
     {
         // Generate a random salt
-        byte[] saltBytes = new byte[128 / 8];
+        byte[] saltBytes = new byte[16]; // 128 bits
         using (var rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(saltBytes);
         }
         salt = Convert.ToBase64String(saltBytes);
 
-        // Get password key from configuration and combine with salt
-        string passwordSaltPlusString = _configuration.GetSection("AppSettings:PasswordKey").Value +
-            salt;
+        // Get the password pepper from configuration
+        string pepper = _configuration.GetSection("AppSettings:PasswordKey").Value ?? 
+            throw new InvalidOperationException("Password pepper is not configured");
+        
+        // Combine salt and pepper
+        byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+        
+        // Use Argon2id for password hashing
+        using var argon2 = new Argon2id(passwordBytes);
+        
+        // Configure Argon2id parameters
+        argon2.Salt = saltBytes;
+        argon2.DegreeOfParallelism = 8; // Number of threads
+        argon2.Iterations = 4;         // Number of iterations
+        argon2.MemorySize = 1024 * 64; // 64 MB of memory usage
+        
+        // Additional data (pepper)
+        argon2.AssociatedData = Encoding.UTF8.GetBytes(pepper);
+        
+        // Generate the hash
+        byte[] hashBytes = argon2.GetBytes(32); // 256 bits
+        passwordHash = Convert.ToBase64String(hashBytes);
+    }
 
-        // Generate password hash using PBKDF2
-        byte[] passwordHashBytes = KeyDerivation.Pbkdf2(
-            password: password,
-            salt: Encoding.ASCII.GetBytes(passwordSaltPlusString),
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 100000,
-            numBytesRequested: 256 / 8
-        );
-
-        passwordHash = Convert.ToBase64String(passwordHashBytes);
+    public bool VerifyPasswordHash(string password, string storedHash, string storedSalt)
+    {
+        // Get the password pepper from configuration
+        string pepper = _configuration.GetSection("AppSettings:PasswordKey").Value ?? 
+            throw new InvalidOperationException("Password pepper is not configured");
+        
+        // Convert the stored salt back to bytes
+        byte[] saltBytes = Convert.FromBase64String(storedSalt);
+        
+        // Hash the input password with the same parameters
+        byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+        
+        // Use Argon2id for password verification
+        using var argon2 = new Argon2id(passwordBytes);
+        
+        // Configure Argon2id parameters - must match the ones used for creating the hash
+        argon2.Salt = saltBytes;
+        argon2.DegreeOfParallelism = 8; // Number of threads
+        argon2.Iterations = 4;         // Number of iterations
+        argon2.MemorySize = 1024 * 64; // 64 MB of memory usage
+        
+        // Additional data (pepper)
+        argon2.AssociatedData = Encoding.UTF8.GetBytes(pepper);
+        
+        // Generate the hash
+        byte[] hashBytes = argon2.GetBytes(32); // 256 bits
+        string computedHash = Convert.ToBase64String(hashBytes);
+        
+        // Compare the computed hash with the stored hash
+        return computedHash == storedHash;
     }
 
     public string CreateToken(User user)
