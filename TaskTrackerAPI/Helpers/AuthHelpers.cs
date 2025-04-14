@@ -117,7 +117,8 @@ public class AuthHelper
         {
             Subject = new ClaimsIdentity(claims),
             SigningCredentials = credentials,
-            Expires = DateTime.UtcNow.AddDays(1)
+            Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(
+                _configuration.GetSection("AppSettings:AccessTokenExpireMinutes").Value ?? "60"))
         };
 
         // Create and return token
@@ -125,5 +126,69 @@ public class AuthHelper
         SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
 
         return tokenHandler.WriteToken(token);
+    }
+    
+    public string GenerateRefreshToken()
+    {
+        // Generate a random refresh token
+        byte[] randomBytes = new byte[64]; // 512 bits
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
+    }
+    
+    public DateTime GetRefreshTokenExpiryTime()
+    {
+        // Get refresh token expiry from configuration (default to 7 days)
+        int days = Convert.ToInt32(
+            _configuration.GetSection("AppSettings:RefreshTokenExpireDays").Value ?? "7");
+            
+        return DateTime.UtcNow.AddDays(days);
+    }
+    
+    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        // Get token key from configuration
+        string? tokenKeyString = _configuration.GetSection("AppSettings:TokenKey").Value;
+        if (string.IsNullOrWhiteSpace(tokenKeyString))
+        {
+            throw new Exception("TokenKey is not configured.");
+        }
+        
+        // Setup token validation parameters
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKeyString)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            // This is the important part - we don't care about the token's expiration date
+            ValidateLifetime = false
+        };
+        
+        // Try to validate the token
+        var tokenHandler = new JwtSecurityTokenHandler();
+        SecurityToken securityToken;
+        
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
+            
+            // Verify it's a valid JWT
+            var jwtSecurityToken = securityToken as JwtSecurityToken;
+            if (jwtSecurityToken == null || 
+                !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, 
+                StringComparison.InvariantCultureIgnoreCase))
+            {
+                return null;
+            }
+            
+            return principal;
+        }
+        catch
+        {
+            // Return null if token validation fails
+            return null;
+        }
     }
 }

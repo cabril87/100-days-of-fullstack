@@ -20,6 +20,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<TaskTag> TaskTags { get; set; } = null!;
 
+    public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -76,6 +78,12 @@ public class ApplicationDbContext : DbContext
             .HasOne(tt => tt.Tag)
             .WithMany(t => t.TaskTags)
             .HasForeignKey(tt => tt.TagId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(rt => rt.User)
+            .WithMany()
+            .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Seed default admin user
