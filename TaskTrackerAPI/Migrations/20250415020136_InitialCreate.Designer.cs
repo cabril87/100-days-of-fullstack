@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250407001032_InitialModel")]
-    partial class InitialModel
+    [Migration("20250415020136_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -65,6 +65,37 @@ namespace TaskTrackerAPI.Migrations
                             Name = "Personal",
                             UserId = 1
                         });
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RevokedByIp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Tag", b =>
@@ -232,9 +263,9 @@ namespace TaskTrackerAPI.Migrations
                             Email = "admin@tasktracker.com",
                             FirstName = "Admin",
                             LastName = "User",
-                            PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
+                            PasswordHash = "JGFyZ29uMmkkdj0xOSRtPTE2LHQ9MixwPTEkVjBScmJtWkZTWE5xV0hSU1VHOVNXUSRLUkwzNjRxLzdOaStVMmp2MWdIWTdB",
                             Role = "Admin",
-                            Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
+                            Salt = "V0RrbmZFSXNqWHRSUG9SWQ==",
                             Username = "admin"
                         });
                 });
@@ -245,6 +276,17 @@ namespace TaskTrackerAPI.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.RefreshToken", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");

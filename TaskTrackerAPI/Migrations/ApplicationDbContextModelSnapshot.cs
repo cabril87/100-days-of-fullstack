@@ -260,9 +260,9 @@ namespace TaskTrackerAPI.Migrations
                             Email = "admin@tasktracker.com",
                             FirstName = "Admin",
                             LastName = "User",
-                            PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
+                            PasswordHash = "JGFyZ29uMmkkdj0xOSRtPTE2LHQ9MixwPTEkVjBScmJtWkZTWE5xV0hSU1VHOVNXUSRLUkwzNjRxLzdOaStVMmp2MWdIWTdB",
                             Role = "Admin",
-                            Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
+                            Salt = "V0RrbmZFSXNqWHRSUG9SWQ==",
                             Username = "admin"
                         });
                 });

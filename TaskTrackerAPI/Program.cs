@@ -29,6 +29,15 @@ builder.Services.AddCors((options) =>
             });
     });
 
+    // Register repositories
+builder.Services.AddScoped<TaskTrackerAPI.Repositories.Interfaces.IUserRepository, TaskTrackerAPI.Repositories.UserRepository>();
+
+// Register AuthHelper as a service
+builder.Services.AddSingleton<TaskTrackerAPI.Helpers.AuthHelper>();
+
+// Register services
+builder.Services.AddScoped<TaskTrackerAPI.Services.Interfaces.IAuthService, TaskTrackerAPI.Services.AuthService>();
+
     
 
 string? tokenKeyString = builder.Configuration.GetSection("AppSettings:TokenKey").Value;
