@@ -20,7 +20,8 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetUserByIdAsync(int id)
     {
-        return await _context.Users.FindAsync(id);
+        return await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
     }
 
     public async Task<User?> GetUserByEmailAsync(string email)
@@ -49,7 +50,7 @@ public class UserRepository : IUserRepository
 
     public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
-        return await _context.Users.ToListAsync();
+        return await _context.Users.Where(u => u.IsActive).ToListAsync();
     }
 
     public async Task<User> CreateUserAsync(User user)
@@ -65,18 +66,30 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
     }
 
-   public Task<bool> CheckPasswordAsync(User user, string password)
-{
-    bool result = _authHelper.VerifyPasswordHash(password, user.PasswordHash, user.Salt);
-    return Task.FromResult(result);
-}
+    public async Task DeleteUserAsync(int userId)
+    {
+        User? user = await _context.Users.FindAsync(userId);
+        if (user != null)
+        {
+            user.IsActive = false;
+            user.UpdatedAt = DateTime.Now;
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public Task<bool> CheckPasswordAsync(User user, string password)
+    {
+        bool result = _authHelper.VerifyPasswordHash(password, user.PasswordHash, user.Salt);
+        return Task.FromResult(result);
+    }
 
     public async Task ChangePasswordAsync(User user, string newPassword)
     {
         _authHelper.CreatePasswordHash(newPassword, out string passwordHash, out string salt);
         user.PasswordHash = passwordHash;
         user.Salt = salt;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.Now;
         await UpdateUserAsync(user);
     }
 
@@ -101,30 +114,30 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
     }
 
-   public async Task RevokeAllUserRefreshTokensAsync(int userId, string ipAddress)
-{
-    // Instead of using IsActive property, check expiry and revoked directly
-    List<RefreshToken> activeTokens = await _context.RefreshTokens
-        .Where(r => r.UserId == userId && 
-               r.ExpiryDate > DateTime.UtcNow && 
-               r.RevokedByIp == null)
-        .ToListAsync();
-
-    foreach (RefreshToken token in activeTokens)
+    public async Task RevokeAllUserRefreshTokensAsync(int userId, string ipAddress)
     {
-        token.RevokedByIp = ipAddress;
-    }
+        // Instead of using IsActive property, check expiry and revoked directly
+        List<RefreshToken> activeTokens = await _context.RefreshTokens
+            .Where(r => r.UserId == userId &&
+                   r.ExpiryDate > DateTime.Now &&
+                   r.RevokedByIp == null)
+            .ToListAsync();
 
-    await _context.SaveChangesAsync();
-}
+        foreach (RefreshToken token in activeTokens)
+        {
+            token.RevokedByIp = ipAddress;
+        }
+
+        await _context.SaveChangesAsync();
+    }
 
     public async Task<bool> IsValidUserCredentialsAsync(string email, string password)
     {
         User? user = await GetUserByEmailAsync(email);
-        
+
         if (user == null)
             return false;
-            
+
         return await CheckPasswordAsync(user, password);
     }
 }

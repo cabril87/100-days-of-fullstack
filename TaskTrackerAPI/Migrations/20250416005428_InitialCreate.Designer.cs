@@ -12,7 +12,7 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250415020136_InitialCreate")]
+    [Migration("20250416005428_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -228,6 +228,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<string>("FirstName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LastName")
                         .HasColumnType("nvarchar(max)");
 
@@ -262,10 +265,11 @@ namespace TaskTrackerAPI.Migrations
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "admin@tasktracker.com",
                             FirstName = "Admin",
+                            IsActive = true,
                             LastName = "User",
-                            PasswordHash = "JGFyZ29uMmkkdj0xOSRtPTE2LHQ9MixwPTEkVjBScmJtWkZTWE5xV0hSU1VHOVNXUSRLUkwzNjRxLzdOaStVMmp2MWdIWTdB",
+                            PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
                             Role = "Admin",
-                            Salt = "V0RrbmZFSXNqWHRSUG9SWQ==",
+                            Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
                             Username = "admin"
                         });
                 });

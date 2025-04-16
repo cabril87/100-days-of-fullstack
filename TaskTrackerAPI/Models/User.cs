@@ -33,6 +33,10 @@ public class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
+
+
     // Navigation property for user's tasks
     // In User.cs
     public virtual ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();

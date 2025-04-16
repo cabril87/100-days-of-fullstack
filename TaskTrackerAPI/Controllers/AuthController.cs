@@ -60,7 +60,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred during login. Please try again later.");
         }
     }
-    
+
     [HttpPost("refresh-token")]
     public async Task<ActionResult<TokensResponseDTO>> RefreshToken(RefreshTokenRequestDTO refreshRequest)
     {
@@ -80,7 +80,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while refreshing the token.");
         }
     }
-    
+
     [Authorize]
     [HttpGet("profile")]
     public async Task<ActionResult<UserDTO>> GetProfile()
@@ -101,7 +101,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while retrieving your profile.");
         }
     }
-    
+
     [Authorize]
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile(UserProfileUpdateDTO profileUpdateDto)
@@ -126,7 +126,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while updating your profile.");
         }
     }
-    
+
     [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword(ChangePasswordDTO changePasswordDto)
@@ -152,7 +152,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while changing your password.");
         }
     }
-    
+
     [Authorize(Roles = "Admin")]
     [HttpGet("users")]
     public async Task<ActionResult<IEnumerable<UserDTO>>> GetAllUsers()
@@ -168,7 +168,7 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while retrieving users.");
         }
     }
-    
+
     [Authorize(Roles = "Admin")]
     [HttpPut("users/{id}/role")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] string role)
@@ -195,6 +195,31 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error updating user role");
             return StatusCode(500, "An error occurred while updating the user role.");
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        try
+        {
+            int currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _authService.DeleteUserAsync(id, currentUserId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting user");
+            return StatusCode(500, "An error occurred while deleting the user.");
         }
     }
 }

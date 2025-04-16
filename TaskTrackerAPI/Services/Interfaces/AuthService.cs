@@ -80,7 +80,7 @@ public class AuthService : IAuthService
         // Find user by email
         User? user = await _userRepository.GetUserByEmailAsync(loginDto.Email);
 
-        if (user == null)
+        if (user == null || !user.IsActive)
         {
             throw new UnauthorizedAccessException("Invalid email or password");
         }
@@ -265,6 +265,24 @@ public class AuthService : IAuthService
         
         await _userRepository.UpdateUserAsync(user);
     }
+
+    public async Task DeleteUserAsync(int userId, int currentUserId)
+{
+    // Don't allow users to delete themselves
+    if (userId == currentUserId)
+    {
+        throw new InvalidOperationException("You cannot delete your own account");
+    }
+    
+    User? user = await _userRepository.GetUserByIdAsync(userId);
+    
+    if (user == null)
+    {
+        throw new KeyNotFoundException("User not found");
+    }
+    
+    await _userRepository.DeleteUserAsync(userId);
+}
     
     public async Task ChangePasswordAsync(int userId, ChangePasswordDTO changePasswordDto, string ipAddress)
     {

@@ -67,17 +67,19 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | 2   | **Project Setup Only:** Created ASP.NET Core Web API and tested default endpoints (no DB config yet). |
 | 3   | **Database Integration:** Installed EF Core & Dapper; configured MSSQL; added DbContext; tested DB.   |
 | 4   | **Data Model Expansion:** Added User, Category, Tag, and TaskTag models with relationships. Implemented entity configurations and proper foreign key constraints. Set up seed data for initial testing. |
-| 5   | **DTOs & API Security:** Created DTOs for all models (User, TaskItem, Category, Tag) to properly separate data concerns and improve security. Implemented validation attributes for input sanitization. Set up authentication infrastructure with JWT token support. Created AuthController with register and login endpoints. |
-| 6   | **Task Controller Implementation:** Create TaskItemsController with CRUD operations (GET all tasks, GET by ID, POST new task, PUT/PATCH for updates, DELETE). Implement user-specific task filtering so users can only see their own tasks. | Add basic query parameters for filtering tasks by status and category. |
-| 7   | **Category Management:** Implementing CategoryController with basic CRUD operations and proper user isolation. Adding validation to ensure users can only manage their own categories. |
-| 8   | **Tag Management:** Implementing TagController with CRUD operations. Adding endpoints to get all tasks with a specific tag. Ensuring proper user isolation for tag operations. |
-| 9   | **Auth Controller (Part 1):** Implementing AuthController with user registration endpoint. Setting up password hashing and validation. Creating JWT token configuration. |
-| 10  | **Auth Controller (Part 2):** Adding login endpoint with JWT token generation. Implementing input validation and error handling. Setting up configuration for token lifetime and secret key. |
-| 11  | **Auth Controller (Part 3):** Adding refresh token functionality. Implementing user profile endpoints. Setting up role-based authorization for admin operations. |
-| 12  | **Repository Pattern (Part 1):** Creating IUserRepository and implementation. Refactoring AuthController to use the repository. |
-| 13  | **Repository Pattern (Part 2):** Implementing ITaskItemRepository. Refactoring TaskItemsController to use the repository. |
-| 14  | **Repository Pattern (Part 3):** Creating ICategoryRepository and ITagRepository. Refactoring remaining controllers to use repositories. |
-| 15   | Coming soon... |
+| 5   | **DTOs & API Security:** Created DTOs for all models (User, TaskItem, Category, Tag) to properly separate data concerns and improve security. Implemented validation attributes for input sanitization. Set up authentication infrastructure with JWT token support. |
+| 6   | **Task Controller Implementation:** Created TaskItemsController with CRUD operations (GET all tasks, GET by ID, POST new task, PUT/PATCH for updates, DELETE). Implemented user-specific task filtering so users can only see their own tasks. Added basic query parameters for filtering tasks by status and category. |
+| 7   | **Category Management:** Implemented CategoryController with basic CRUD operations and proper user isolation. Added validation to ensure users can only manage their own categories. Added protection against deleting categories that have associated tasks. |
+| 8   | **Tag Management:** Implemented TagController with CRUD operations. Added endpoints to get all tasks with a specific tag. Ensured proper user isolation for tag operations. |
+| 9   | **Auth Controller (Part 1):** Implemented AuthController with user registration endpoint. Set up password hashing with Argon2id. Created JWT token configuration. |
+| 10  | **Auth Controller (Part 2):** Added login endpoint with JWT token generation. Implemented input validation and error handling. Set up configuration for token lifetime and secret key. |
+| 11  | **Auth Controller (Part 3):** Added refresh token functionality. Implemented user profile endpoints. Set up role-based authorization for admin operations. |
+| 12  | **Repository Pattern (Part 1):** Created IUserRepository and implementation. Refactored AuthController to use the repository. Added dependency injection for repositories. |
+| 13  | **Repository Pattern (Part 2-A):** Designed ITaskItemRepository interface with CRUD and filtering operations. Implemented TaskItemRepository with proper data access methods. Added dependency injection setup. |
+| 14  | **Repository Pattern (Part 2-B):** Created TaskStatisticsDTO for dashboard view. Implemented ITaskService interface and TaskService with business logic. Added methods for task filtering and statistics. |
+| 15  | **Repository Pattern (Part 2-C):** Refactored TaskItemsController to use the service layer. Added new endpoints for task statistics and due date filtering. Improved error handling across the task management system. |
+| 16  | **Repository Pattern (Part 3):** Creating ICategoryRepository and ITagRepository. Refactoring remaining controllers to use repositories. Adding unit tests for repository classes. |
+| 17  | Coming soon... |
 
 ---
 

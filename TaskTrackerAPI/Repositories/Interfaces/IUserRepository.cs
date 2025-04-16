@@ -14,7 +14,7 @@ public interface IUserRepository
     Task<IEnumerable<User>> GetAllUsersAsync();
     Task<User> CreateUserAsync(User user);
     Task UpdateUserAsync(User user);
-    
+    Task DeleteUserAsync(int userId);
     // Password management
     Task<bool> CheckPasswordAsync(User user, string password);
     Task ChangePasswordAsync(User user, string newPassword);

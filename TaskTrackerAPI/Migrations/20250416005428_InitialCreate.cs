@@ -27,7 +27,8 @@ namespace TaskTrackerAPI.Migrations
                     LastName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -154,8 +155,8 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.InsertData(
                 table: "Users",
-                columns: new[] { "Id", "CreatedAt", "Email", "FirstName", "LastName", "PasswordHash", "Role", "Salt", "UpdatedAt", "Username" },
-                values: new object[] { 1, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@tasktracker.com", "Admin", "User", "JGFyZ29uMmkkdj0xOSRtPTE2LHQ9MixwPTEkVjBScmJtWkZTWE5xV0hSU1VHOVNXUSRLUkwzNjRxLzdOaStVMmp2MWdIWTdB", "Admin", "V0RrbmZFSXNqWHRSUG9SWQ==", null, "admin" });
+                columns: new[] { "Id", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "Role", "Salt", "UpdatedAt", "Username" },
+                values: new object[] { 1, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@tasktracker.com", "Admin", true, "User", "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==", "Admin", "RVENTsNrIeUkGxDiQQcAKQ==", null, "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",

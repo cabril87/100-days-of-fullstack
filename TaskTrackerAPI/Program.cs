@@ -38,6 +38,10 @@ builder.Services.AddSingleton<TaskTrackerAPI.Helpers.AuthHelper>();
 // Register services
 builder.Services.AddScoped<TaskTrackerAPI.Services.Interfaces.IAuthService, TaskTrackerAPI.Services.AuthService>();
 
+// Register TaskItemRepository
+builder.Services.AddScoped<TaskTrackerAPI.Repositories.Interfaces.ITaskItemRepository, TaskTrackerAPI.Repositories.TaskItemRepository>();
+
+
     
 
 string? tokenKeyString = builder.Configuration.GetSection("AppSettings:TokenKey").Value;
