@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "GPE2/Nn6OBk=",
+  "dgSpecHash": "+9bP11jnJIQ=",
   "success": true,
   "projectFilePath": "C:\\Users\\Abril\\Documents\\100-days-of-fullstack\\TaskTrackerAPI\\TaskTrackerAPI.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Abril\\.nuget\\packages\\automapper\\14.0.0\\automapper.14.0.0.nupkg.sha512",
+    "C:\\Users\\Abril\\.nuget\\packages\\automapper\\13.0.1\\automapper.13.0.1.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\dapper\\2.1.66\\dapper.2.1.66.nupkg.sha512",

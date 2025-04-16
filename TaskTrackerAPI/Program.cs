@@ -3,6 +3,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TaskTrackerAPI.Data;
+using TaskTrackerAPI.Helpers;
+using TaskTrackerAPI.Repositories;
+using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.Services;
+using TaskTrackerAPI.Services.Interfaces;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,21 +35,20 @@ builder.Services.AddCors((options) =>
             });
     });
 
-    // Register repositories
-builder.Services.AddScoped<TaskTrackerAPI.Repositories.Interfaces.IUserRepository, TaskTrackerAPI.Repositories.UserRepository>();
+// Register AutoMapper
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// Register AuthHelper as a service
-builder.Services.AddSingleton<TaskTrackerAPI.Helpers.AuthHelper>();
+// Register repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<ITaskItemRepository, TaskItemRepository>(); 
+
+// Register helpers
+builder.Services.AddSingleton<AuthHelper>();
 
 // Register services
-builder.Services.AddScoped<TaskTrackerAPI.Services.Interfaces.IAuthService, TaskTrackerAPI.Services.AuthService>();
-
-// Register TaskItemRepository
-builder.Services.AddScoped<TaskTrackerAPI.Repositories.Interfaces.ITaskItemRepository, TaskTrackerAPI.Repositories.TaskItemRepository>();
-
-
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
     
-
 string? tokenKeyString = builder.Configuration.GetSection("AppSettings:TokenKey").Value;
 if (string.IsNullOrWhiteSpace(tokenKeyString))
 {
