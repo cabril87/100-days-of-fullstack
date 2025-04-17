@@ -1,11 +1,9 @@
 // Controllers/CategoriesController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers;
 
@@ -14,155 +12,195 @@ namespace TaskTrackerAPI.Controllers;
 [Authorize]
 public class CategoriesController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ICategoryService _categoryService;
+    private readonly ILogger<CategoriesController> _logger;
 
-    public CategoriesController(ApplicationDbContext context)
+    public CategoriesController(ICategoryService categoryService, ILogger<CategoriesController> logger)
     {
-        _context = context;
+        _categoryService = categoryService;
+        _logger = logger;
     }
 
     // GET: api/Categories
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDTO>>> GetCategories()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var categories = await _context.Categories
-            .Where(c => c.UserId == userId)
-            .ToListAsync();
-
-        var categoryDtos = categories.Select(c => new CategoryDTO
+        try
         {
-            Id = c.Id,
-            Name = c.Name,
-            Description = c.Description,
-            UserId = c.UserId
-        }).ToList();
-
-        return Ok(categoryDtos);
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            IEnumerable<CategoryDTO> categories = await _categoryService.GetAllCategoriesAsync(userId);
+            
+            return Ok(categories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving categories");
+            return StatusCode(500, "An error occurred while retrieving categories.");
+        }
     }
 
     // GET: api/Categories/5
     [HttpGet("{id}")]
     public async Task<ActionResult<CategoryDTO>> GetCategory(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var category = await _context.Categories
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-
-        if (category == null)
+        try
         {
-            return NotFound();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            CategoryDTO? category = await _categoryService.GetCategoryByIdAsync(id, userId);
+            
+            if (category == null)
+            {
+                return NotFound($"Category with ID {id} not found");
+            }
+            
+            return Ok(category);
         }
-
-        var categoryDto = new CategoryDTO
+        catch (Exception ex)
         {
-            Id = category.Id,
-            Name = category.Name,
-            Description = category.Description,
-            UserId = category.UserId
-        };
-
-        return categoryDto;
+            _logger.LogError(ex, "Error retrieving category with ID {CategoryId}", id);
+            return StatusCode(500, "An error occurred while retrieving the category.");
+        }
     }
 
     // POST: api/Categories
     [HttpPost]
     public async Task<ActionResult<CategoryDTO>> CreateCategory(CategoryCreateDTO createDto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var category = new Category
+        try
         {
-            Name = createDto.Name,
-            Description = createDto.Description,
-            UserId = userId
-        };
-
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
-
-        var categoryDto = new CategoryDTO
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            CategoryDTO category = await _categoryService.CreateCategoryAsync(userId, createDto);
+            
+            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
+        }
+        catch (InvalidOperationException ex)
         {
-            Id = category.Id,
-            Name = category.Name,
-            Description = category.Description,
-            UserId = category.UserId
-        };
-
-        return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, categoryDto);
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating category");
+            return StatusCode(500, "An error occurred while creating the category.");
+        }
     }
 
     // PUT: api/Categories/5
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateCategory(int id, CategoryUpdateDTO updateDto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var category = await _context.Categories
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-
-        if (category == null)
-        {
-            return NotFound();
-        }
-
-        category.Name = updateDto.Name;
-        category.Description = updateDto.Description;
-
-        _context.Entry(category).State = EntityState.Modified;
-
         try
         {
-            await _context.SaveChangesAsync();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            CategoryDTO? category = await _categoryService.UpdateCategoryAsync(id, userId, updateDto);
+            
+            if (category == null)
+            {
+                return NotFound($"Category with ID {id} not found");
+            }
+            
+            return NoContent();
         }
-        catch (DbUpdateConcurrencyException)
+        catch (InvalidOperationException ex)
         {
-            if (!CategoryExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
+            return BadRequest(ex.Message);
         }
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating category with ID {CategoryId}", id);
+            return StatusCode(500, "An error occurred while updating the category.");
+        }
     }
 
     // DELETE: api/Categories/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCategory(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var category = await _context.Categories
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-
-        if (category == null)
+        try
         {
-            return NotFound();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            bool success = await _categoryService.DeleteCategoryAsync(id, userId);
+            
+            if (!success)
+            {
+                return NotFound($"Category with ID {id} not found");
+            }
+            
+            return NoContent();
         }
-
-        // Check if there are any tasks using this category
-        var hasAssociatedTasks = await _context.Tasks
-            .AnyAsync(t => t.CategoryId == id);
-
-        if (hasAssociatedTasks)
+        catch (InvalidOperationException ex)
         {
-            return BadRequest("Cannot delete category that has associated tasks. Update or delete those tasks first.");
+            return BadRequest(ex.Message);
         }
-
-        _context.Categories.Remove(category);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting category with ID {CategoryId}", id);
+            return StatusCode(500, "An error occurred while deleting the category.");
+        }
     }
-
-    private bool CategoryExists(int id)
+    
+    // GET: api/Categories/search
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<CategoryDTO>>> SearchCategories([FromQuery] string term)
     {
-        return _context.Categories.Any(e => e.Id == id);
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            IEnumerable<CategoryDTO> categories = await _categoryService.SearchCategoriesAsync(userId, term);
+            
+            return Ok(categories);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching categories");
+            return StatusCode(500, "An error occurred while searching categories.");
+        }
+    }
+    
+    // GET: api/Categories/5/tasks-count
+    [HttpGet("{id}/tasks-count")]
+    public async Task<ActionResult<int>> GetCategoryTaskCount(int id)
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            int count = await _categoryService.GetTaskCountInCategoryAsync(id, userId);
+            
+            return Ok(count);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting task count for category with ID {CategoryId}", id);
+            return StatusCode(500, "An error occurred while getting the task count.");
+        }
+    }
+    
+    // GET: api/Categories/statistics
+    [HttpGet("statistics")]
+    public async Task<ActionResult<Dictionary<string, int>>> GetCategoryStatistics()
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            Dictionary<string, int> statistics = await _categoryService.GetCategoryStatisticsAsync(userId);
+            
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving category statistics");
+            return StatusCode(500, "An error occurred while retrieving category statistics.");
+        }
     }
 }

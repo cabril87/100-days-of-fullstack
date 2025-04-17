@@ -1,11 +1,9 @@
 // Controllers/TagsController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers;
 
@@ -14,237 +12,214 @@ namespace TaskTrackerAPI.Controllers;
 [Authorize]
 public class TagsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ITagService _tagService;
+    private readonly ILogger<TagsController> _logger;
 
-    public TagsController(ApplicationDbContext context)
+    public TagsController(ITagService tagService, ILogger<TagsController> logger)
     {
-        _context = context;
+        _tagService = tagService;
+        _logger = logger;
     }
 
     // GET: api/Tags
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TagDTO>>> GetTags()
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var tags = await _context.Tags
-            .Where(t => t.UserId == userId)
-            .ToListAsync();
-
-        var tagDtos = tags.Select(t => new TagDTO
+        try
         {
-            Id = t.Id,
-            Name = t.Name,
-            UserId = t.UserId
-        }).ToList();
-
-        return Ok(tagDtos);
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            IEnumerable<TagDTO> tags = await _tagService.GetAllTagsAsync(userId);
+            
+            return Ok(tags);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tags");
+            return StatusCode(500, "An error occurred while retrieving tags.");
+        }
     }
 
     // GET: api/Tags/5
     [HttpGet("{id}")]
     public async Task<ActionResult<TagDTO>> GetTag(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var tag = await _context.Tags
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-
-        if (tag == null)
+        try
         {
-            return NotFound();
-        }
-
-        var tagDto = new TagDTO
-        {
-            Id = tag.Id,
-            Name = tag.Name,
-            UserId = tag.UserId
-        };
-
-        return tagDto;
-    }
-
-    // GET: api/Tags/5/Tasks
-    [HttpGet("{id}/Tasks")]
-    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByTag(int id)
-    {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        // Verify the tag belongs to the user
-        var tagExists = await _context.Tags
-            .AnyAsync(t => t.Id == id && t.UserId == userId);
-
-        if (!tagExists)
-        {
-            return NotFound();
-        }
-
-        // Get all tasks with this tag
-        var taskIds = await _context.TaskTags
-            .Where(tt => tt.TagId == id)
-            .Select(tt => tt.TaskId)
-            .ToListAsync();
-
-        // Get the tasks that belong to the user and have the tag
-        var tasks = await _context.Tasks
-            .Include(t => t.Category)
-            .Where(t => taskIds.Contains(t.Id) && t.UserId == userId)
-            .ToListAsync();
-
-        var taskDtos = new List<TaskItemDTO>();
-
-        foreach (var t in tasks)
-        {
-            // Get tags for this task
-            var taskTags = await _context.TaskTags
-                .Include(tt => tt.Tag)
-                .Where(tt => tt.TaskId == t.Id)
-                .ToListAsync();
-
-            var taskDto = new TaskItemDTO
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            TagDTO? tag = await _tagService.GetTagByIdAsync(id, userId);
+            
+            if (tag == null)
             {
-                Id = t.Id,
-                Title = t.Title,
-                Description = t.Description,
-                Status = t.Status,
-                DueDate = t.DueDate,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Priority = t.Priority,
-                UserId = t.UserId,
-                CategoryId = t.CategoryId,
-                CategoryName = t.Category?.Name,
-                Tags = taskTags.Select(tt => new TagDTO
-                {
-                    Id = tt.Tag!.Id,
-                    Name = tt.Tag.Name,
-                    UserId = tt.Tag.UserId
-                }).ToList()
-            };
-
-            taskDtos.Add(taskDto);
+                return NotFound($"Tag with ID {id} not found");
+            }
+            
+            return Ok(tag);
         }
-
-        return Ok(taskDtos);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tag with ID {TagId}", id);
+            return StatusCode(500, "An error occurred while retrieving the tag.");
+        }
     }
 
     // POST: api/Tags
     [HttpPost]
     public async Task<ActionResult<TagDTO>> CreateTag(TagCreateDTO createDto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        // Check if a tag with the same name already exists for this user
-        var tagExists = await _context.Tags
-            .AnyAsync(t => t.Name.ToLower() == createDto.Name.ToLower() && t.UserId == userId);
-
-        if (tagExists)
+        try
         {
-            return BadRequest("A tag with this name already exists");
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            TagDTO tag = await _tagService.CreateTagAsync(userId, createDto);
+            
+            return CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tag);
         }
-
-        var tag = new Tag
+        catch (InvalidOperationException ex)
         {
-            Name = createDto.Name,
-            UserId = userId
-        };
-
-        _context.Tags.Add(tag);
-        await _context.SaveChangesAsync();
-
-        var tagDto = new TagDTO
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
         {
-            Id = tag.Id,
-            Name = tag.Name,
-            UserId = tag.UserId
-        };
-
-        return CreatedAtAction(nameof(GetTag), new { id = tag.Id }, tagDto);
+            _logger.LogError(ex, "Error creating tag");
+            return StatusCode(500, "An error occurred while creating the tag.");
+        }
     }
 
     // PUT: api/Tags/5
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTag(int id, TagUpdateDTO updateDto)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var tag = await _context.Tags
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-
-        if (tag == null)
-        {
-            return NotFound();
-        }
-
-        // Check if another tag with the same name already exists for this user
-        var tagExists = await _context.Tags
-            .AnyAsync(t => t.Id != id && t.Name.ToLower() == updateDto.Name.ToLower() && t.UserId == userId);
-
-        if (tagExists)
-        {
-            return BadRequest("Another tag with this name already exists");
-        }
-
-        tag.Name = updateDto.Name;
-
-        _context.Entry(tag).State = EntityState.Modified;
-
         try
         {
-            await _context.SaveChangesAsync();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            TagDTO? tag = await _tagService.UpdateTagAsync(id, userId, updateDto);
+            
+            if (tag == null)
+            {
+                return NotFound($"Tag with ID {id} not found");
+            }
+            
+            return NoContent();
         }
-        catch (DbUpdateConcurrencyException)
+        catch (InvalidOperationException ex)
         {
-            if (!TagExists(id))
-            {
-                return NotFound();
-            }
-            else
-            {
-                throw;
-            }
+            return BadRequest(ex.Message);
         }
-
-        return NoContent();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating tag with ID {TagId}", id);
+            return StatusCode(500, "An error occurred while updating the tag.");
+        }
     }
 
     // DELETE: api/Tags/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTag(int id)
     {
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-        var tag = await _context.Tags
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-
-        if (tag == null)
+        try
         {
-            return NotFound();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            bool success = await _tagService.DeleteTagAsync(id, userId);
+            
+            if (!success)
+            {
+                return NotFound($"Tag with ID {id} not found");
+            }
+            
+            return NoContent();
         }
-
-        // Check if there are any task-tag associations for this tag
-        var hasAssociatedTasks = await _context.TaskTags
-            .AnyAsync(tt => tt.TagId == id);
-
-        // If there are associations, we'll remove them first
-        if (hasAssociatedTasks)
+        catch (Exception ex)
         {
-            var taskTags = await _context.TaskTags
-                .Where(tt => tt.TagId == id)
-                .ToListAsync();
-
-            _context.TaskTags.RemoveRange(taskTags);
+            _logger.LogError(ex, "Error deleting tag with ID {TagId}", id);
+            return StatusCode(500, "An error occurred while deleting the tag.");
         }
-
-        _context.Tags.Remove(tag);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
     }
-
-    private bool TagExists(int id)
+    
+    // GET: api/Tags/search
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<TagDTO>>> SearchTags([FromQuery] string term)
     {
-        return _context.Tags.Any(e => e.Id == id);
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            IEnumerable<TagDTO> tags = await _tagService.SearchTagsAsync(userId, term);
+            
+            return Ok(tags);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching tags");
+            return StatusCode(500, "An error occurred while searching tags.");
+        }
+    }
+    
+    // GET: api/Tags/5/tasks
+    [HttpGet("{id}/tasks")]
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByTag(int id)
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            IEnumerable<TaskItemDTO> tasks = await _tagService.GetTasksByTagAsync(id, userId);
+            
+            return Ok(tasks);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tasks for tag with ID {TagId}", id);
+            return StatusCode(500, "An error occurred while retrieving tasks.");
+        }
+    }
+    
+    // GET: api/Tags/5/usage-count
+    [HttpGet("{id}/usage-count")]
+    public async Task<ActionResult<int>> GetTagUsageCount(int id)
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            int count = await _tagService.GetTagUsageCountAsync(id, userId);
+            
+            return Ok(count);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting usage count for tag with ID {TagId}", id);
+            return StatusCode(500, "An error occurred while getting the usage count.");
+        }
+    }
+    
+    // GET: api/Tags/statistics
+    [HttpGet("statistics")]
+    public async Task<ActionResult<Dictionary<string, int>>> GetTagStatistics()
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            Dictionary<string, int> statistics = await _tagService.GetTagStatisticsAsync(userId);
+            
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tag statistics");
+            return StatusCode(500, "An error occurred while retrieving tag statistics.");
+        }
     }
 }

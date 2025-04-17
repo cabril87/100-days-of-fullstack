@@ -38,15 +38,30 @@ builder.Services.AddCors((options) =>
 // Register AutoMapper
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// Register repositories
+// Register repository
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Register TaskItem Repository
 builder.Services.AddScoped<ITaskItemRepository, TaskItemRepository>(); 
+// Register Category Repository
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+
+// Register Tag Repository
+builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 // Register helpers
 builder.Services.AddSingleton<AuthHelper>();
 
+// Register Category Service
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
+// Register Tag Service
+builder.Services.AddScoped<ITagService, TagService>();
+
 // Register services
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Register TaskService
 builder.Services.AddScoped<ITaskService, TaskService>();
     
 string? tokenKeyString = builder.Configuration.GetSection("AppSettings:TokenKey").Value;

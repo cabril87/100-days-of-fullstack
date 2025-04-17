@@ -8,7 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "TaskTrackerAPI/1.0.0": {
         "dependencies": {
-          "AutoMapper": "14.0.0",
+          "AutoMapper": "13.0.1",
           "Dapper": "2.1.66",
           "Konscious.Security.Cryptography.Argon2": "1.3.1",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.4",
@@ -24,14 +24,14 @@
           "TaskTrackerAPI.dll": {}
         }
       },
-      "AutoMapper/14.0.0": {
+      "AutoMapper/13.0.1": {
         "dependencies": {
           "Microsoft.Extensions.Options": "9.0.3"
         },
         "runtime": {
-          "lib/net8.0/AutoMapper.dll": {
-            "assemblyVersion": "14.0.0.0",
-            "fileVersion": "14.0.0.0"
+          "lib/net6.0/AutoMapper.dll": {
+            "assemblyVersion": "13.0.0.0",
+            "fileVersion": "13.0.1.0"
           }
         }
       },
@@ -1008,12 +1008,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "AutoMapper/14.0.0": {
+    "AutoMapper/13.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-OC+1neAPM4oCCqQj3g2GJ2shziNNhOkxmNB9cVS8jtx4JbgmRzLcUOxB9Tsz6cVPHugdkHgCaCrTjjSI0Z5sCQ==",
-      "path": "automapper/14.0.0",
-      "hashPath": "automapper.14.0.0.nupkg.sha512"
+      "sha512": "sha512-/Fx1SbJ16qS7dU4i604Sle+U9VLX+WSNVJggk6MupKVkYvvBm4XqYaeFuf67diHefHKHs50uQIS2YEDFhPCakQ==",
+      "path": "automapper/13.0.1",
+      "hashPath": "automapper.13.0.1.nupkg.sha512"
     },
     "Azure.Core/1.38.0": {
       "type": "package",
