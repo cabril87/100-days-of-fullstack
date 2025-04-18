@@ -108,7 +108,7 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
     hasAttemptedFetch: false,
   });
 
-  // Fetch statistics when authenticated
+  // Fetch statistics when authenticated - fixed to prevent endless loop
   useEffect(() => {
     if (isAuthenticated && !state.hasAttemptedFetch) {
       fetchAllData();
@@ -122,7 +122,6 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
         setState(prev => ({
           ...prev,
           isLoading: false,
-          hasAttemptedFetch: true,
         }));
       }, 5000); // 5 second timeout
 
@@ -134,6 +133,8 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
   const retryFetchAll = async () => {
     if (retryAttempts < MAX_RETRY_ATTEMPTS) {
       retryAttempts++;
+      // Clear the hasAttemptedFetch flag to allow retrying
+      setState(prev => ({ ...prev, hasAttemptedFetch: false }));
       await fetchAllData();
     } else {
       console.log(`Maximum retry attempts (${MAX_RETRY_ATTEMPTS}) reached.`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStatistics } from "@/context/StatisticsContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { formatPercentage, formatDuration } from "@/lib/utils";
 import { BarChart, CheckCircle, Clock, PieChart, AlertCircle, TrendingUp } from "lucide-react";
 
 export default function StatisticsPage() {
+  const [hasFetched, setHasFetched] = useState(false);
   const { 
     statistics, 
     productivitySummary, 
@@ -21,12 +22,19 @@ export default function StatisticsPage() {
   } = useStatistics();
 
   useEffect(() => {
-    // Fetch all statistics data
-    fetchAllStatistics();
-    fetchProductivitySummary();
-    fetchCompletionRate();
-    fetchTasksByStatusDistribution();
-  }, [fetchAllStatistics, fetchProductivitySummary, fetchCompletionRate, fetchTasksByStatusDistribution]);
+    // Only fetch data if we haven't already
+    if (!hasFetched) {
+      // Fetch all statistics data
+      Promise.all([
+        fetchAllStatistics(),
+        fetchProductivitySummary(),
+        fetchCompletionRate(),
+        fetchTasksByStatusDistribution()
+      ]).finally(() => {
+        setHasFetched(true);
+      });
+    }
+  }, [hasFetched]);
 
   return (
     <div className="space-y-6">
