@@ -30,7 +30,8 @@ export type TokensResponseDTO = {
 // Generic API response type based on your C# ApiResponse<T> structure
 export type ApiResponse<T> = {
   statusCode: number;
-  succeeded: boolean;
+  succeeded?: boolean;  // Original property name
+  success?: boolean;    // Alternate property name
   message: string | null;
   errors: string[] | null;
   data: T | null;
@@ -129,7 +130,13 @@ export async function apiFetch<T>(
     }
 
     // Check if response is API wrapped format
-    if (data.hasOwnProperty('succeeded') && data.hasOwnProperty('data')) {
+    if (data.hasOwnProperty('succeeded') || data.hasOwnProperty('success')) {
+      // Normalize the response to ensure both success flags exist
+      if (data.hasOwnProperty('succeeded') && !data.hasOwnProperty('success')) {
+        data.success = data.succeeded;
+      } else if (data.hasOwnProperty('success') && !data.hasOwnProperty('succeeded')) {
+        data.succeeded = data.success;
+      }
       return data as ApiResponse<T>;
     }
     

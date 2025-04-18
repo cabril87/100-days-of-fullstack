@@ -87,7 +87,7 @@ export function TaskProvider({ children }: TaskProviderProps) {
     try {
       const response = await api.tasks.getAll();
       
-      if (response.succeeded && response.data) {
+      if ((response.success || response.succeeded) && response.data) {
         setState({
           tasks: response.data,
           isLoading: false,
@@ -123,7 +123,8 @@ export function TaskProvider({ children }: TaskProviderProps) {
       const response = await api.tasks.create(task);
       console.log("Raw API response in TaskContext:", response);
       
-      if (response.succeeded && response.data) {
+      // Check for both 'success' and 'succeeded' to handle different API response formats
+      if ((response.success || response.succeeded) && response.data) {
         console.log("Task created successfully:", response.data);
         setState((prev) => ({
           ...prev,
@@ -158,7 +159,7 @@ export function TaskProvider({ children }: TaskProviderProps) {
     try {
       const response = await api.tasks.update(id, task);
       
-      if (response.succeeded && response.data) {
+      if ((response.success || response.succeeded) && response.data) {
         setState((prev) => ({
           ...prev,
           tasks: prev.tasks.map(t => t.id === id ? response.data : t),
@@ -190,7 +191,7 @@ export function TaskProvider({ children }: TaskProviderProps) {
     try {
       const response = await api.tasks.delete(id);
       
-      if (response.succeeded) {
+      if (response.success || response.succeeded) {
         setState((prev) => ({
           ...prev,
           tasks: prev.tasks.filter(t => t.id !== id),
