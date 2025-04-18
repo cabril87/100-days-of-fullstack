@@ -11,6 +11,8 @@ using TaskTrackerAPI.Controllers;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Services;
+using TaskTrackerAPI.Repositories.Interfaces;
 using Xunit;
 using System.Linq;
 
@@ -77,7 +79,7 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             _mockService = new Mock<ITaskStatisticsService>();
             _mockLogger = new Mock<ILogger<TaskStatisticsController>>();
             
-            // Create the controller with our mock service
+            // Create the controller with our mock service and ensure it's explicitly passed as ITaskStatisticsService
             _controller = new TaskStatisticsController(_mockService.Object, _mockLogger.Object);
 
             // Setup controller context with user claims
