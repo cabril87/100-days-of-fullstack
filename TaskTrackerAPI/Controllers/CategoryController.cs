@@ -1,8 +1,15 @@
 // Controllers/CategoriesController.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers;
@@ -13,11 +20,13 @@ namespace TaskTrackerAPI.Controllers;
 public class CategoriesController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
+    private readonly ITaskService _taskService;
     private readonly ILogger<CategoriesController> _logger;
 
-    public CategoriesController(ICategoryService categoryService, ILogger<CategoriesController> logger)
+    public CategoriesController(ICategoryService categoryService, ITaskService taskService, ILogger<CategoriesController> logger)
     {
         _categoryService = categoryService;
+        _taskService = taskService;
         _logger = logger;
     }
 
@@ -25,19 +34,8 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDTO>>> GetCategories()
     {
-        try
-        {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            
-            IEnumerable<CategoryDTO> categories = await _categoryService.GetAllCategoriesAsync(userId);
-            
-            return Ok(categories);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving categories");
-            return StatusCode(500, "An error occurred while retrieving categories.");
-        }
+        int userId = User.GetUserId();
+        return Ok(await _categoryService.GetAllCategoriesAsync(userId));
     }
 
     // GET: api/Categories/5
@@ -63,18 +61,54 @@ public class CategoriesController : ControllerBase
             return StatusCode(500, "An error occurred while retrieving the category.");
         }
     }
-
-    // POST: api/Categories
-    [HttpPost]
-    public async Task<ActionResult<CategoryDTO>> CreateCategory(CategoryCreateDTO createDto)
+    
+    // GET: api/Categories/{id}/tasks
+    [HttpGet("{id}/tasks")]
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByCategory(int id)
     {
         try
         {
             int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             
-            CategoryDTO category = await _categoryService.CreateCategoryAsync(userId, createDto);
+            // First check if the category exists
+            bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
             
-            return CreatedAtAction(nameof(GetCategory), new { id = category.Id }, category);
+            if (!isCategoryOwned)
+            {
+                return NotFound($"Category with ID {id} not found");
+            }
+            
+            IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByCategoryAsync(userId, id);
+            
+            return Ok(tasks);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tasks for category with ID {CategoryId}", id);
+            return StatusCode(500, "An error occurred while retrieving the tasks.");
+        }
+    }
+
+    // POST: api/Categories
+    [HttpPost]
+    public async Task<ActionResult<CategoryDTO>> CreateCategory(CategoryCreateDTO categoryDto)
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            CategoryDTO? newCategory = await _categoryService.CreateCategoryAsync(userId, categoryDto);
+            
+            if (newCategory == null)
+            {
+                return BadRequest("Failed to create category");
+            }
+            
+            return CreatedAtAction(nameof(GetCategory), new { id = newCategory.Id }, newCategory);
         }
         catch (InvalidOperationException ex)
         {
@@ -89,15 +123,15 @@ public class CategoriesController : ControllerBase
 
     // PUT: api/Categories/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateCategory(int id, CategoryUpdateDTO updateDto)
+    public async Task<IActionResult> UpdateCategory(int id, CategoryUpdateDTO categoryDto)
     {
         try
         {
             int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             
-            CategoryDTO? category = await _categoryService.UpdateCategoryAsync(id, userId, updateDto);
+            CategoryDTO? updatedCategory = await _categoryService.UpdateCategoryAsync(id, userId, categoryDto);
             
-            if (category == null)
+            if (updatedCategory == null)
             {
                 return NotFound($"Category with ID {id} not found");
             }
@@ -202,5 +236,13 @@ public class CategoriesController : ControllerBase
             _logger.LogError(ex, "Error retrieving category statistics");
             return StatusCode(500, "An error occurred while retrieving category statistics.");
         }
+    }
+
+    [HttpGet("paged")]
+    public async Task<ActionResult<PagedResult<CategoryDTO>>> GetPagedCategories([FromQuery] PaginationParams paginationParams)
+    {
+        int userId = User.GetUserId();
+        PagedResult<CategoryDTO> pagedCategories = await _categoryService.GetPagedCategoriesAsync(userId, paginationParams);
+        return Ok(pagedCategories);
     }
 }

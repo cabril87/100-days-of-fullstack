@@ -2,16 +2,17 @@
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
 using System;
+using Microsoft.Extensions.Configuration;
 
 namespace TaskTrackerAPI.Data;
 
 public class ApplicationDbContext : DbContext
 {
-    private readonly IConfiguration _config;
+    private readonly IConfiguration? _configuration = null;
 
-    public ApplicationDbContext(IConfiguration config)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
     {
-        _config = config;
     }
 
     public DbSet<User> Users { get; set; } = null!;
@@ -24,9 +25,9 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
+        if (!optionsBuilder.IsConfigured && _configuration != null)
         {
-            optionsBuilder.UseSqlServer(_config.GetConnectionString("DefaultConnection"),
+            optionsBuilder.UseSqlServer(_configuration.GetConnectionString("DefaultConnection"),
                 options => options.EnableRetryOnFailure());
         }
     }

@@ -3,6 +3,7 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Services;
 
@@ -10,18 +11,35 @@ public class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly ILogger<CategoryService> _logger;
+    private readonly IMapper _mapper;
     
-    public CategoryService(ICategoryRepository categoryRepository, ILogger<CategoryService> logger)
+    public CategoryService(ICategoryRepository categoryRepository, ILogger<CategoryService> logger, IMapper mapper)
     {
         _categoryRepository = categoryRepository;
         _logger = logger;
+        _mapper = mapper;
     }
     
     public async Task<IEnumerable<CategoryDTO>> GetAllCategoriesAsync(int userId)
     {
         IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+        return _mapper.Map<IEnumerable<CategoryDTO>>(categories);
+    }
+    
+    public async Task<PagedResult<CategoryDTO>> GetPagedCategoriesAsync(int userId, PaginationParams paginationParams)
+    {
+        PagedResult<Category> pagedCategories = await _categoryRepository.GetPagedCategoriesForUserAsync(userId, paginationParams);
         
-        return categories.Select(MapToCategoryDto);
+        List<CategoryDTO> mappedCategories = _mapper.Map<List<CategoryDTO>>(pagedCategories.Items);
+        
+        PagedResult<CategoryDTO> result = new PagedResult<CategoryDTO>(
+            mappedCategories,
+            pagedCategories.TotalCount,
+            pagedCategories.PageNumber,
+            pagedCategories.PageSize
+        );
+        
+        return result;
     }
     
     public async Task<CategoryDTO?> GetCategoryByIdAsync(int categoryId, int userId)

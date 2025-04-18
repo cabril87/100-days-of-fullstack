@@ -7,6 +7,7 @@ public interface ICategoryRepository
 {
     // Basic CRUD
     Task<IEnumerable<Category>> GetCategoriesForUserAsync(int userId);
+    Task<PagedResult<Category>> GetPagedCategoriesForUserAsync(int userId, PaginationParams paginationParams);
     Task<Category?> GetCategoryByIdAsync(int categoryId, int userId);
     Task<Category> CreateCategoryAsync(Category category);
     Task UpdateCategoryAsync(Category category);

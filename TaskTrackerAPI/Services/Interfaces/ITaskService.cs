@@ -10,6 +10,7 @@ namespace TaskTrackerAPI.Services.Interfaces
     {
         // Basic CRUD operations
         Task<IEnumerable<TaskItemDTO>> GetAllTasksAsync(int userId);
+        Task<PagedResult<TaskItemDTO>> GetPagedTasksAsync(int userId, PaginationParams paginationParams);
         Task<TaskItemDTO?> GetTaskByIdAsync(int userId, int taskId);
         Task<TaskItemDTO?> CreateTaskAsync(int userId, TaskItemDTO taskDto);
         Task<TaskItemDTO?> UpdateTaskAsync(int userId, int taskId, TaskItemDTO taskDto);
@@ -25,7 +26,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task<IEnumerable<TaskItemDTO>> GetDueThisWeekTasksAsync(int userId);
         
         // Statistics and dashboard
-        Task<TaskStatisticsDTO> GetTaskStatisticsAsync(int userId);
+        Task<TaskServiceStatisticsDTO> GetTaskStatisticsAsync(int userId);
         
         // Batch operations
         Task CompleteTasksAsync(int userId, List<int> taskIds);

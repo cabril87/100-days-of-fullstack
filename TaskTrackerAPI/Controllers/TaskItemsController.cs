@@ -1,11 +1,14 @@
 // Controllers/TaskItemsController.cs
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 
@@ -29,19 +32,8 @@ public class TaskItemsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks()
     {
-        try
-        {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            
-            IEnumerable<TaskItemDTO> tasks = await _taskService.GetAllTasksAsync(userId);
-            
-            return Ok(tasks);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving tasks");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
-        }
+        int userId = User.GetUserId();
+        return Ok(await _taskService.GetAllTasksAsync(userId));
     }
 
     // GET: api/TaskItems/5
@@ -272,13 +264,13 @@ public class TaskItemsController : ControllerBase
     
     // GET: api/TaskItems/statistics
     [HttpGet("statistics")]
-    public async Task<ActionResult<TaskStatisticsDTO>> GetTaskStatistics()
+    public async Task<ActionResult<TaskServiceStatisticsDTO>> GetTaskStatistics()
     {
         try
         {
             int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             
-            TaskStatisticsDTO statistics = await _taskService.GetTaskStatisticsAsync(userId);
+            TaskServiceStatisticsDTO statistics = await _taskService.GetTaskStatisticsAsync(userId);
             
             return Ok(statistics);
         }
@@ -401,5 +393,13 @@ public class TaskItemsController : ControllerBase
             _logger.LogError(ex, "Error retrieving tags for task");
             return StatusCode(500, "An error occurred while retrieving tags.");
         }
+    }
+
+    [HttpGet("paged")]
+    public async Task<ActionResult<PagedResult<TaskItemDTO>>> GetPagedTasks([FromQuery] PaginationParams paginationParams)
+    {
+        int userId = User.GetUserId();
+        PagedResult<TaskItemDTO> pagedTasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
+        return Ok(pagedTasks);
     }
 }

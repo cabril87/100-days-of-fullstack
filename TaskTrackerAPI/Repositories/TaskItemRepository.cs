@@ -18,9 +18,31 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task<IEnumerable<TaskItem>> GetAllTasksAsync(int userId)
     {
         return await _context.Tasks
-            .Include(t => t.Category)
             .Where(t => t.UserId == userId)
+            .Include(t => t.Category)
             .ToListAsync();
+    }
+    
+    public async Task<PagedResult<TaskItem>> GetPagedTasksAsync(int userId, PaginationParams paginationParams)
+    {
+        IQueryable<TaskItem> query = _context.Tasks
+            .Where(t => t.UserId == userId)
+            .Include(t => t.Category)
+            .AsQueryable();
+        
+        int count = await query.CountAsync();
+        
+        List<TaskItem> items = await query
+            .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+            .Take(paginationParams.PageSize)
+            .ToListAsync();
+            
+        return new PagedResult<TaskItem>(
+            items, 
+            count, 
+            paginationParams.PageNumber, 
+            paginationParams.PageSize
+        );
     }
     
     public async Task<TaskItem?> GetTaskByIdAsync(int id, int userId)

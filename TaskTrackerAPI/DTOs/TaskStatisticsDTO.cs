@@ -5,29 +5,50 @@ using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs
 {
+    public class TaskCompletionRateDTO
+    {
+        public double CompletionRate { get; set; }
+        public int TotalTasks { get; set; }
+        public int CompletedTasks { get; set; }
+    }
+
+    public class TaskDistributionDTO
+    {
+        public string Label { get; set; } = string.Empty;
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    public class TaskCompletionTimeDTO
+    {
+        public double AverageCompletionTimeInHours { get; set; }
+        public int TasksAnalyzed { get; set; }
+    }
+
+    public class ProductivityDataPointDTO
+    {
+        public DateTime Date { get; set; }
+        public int TasksCompleted { get; set; }
+        public int TasksCreated { get; set; }
+    }
+
+    public class OverdueTasksStatisticsDTO
+    {
+        public int TotalOverdueTasks { get; set; }
+        public double PercentageOfAllTasks { get; set; }
+        public double AverageDaysOverdue { get; set; }
+        public List<TaskDistributionDTO> OverdueByPriority { get; set; } = new List<TaskDistributionDTO>();
+    }
 
     public class TaskStatisticsDTO
     {
-        // Total counts by status
-        public int TotalTasks { get; set; }
-        public int CompletedTasksCount { get; set; }
-        public int InProgressTasksCount { get; set; }
-        public int OtherStatusTasksCount { get; set; }
-        public int OverdueTasksCount { get; set; }
-        
-        // Category-based statistics
-        public Dictionary<string, int> TasksByCategory { get; set; } = new Dictionary<string, int>();
-        
-        // Due date grouping
-        public int DueTodayCount { get; set; }
-        public int DueThisWeekCount { get; set; }
-        public int DueNextWeekCount { get; set; }
-        
-        // Tag-based statistics
-        public Dictionary<string, int> TasksByTag { get; set; } = new Dictionary<string, int>();
-        
-        // Recent activity
-        public List<TaskItemDTO> RecentlyModifiedTasks { get; set; } = new List<TaskItemDTO>();
-        public List<TaskItemDTO> RecentlyCompletedTasks { get; set; } = new List<TaskItemDTO>();
+        public TaskCompletionRateDTO CompletionRate { get; set; } = new TaskCompletionRateDTO();
+        public List<TaskDistributionDTO> TasksByStatus { get; set; } = new List<TaskDistributionDTO>();
+        public List<TaskDistributionDTO> TasksByPriority { get; set; } = new List<TaskDistributionDTO>();
+        public List<TaskDistributionDTO> TasksByCategory { get; set; } = new List<TaskDistributionDTO>();
+        public TaskCompletionTimeDTO CompletionTime { get; set; } = new TaskCompletionTimeDTO();
+        public List<ProductivityDataPointDTO> ProductivityTrend { get; set; } = new List<ProductivityDataPointDTO>();
+        public OverdueTasksStatisticsDTO OverdueTasks { get; set; } = new OverdueTasksStatisticsDTO();
+        public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
     }
 }

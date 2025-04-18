@@ -6,6 +6,7 @@ public interface ITaskItemRepository
 {
     // Basic CRUD
     Task<IEnumerable<TaskItem>> GetAllTasksAsync(int userId);
+    Task<PagedResult<TaskItem>> GetPagedTasksAsync(int userId, PaginationParams paginationParams);
     Task<TaskItem?> GetTaskByIdAsync(int id, int userId);
     Task<TaskItem> CreateTaskAsync(TaskItem task);
     Task UpdateTaskAsync(TaskItem task);

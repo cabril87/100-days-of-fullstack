@@ -19,8 +19,28 @@ public class CategoryRepository : ICategoryRepository
     {
         return await _context.Categories
             .Where(c => c.UserId == userId)
-            .OrderBy(c => c.Name)
             .ToListAsync();
+    }
+    
+    public async Task<PagedResult<Category>> GetPagedCategoriesForUserAsync(int userId, PaginationParams paginationParams)
+    {
+        IQueryable<Category> query = _context.Categories
+            .Where(c => c.UserId == userId)
+            .AsQueryable();
+            
+        int count = await query.CountAsync();
+        
+        List<Category> items = await query
+            .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+            .Take(paginationParams.PageSize)
+            .ToListAsync();
+            
+        return new PagedResult<Category>(
+            items, 
+            count, 
+            paginationParams.PageNumber, 
+            paginationParams.PageSize
+        );
     }
     
     public async Task<Category?> GetCategoryByIdAsync(int categoryId, int userId)
