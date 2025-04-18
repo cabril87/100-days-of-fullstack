@@ -25,16 +25,16 @@ jobs:
       run: dotnet restore
     
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --configuration Release
     
     - name: Run unit tests
-      run: dotnet test TaskTrackerAPI.UnitTests --no-build --verbosity normal
+      run: dotnet test TaskTrackerAPI.UnitTests --verbosity normal
     
     - name: Run service tests
-      run: dotnet test TaskTrackerAPI.ServiceTests --no-build --verbosity normal
+      run: dotnet test TaskTrackerAPI.ServiceTests --verbosity normal
     
     - name: Run integration tests
-      run: dotnet test TaskTrackerAPI.IntegrationTests --no-build --verbosity normal
+      run: dotnet test TaskTrackerAPI.IntegrationTests --verbosity normal
 
   code-coverage:
     runs-on: ubuntu-latest
