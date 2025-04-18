@@ -16,6 +16,55 @@ using System.Linq;
 
 namespace TaskTrackerAPI.UnitTests.Controllers
 {
+    // Create a custom ITaskStatisticsService implementation to avoid dependency issues
+    public class MockTaskStatisticsService : ITaskStatisticsService
+    {
+        public Task<TaskStatisticsDTO> GetTaskStatisticsAsync(int userId)
+        {
+            var result = new TaskStatisticsDTO();
+            return Task.FromResult(result);
+        }
+
+        public Task<ProductivityAnalyticsDTO> GetProductivityAnalyticsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            var result = new ProductivityAnalyticsDTO();
+            return Task.FromResult(result);
+        }
+
+        public Task<double> GetTaskCompletionRateAsync(int userId)
+        {
+            return Task.FromResult(0.5);
+        }
+
+        public Task<Dictionary<TaskItemStatus, int>> GetTasksByStatusDistributionAsync(int userId)
+        {
+            var result = new Dictionary<TaskItemStatus, int>();
+            return Task.FromResult(result);
+        }
+
+        public Task<TimeSpan> GetTaskCompletionTimeAverageAsync(int userId)
+        {
+            return Task.FromResult(TimeSpan.FromHours(1));
+        }
+
+        public Task<Dictionary<int, int>> GetTasksByPriorityDistributionAsync(int userId)
+        {
+            var result = new Dictionary<int, int>();
+            return Task.FromResult(result);
+        }
+
+        public Task<List<CategoryActivityDTO>> GetMostActiveCategoriesAsync(int userId, int limit)
+        {
+            var result = new List<CategoryActivityDTO>();
+            return Task.FromResult(result);
+        }
+
+        public Task ValidateUserAccess(int taskId, int userId)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     public class TaskStatisticsControllerTests
     {
         private readonly Mock<ITaskStatisticsService> _mockService;
@@ -27,6 +76,8 @@ namespace TaskTrackerAPI.UnitTests.Controllers
         {
             _mockService = new Mock<ITaskStatisticsService>();
             _mockLogger = new Mock<ILogger<TaskStatisticsController>>();
+            
+            // Create the controller with our mock service
             _controller = new TaskStatisticsController(_mockService.Object, _mockLogger.Object);
 
             // Setup controller context with user claims
