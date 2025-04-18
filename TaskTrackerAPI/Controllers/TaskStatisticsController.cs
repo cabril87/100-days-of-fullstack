@@ -76,6 +76,12 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
+        [HttpGet("tasks-by-status-distribution")]
+        public async Task<IActionResult> GetTasksByStatusDistributionAlias()
+        {
+            return await GetTasksByStatus();
+        }
+
         [HttpGet("priority-distribution")]
         public async Task<IActionResult> GetTasksByPriorityDistribution()
         {

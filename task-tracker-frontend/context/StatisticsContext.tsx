@@ -293,13 +293,23 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
 
   // Fetch tasks by status distribution
   const fetchTasksByStatusDistribution = async () => {
-    // Skip if we've already determined this endpoint doesn't exist
-    if (failedEndpoints.has('Statistics/status-distribution')) {
+    // Skip if we've already determined these endpoints don't exist
+    if (failedEndpoints.has('Statistics/tasks-by-status') && failedEndpoints.has('Statistics/status-distribution')) {
       return;
     }
     
     try {
-      const response = await api.statistics.getTasksByStatusDistribution();
+      // Try the tasks-by-status endpoint first
+      const response = await api.statistics.getTasksByStatusDistribution()
+        .catch(async (error) => {
+          // If the first endpoint fails with 404, try the second endpoint
+          if ((error as ApiError).statusCode === 404) {
+            console.log('Trying alternative endpoint for task status distribution');
+            failedEndpoints.add('Statistics/tasks-by-status');
+            return await api.statistics.getTaskStatusDistribution();
+          }
+          throw error;
+        });
       
       if ('succeeded' in response && response.succeeded && response.data) {
         setState((prev) => ({
@@ -316,10 +326,10 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
         }));
       }
     } catch (error) {
-      // If we get a 404, mark this endpoint as failed to prevent future requests
+      // If we get a 404, mark these endpoints as failed to prevent future requests
       if ((error as ApiError).statusCode === 404) {
         failedEndpoints.add('Statistics/status-distribution');
-        console.log('Status distribution endpoint not found, will not retry.');
+        console.log('All task status distribution endpoints not found, will not retry.');
       }
       
       // Don't set error state for 404s to avoid disrupting the UI

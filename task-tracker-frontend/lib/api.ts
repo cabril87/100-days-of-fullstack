@@ -160,6 +160,7 @@ export const api = {
     getAll: () => apiFetch('Statistics'),
     getProductivitySummary: () => apiFetch('Statistics/productivity-summary'),
     getCompletionRate: () => apiFetch('Statistics/completion-rate'),
-    getTasksByStatusDistribution: () => apiFetch('Statistics/status-distribution'),
+    getTasksByStatusDistribution: () => apiFetch('Statistics/tasks-by-status'),
+    getTaskStatusDistribution: () => apiFetch('Statistics/status-distribution'),
   },
 }; 
