@@ -16,6 +16,9 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task<TaskItemDTO?> UpdateTaskAsync(int userId, int taskId, TaskItemDTO taskDto);
         Task DeleteTaskAsync(int userId, int taskId);
         
+        // Security check
+        Task<bool> IsTaskOwnedByUserAsync(int taskId, int userId);
+        
         // Filtering methods
         Task<IEnumerable<TaskItemDTO>> GetTasksByStatusAsync(int userId, TaskItemStatus status);
         Task<IEnumerable<TaskItemDTO>> GetTasksByCategoryAsync(int userId, int categoryId);

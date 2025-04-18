@@ -34,8 +34,22 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<CategoryDTO>>> GetCategories()
     {
-        int userId = User.GetUserId();
-        return Ok(await _categoryService.GetAllCategoriesAsync(userId));
+        try
+        {
+            int userId = User.GetUserId();
+            IEnumerable<CategoryDTO> categories = await _categoryService.GetAllCategoriesAsync(userId);
+            return Ok(categories);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt in GetCategories");
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving categories");
+            return StatusCode(500, "An error occurred while retrieving categories");
+        }
     }
 
     // GET: api/Categories/5
@@ -44,21 +58,39 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id <= 0)
+            {
+                return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
+            }
+            
+            int userId = User.GetUserId();
+            
+            // First check if the category exists and belongs to the user
+            bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
+            
+            if (!isCategoryOwned)
+            {
+                return NotFound(new { error = $"Category with ID {id} not found" });
+            }
             
             CategoryDTO? category = await _categoryService.GetCategoryByIdAsync(id, userId);
             
             if (category == null)
             {
-                return NotFound($"Category with ID {id} not found");
+                return NotFound(new { error = $"Category with ID {id} not found" });
             }
             
             return Ok(category);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt for category {CategoryId}", id);
+            return Forbid(ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving category with ID {CategoryId}", id);
-            return StatusCode(500, "An error occurred while retrieving the category.");
+            return StatusCode(500, new { error = "An unexpected error occurred while retrieving the category." });
         }
     }
     
@@ -68,14 +100,19 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id <= 0)
+            {
+                return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
+            }
+            
+            int userId = User.GetUserId();
             
             // First check if the category exists
             bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
             
             if (!isCategoryOwned)
             {
-                return NotFound($"Category with ID {id} not found");
+                return NotFound(new { error = $"Category with ID {id} not found" });
             }
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByCategoryAsync(userId, id);
@@ -84,12 +121,13 @@ public class CategoriesController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            _logger.LogWarning(ex, "Unauthorized access attempt for tasks in category {CategoryId}", id);
+            return Forbid();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks for category with ID {CategoryId}", id);
-            return StatusCode(500, "An error occurred while retrieving the tasks.");
+            return StatusCode(500, new { error = "An unexpected error occurred while retrieving the tasks." });
         }
     }
 
@@ -99,25 +137,42 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            // Validate the input
+            if (categoryDto == null)
+            {
+                return BadRequest(new { error = "Category data is required" });
+            }
+
+            if (string.IsNullOrWhiteSpace(categoryDto.Name))
+            {
+                return BadRequest(new { error = "Category name is required" });
+            }
+
+            if (categoryDto.Name.Length > 100)
+            {
+                return BadRequest(new { error = "Category name cannot exceed 100 characters" });
+            }
+            
+            int userId = User.GetUserId();
             
             CategoryDTO? newCategory = await _categoryService.CreateCategoryAsync(userId, categoryDto);
-            
-            if (newCategory == null)
-            {
-                return BadRequest("Failed to create category");
-            }
             
             return CreatedAtAction(nameof(GetCategory), new { id = newCategory.Id }, newCategory);
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Validation error during category creation: {Message}", ex.Message);
             return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt in CreateCategory");
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating category");
-            return StatusCode(500, "An error occurred while creating the category.");
+            return StatusCode(500, new { error = "An unexpected error occurred while creating the category." });
         }
     }
 
@@ -127,25 +182,46 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id <= 0)
+            {
+                return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
+            }
+            
+            if (categoryDto == null)
+            {
+                return BadRequest(new { error = "Category data is required" });
+            }
+
+            if (categoryDto.Name != null && categoryDto.Name.Length > 100)
+            {
+                return BadRequest(new { error = "Category name cannot exceed 100 characters" });
+            }
+            
+            int userId = User.GetUserId();
             
             CategoryDTO? updatedCategory = await _categoryService.UpdateCategoryAsync(id, userId, categoryDto);
             
             if (updatedCategory == null)
             {
-                return NotFound($"Category with ID {id} not found");
+                return NotFound(new { error = $"Category with ID {id} not found" });
             }
             
             return NoContent();
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Validation error during category update: {Message}", ex.Message);
             return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt updating category {CategoryId}", id);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating category with ID {CategoryId}", id);
-            return StatusCode(500, "An error occurred while updating the category.");
+            return StatusCode(500, new { error = "An unexpected error occurred while updating the category." });
         }
     }
 
@@ -155,25 +231,36 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id <= 0)
+            {
+                return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
+            }
+            
+            int userId = User.GetUserId();
             
             bool success = await _categoryService.DeleteCategoryAsync(id, userId);
             
             if (!success)
             {
-                return NotFound($"Category with ID {id} not found");
+                return NotFound(new { error = $"Category with ID {id} not found" });
             }
             
             return NoContent();
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Operation not allowed: {Message}", ex.Message);
             return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt deleting category {CategoryId}", id);
+            return StatusCode(403, new { error = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting category with ID {CategoryId}", id);
-            return StatusCode(500, "An error occurred while deleting the category.");
+            return StatusCode(500, new { error = "An unexpected error occurred while deleting the category." });
         }
     }
     
@@ -183,16 +270,26 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return BadRequest(new { error = "Search term is required" });
+            }
+            
+            int userId = User.GetUserId();
             
             IEnumerable<CategoryDTO> categories = await _categoryService.SearchCategoriesAsync(userId, term);
             
             return Ok(categories);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt in SearchCategories");
+            return StatusCode(403, new { error = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching categories");
-            return StatusCode(500, "An error occurred while searching categories.");
+            _logger.LogError(ex, "Error searching categories with term {Term}", term);
+            return StatusCode(500, new { error = "An unexpected error occurred while searching categories." });
         }
     }
     
@@ -202,7 +299,12 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id <= 0)
+            {
+                return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
+            }
+            
+            int userId = User.GetUserId();
             
             int count = await _categoryService.GetTaskCountInCategoryAsync(id, userId);
             
@@ -210,12 +312,13 @@ public class CategoriesController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            _logger.LogWarning(ex, "Unauthorized access attempt for task count in category {CategoryId}", id);
+            return Forbid();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting task count for category with ID {CategoryId}", id);
-            return StatusCode(500, "An error occurred while getting the task count.");
+            return StatusCode(500, new { error = "An unexpected error occurred while getting the task count." });
         }
     }
     
@@ -225,24 +328,47 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             Dictionary<string, int> statistics = await _categoryService.GetCategoryStatisticsAsync(userId);
             
             return Ok(statistics);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt in GetCategoryStatistics");
+            return StatusCode(403, new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving category statistics");
-            return StatusCode(500, "An error occurred while retrieving category statistics.");
+            return StatusCode(500, new { error = "An unexpected error occurred while retrieving category statistics." });
         }
     }
 
     [HttpGet("paged")]
     public async Task<ActionResult<PagedResult<CategoryDTO>>> GetPagedCategories([FromQuery] PaginationParams paginationParams)
     {
-        int userId = User.GetUserId();
-        PagedResult<CategoryDTO> pagedCategories = await _categoryService.GetPagedCategoriesAsync(userId, paginationParams);
-        return Ok(pagedCategories);
+        try
+        {
+            if (paginationParams == null)
+            {
+                paginationParams = new PaginationParams();
+            }
+            
+            int userId = User.GetUserId();
+            PagedResult<CategoryDTO> pagedCategories = await _categoryService.GetPagedCategoriesAsync(userId, paginationParams);
+            return Ok(pagedCategories);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt in GetPagedCategories");
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paged categories");
+            return StatusCode(500, new { error = "An unexpected error occurred while retrieving categories." });
+        }
     }
 }

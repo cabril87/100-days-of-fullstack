@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +11,10 @@ using TaskTrackerAPI.Services;
 
 namespace TaskTrackerAPI.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize]
-    public class TaskStatisticsController : ControllerBase
+    [ApiController]
+    [Route("api/[controller]")]
+    public class TaskStatisticsController : BaseApiController
     {
         private readonly TaskStatisticsService _taskStatisticsService;
         private readonly ILogger<TaskStatisticsController> _logger;
@@ -28,16 +27,13 @@ namespace TaskTrackerAPI.Controllers
             _logger = logger;
         }
 
-        // GET: api/TaskStatistics/completion-rate
         [HttpGet("completion-rate")]
-        public async Task<ActionResult<TaskCompletionRateDTO>> GetTaskCompletionRate()
+        public async Task<IActionResult> GetCompletionRate()
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var completionRate = await _taskStatisticsService.GetTaskStatisticsAsync(userId);
-                
+                int userId = GetUserIdFromClaims();
+                TaskStatisticsDTO completionRate = await _taskStatisticsService.GetTaskStatisticsAsync(userId);
                 return Ok(completionRate.CompletionRate);
             }
             catch (Exception ex)
@@ -47,16 +43,13 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
-        // GET: api/TaskStatistics/status-distribution
         [HttpGet("status-distribution")]
-        public async Task<ActionResult<Dictionary<TaskItemStatus, int>>> GetTasksByStatusDistribution()
+        public async Task<IActionResult> GetTasksByStatusDistribution()
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var distribution = await _taskStatisticsService.GetTasksByStatusDistributionAsync(userId);
-                
+                int userId = GetUserIdFromClaims();
+                Dictionary<TaskItemStatus, int> distribution = await _taskStatisticsService.GetTasksByStatusDistributionAsync(userId);
                 return Ok(distribution);
             }
             catch (Exception ex)
@@ -66,16 +59,13 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
-        // GET: api/TaskStatistics/priority-distribution
         [HttpGet("priority-distribution")]
-        public async Task<ActionResult<Dictionary<int, int>>> GetTasksByPriorityDistribution()
+        public async Task<IActionResult> GetTasksByPriorityDistribution()
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var distribution = await _taskStatisticsService.GetTasksByPriorityDistributionAsync(userId);
-                
+                int userId = GetUserIdFromClaims();
+                Dictionary<int, int> distribution = await _taskStatisticsService.GetTasksByPriorityDistributionAsync(userId);
                 return Ok(distribution);
             }
             catch (Exception ex)
@@ -85,16 +75,13 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
-        // GET: api/TaskStatistics/active-categories
         [HttpGet("active-categories")]
-        public async Task<ActionResult<List<CategoryActivityDTO>>> GetMostActiveCategories([FromQuery] int limit = 5)
+        public async Task<IActionResult> GetMostActiveCategories([FromQuery, Range(1, 20)] int limit = 5)
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var activeCategories = await _taskStatisticsService.GetMostActiveCategoriesAsync(userId, limit);
-                
+                int userId = GetUserIdFromClaims();
+                List<CategoryActivityDTO> activeCategories = await _taskStatisticsService.GetMostActiveCategoriesAsync(userId, limit);
                 return Ok(activeCategories);
             }
             catch (Exception ex)
@@ -104,16 +91,29 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
-        // GET: api/TaskStatistics/completion-time-average
-        [HttpGet("completion-time-average")]
-        public async Task<ActionResult<TimeSpan>> GetTaskCompletionTimeAverage()
+        [HttpGet("completion-time")]
+        public async Task<IActionResult> GetCompletionTimeAverage()
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var averageTime = await _taskStatisticsService.GetTaskCompletionTimeAverageAsync(userId);
-                
+                int userId = GetUserIdFromClaims();
+                TimeSpan averageTime = await _taskStatisticsService.GetTaskCompletionTimeAverageAsync(userId);
+                return Ok(new { AverageHours = averageTime.TotalHours });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving task completion time average");
+                return StatusCode(500, "An error occurred while retrieving task completion time average.");
+            }
+        }
+
+        [HttpGet("completion-time-average")]
+        public async Task<IActionResult> GetCompletionTimeAverageAlias()
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                TimeSpan averageTime = await _taskStatisticsService.GetTaskCompletionTimeAverageAsync(userId);
                 return Ok(averageTime);
             }
             catch (Exception ex)
@@ -123,22 +123,35 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
-        // GET: api/TaskStatistics/overdue
         [HttpGet("overdue")]
-        public async Task<ActionResult<OverdueTasksStatisticsDTO>> GetOverdueTasksStatistics()
+        public async Task<IActionResult> GetOverdueTasksStatistics()
         {
             try
             {
-                int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                
-                var stats = await _taskStatisticsService.GetTaskStatisticsAsync(userId);
-                
+                int userId = GetUserIdFromClaims();
+                TaskStatisticsDTO stats = await _taskStatisticsService.GetTaskStatisticsAsync(userId);
                 return Ok(stats.OverdueTasks);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving overdue tasks statistics");
                 return StatusCode(500, "An error occurred while retrieving overdue tasks statistics.");
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllStatistics()
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                TaskStatisticsDTO stats = await _taskStatisticsService.GetTaskStatisticsAsync(userId);
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving task statistics");
+                return StatusCode(500, "An error occurred while retrieving task statistics.");
             }
         }
     }

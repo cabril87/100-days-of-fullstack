@@ -1,7 +1,7 @@
 # 💻 100 Days of Code – Full Stack with C#/.NET & Next.js
 
-Hi, I’m **Carlos Abril Jr.** 👋  
-I’m a Sys Admin and Full Stack Developer expanding my backend skills in **C#/.NET** and building modern frontends with **Next.js 14**. I’m using the #100DaysOfCode challenge to sharpen my skills in secure coding, API design, and full-stack app development.
+Hi, I'm **Carlos Abril Jr.** 👋  
+I'm a Sys Admin and Full Stack Developer expanding my backend skills in **C#/.NET** and building modern frontends with **Next.js 14**. I'm using the #100DaysOfCode challenge to sharpen my skills in secure coding, API design, and full-stack app development.
 
 ---
 
@@ -79,13 +79,13 @@ Feel free to suggest any other ideas or if you have a favorite project you want 
 | 14  | **Repository Pattern (Part 2-B):** Created TaskStatisticsDTO for dashboard view. Implemented ITaskService interface and TaskService with business logic. Added methods for task filtering and statistics. |
 | 15  | **Repository Pattern (Part 2-C):** Refactored TaskItemsController to use the service layer. Added new endpoints for task statistics and due date filtering. Improved error handling across the task management system. |
 | 16  | **Repository Pattern (Part 3):** Creating ICategoryRepository and ITagRepository. Refactoring remaining controllers to use repositories. Adding unit tests for repository classes. |
-| 17  | Coming soon... |
+| 17  | **Unit Testing and API Fixes:** Fixed integration tests by adding missing endpoint aliases in TaskStatisticsController. Fixed unit tests by resolving type mismatches between TaskStatisticsDTO and TaskServiceStatisticsDTO in task service tests. Added comprehensive tests for CategoryRepository, TaskItemRepository, and TagRepository. |
 
 ---
 
 ## 🧠 Reflections & Lessons
 
-This challenge is not just about consistency—it's about writing better code, thinking about **security** early, and building software that can scale. I’ll include key takeaways, fixes, and ah-ha moments here weekly.
+This challenge is not just about consistency—it's about writing better code, thinking about **security** early, and building software that can scale. I'll include key takeaways, fixes, and ah-ha moments here weekly.
 
 ---
 

@@ -61,7 +61,27 @@ public class TaskItemRepository : ITaskItemRepository
     
     public async Task UpdateTaskAsync(TaskItem task)
     {
-        _context.Tasks.Update(task);
+        // For in-memory database during tests, we need this modified approach
+        var entry = _context.Tasks.Entry(task);
+        if (entry.State == EntityState.Detached)
+        {
+            var existingTask = await _context.Tasks.FindAsync(task.Id);
+            if (existingTask != null)
+            {
+                _context.Entry(existingTask).CurrentValues.SetValues(task);
+            }
+            else
+            {
+                _context.Tasks.Attach(task);
+                entry.State = EntityState.Modified;
+            }
+        }
+        else
+        {
+            // Normal approach for SQL Server
+            _context.Tasks.Update(task);
+        }
+        
         await _context.SaveChangesAsync();
     }
     
