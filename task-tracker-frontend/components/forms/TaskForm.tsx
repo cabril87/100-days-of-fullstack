@@ -261,8 +261,8 @@ export default function TaskForm({ task }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Category</FormLabel>
                 <Select
-                  onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
-                  value={field.value?.toString() || ""}
+                  onValueChange={(value) => field.onChange(value === "0" ? null : parseInt(value))}
+                  value={field.value?.toString() || "0"}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -270,7 +270,7 @@ export default function TaskForm({ task }: TaskFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="0">None</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         <div className="flex items-center gap-2">
