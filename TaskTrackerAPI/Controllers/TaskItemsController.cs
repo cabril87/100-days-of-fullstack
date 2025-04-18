@@ -61,7 +61,7 @@ public class TaskItemsController : ControllerBase
                 return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
-            TaskItemDTO task = await _taskService.GetTaskByIdAsync(userId, id);
+            TaskItemDTO? task = await _taskService.GetTaskByIdAsync(userId, id);
             
             if (task == null)
             {

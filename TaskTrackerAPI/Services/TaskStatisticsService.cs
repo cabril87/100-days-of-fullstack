@@ -6,10 +6,12 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
+using System.Globalization;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Services
 {
-    public class TaskStatisticsService
+    public class TaskStatisticsService : ITaskStatisticsService
     {
         private readonly ITaskItemRepository _taskRepository;
         private readonly ICategoryRepository _categoryRepository;
@@ -398,6 +400,330 @@ namespace TaskTrackerAPI.Services
             {
                 throw new UnauthorizedAccessException("You do not have access to this task");
             }
+        }
+
+        public async Task<ProductivityAnalyticsDTO> GetProductivityAnalyticsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            try
+            {
+                // Default to last 30 days if no date range specified
+                DateTime effectiveStartDate = startDate ?? DateTime.UtcNow.AddDays(-30);
+                DateTime effectiveEndDate = endDate ?? DateTime.UtcNow;
+
+                // Get all tasks within the date range
+                IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
+                IEnumerable<TaskItem> tasksInRange = tasks.Where(t => 
+                    t.CreatedAt >= effectiveStartDate && 
+                    (t.CreatedAt <= effectiveEndDate || (t.CompletedAt.HasValue && t.CompletedAt <= effectiveEndDate)));
+
+                ProductivityAnalyticsDTO analytics = new ProductivityAnalyticsDTO
+                {
+                    GeneratedAt = DateTime.UtcNow,
+                    TimeOfDayAnalytics = await GetTimeOfDayProductivityAsync(userId, tasksInRange),
+                    DailyProductivity = await GetDailyProductivityAsync(userId, tasksInRange, effectiveStartDate, effectiveEndDate),
+                    WeeklyProductivity = await GetWeeklyProductivityAsync(userId, tasksInRange, effectiveStartDate, effectiveEndDate),
+                    MonthlyProductivity = await GetMonthlyProductivityAsync(userId, tasksInRange, effectiveStartDate, effectiveEndDate)
+                };
+
+                // Calculate averages
+                if (analytics.DailyProductivity.Any())
+                {
+                    analytics.AverageTasksPerDay = analytics.DailyProductivity.Average(d => d.CreatedTasks);
+                }
+
+                if (analytics.WeeklyProductivity.Any())
+                {
+                    analytics.AverageTasksPerWeek = analytics.WeeklyProductivity.Average(w => w.CreatedTasks);
+                }
+
+                // Get completion times for completed tasks
+                IEnumerable<TaskItem> completedTasks = tasksInRange.Where(t => 
+                    t.Status == TaskItemStatus.Completed && 
+                    t.CompletedAt.HasValue);
+
+                if (completedTasks.Any())
+                {
+                    analytics.AverageCompletionRate = (double)completedTasks.Count() / tasksInRange.Count();
+                    
+                    var completionTimes = completedTasks
+                        .Where(t => t.CompletedAt.HasValue)
+                        .Select(t => t.CompletedAt!.Value - t.CreatedAt)
+                        .ToList();
+                    
+                    if (completionTimes.Any())
+                    {
+                        analytics.AverageTimeToComplete = TimeSpan.FromTicks((long)completionTimes.Average(t => t.Ticks));
+                    }
+                }
+
+                return analytics;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating productivity analytics for user {UserId}", userId);
+                throw;
+            }
+        }
+
+        private async Task<List<TimeOfDayProductivityDTO>> GetTimeOfDayProductivityAsync(int userId, IEnumerable<TaskItem> tasks = null!)
+        {
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
+
+            // Define time frames
+            var timeFrames = new[] 
+            {
+                new { Name = "Early Morning (5AM-8AM)", Start = 5, End = 8 },
+                new { Name = "Morning (8AM-12PM)", Start = 8, End = 12 },
+                new { Name = "Afternoon (12PM-5PM)", Start = 12, End = 17 },
+                new { Name = "Evening (5PM-9PM)", Start = 17, End = 21 },
+                new { Name = "Night (9PM-5AM)", Start = 21, End = 5 }
+            };
+
+            List<TimeOfDayProductivityDTO> result = new List<TimeOfDayProductivityDTO>();
+
+            foreach (var timeFrame in timeFrames)
+            {
+                // Tasks created in this time frame
+                int created = tasks.Count(t => 
+                    (timeFrame.Start <= timeFrame.End 
+                        ? t.CreatedAt.Hour >= timeFrame.Start && t.CreatedAt.Hour < timeFrame.End
+                        : t.CreatedAt.Hour >= timeFrame.Start || t.CreatedAt.Hour < timeFrame.End));
+
+                // Tasks completed in this time frame
+                int completed = tasks.Count(t => 
+                    t.CompletedAt.HasValue && 
+                    (timeFrame.Start <= timeFrame.End 
+                        ? t.CompletedAt.Value.Hour >= timeFrame.Start && t.CompletedAt.Value.Hour < timeFrame.End
+                        : t.CompletedAt.Value.Hour >= timeFrame.Start || t.CompletedAt.Value.Hour < timeFrame.End));
+
+                result.Add(new TimeOfDayProductivityDTO
+                {
+                    TimeFrame = timeFrame.Name,
+                    CreatedTasks = created,
+                    CompletedTasks = completed,
+                    CompletionRate = created > 0 ? (double)completed / created : 0
+                });
+            }
+
+            return result;
+        }
+
+        private async Task<List<DailyProductivityDTO>> GetDailyProductivityAsync(
+            int userId, 
+            IEnumerable<TaskItem> tasks = null!, 
+            DateTime startDate = default, 
+            DateTime endDate = default)
+        {
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
+
+            if (startDate == default)
+                startDate = DateTime.UtcNow.AddDays(-30);
+            
+            if (endDate == default)
+                endDate = DateTime.UtcNow;
+
+            List<DailyProductivityDTO> result = new List<DailyProductivityDTO>();
+            
+            for (DateTime date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                DateTime nextDate = date.AddDays(1);
+                
+                // Tasks created on this day
+                int created = tasks.Count(t => t.CreatedAt.Date == date.Date);
+
+                // Tasks completed on this day
+                int completed = tasks.Count(t => 
+                    t.CompletedAt.HasValue && 
+                    t.CompletedAt.Value.Date == date.Date);
+
+                // Calculate efficiency - ratio of tasks completed to created, normalized
+                double efficiency = created > 0 
+                    ? Math.Min((double)completed / created, 1.0) 
+                    : completed > 0 ? 1.0 : 0.0;
+
+                result.Add(new DailyProductivityDTO
+                {
+                    Date = date,
+                    CreatedTasks = created,
+                    CompletedTasks = completed,
+                    CompletionRate = created > 0 ? (double)completed / created : 0,
+                    EfficiencyScore = efficiency
+                });
+            }
+
+            return result;
+        }
+
+        private async Task<List<WeeklyProductivityDTO>> GetWeeklyProductivityAsync(
+            int userId, 
+            IEnumerable<TaskItem> tasks = null!, 
+            DateTime startDate = default, 
+            DateTime endDate = default)
+        {
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
+
+            if (startDate == default)
+                startDate = DateTime.UtcNow.AddDays(-90);
+            
+            if (endDate == default)
+                endDate = DateTime.UtcNow;
+
+            // Group tasks by ISO week number
+            var calendar = CultureInfo.CurrentCulture.Calendar;
+            var weekGroups = tasks
+                .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
+                .GroupBy(t => calendar.GetWeekOfYear(t.CreatedAt, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday))
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            // Get categories for task analysis
+            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
+
+            List<WeeklyProductivityDTO> result = new List<WeeklyProductivityDTO>();
+
+            foreach (var weekGroup in weekGroups)
+            {
+                int weekNumber = weekGroup.Key;
+                
+                // Get week date range (Monday to Sunday)
+                var firstTask = weekGroup.OrderBy(t => t.CreatedAt).First();
+                DateTime weekStart = GetWeekStartDate(firstTask.CreatedAt);
+                DateTime weekEnd = weekStart.AddDays(6);
+
+                // Tasks created in this week
+                int created = weekGroup.Count();
+                
+                // Tasks completed in this week
+                int completed = tasks.Count(t => 
+                    t.CompletedAt.HasValue && 
+                    t.CompletedAt.Value >= weekStart && 
+                    t.CompletedAt.Value <= weekEnd);
+
+                // Top categories
+                var categoryDistribution = weekGroup
+                    .Where(t => t.CategoryId.HasValue)
+                    .GroupBy(t => t.CategoryId.Value)
+                    .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                    .OrderByDescending(x => x.Count)
+                    .Take(3);
+                
+                List<string> topCategories = new List<string>();
+                foreach (var category in categoryDistribution)
+                {
+                    if (categoryMap.TryGetValue(category.CategoryId, out string? name) && !string.IsNullOrEmpty(name))
+                    {
+                        topCategories.Add(name);
+                    }
+                }
+
+                // Calculate efficiency - ratio of tasks completed to created, normalized
+                double efficiency = created > 0 
+                    ? Math.Min((double)completed / created, 1.0) 
+                    : completed > 0 ? 1.0 : 0.0;
+
+                result.Add(new WeeklyProductivityDTO
+                {
+                    WeekNumber = weekNumber,
+                    StartDate = weekStart,
+                    EndDate = weekEnd,
+                    CreatedTasks = created,
+                    CompletedTasks = completed,
+                    CompletionRate = created > 0 ? (double)completed / created : 0,
+                    TopCategories = topCategories,
+                    EfficiencyScore = efficiency
+                });
+            }
+
+            return result;
+        }
+
+        private async Task<List<MonthlyProductivityDTO>> GetMonthlyProductivityAsync(
+            int userId, 
+            IEnumerable<TaskItem> tasks = null!, 
+            DateTime startDate = default, 
+            DateTime endDate = default)
+        {
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
+
+            if (startDate == default)
+                startDate = DateTime.UtcNow.AddMonths(-12);
+            
+            if (endDate == default)
+                endDate = DateTime.UtcNow;
+
+            // Group tasks by month
+            var monthlyGroups = tasks
+                .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
+                .GroupBy(t => new { Year = t.CreatedAt.Year, Month = t.CreatedAt.Month })
+                .OrderBy(g => g.Key.Year)
+                .ThenBy(g => g.Key.Month);
+
+            // Get categories for task analysis
+            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
+
+            List<MonthlyProductivityDTO> result = new List<MonthlyProductivityDTO>();
+
+            foreach (var monthGroup in monthlyGroups)
+            {
+                int year = monthGroup.Key.Year;
+                int month = monthGroup.Key.Month;
+                
+                // First and last day of month
+                DateTime monthStart = new DateTime(year, month, 1);
+                DateTime monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+                // Tasks created in this month
+                int created = monthGroup.Count();
+                
+                // Tasks completed in this month
+                int completed = tasks.Count(t => 
+                    t.CompletedAt.HasValue && 
+                    t.CompletedAt.Value.Year == year && 
+                    t.CompletedAt.Value.Month == month);
+
+                // Top categories
+                var categoryDistribution = monthGroup
+                    .Where(t => t.CategoryId.HasValue)
+                    .GroupBy(t => t.CategoryId.Value)
+                    .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                    .OrderByDescending(x => x.Count)
+                    .Take(3);
+                
+                List<string> topCategories = new List<string>();
+                foreach (var category in categoryDistribution)
+                {
+                    if (categoryMap.TryGetValue(category.CategoryId, out string? name) && !string.IsNullOrEmpty(name))
+                    {
+                        topCategories.Add(name);
+                    }
+                }
+
+                // Calculate efficiency - ratio of tasks completed to created, normalized
+                double efficiency = created > 0 
+                    ? Math.Min((double)completed / created, 1.0) 
+                    : completed > 0 ? 1.0 : 0.0;
+
+                result.Add(new MonthlyProductivityDTO
+                {
+                    Year = year,
+                    Month = month,
+                    CreatedTasks = created,
+                    CompletedTasks = completed,
+                    CompletionRate = created > 0 ? (double)completed / created : 0,
+                    TopCategories = topCategories,
+                    EfficiencyScore = efficiency
+                });
+            }
+
+            return result;
+        }
+
+        private DateTime GetWeekStartDate(DateTime date)
+        {
+            int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
+            return date.AddDays(-1 * diff).Date;
         }
     }
 

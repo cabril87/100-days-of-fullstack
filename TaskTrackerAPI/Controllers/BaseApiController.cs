@@ -84,7 +84,7 @@ namespace TaskTrackerAPI.Controllers
             return StatusCode(403, ApiResponse<T>.ForbiddenResponse(message));
         }
 
-        protected ActionResult<ApiResponse<T>> OkApiResponse<T>(T data, string message = null)
+        protected ActionResult<ApiResponse<T>> OkApiResponse<T>(T data, string? message = null)
         {
             ApiResponse<T> response = ApiResponse<T>.SuccessResponse(data, message);
             return Ok(response);
