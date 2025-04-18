@@ -93,6 +93,15 @@ export async function apiFetch<T>(
       } as ApiError;
     }
     
+    // Handle 400 errors for refresh token gracefully
+    if (response.status === 400 && endpoint === 'Auth/refresh-token') {
+      console.log('Refresh token invalid or expired');
+      throw {
+        statusCode: 400,
+        message: 'Session expired, please log in again',
+      } as ApiError;
+    }
+    
     const data = await response.json();
     
     // Debug logging
@@ -132,8 +141,14 @@ export const api = {
       apiFetch<TokensResponseDTO>('Auth/login', { method: 'POST', body: credentials, requiresAuth: false }),
     register: (userData: { email: string; username: string; password: string; confirmPassword: string }) => 
       apiFetch<TokensResponseDTO>('Auth/register', { method: 'POST', body: userData, requiresAuth: false }),
-    refreshToken: () => 
-      apiFetch<TokensResponseDTO>('Auth/refresh-token', { method: 'POST' }),
+    refreshToken: () => {
+      const refreshToken = localStorage.getItem('refreshToken');
+      return apiFetch<TokensResponseDTO>('Auth/refresh-token', { 
+        method: 'POST', 
+        body: { refreshToken },
+        requiresAuth: true
+      });
+    },
     logout: () => 
       apiFetch('Auth/logout', { method: 'POST' }),
   },

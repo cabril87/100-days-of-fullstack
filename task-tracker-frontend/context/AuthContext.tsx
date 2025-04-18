@@ -69,6 +69,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Load user from token
   const loadUser = async () => {
+    const token = localStorage.getItem('token');
+    const refreshToken = localStorage.getItem('refreshToken');
+    
+    // If no refresh token exists, we can't refresh
+    if (!refreshToken) {
+      localStorage.removeItem('token');
+      setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+      });
+      return;
+    }
+    
     try {
       const response = await api.auth.refreshToken();
       const authData = extractAuthData(response);
@@ -83,9 +98,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         // Update token
         localStorage.setItem('token', authData.accessToken);
+        localStorage.setItem('refreshToken', authData.refreshToken || '');
       } else {
         // Token invalid or expired
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         setState({
           user: null,
           isAuthenticated: false,
@@ -94,13 +111,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
       }
     } catch (error) {
+      console.log("Token refresh failed:", error);
       // Handle error
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: (error as ApiError).message || 'Failed to load user',
+        error: null, // Don't show errors for refresh token - better UX
       });
     }
   };
