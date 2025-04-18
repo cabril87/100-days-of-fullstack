@@ -53,6 +53,9 @@ appsettings.Development.json
 appsettings.local.json
 *.local.json
 launchSettings.json
+.env
+.env.*
+!.env.example
 
 # MSTest test Results
 [Tt]est[Rr]esult*/
@@ -75,4 +78,8 @@ StyleCopReport.xml
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-$RECYCLE.BIN/ 
+$RECYCLE.BIN/
+
+# Coverage report files
+coverage-report/
+coverage*.xml 

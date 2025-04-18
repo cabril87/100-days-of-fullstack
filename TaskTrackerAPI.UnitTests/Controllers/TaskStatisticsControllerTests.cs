@@ -313,6 +313,7 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             IEnumerable<MonthlyProductivityDTO> returnValue = Assert.IsAssignableFrom<IEnumerable<MonthlyProductivityDTO>>(okResult.Value);
             Assert.Equal(1, returnValue.Count());
         }
+        */
 
         [Fact]
         public async Task GetProductivitySummary_ReturnsOkWithSummaryData()
@@ -352,7 +353,6 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             // Check GeneratedAt exists
             Assert.True(summaryDict.ContainsKey("GeneratedAt"));
         }
-        */
 
         [Fact]
         public async Task GetCompletionRate_ReturnsOkWithCompletionRateData()
