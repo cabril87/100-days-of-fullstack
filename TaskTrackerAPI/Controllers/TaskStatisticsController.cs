@@ -286,7 +286,7 @@ namespace TaskTrackerAPI.Controllers
                 
                 // Calculate average tasks per day
                 double avgTasksPerDay = analytics.DailyProductivity.Count > 0
-                    ? analytics.DailyProductivity.Average(dp => dp.TasksCompleted + dp.TasksCreated) / 2
+                    ? analytics.DailyProductivity.Average(dp => dp.CompletedTasks + dp.CreatedTasks) / 2
                     : 0;
                 
                 // Calculate average tasks per week
