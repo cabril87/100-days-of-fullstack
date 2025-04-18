@@ -112,12 +112,16 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      await Promise.all([
-        fetchAllStatistics(),
-        fetchProductivitySummary(),
-        fetchCompletionRate(),
-        fetchTasksByStatusDistribution(),
-      ]);
+      // Try to fetch all statistics, but don't fail if individual requests fail
+      const promises = [
+        fetchAllStatistics().catch(e => console.error("Error fetching statistics:", e)),
+        fetchProductivitySummary().catch(e => console.error("Error fetching productivity summary:", e)),
+        fetchCompletionRate().catch(e => console.error("Error fetching completion rate:", e)),
+        fetchTasksByStatusDistribution().catch(e => console.error("Error fetching tasks by status:", e)),
+      ];
+      
+      await Promise.all(promises);
+      setState(prev => ({ ...prev, isLoading: false }));
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -127,24 +131,44 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
     }
   };
 
+  // Cache for failed endpoints to prevent repeated requests to non-existent endpoints
+  const failedEndpoints = new Set<string>();
+
   // Fetch all statistics
   const fetchAllStatistics = async () => {
+    // Skip if we've already determined this endpoint doesn't exist
+    if (failedEndpoints.has('statistics')) {
+      return;
+    }
+    
     try {
       const response = await api.statistics.getAll();
       
-      if (response.succeeded && response.data) {
+      if ('succeeded' in response && response.succeeded && response.data) {
         setState((prev) => ({
           ...prev,
           statistics: response.data,
           isLoading: false,
         }));
+      } else if ('data' in response) {
+        // Direct response format
+        setState((prev) => ({
+          ...prev,
+          statistics: response as unknown as TaskStatisticsDTO,
+          isLoading: false,
+        }));
       } else {
         setState((prev) => ({
           ...prev,
-          error: response.message || 'Failed to fetch statistics',
+          error: 'message' in response ? response.message : 'Failed to fetch statistics',
         }));
       }
     } catch (error) {
+      // If we get a 404, mark this endpoint as failed to prevent future requests
+      if ((error as ApiError).statusCode === 404) {
+        failedEndpoints.add('statistics');
+      }
+      
       setState((prev) => ({
         ...prev,
         error: (error as ApiError).message || 'Failed to fetch statistics',
@@ -154,22 +178,39 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
 
   // Fetch productivity summary
   const fetchProductivitySummary = async () => {
+    // Skip if we've already determined this endpoint doesn't exist
+    if (failedEndpoints.has('productivity-summary')) {
+      return;
+    }
+    
     try {
       const response = await api.statistics.getProductivitySummary();
       
-      if (response.succeeded && response.data) {
+      if ('succeeded' in response && response.succeeded && response.data) {
         setState((prev) => ({
           ...prev,
           productivitySummary: response.data,
           isLoading: false,
         }));
+      } else if ('averageTasksPerDay' in response) {
+        // Direct response format
+        setState((prev) => ({
+          ...prev,
+          productivitySummary: response as unknown as ProductivitySummaryDTO,
+          isLoading: false,
+        }));
       } else {
         setState((prev) => ({
           ...prev,
-          error: response.message || 'Failed to fetch productivity summary',
+          error: 'message' in response ? response.message : 'Failed to fetch productivity summary',
         }));
       }
     } catch (error) {
+      // If we get a 404, mark this endpoint as failed to prevent future requests
+      if ((error as ApiError).statusCode === 404) {
+        failedEndpoints.add('productivity-summary');
+      }
+      
       setState((prev) => ({
         ...prev,
         error: (error as ApiError).message || 'Failed to fetch productivity summary',
@@ -179,22 +220,39 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
 
   // Fetch completion rate
   const fetchCompletionRate = async () => {
+    // Skip if we've already determined this endpoint doesn't exist
+    if (failedEndpoints.has('completion-rate')) {
+      return;
+    }
+    
     try {
       const response = await api.statistics.getCompletionRate();
       
-      if (response.succeeded && response.data) {
+      if ('succeeded' in response && response.succeeded && response.data) {
         setState((prev) => ({
           ...prev,
           completionRate: response.data,
           isLoading: false,
         }));
+      } else if ('completionRate' in response) {
+        // Direct response format
+        setState((prev) => ({
+          ...prev,
+          completionRate: response as unknown as TaskCompletionRateDTO,
+          isLoading: false,
+        }));
       } else {
         setState((prev) => ({
           ...prev,
-          error: response.message || 'Failed to fetch completion rate',
+          error: 'message' in response ? response.message : 'Failed to fetch completion rate',
         }));
       }
     } catch (error) {
+      // If we get a 404, mark this endpoint as failed to prevent future requests
+      if ((error as ApiError).statusCode === 404) {
+        failedEndpoints.add('completion-rate');
+      }
+      
       setState((prev) => ({
         ...prev,
         error: (error as ApiError).message || 'Failed to fetch completion rate',
@@ -204,22 +262,39 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
 
   // Fetch tasks by status distribution
   const fetchTasksByStatusDistribution = async () => {
+    // Skip if we've already determined this endpoint doesn't exist
+    if (failedEndpoints.has('tasks-by-status')) {
+      return;
+    }
+    
     try {
       const response = await api.statistics.getTasksByStatusDistribution();
       
-      if (response.succeeded && response.data) {
+      if ('succeeded' in response && response.succeeded && response.data) {
         setState((prev) => ({
           ...prev,
           tasksByStatus: response.data,
           isLoading: false,
         }));
+      } else if (Array.isArray(response) || (typeof response === 'object' && response !== null)) {
+        // Direct response format
+        setState((prev) => ({
+          ...prev,
+          tasksByStatus: response as unknown as Record<string, number>,
+          isLoading: false,
+        }));
       } else {
         setState((prev) => ({
           ...prev,
-          error: response.message || 'Failed to fetch tasks by status',
+          error: 'message' in response ? response.message : 'Failed to fetch tasks by status',
         }));
       }
     } catch (error) {
+      // If we get a 404, mark this endpoint as failed to prevent future requests
+      if ((error as ApiError).statusCode === 404) {
+        failedEndpoints.add('tasks-by-status');
+      }
+      
       setState((prev) => ({
         ...prev,
         error: (error as ApiError).message || 'Failed to fetch tasks by status',

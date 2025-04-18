@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStatistics } from "@/context/StatisticsContext";
 import { useTasks } from "@/context/TaskContext";
@@ -18,19 +18,38 @@ export default function DashboardPage() {
     fetchProductivitySummary,
     fetchCompletionRate
   } = useStatistics();
+  
+  // Track if we've already attempted to fetch data
+  const [attemptedFetch, setAttemptedFetch] = useState(false);
 
   useEffect(() => {
-    fetchProductivitySummary();
-    fetchCompletionRate();
-  }, [fetchProductivitySummary, fetchCompletionRate]);
+    // Only try to fetch once to avoid infinite loops with failing endpoints
+    if (!attemptedFetch) {
+      fetchProductivitySummary();
+      fetchCompletionRate();
+      setAttemptedFetch(true);
+    }
+  }, [fetchProductivitySummary, fetchCompletionRate, attemptedFetch]);
 
-  const isLoading = tasksLoading || statsLoading;
+  // If we've attempted to fetch but don't have data after 2 seconds, stop loading
+  const [timeoutDone, setTimeoutDone] = useState(false);
+  useEffect(() => {
+    if (attemptedFetch) {
+      const timeout = setTimeout(() => setTimeoutDone(true), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [attemptedFetch]);
+
+  const isLoading = tasksLoading || (statsLoading && !timeoutDone);
 
   // Get counts for different task statuses
   const todoCount = tasks.filter(task => task.status === 'ToDo').length;
   const inProgressCount = tasks.filter(task => task.status === 'InProgress').length;
   const completedCount = tasks.filter(task => task.status === 'Completed').length;
   const totalTasks = tasks.length;
+
+  // Calculate completion rate from tasks if API doesn't provide it
+  const taskCompletionRate = totalTasks > 0 ? completedCount / totalTasks : 0;
 
   // Get overdue tasks
   const overdueTasks = tasks.filter(task => {
@@ -46,6 +65,17 @@ export default function DashboardPage() {
   }, {} as Record<number, number>);
 
   const highPriorityCount = (priorityDistribution[4] || 0) + (priorityDistribution[5] || 0);
+
+  // Calculate average completion time
+  const getTimeToComplete = () => {
+    // Use API value if available
+    if (productivitySummary?.averageTimeToComplete?.totalHours) {
+      return formatDuration(productivitySummary.averageTimeToComplete.totalHours);
+    }
+    
+    // Otherwise display placeholder
+    return "—";
+  };
 
   return (
     <div className="space-y-6">
@@ -86,10 +116,12 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading || !completionRate ? "—" : formatPercentage(completionRate.completionRate)}
+              {isLoading ? "—" : formatPercentage(completionRate?.completionRate || taskCompletionRate)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {completionRate ? `${completionRate.completedTasks} of ${completionRate.totalTasks} tasks completed` : "Tasks completed"}
+              {completionRate 
+                ? `${completionRate.completedTasks} of ${completionRate.totalTasks} tasks completed` 
+                : `${completedCount} of ${totalTasks} tasks completed`}
             </p>
           </CardContent>
         </Card>
@@ -101,7 +133,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading || !productivitySummary ? "—" : formatDuration(productivitySummary.averageTimeToComplete.totalHours)}
+              {isLoading ? "—" : getTimeToComplete()}
             </div>
             <p className="text-xs text-muted-foreground">
               Average time to complete tasks
@@ -198,9 +230,18 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading || !productivitySummary ? (
+            {isLoading ? (
               <div className="h-[200px] flex items-center justify-center">
                 <p className="text-muted-foreground">Loading...</p>
+              </div>
+            ) : !productivitySummary ? (
+              <div className="h-[200px] flex items-center justify-center flex-col">
+                <p className="text-muted-foreground">No productivity data available</p>
+                <div className="flex justify-center pt-4">
+                  <Link href="/tasks">
+                    <Button variant="outline" size="sm">View Tasks</Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -250,12 +291,43 @@ export default function DashboardPage() {
                   View Overdue Tasks ({overdueTasks.length})
                 </Button>
               </Link>
-              <Link href="/tasks?filter=high-priority">
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Priority Tasks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Link href="/tasks?priority=high">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <AlertCircle className="mr-2 h-4 w-4" />
                   High Priority Tasks ({highPriorityCount})
                 </Button>
               </Link>
+              <Link href="/tasks?status=in-progress">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Clock className="mr-2 h-4 w-4" />
+                  In Progress Tasks ({inProgressCount})
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm text-muted-foreground">
+              {completedCount > 0 ? (
+                <p>You've completed {completedCount} tasks.</p>
+              ) : (
+                <p>Start adding and completing tasks to see your activity.</p>
+              )}
             </div>
           </CardContent>
         </Card>
