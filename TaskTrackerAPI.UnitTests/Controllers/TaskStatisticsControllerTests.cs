@@ -275,7 +275,8 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             
             // Convert to Dictionary to avoid dynamic binding issues
             string summary = JsonConvert.SerializeObject(okResult.Value);
-            Dictionary<string, object> summaryDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(summary);
+            Dictionary<string, object> summaryDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(summary) 
+                ?? throw new InvalidOperationException("Failed to deserialize summary data");
 
             // Test properties individually
             Assert.True(summaryDict.ContainsKey("AverageTasksPerDay"));
@@ -289,8 +290,9 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             
             // Test nested object
             Assert.True(summaryDict.ContainsKey("AverageTimeToComplete"));
-            Dictionary<string, object> timeToComplete = JsonConvert.DeserializeObject<Dictionary<string, object>>(
-                JsonConvert.SerializeObject(summaryDict["AverageTimeToComplete"]));
+            string timeToCompleteJson = JsonConvert.SerializeObject(summaryDict["AverageTimeToComplete"]);
+            Dictionary<string, object> timeToComplete = JsonConvert.DeserializeObject<Dictionary<string, object>>(timeToCompleteJson)
+                ?? throw new InvalidOperationException("Failed to deserialize time to complete data");
                 
             Assert.Equal(1, Convert.ToInt32(timeToComplete["Days"]));
             Assert.Equal(12, Convert.ToInt32(timeToComplete["Hours"]));

@@ -6,7 +6,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Helpers;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories;
-using TaskTrackerAPI.ServiceTests.Helpers;
+using TaskTrackerAPI.UnitTests.Helpers;
 using Xunit;
 
 namespace TaskTrackerAPI.UnitTests.Repositories

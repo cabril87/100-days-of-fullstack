@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TaskTrackerAPI\TaskTrackerAPI.csproj" />
-    <ProjectReference Include="..\TaskTrackerAPI.ServiceTests\TaskTrackerAPI.ServiceTests.csproj" />
   </ItemGroup>
 
   <ItemGroup>
