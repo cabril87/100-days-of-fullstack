@@ -1,0 +1,17 @@
+name: Disabled Workflows
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+# This empty workflow temporarily disables all GitHub Actions
+# To re-enable, just delete this file
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify
+        run: echo "GitHub Actions workflows are temporarily disabled" 
