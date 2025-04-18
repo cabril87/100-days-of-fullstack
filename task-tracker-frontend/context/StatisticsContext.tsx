@@ -68,6 +68,7 @@ type StatisticsState = {
   tasksByStatus: Record<string, number> | null;
   isLoading: boolean;
   error: string | null;
+  hasAttemptedFetch: boolean;
 };
 
 // Define statistics context type
@@ -77,6 +78,7 @@ type StatisticsContextType = StatisticsState & {
   fetchCompletionRate: () => Promise<void>;
   fetchTasksByStatusDistribution: () => Promise<void>;
   clearError: () => void;
+  retryFetchAll: () => Promise<void>;
 };
 
 // Create the statistics context
@@ -86,6 +88,11 @@ const StatisticsContext = createContext<StatisticsContextType | undefined>(undef
 type StatisticsProviderProps = {
   children: ReactNode;
 };
+
+// Cache for failed endpoints to prevent repeated requests
+const failedEndpoints = new Set<string>();
+const MAX_RETRY_ATTEMPTS = 2;
+let retryAttempts = 0;
 
 // Statistics provider component
 export function StatisticsProvider({ children }: StatisticsProviderProps) {
@@ -98,29 +105,59 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
     tasksByStatus: null,
     isLoading: false,
     error: null,
+    hasAttemptedFetch: false,
   });
 
   // Fetch statistics when authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !state.hasAttemptedFetch) {
       fetchAllData();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, state.hasAttemptedFetch]);
+
+  // Set a timeout to prevent infinite loading if endpoints are unavailable
+  useEffect(() => {
+    if (state.isLoading) {
+      const timeout = setTimeout(() => {
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          hasAttemptedFetch: true,
+        }));
+      }, 5000); // 5 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [state.isLoading]);
+
+  // Retry fetching all data
+  const retryFetchAll = async () => {
+    if (retryAttempts < MAX_RETRY_ATTEMPTS) {
+      retryAttempts++;
+      await fetchAllData();
+    } else {
+      console.log(`Maximum retry attempts (${MAX_RETRY_ATTEMPTS}) reached.`);
+    }
+  };
 
   // Fetch all statistics data at once
   const fetchAllData = async () => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    setState((prev) => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null,
+      hasAttemptedFetch: true
+    }));
     
     try {
-      // Try to fetch all statistics, but don't fail if individual requests fail
-      const promises = [
+      // Use Promise.all with individual catches to prevent one failure from stopping all fetches
+      await Promise.all([
         fetchAllStatistics().catch(e => console.error("Error fetching statistics:", e)),
         fetchProductivitySummary().catch(e => console.error("Error fetching productivity summary:", e)),
         fetchCompletionRate().catch(e => console.error("Error fetching completion rate:", e)),
         fetchTasksByStatusDistribution().catch(e => console.error("Error fetching tasks by status:", e)),
-      ];
+      ]);
       
-      await Promise.all(promises);
       setState(prev => ({ ...prev, isLoading: false }));
     } catch (error) {
       setState((prev) => ({
@@ -131,13 +168,10 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
     }
   };
 
-  // Cache for failed endpoints to prevent repeated requests to non-existent endpoints
-  const failedEndpoints = new Set<string>();
-
   // Fetch all statistics
   const fetchAllStatistics = async () => {
     // Skip if we've already determined this endpoint doesn't exist
-    if (failedEndpoints.has('statistics')) {
+    if (failedEndpoints.has('Statistics')) {
       return;
     }
     
@@ -150,36 +184,35 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
           statistics: response.data,
           isLoading: false,
         }));
-      } else if ('data' in response) {
+      } else if (response && typeof response === 'object') {
         // Direct response format
         setState((prev) => ({
           ...prev,
           statistics: response as unknown as TaskStatisticsDTO,
           isLoading: false,
         }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          error: 'message' in response ? response.message : 'Failed to fetch statistics',
-        }));
       }
     } catch (error) {
       // If we get a 404, mark this endpoint as failed to prevent future requests
       if ((error as ApiError).statusCode === 404) {
-        failedEndpoints.add('statistics');
+        failedEndpoints.add('Statistics');
+        console.log('Statistics endpoint not found, will not retry.');
       }
       
-      setState((prev) => ({
-        ...prev,
-        error: (error as ApiError).message || 'Failed to fetch statistics',
-      }));
+      // Don't set error state for 404s to avoid disrupting the UI
+      if ((error as ApiError).statusCode !== 404) {
+        setState((prev) => ({
+          ...prev,
+          error: (error as ApiError).message || 'Failed to fetch statistics',
+        }));
+      }
     }
   };
 
   // Fetch productivity summary
   const fetchProductivitySummary = async () => {
     // Skip if we've already determined this endpoint doesn't exist
-    if (failedEndpoints.has('productivity-summary')) {
+    if (failedEndpoints.has('Statistics/productivity-summary')) {
       return;
     }
     
@@ -192,36 +225,35 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
           productivitySummary: response.data,
           isLoading: false,
         }));
-      } else if ('averageTasksPerDay' in response) {
+      } else if (response && typeof response === 'object' && 'averageTasksPerDay' in response) {
         // Direct response format
         setState((prev) => ({
           ...prev,
           productivitySummary: response as unknown as ProductivitySummaryDTO,
           isLoading: false,
         }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          error: 'message' in response ? response.message : 'Failed to fetch productivity summary',
-        }));
       }
     } catch (error) {
       // If we get a 404, mark this endpoint as failed to prevent future requests
       if ((error as ApiError).statusCode === 404) {
-        failedEndpoints.add('productivity-summary');
+        failedEndpoints.add('Statistics/productivity-summary');
+        console.log('Productivity summary endpoint not found, will not retry.');
       }
       
-      setState((prev) => ({
-        ...prev,
-        error: (error as ApiError).message || 'Failed to fetch productivity summary',
-      }));
+      // Don't set error state for 404s to avoid disrupting the UI
+      if ((error as ApiError).statusCode !== 404) {
+        setState((prev) => ({
+          ...prev,
+          error: (error as ApiError).message || 'Failed to fetch productivity summary',
+        }));
+      }
     }
   };
 
   // Fetch completion rate
   const fetchCompletionRate = async () => {
     // Skip if we've already determined this endpoint doesn't exist
-    if (failedEndpoints.has('completion-rate')) {
+    if (failedEndpoints.has('Statistics/completion-rate')) {
       return;
     }
     
@@ -234,36 +266,35 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
           completionRate: response.data,
           isLoading: false,
         }));
-      } else if ('completionRate' in response) {
+      } else if (response && typeof response === 'object' && 'completionRate' in response) {
         // Direct response format
         setState((prev) => ({
           ...prev,
           completionRate: response as unknown as TaskCompletionRateDTO,
           isLoading: false,
         }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          error: 'message' in response ? response.message : 'Failed to fetch completion rate',
-        }));
       }
     } catch (error) {
       // If we get a 404, mark this endpoint as failed to prevent future requests
       if ((error as ApiError).statusCode === 404) {
-        failedEndpoints.add('completion-rate');
+        failedEndpoints.add('Statistics/completion-rate');
+        console.log('Completion rate endpoint not found, will not retry.');
       }
       
-      setState((prev) => ({
-        ...prev,
-        error: (error as ApiError).message || 'Failed to fetch completion rate',
-      }));
+      // Don't set error state for 404s to avoid disrupting the UI
+      if ((error as ApiError).statusCode !== 404) {
+        setState((prev) => ({
+          ...prev,
+          error: (error as ApiError).message || 'Failed to fetch completion rate',
+        }));
+      }
     }
   };
 
   // Fetch tasks by status distribution
   const fetchTasksByStatusDistribution = async () => {
     // Skip if we've already determined this endpoint doesn't exist
-    if (failedEndpoints.has('tasks-by-status')) {
+    if (failedEndpoints.has('Statistics/status-distribution')) {
       return;
     }
     
@@ -276,59 +307,61 @@ export function StatisticsProvider({ children }: StatisticsProviderProps) {
           tasksByStatus: response.data,
           isLoading: false,
         }));
-      } else if (Array.isArray(response) || (typeof response === 'object' && response !== null)) {
+      } else if (response && typeof response === 'object') {
         // Direct response format
         setState((prev) => ({
           ...prev,
           tasksByStatus: response as unknown as Record<string, number>,
           isLoading: false,
         }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          error: 'message' in response ? response.message : 'Failed to fetch tasks by status',
-        }));
       }
     } catch (error) {
       // If we get a 404, mark this endpoint as failed to prevent future requests
       if ((error as ApiError).statusCode === 404) {
-        failedEndpoints.add('tasks-by-status');
+        failedEndpoints.add('Statistics/status-distribution');
+        console.log('Status distribution endpoint not found, will not retry.');
       }
       
-      setState((prev) => ({
-        ...prev,
-        error: (error as ApiError).message || 'Failed to fetch tasks by status',
-      }));
+      // Don't set error state for 404s to avoid disrupting the UI
+      if ((error as ApiError).statusCode !== 404) {
+        setState((prev) => ({
+          ...prev,
+          error: (error as ApiError).message || 'Failed to fetch task status distribution',
+        }));
+      }
     }
   };
 
-  // Clear error
+  // Clear error state
   const clearError = () => {
     setState((prev) => ({ ...prev, error: null }));
   };
 
-  // Provide statistics context
+  // Create context value
+  const contextValue: StatisticsContextType = {
+    ...state,
+    fetchAllStatistics,
+    fetchProductivitySummary,
+    fetchCompletionRate,
+    fetchTasksByStatusDistribution,
+    clearError,
+    retryFetchAll,
+  };
+
   return (
-    <StatisticsContext.Provider
-      value={{
-        ...state,
-        fetchAllStatistics,
-        fetchProductivitySummary,
-        fetchCompletionRate,
-        fetchTasksByStatusDistribution,
-        clearError,
-      }}
-    >
+    <StatisticsContext.Provider value={contextValue}>
       {children}
     </StatisticsContext.Provider>
   );
 }
 
-// Hook to use statistics context
+// Custom hook to use the statistics context
 export function useStatistics() {
   const context = useContext(StatisticsContext);
-  if (context === undefined) {
+  
+  if (!context) {
     throw new Error('useStatistics must be used within a StatisticsProvider');
   }
+  
   return context;
 } 

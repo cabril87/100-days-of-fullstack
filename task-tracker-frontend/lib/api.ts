@@ -84,6 +84,15 @@ export async function apiFetch<T>(
 
   try {
     const response = await fetch(`${API_URL}/${endpoint}`, requestOptions);
+    
+    // For 404 errors, throw immediately to avoid JSON parsing errors
+    if (response.status === 404) {
+      throw {
+        statusCode: 404,
+        message: `Endpoint not found: ${endpoint}`,
+      } as ApiError;
+    }
+    
     const data = await response.json();
     
     // Debug logging
@@ -120,37 +129,37 @@ export const api = {
   // Auth endpoints
   auth: {
     login: (credentials: { email: string; password: string }) => 
-      apiFetch<TokensResponseDTO>('auth/login', { method: 'POST', body: credentials, requiresAuth: false }),
+      apiFetch<TokensResponseDTO>('Auth/login', { method: 'POST', body: credentials, requiresAuth: false }),
     register: (userData: { email: string; username: string; password: string; confirmPassword: string }) => 
-      apiFetch<TokensResponseDTO>('auth/register', { method: 'POST', body: userData, requiresAuth: false }),
+      apiFetch<TokensResponseDTO>('Auth/register', { method: 'POST', body: userData, requiresAuth: false }),
     refreshToken: () => 
-      apiFetch<TokensResponseDTO>('auth/refresh-token', { method: 'POST' }),
+      apiFetch<TokensResponseDTO>('Auth/refresh-token', { method: 'POST' }),
     logout: () => 
-      apiFetch('auth/logout', { method: 'POST' }),
+      apiFetch('Auth/logout', { method: 'POST' }),
   },
 
   // Task endpoints
   tasks: {
-    getAll: () => apiFetch('tasks'),
-    getById: (id: number) => apiFetch(`tasks/${id}`),
-    create: (task: any) => apiFetch('tasks', { method: 'POST', body: task }),
-    update: (id: number, task: any) => apiFetch(`tasks/${id}`, { method: 'PUT', body: task }),
-    delete: (id: number) => apiFetch(`tasks/${id}`, { method: 'DELETE' }),
+    getAll: () => apiFetch('TaskItems'),
+    getById: (id: number) => apiFetch(`TaskItems/${id}`),
+    create: (task: any) => apiFetch('TaskItems', { method: 'POST', body: task }),
+    update: (id: number, task: any) => apiFetch(`TaskItems/${id}`, { method: 'PUT', body: task }),
+    delete: (id: number) => apiFetch(`TaskItems/${id}`, { method: 'DELETE' }),
   },
 
   // Category endpoints
   categories: {
-    getAll: () => apiFetch('categories'),
-    create: (category: any) => apiFetch('categories', { method: 'POST', body: category }),
-    update: (id: number, category: any) => apiFetch(`categories/${id}`, { method: 'PUT', body: category }),
-    delete: (id: number) => apiFetch(`categories/${id}`, { method: 'DELETE' }),
+    getAll: () => apiFetch('Categories'),
+    create: (category: any) => apiFetch('Categories', { method: 'POST', body: category }),
+    update: (id: number, category: any) => apiFetch(`Categories/${id}`, { method: 'PUT', body: category }),
+    delete: (id: number) => apiFetch(`Categories/${id}`, { method: 'DELETE' }),
   },
 
   // Statistics endpoints
   statistics: {
-    getAll: () => apiFetch('statistics'),
-    getProductivitySummary: () => apiFetch('statistics/productivity-summary'),
-    getCompletionRate: () => apiFetch('statistics/completion-rate'),
-    getTasksByStatusDistribution: () => apiFetch('statistics/tasks-by-status'),
+    getAll: () => apiFetch('Statistics'),
+    getProductivitySummary: () => apiFetch('Statistics/productivity-summary'),
+    getCompletionRate: () => apiFetch('Statistics/completion-rate'),
+    getTasksByStatusDistribution: () => apiFetch('Statistics/status-distribution'),
   },
 }; 

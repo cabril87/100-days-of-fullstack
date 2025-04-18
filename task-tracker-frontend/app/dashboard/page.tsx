@@ -7,7 +7,7 @@ import { useTasks } from "@/context/TaskContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPercentage, formatDuration } from "@/lib/utils";
-import { PlusCircle, CheckCircle, Clock, PieChart, BarChart3, AlertCircle } from "lucide-react";
+import { PlusCircle, CheckCircle, Clock, PieChart, BarChart3, AlertCircle, RefreshCcw } from "lucide-react";
 
 export default function DashboardPage() {
   const { tasks, isLoading: tasksLoading } = useTasks();
@@ -16,29 +16,19 @@ export default function DashboardPage() {
     completionRate,
     isLoading: statsLoading,
     fetchProductivitySummary,
-    fetchCompletionRate
+    fetchCompletionRate,
+    retryFetchAll,
+    hasAttemptedFetch
   } = useStatistics();
   
-  // Track if we've already attempted to fetch data
-  const [attemptedFetch, setAttemptedFetch] = useState(false);
-
-  useEffect(() => {
-    // Only try to fetch once to avoid infinite loops with failing endpoints
-    if (!attemptedFetch) {
-      fetchProductivitySummary();
-      fetchCompletionRate();
-      setAttemptedFetch(true);
-    }
-  }, [fetchProductivitySummary, fetchCompletionRate, attemptedFetch]);
-
   // If we've attempted to fetch but don't have data after 2 seconds, stop loading
   const [timeoutDone, setTimeoutDone] = useState(false);
   useEffect(() => {
-    if (attemptedFetch) {
+    if (hasAttemptedFetch) {
       const timeout = setTimeout(() => setTimeoutDone(true), 2000);
       return () => clearTimeout(timeout);
     }
-  }, [attemptedFetch]);
+  }, [hasAttemptedFetch]);
 
   const isLoading = tasksLoading || (statsLoading && !timeoutDone);
 
@@ -73,8 +63,29 @@ export default function DashboardPage() {
       return formatDuration(productivitySummary.averageTimeToComplete.totalHours);
     }
     
-    // Otherwise display placeholder
-    return "—";
+    // Calculate from tasks if API data is not available
+    const completedTasksWithDates = tasks.filter(task => 
+      task.status === 'Completed' && task.completedAt && task.createdAt
+    );
+    
+    if (completedTasksWithDates.length === 0) {
+      return "—";
+    }
+    
+    const totalHours = completedTasksWithDates.reduce((sum, task) => {
+      const completedDate = new Date(task.completedAt!);
+      const createdDate = new Date(task.createdAt);
+      const diffHours = (completedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60);
+      return sum + diffHours;
+    }, 0);
+    
+    const avgHours = totalHours / completedTasksWithDates.length;
+    return formatDuration(avgHours);
+  };
+
+  // Handle retry button click
+  const handleRetry = () => {
+    retryFetchAll();
   };
 
   return (
@@ -86,12 +97,17 @@ export default function DashboardPage() {
             Overview of your tasks and productivity
           </p>
         </div>
-        <Link href="/tasks/new">
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Task
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRetry} title="Refresh statistics">
+            <RefreshCcw className="h-4 w-4" />
           </Button>
-        </Link>
+          <Link href="/tasks/new">
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Task Overview Cards */}

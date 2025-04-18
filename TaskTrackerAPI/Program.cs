@@ -49,17 +49,30 @@ public class Program
         {
             options.AddPolicy("DevCors", (corsBuilder) =>
             {
-                corsBuilder.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:8000")
+                corsBuilder.WithOrigins(
+                       "http://localhost:4200", 
+                       "http://localhost:3000", 
+                       "http://localhost:8000", 
+                       "http://localhost:5173", 
+                       "http://localhost:8080", 
+                       "http://localhost:5211",
+                       "http://127.0.0.1:5173",
+                       "http://127.0.0.1:3000",
+                       "http://127.0.0.1:5211",
+                       "http://localhost"
+                    )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials();
+                    .AllowCredentials()
+                    .WithExposedHeaders("Content-Disposition");
             });
             options.AddPolicy("ProdCors", (corsBuilder) =>
             {
                 corsBuilder.WithOrigins("https://myProductionSite.com")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials();
+                    .AllowCredentials()
+                    .WithExposedHeaders("Content-Disposition");
             });
         });
 
@@ -91,7 +104,19 @@ public class Program
 
         // Register TaskService
         builder.Services.AddScoped<ITaskService, TaskService>();
+        
+        // Register TaskStatisticsService
+        builder.Services.AddScoped<ITaskStatisticsService, TaskStatisticsService>();
             
+        // Load configuration from environment variables
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Configuration["AppSettings:TokenKey"] = builder.Configuration["TokenKey"] ?? 
+                builder.Configuration["AppSettings:TokenKey"];
+            builder.Configuration["AppSettings:PasswordKey"] = builder.Configuration["PasswordKey"] ?? 
+                builder.Configuration["AppSettings:PasswordKey"];
+        }
+
         string? tokenKeyString = builder.Configuration.GetSection("AppSettings:TokenKey").Value;
         if (string.IsNullOrWhiteSpace(tokenKeyString))
         {
@@ -183,19 +208,29 @@ public class Program
                 // Seed initial data if needed
                 if (!dbContext.Users.Any())
                 {
-                    // Add default user for testing
+                    // Get the auth helper service
+                    var authHelper = services.GetRequiredService<AuthHelper>();
+                    
+                    // Create a proper password hash for a very simple password
+                    authHelper.CreatePasswordHash("password", out string passwordHash, out string salt);
+                    
+                    // Add default admin user for testing
                     var user = new User
                     {
                         Username = "admin",
-                        Email = "admin@example.com",
-                        PasswordHash = "hashedpassword", // In real app, would use proper hashing
-                        Salt = "salt",
+                        Email = "admin@tasktracker.com",
+                        PasswordHash = passwordHash,
+                        Salt = salt,
                         Role = "Admin",
                         FirstName = "Admin",
-                        LastName = "User"
+                        LastName = "User",
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
                     };
                     dbContext.Users.Add(user);
                     dbContext.SaveChanges();
+                    
+                    Console.WriteLine("Admin user created with email: admin@tasktracker.com and password: password");
                 }
             }
         }
