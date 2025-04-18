@@ -2,6 +2,9 @@ using System;
 
 namespace TaskTrackerAPI.DTOs
 {
+    /// <summary>
+    /// DTO for representing category activity statistics
+    /// </summary>
     public class CategoryActivityDTO
     {
         public int CategoryId { get; set; }

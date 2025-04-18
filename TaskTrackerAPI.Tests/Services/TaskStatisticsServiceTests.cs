@@ -37,7 +37,7 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var tasks = new List<TaskItem>
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 new TaskItem { Id = 1, Title = "Task 1", Status = TaskItemStatus.Completed, UserId = userId },
                 new TaskItem { Id = 2, Title = "Task 2", Status = TaskItemStatus.Completed, UserId = userId },
@@ -49,7 +49,7 @@ namespace TaskTrackerAPI.Tests.Services
                 .ReturnsAsync(tasks);
             
             // Act
-            var result = await _statisticsService.GetTaskCompletionRateAsync(userId);
+            double result = await _statisticsService.GetTaskCompletionRateAsync(userId);
             
             // Assert
             Assert.Equal(0.5, result); // 2 completed out of 4 tasks = 50%
@@ -60,13 +60,13 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var tasks = new List<TaskItem>();
+            List<TaskItem> tasks = new List<TaskItem>();
             
             _mockTaskRepository.Setup(repo => repo.GetAllTasksAsync(userId))
                 .ReturnsAsync(tasks);
             
             // Act
-            var result = await _statisticsService.GetTaskCompletionRateAsync(userId);
+            double result = await _statisticsService.GetTaskCompletionRateAsync(userId);
             
             // Assert
             Assert.Equal(0, result);
@@ -77,7 +77,7 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var tasks = new List<TaskItem>
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 new TaskItem { Id = 1, Title = "Task 1", Status = TaskItemStatus.Completed, UserId = userId },
                 new TaskItem { Id = 2, Title = "Task 2", Status = TaskItemStatus.Completed, UserId = userId },
@@ -90,7 +90,7 @@ namespace TaskTrackerAPI.Tests.Services
                 .ReturnsAsync(tasks);
             
             // Act
-            var result = await _statisticsService.GetTasksByStatusDistributionAsync(userId);
+            Dictionary<TaskItemStatus, int> result = await _statisticsService.GetTasksByStatusDistributionAsync(userId);
             
             // Assert
             Assert.Equal(5, result.Count); // All enum status values (not just the ones we used)
@@ -104,7 +104,7 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var tasks = new List<TaskItem>
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 new TaskItem { Id = 1, Title = "Task 1", CategoryId = 1, UserId = userId },
                 new TaskItem { Id = 2, Title = "Task 2", CategoryId = 1, UserId = userId },
@@ -114,7 +114,7 @@ namespace TaskTrackerAPI.Tests.Services
                 new TaskItem { Id = 6, Title = "Task 6", CategoryId = 3, UserId = userId }
             };
             
-            var categories = new List<Category>
+            List<Category> categories = new List<Category>
             {
                 new Category { Id = 1, Name = "Work", UserId = userId },
                 new Category { Id = 2, Name = "Personal", UserId = userId },
@@ -137,7 +137,7 @@ namespace TaskTrackerAPI.Tests.Services
                 .ReturnsAsync(categories[2]);
             
             // Act
-            var result = await _statisticsService.GetMostActiveCategoriesAsync(userId, 2);
+            List<CategoryActivityDTO> result = await _statisticsService.GetMostActiveCategoriesAsync(userId, 2);
             
             // Assert
             Assert.Equal(2, result.Count);
@@ -150,7 +150,7 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var tasks = new List<TaskItem>
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 new TaskItem { Id = 1, Title = "Task 1", Priority = 0, UserId = userId }, // Low
                 new TaskItem { Id = 2, Title = "Task 2", Priority = 0, UserId = userId }, // Low
@@ -163,7 +163,7 @@ namespace TaskTrackerAPI.Tests.Services
                 .ReturnsAsync(tasks);
             
             // Act
-            var result = await _statisticsService.GetTasksByPriorityDistributionAsync(userId);
+            Dictionary<int, int> result = await _statisticsService.GetTasksByPriorityDistributionAsync(userId);
             
             // Assert
             Assert.Equal(6, result.Count); // Priorities 0-5 (not just the ones we used)
@@ -177,8 +177,8 @@ namespace TaskTrackerAPI.Tests.Services
         {
             // Arrange
             int userId = 1;
-            var now = DateTime.UtcNow;
-            var tasks = new List<TaskItem>
+            DateTime now = DateTime.UtcNow;
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 // Overdue tasks
                 new TaskItem 
@@ -241,29 +241,32 @@ namespace TaskTrackerAPI.Tests.Services
                 .ReturnsAsync(tasks);
             
             // Act
-            var stats = await _statisticsService.GetTaskStatisticsAsync(userId);
+            TaskStatisticsDTO stats = await _statisticsService.GetTaskStatisticsAsync(userId);
             
             // Assert
             Assert.NotNull(stats);
             Assert.NotNull(stats.OverdueTasks);
             // There should be 3 overdue tasks
             Assert.Equal(3, stats.OverdueTasks.TotalOverdueTasks);
+            // Overdue tasks should be 50% of all tasks (3 out of 6)
+            Assert.Equal(50, stats.OverdueTasks.PercentageOfAllTasks);
         }
         
         [Fact]
         public async Task ValidateUserAccessThrowsExceptionForInvalidUser()
         {
             // Arrange
-            int userId = 999; // Invalid user
             int taskId = 1;
+            int userId = 1;
             
             _mockTaskRepository.Setup(repo => repo.IsTaskOwnedByUserAsync(taskId, userId))
                 .ReturnsAsync(false);
             
             // Act & Assert
-            var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
-                () => _statisticsService.ValidateUserAccess(taskId, userId));
-                
+            UnauthorizedAccessException exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                async () => await _statisticsService.ValidateUserAccess(taskId, userId)
+            );
+            
             Assert.Contains("You do not have access to this task", exception.Message);
         }
     }

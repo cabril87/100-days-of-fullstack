@@ -11,6 +11,9 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\A
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Azure.Identity.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Dapper.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Humanizer.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Konscious.Security.Cryptography.Argon2.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Konscious.Security.Cryptography.Blake2.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.Bcl.AsyncInterfaces.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.Bcl.Cryptography.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.Build.Locator.dll
@@ -47,6 +50,9 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\M
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.OpenApi.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.SqlServer.Server.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Mono.TextTemplating.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Scrutor.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.Abstractions.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
@@ -168,6 +174,3 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\r
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\TaskTrackerAPI.pdb
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\TaskTrackerAPI.genruntimeconfig.cache
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\ref\TaskTrackerAPI.dll
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Konscious.Security.Cryptography.Argon2.dll
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Konscious.Security.Cryptography.Blake2.dll
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll

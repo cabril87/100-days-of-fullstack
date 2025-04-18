@@ -15,6 +15,7 @@ The tests are organized into the following categories:
 ### Service Tests
 - `CategoryServiceTests`: Tests for the CategoryService
 - `TaskServiceTests`: Tests for the TaskService
+- `TaskStatisticsServiceTests`: Tests for the TaskStatisticsService
 
 ### Controller Tests
 - `CategoriesControllerTests`: Tests for the CategoriesController
@@ -56,6 +57,7 @@ We have successfully resolved multiple issues with the unit tests:
 3. **Service Tests**:
    - Fixed `CategoryServiceTests` to align with the actual service implementation, adding logger dependency
    - Updated `TaskServiceTests` to match the actual repository method signatures
+   - Fixed DTO type mismatch in `TaskServiceTests.GetTaskStatisticsAsync_ReturnsValidStatistics` by updating the return type from `TaskStatisticsDTO` to `TaskServiceStatisticsDTO`
 
 4. **Repository Mocks**:
    - Corrected mock setup for `CreateTaskAsync` to properly simulate the repository setting the ID
@@ -77,13 +79,18 @@ We have successfully resolved multiple issues with the unit tests:
      - Boolean assertions use `Assert.True()` and `Assert.False()`
    - Fixed async assertions to use `await Assert.ThrowsAsync<T>()` instead of `Assert.Throws<T>()`
 
+8. **Integration Test Fixes**:
+   - Added missing endpoint aliases in `TaskStatisticsController` (`completion-time-average` and `overdue`) to match the endpoints being tested in integration tests
+   - Fixed HTTP 404 errors in `TaskStatisticsControllerTests` by ensuring proper endpoint routing
+   - Configured proper serialization options for handling enum values in JSON payloads
+
 ## Current Status
 
-All 94 tests are now passing successfully. The test suite provides comprehensive coverage of the TaskTrackerAPI functionality and can be used freely for commercial applications without license concerns.
+All unit and integration tests are now passing successfully. The test suite provides comprehensive coverage of the TaskTrackerAPI functionality and can be used freely for commercial applications without license concerns.
 
 ## Next Steps
 
-1. Add tests for remaining controllers (AuthController, TagController)
-2. Add integration tests to test the API end-to-end
+1. Improve tests for AuthController
+2. Add more integration tests for complex user scenarios
 3. Implement test coverage reporting to identify any gaps in test coverage
 4. Consider adding performance tests for critical endpoints 

@@ -1,12 +1,5 @@
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\.msCoverageSourceRootsMapping_TaskTrackerAPI.Tests
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\CoverletSourceRootsMapping_TaskTrackerAPI.Tests
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.csproj.AssemblyReference.cache
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\MvcTestingAppManifest.json
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.AssemblyInfoInputs.cache
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.AssemblyInfo.cs
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.csproj.CoreCompileInputs.cache
-C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.sourcelink.json
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\testhost.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\TaskTrackerAPI.deps.json
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\TaskTrackerAPI.runtimeconfig.json
@@ -366,6 +359,9 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\ne
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Microsoft.VisualStudio.TestPlatform.Common.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Moq.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Scrutor.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.dll
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.Abstractions.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\Swashbuckle.AspNetCore.SwaggerUI.dll
@@ -463,6 +459,13 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\ne
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\TaskTrackerAPI.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\bin\Debug\net9.0\TaskTrackerAPI.pdb
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.csproj.AssemblyReference.cache
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\MvcTestingAppManifest.json
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.AssemblyInfoInputs.cache
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.AssemblyInfo.cs
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.csproj.CoreCompileInputs.cache
+C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.sourcelink.json
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrac.433204B4.Up2Date
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\TaskTrackerAPI.Tests.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.Tests\obj\Debug\net9.0\refint\TaskTrackerAPI.Tests.dll

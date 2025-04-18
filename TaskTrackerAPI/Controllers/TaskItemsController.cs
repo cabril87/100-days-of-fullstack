@@ -32,8 +32,17 @@ public class TaskItemsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks()
     {
-        int userId = User.GetUserId();
-        return Ok(await _taskService.GetAllTasksAsync(userId));
+        try
+        {
+            int userId = User.GetUserId();
+            IEnumerable<TaskItemDTO> tasks = await _taskService.GetAllTasksAsync(userId);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all tasks");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+        }
     }
 
     // GET: api/TaskItems/5
@@ -42,21 +51,34 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
-            TaskItemDTO? task = await _taskService.GetTaskByIdAsync(userId, id);
+            // First check if the task exists and belongs to the user
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
+            }
+            
+            TaskItemDTO task = await _taskService.GetTaskByIdAsync(userId, id);
             
             if (task == null)
             {
-                return NotFound($"Task with ID {id} not found");
+                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
-            return Ok(task);
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(task));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access attempt for task {TaskId}", id);
+            return Forbid();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving task with ID {TaskId}", id);
-            return StatusCode(500, "An error occurred while retrieving the task.");
+            _logger.LogError(ex, "Error retrieving task {TaskId}", id);
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
@@ -66,21 +88,30 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             TaskItemDTO? createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
             
             if (createdTask == null)
             {
-                return BadRequest("Failed to create task");
+                return BadRequest(ApiResponse<TaskItemDTO>.BadRequestResponse("Failed to create task"));
             }
             
-            return CreatedAtAction(nameof(GetTaskItem), new { id = createdTask.Id }, createdTask);
+            return CreatedAtAction(
+                nameof(GetTaskItem), 
+                new { id = createdTask.Id }, 
+                ApiResponse<TaskItemDTO>.SuccessResponse(createdTask)
+            );
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to create a task with a category they don't own");
+            return Forbid();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating task");
-            return StatusCode(500, "An error occurred while creating the task.");
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
@@ -90,21 +121,26 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             TaskItemDTO? updatedTask = await _taskService.UpdateTaskAsync(userId, id, taskDto);
             
             if (updatedTask == null)
             {
-                return NotFound($"Task with ID {id} not found or you are not authorized to modify it");
+                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found or you are not authorized to modify it"));
             }
             
             return NoContent();
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to update a task they don't own");
+            return Forbid();
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating task with ID {TaskId}", id);
-            return StatusCode(500, "An error occurred while updating the task.");
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
@@ -114,7 +150,14 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Check if task exists and belongs to user
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             await _taskService.DeleteTaskAsync(userId, id);
             
@@ -123,7 +166,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting task with ID {TaskId}", id);
-            return StatusCode(500, "An error occurred while deleting the task.");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -133,16 +176,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByStatusAsync(userId, status);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks with status {Status}", status);
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -152,16 +195,21 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByCategoryAsync(userId, categoryId);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to access categories they don't own");
+            return Forbid();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks for category ID {CategoryId}", categoryId);
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -171,16 +219,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByTagAsync(userId, tagId);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks for tag ID {TagId}", tagId);
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -192,16 +240,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByDueDateRangeAsync(userId, startDate, endDate);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks by due date range");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -211,16 +259,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetOverdueTasksAsync(userId);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving overdue tasks");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -230,16 +278,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetDueTodayTasksAsync(userId);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks due today");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -249,16 +297,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetDueThisWeekTasksAsync(userId);
             
-            return Ok(tasks);
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks due this week");
-            return StatusCode(500, "An error occurred while retrieving tasks.");
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -268,16 +316,16 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
             TaskServiceStatisticsDTO statistics = await _taskService.GetTaskStatisticsAsync(userId);
             
-            return Ok(statistics);
+            return Ok(ApiResponse<TaskServiceStatisticsDTO>.SuccessResponse(statistics));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving task statistics");
-            return StatusCode(500, "An error occurred while retrieving task statistics.");
+            return StatusCode(500, ApiResponse<TaskServiceStatisticsDTO>.ServerErrorResponse());
         }
     }
     
@@ -287,16 +335,36 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
             
-            await _taskService.CompleteTasksAsync(userId, taskIds);
+            // Verify task ownership for all tasks
+            List<int> validTaskIds = new List<int>();
+            foreach (int taskId in taskIds)
+            {
+                bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+                if (!isTaskOwned)
+                {
+                    return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                }
+                validTaskIds.Add(taskId);
+            }
+            
+            if (validTaskIds.Count > 0)
+            {
+                await _taskService.CompleteTasksAsync(userId, validTaskIds);
+            }
             
             return NoContent();
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to complete tasks they don't own");
+            return Forbid();
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error completing tasks");
-            return StatusCode(500, "An error occurred while completing tasks.");
+            _logger.LogError(ex, "Error completing batch of tasks");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -306,16 +374,33 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             await _taskService.UpdateTaskStatusAsync(userId, id, status);
             
             return NoContent();
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to update status for a task they don't own");
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation on task {TaskId}", id);
+            return BadRequest(ApiResponse<object>.BadRequestResponse(ex.Message));
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating task status");
-            return StatusCode(500, "An error occurred while updating task status.");
+            _logger.LogError(ex, "Error updating status for task {TaskId}", id);
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -325,7 +410,14 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             await _taskService.AddTagToTaskAsync(userId, id, tagId);
             
@@ -334,7 +426,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding tag to task");
-            return StatusCode(500, "An error occurred while adding tag to task.");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -344,7 +436,14 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             await _taskService.RemoveTagFromTaskAsync(userId, id, tagId);
             
@@ -353,7 +452,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing tag from task");
-            return StatusCode(500, "An error occurred while removing tag from task.");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -363,7 +462,14 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             await _taskService.UpdateTaskTagsAsync(userId, id, tagIds);
             
@@ -372,7 +478,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating task tags");
-            return StatusCode(500, "An error occurred while updating task tags.");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -382,24 +488,39 @@ public class TaskItemsController : ControllerBase
     {
         try
         {
-            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            int userId = User.GetUserId();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(ApiResponse<IEnumerable<TagDTO>>.NotFoundResponse($"Task with ID {id} not found"));
+            }
             
             IEnumerable<TagDTO> tags = await _taskService.GetTagsForTaskAsync(userId, id);
             
-            return Ok(tags);
+            return Ok(ApiResponse<IEnumerable<TagDTO>>.SuccessResponse(tags));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tags for task");
-            return StatusCode(500, "An error occurred while retrieving tags.");
+            return StatusCode(500, ApiResponse<IEnumerable<TagDTO>>.ServerErrorResponse());
         }
     }
 
     [HttpGet("paged")]
     public async Task<ActionResult<PagedResult<TaskItemDTO>>> GetPagedTasks([FromQuery] PaginationParams paginationParams)
     {
-        int userId = User.GetUserId();
-        PagedResult<TaskItemDTO> pagedTasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
-        return Ok(pagedTasks);
+        try
+        {
+            int userId = User.GetUserId();
+            PagedResult<TaskItemDTO> pagedTasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
+            return Ok(ApiResponse<PagedResult<TaskItemDTO>>.SuccessResponse(pagedTasks));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paged tasks");
+            return StatusCode(500, ApiResponse<PagedResult<TaskItemDTO>>.ServerErrorResponse());
+        }
     }
 }

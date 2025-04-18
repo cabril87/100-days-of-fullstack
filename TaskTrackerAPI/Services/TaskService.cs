@@ -138,9 +138,14 @@ namespace TaskTrackerAPI.Services
             await _taskRepository.DeleteTaskAsync(taskId, userId);
         }
         
+        public async Task<bool> IsTaskOwnedByUserAsync(int taskId, int userId)
+        {
+            return await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
+        }
+        
         public async Task<IEnumerable<TaskItemDTO>> GetTasksByStatusAsync(int userId, TaskItemStatus status)
         {
-            var tasks = await _taskRepository.GetTasksByStatusAsync(userId, status);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksByStatusAsync(userId, status);
             return _mapper.Map<IEnumerable<TaskItemDTO>>(tasks);
         }
         
@@ -153,13 +158,13 @@ namespace TaskTrackerAPI.Services
                 throw new UnauthorizedAccessException("You do not have access to the specified category");
             }
             
-            var tasks = await _taskRepository.GetTasksByCategoryAsync(userId, categoryId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksByCategoryAsync(userId, categoryId);
             return _mapper.Map<IEnumerable<TaskItemDTO>>(tasks);
         }
         
         public async Task<IEnumerable<TaskItemDTO>> GetTasksByTagAsync(int userId, int tagId)
         {
-            var tasks = await _taskRepository.GetTasksByTagAsync(userId, tagId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksByTagAsync(userId, tagId);
             return _mapper.Map<IEnumerable<TaskItemDTO>>(tasks);
         }
         
@@ -261,34 +266,46 @@ namespace TaskTrackerAPI.Services
         
         public async Task CompleteTasksAsync(int userId, List<int> taskIds)
         {
-            foreach (var taskId in taskIds)
+            foreach (int taskId in taskIds)
             {
+                // Log the task we're trying to update
                 bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
                 if (!isOwner)
-                    continue;
-                    
-                var task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
-                if (task != null)
                 {
-                    task.Status = TaskItemStatus.Completed;
-                    task.UpdatedAt = DateTime.UtcNow;
-                    await _taskRepository.UpdateTaskAsync(task);
+                    // Instead of throwing, we'll skip this task
+                    continue;
                 }
+                
+                TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+                if (task == null)
+                {
+                    // Skip this task if not found
+                    continue;
+                }
+                
+                task.Status = TaskItemStatus.Completed;
+                task.UpdatedAt = DateTime.UtcNow;
+                
+                await _taskRepository.UpdateTaskAsync(task);
             }
         }
         
         public async Task UpdateTaskStatusAsync(int userId, int taskId, TaskItemStatus newStatus)
         {
+            // First verify the user owns the task
             bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isOwner)
-                return;
-                
-            var task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+                return; // Don't throw an exception, just return silently
+            
+            // Then get the task to update it
+            TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
             if (task == null)
-                return;
-                
+                return; // Don't throw an exception, just return silently
+            
+            // Update and save
             task.Status = newStatus;
             task.UpdatedAt = DateTime.UtcNow;
+            
             await _taskRepository.UpdateTaskAsync(task);
         }
         
@@ -325,7 +342,7 @@ namespace TaskTrackerAPI.Services
             if (!isOwner)
                 return new List<TagDTO>();
                 
-            var tags = await _taskRepository.GetTagsForTaskAsync(taskId);
+            IEnumerable<Tag> tags = await _taskRepository.GetTagsForTaskAsync(taskId);
             return _mapper.Map<IEnumerable<TagDTO>>(tags);
         }
     }

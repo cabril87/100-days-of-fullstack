@@ -9,6 +9,13 @@ using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using AutoMapper;
+using TaskTrackerAPI.Middleware;
+using TaskTrackerAPI.Exceptions;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Filters;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Identity;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI;
 
@@ -19,31 +26,45 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            });
         // Add services to the container.
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
-        builder.Services.AddCors((options) =>
-            {
-                options.AddPolicy("DevCors", (corsBuilder) =>
-                    {
-                        corsBuilder.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:8000")
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .AllowCredentials();
-                    });
-                options.AddPolicy("ProdCors", (corsBuilder) =>
-                    {
-                        corsBuilder.WithOrigins("https://myProductionSite.com")
-                            .AllowAnyMethod()
-                            .AllowAnyHeader()
-                            .AllowCredentials();
-                    });
+        builder.Services.AddSwaggerGen(options => {
+            // Configure Swagger for JWT authentication
+            options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme {
+                Description = "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
+                In = ParameterLocation.Header,
+                Name = "Authorization",
+                Type = SecuritySchemeType.ApiKey
             });
+            options.OperationFilter<SecurityRequirementsOperationFilter>();
+        });
+        builder.Services.AddCors((options) =>
+        {
+            options.AddPolicy("DevCors", (corsBuilder) =>
+            {
+                corsBuilder.WithOrigins("http://localhost:4200", "http://localhost:3000", "http://localhost:8000")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
+            options.AddPolicy("ProdCors", (corsBuilder) =>
+            {
+                corsBuilder.WithOrigins("https://myProductionSite.com")
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
+        });
 
         // Register AutoMapper
-        builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+        builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
         // Register repository
         builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -57,7 +78,7 @@ public class Program
         builder.Services.AddScoped<ITagRepository, TagRepository>();
 
         // Register helpers
-        builder.Services.AddSingleton<AuthHelper>();
+        builder.Services.AddScoped<AuthHelper>();
 
         // Register Category Service
         builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -139,12 +160,45 @@ public class Program
             app.UseHttpsRedirection();
         }
 
+        // Add global exception handling middleware
+        app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
+
         app.UseHttpsRedirection();
 
         // Map controllers
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+
+        // Seed the database if needed
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var dbContext = services.GetRequiredService<ApplicationDbContext>();
+            
+            if (app.Environment.IsDevelopment())
+            {
+                dbContext.Database.EnsureCreated();
+                
+                // Seed initial data if needed
+                if (!dbContext.Users.Any())
+                {
+                    // Add default user for testing
+                    var user = new User
+                    {
+                        Username = "admin",
+                        Email = "admin@example.com",
+                        PasswordHash = "hashedpassword", // In real app, would use proper hashing
+                        Salt = "salt",
+                        Role = "Admin",
+                        FirstName = "Admin",
+                        LastName = "User"
+                    };
+                    dbContext.Users.Add(user);
+                    dbContext.SaveChanges();
+                }
+            }
+        }
 
         app.Run();
     }

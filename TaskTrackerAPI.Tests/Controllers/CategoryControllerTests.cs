@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using TaskTrackerAPI.Controllers;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using Xunit;
 
@@ -30,12 +31,12 @@ namespace TaskTrackerAPI.Tests.Controllers
             _controller = new CategoriesController(_mockCategoryService.Object, _mockTaskService.Object, _mockLogger.Object);
             
             // Setup ClaimsPrincipal for authorization tests
-            var claims = new List<Claim>
+            List<Claim> claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
             };
-            var identity = new ClaimsIdentity(claims, "TestAuthType");
-            var claimsPrincipal = new ClaimsPrincipal(identity);
+            ClaimsIdentity identity = new ClaimsIdentity(claims, "TestAuthType");
+            ClaimsPrincipal claimsPrincipal = new ClaimsPrincipal(identity);
             
             // Setup controller context
             _controller.ControllerContext = new ControllerContext
@@ -48,7 +49,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         public async Task GetCategories_ReturnsOkResult_WithCategoryList()
         {
             // Arrange
-            var categories = new List<CategoryDTO>
+            List<CategoryDTO> categories = new List<CategoryDTO>
             {
                 new CategoryDTO { Id = 1, Name = "Work", Description = "Work tasks" },
                 new CategoryDTO { Id = 2, Name = "Personal", Description = "Personal tasks" }
@@ -58,11 +59,11 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(categories);
             
             // Act
-            var result = await _controller.GetCategories();
+            ActionResult<IEnumerable<CategoryDTO>> result = await _controller.GetCategories();
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedCategories = Assert.IsAssignableFrom<IEnumerable<CategoryDTO>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            IEnumerable<CategoryDTO> returnedCategories = Assert.IsAssignableFrom<IEnumerable<CategoryDTO>>(okResult.Value);
             Assert.Equal(2, ((List<CategoryDTO>)returnedCategories).Count);
         }
         
@@ -71,22 +72,26 @@ namespace TaskTrackerAPI.Tests.Controllers
         {
             // Arrange
             int categoryId = 1;
-            var category = new CategoryDTO 
+            CategoryDTO category = new CategoryDTO 
             { 
                 Id = categoryId, 
                 Name = "Work", 
                 Description = "Work tasks" 
             };
             
-            _mockCategoryService.Setup(service => service.GetCategoryByIdAsync(categoryId, 1))
+            _mockCategoryService.Setup(service => service.GetCategoryByIdAsync(categoryId, _userId))
                 .ReturnsAsync(category);
+                
+            // Setup the IsCategoryOwnedByUserAsync to return true
+            _mockCategoryService.Setup(service => service.IsCategoryOwnedByUserAsync(categoryId, _userId))
+                .ReturnsAsync(true);
             
             // Act
-            var result = await _controller.GetCategory(categoryId);
+            ActionResult<CategoryDTO> result = await _controller.GetCategory(categoryId);
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedCategory = Assert.IsType<CategoryDTO>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            CategoryDTO returnedCategory = Assert.IsType<CategoryDTO>(okResult.Value);
             Assert.Equal(categoryId, returnedCategory.Id);
         }
         
@@ -100,7 +105,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync((CategoryDTO?)null);
             
             // Act
-            var result = await _controller.GetCategory(categoryId);
+            ActionResult<CategoryDTO> result = await _controller.GetCategory(categoryId);
             
             // Assert
             Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -110,13 +115,13 @@ namespace TaskTrackerAPI.Tests.Controllers
         public async Task CreateCategory_WithValidData_ReturnsCreatedAtAction()
         {
             // Arrange
-            var createDto = new CategoryCreateDTO 
+            CategoryCreateDTO createDto = new CategoryCreateDTO 
             { 
                 Name = "New Category", 
                 Description = "New Description" 
             };
             
-            var createdCategory = new CategoryDTO 
+            CategoryDTO createdCategory = new CategoryDTO 
             { 
                 Id = 1, 
                 Name = "New Category", 
@@ -127,12 +132,12 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(createdCategory);
             
             // Act
-            var result = await _controller.CreateCategory(createDto);
+            ActionResult<CategoryDTO> result = await _controller.CreateCategory(createDto);
             
             // Assert
-            var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+            CreatedAtActionResult createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
             Assert.Equal(nameof(CategoriesController.GetCategory), createdAtActionResult.ActionName);
-            var returnedCategory = Assert.IsType<CategoryDTO>(createdAtActionResult.Value);
+            CategoryDTO returnedCategory = Assert.IsType<CategoryDTO>(createdAtActionResult.Value);
             Assert.Equal(1, returnedCategory.Id);
         }
         
@@ -140,7 +145,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         public async Task CreateCategory_ThrowsInvalidOperationException_ReturnsBadRequest()
         {
             // Arrange
-            var createDto = new CategoryCreateDTO 
+            CategoryCreateDTO createDto = new CategoryCreateDTO 
             { 
                 Name = "Duplicate Category", 
                 Description = "Duplicate Description" 
@@ -150,10 +155,10 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ThrowsAsync(new InvalidOperationException("Category already exists"));
             
             // Act
-            var result = await _controller.CreateCategory(createDto);
+            ActionResult<CategoryDTO> result = await _controller.CreateCategory(createDto);
             
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+            BadRequestObjectResult badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
             Assert.Equal("Category already exists", badRequestResult.Value);
         }
         
@@ -162,13 +167,13 @@ namespace TaskTrackerAPI.Tests.Controllers
         {
             // Arrange
             int categoryId = 1;
-            var updateDto = new CategoryUpdateDTO 
+            CategoryUpdateDTO updateDto = new CategoryUpdateDTO 
             { 
                 Name = "Updated Category", 
                 Description = "Updated Description" 
             };
             
-            var updatedCategory = new CategoryDTO 
+            CategoryDTO updatedCategory = new CategoryDTO 
             { 
                 Id = categoryId, 
                 Name = "Updated Category", 
@@ -179,7 +184,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(updatedCategory);
             
             // Act
-            var result = await _controller.UpdateCategory(categoryId, updateDto);
+            IActionResult result = await _controller.UpdateCategory(categoryId, updateDto);
             
             // Assert
             Assert.IsType<NoContentResult>(result);
@@ -190,7 +195,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         {
             // Arrange
             int categoryId = 999;
-            var updateDto = new CategoryUpdateDTO 
+            CategoryUpdateDTO updateDto = new CategoryUpdateDTO 
             { 
                 Name = "Updated Category",
                 Description = "Updated Description"
@@ -200,7 +205,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync((CategoryDTO?)null);
             
             // Act
-            var result = await _controller.UpdateCategory(categoryId, updateDto);
+            IActionResult result = await _controller.UpdateCategory(categoryId, updateDto);
             
             // Assert
             Assert.IsType<NotFoundObjectResult>(result);
@@ -216,7 +221,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(true);
             
             // Act
-            var result = await _controller.DeleteCategory(categoryId);
+            IActionResult result = await _controller.DeleteCategory(categoryId);
             
             // Assert
             Assert.IsType<NoContentResult>(result);
@@ -232,7 +237,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(false);
             
             // Act
-            var result = await _controller.DeleteCategory(categoryId);
+            IActionResult result = await _controller.DeleteCategory(categoryId);
             
             // Assert
             Assert.IsType<NotFoundObjectResult>(result);
@@ -248,10 +253,10 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ThrowsAsync(new InvalidOperationException("Cannot delete category with tasks"));
             
             // Act
-            var result = await _controller.DeleteCategory(categoryId);
+            IActionResult result = await _controller.DeleteCategory(categoryId);
             
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            BadRequestObjectResult badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             Assert.Equal("Cannot delete category with tasks", badRequestResult.Value);
         }
         
@@ -260,7 +265,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         {
             // Arrange
             string searchTerm = "work";
-            var categories = new List<CategoryDTO>
+            List<CategoryDTO> categories = new List<CategoryDTO>
             {
                 new CategoryDTO { Id = 1, Name = "Work", Description = "Work tasks" }
             };
@@ -269,11 +274,11 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(categories);
             
             // Act
-            var result = await _controller.SearchCategories(searchTerm);
+            ActionResult<IEnumerable<CategoryDTO>> result = await _controller.SearchCategories(searchTerm);
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedCategories = Assert.IsAssignableFrom<IEnumerable<CategoryDTO>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            IEnumerable<CategoryDTO> returnedCategories = Assert.IsAssignableFrom<IEnumerable<CategoryDTO>>(okResult.Value);
             Assert.Single((List<CategoryDTO>)returnedCategories);
         }
         
@@ -288,11 +293,11 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(taskCount);
             
             // Act
-            var result = await _controller.GetCategoryTaskCount(categoryId);
+            ActionResult<int> result = await _controller.GetCategoryTaskCount(categoryId);
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedCount = Assert.IsType<int>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            int returnedCount = Assert.IsType<int>(okResult.Value);
             Assert.Equal(taskCount, returnedCount);
         }
         
@@ -306,7 +311,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ThrowsAsync(new UnauthorizedAccessException("Not authorized"));
             
             // Act
-            var result = await _controller.GetCategoryTaskCount(categoryId);
+            ActionResult<int> result = await _controller.GetCategoryTaskCount(categoryId);
             
             // Assert
             Assert.IsType<ForbidResult>(result.Result);
@@ -316,7 +321,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         public async Task GetCategoryStatistics_ReturnsOkResult_WithStatisticsDictionary()
         {
             // Arrange
-            var statistics = new Dictionary<string, int>
+            Dictionary<string, int> statistics = new Dictionary<string, int>
             {
                 { "Work", 5 },
                 { "Personal", 3 }
@@ -326,11 +331,11 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(statistics);
             
             // Act
-            var result = await _controller.GetCategoryStatistics();
+            ActionResult<Dictionary<string, int>> result = await _controller.GetCategoryStatistics();
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedStatistics = Assert.IsType<Dictionary<string, int>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            Dictionary<string, int> returnedStatistics = Assert.IsType<Dictionary<string, int>>(okResult.Value);
             Assert.Equal(2, returnedStatistics.Count);
             Assert.Equal(5, returnedStatistics["Work"]);
             Assert.Equal(3, returnedStatistics["Personal"]);
@@ -341,7 +346,7 @@ namespace TaskTrackerAPI.Tests.Controllers
         {
             // Arrange
             int categoryId = 1;
-            var tasks = new List<TaskItemDTO>
+            List<TaskItemDTO> tasks = new List<TaskItemDTO>
             {
                 new TaskItemDTO { Id = 1, Title = "Task 1", CategoryId = categoryId },
                 new TaskItemDTO { Id = 2, Title = "Task 2", CategoryId = categoryId }
@@ -354,11 +359,11 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(tasks);
             
             // Act
-            var result = await _controller.GetTasksByCategory(categoryId);
+            ActionResult<IEnumerable<TaskItemDTO>> result = await _controller.GetTasksByCategory(categoryId);
             
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedTasks = Assert.IsAssignableFrom<IEnumerable<TaskItemDTO>>(okResult.Value);
+            OkObjectResult okResult = Assert.IsType<OkObjectResult>(result.Result);
+            IEnumerable<TaskItemDTO> returnedTasks = Assert.IsAssignableFrom<IEnumerable<TaskItemDTO>>(okResult.Value);
             Assert.Equal(2, returnedTasks.Count());
         }
         
@@ -372,7 +377,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ReturnsAsync(false);
             
             // Act
-            var result = await _controller.GetTasksByCategory(categoryId);
+            ActionResult<IEnumerable<TaskItemDTO>> result = await _controller.GetTasksByCategory(categoryId);
             
             // Assert
             Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -391,7 +396,7 @@ namespace TaskTrackerAPI.Tests.Controllers
                 .ThrowsAsync(new UnauthorizedAccessException("Not authorized"));
             
             // Act
-            var result = await _controller.GetTasksByCategory(categoryId);
+            ActionResult<IEnumerable<TaskItemDTO>> result = await _controller.GetTasksByCategory(categoryId);
             
             // Assert
             Assert.IsType<ForbidResult>(result.Result);

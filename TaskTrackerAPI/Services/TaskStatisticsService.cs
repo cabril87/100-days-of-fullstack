@@ -29,8 +29,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var tasks = await _taskRepository.GetAllTasksAsync(userId);
-                var result = new TaskStatisticsDTO
+                IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
+                TaskStatisticsDTO result = new TaskStatisticsDTO
                 {
                     GeneratedAt = DateTime.UtcNow
                 };
@@ -65,12 +65,9 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        private async Task<TaskCompletionRateDTO> GetCompletionRateAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<TaskCompletionRateDTO> GetCompletionRateAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
             int totalTasks = tasks.Count();
             int completedTasks = tasks.Count(t => t.Status == TaskItemStatus.Completed);
@@ -83,28 +80,25 @@ namespace TaskTrackerAPI.Services
             };
         }
 
-        private async Task<List<TaskDistributionDTO>> GetTasksByStatusAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<List<TaskDistributionDTO>> GetTasksByStatusAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            var distribution = new Dictionary<TaskItemStatus, int>();
-            foreach (var status in Enum.GetValues<TaskItemStatus>())
+            Dictionary<TaskItemStatus, int> distribution = new Dictionary<TaskItemStatus, int>();
+            foreach (TaskItemStatus status in Enum.GetValues<TaskItemStatus>())
             {
                 distribution[status] = 0;
             }
 
-            foreach (var task in tasks)
+            foreach (TaskItem task in tasks)
             {
                 distribution[task.Status]++;
             }
 
             int totalTasks = tasks.Count();
-            var result = new List<TaskDistributionDTO>();
+            List<TaskDistributionDTO> result = new List<TaskDistributionDTO>();
 
-            foreach (var kvp in distribution)
+            foreach (KeyValuePair<TaskItemStatus, int> kvp in distribution)
             {
                 result.Add(new TaskDistributionDTO
                 {
@@ -117,21 +111,18 @@ namespace TaskTrackerAPI.Services
             return result;
         }
 
-        private async Task<List<TaskDistributionDTO>> GetTasksByPriorityAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<List<TaskDistributionDTO>> GetTasksByPriorityAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            var distribution = new Dictionary<int, int>();
+            Dictionary<int, int> distribution = new Dictionary<int, int>();
             // Assuming priorities are 1-5, adjust as needed
             for (int i = 1; i <= 5; i++)
             {
                 distribution[i] = 0;
             }
 
-            foreach (var task in tasks)
+            foreach (TaskItem task in tasks)
             {
                 if (distribution.ContainsKey(task.Priority))
                 {
@@ -144,9 +135,9 @@ namespace TaskTrackerAPI.Services
             }
 
             int totalTasks = tasks.Count();
-            var result = new List<TaskDistributionDTO>();
+            List<TaskDistributionDTO> result = new List<TaskDistributionDTO>();
 
-            foreach (var kvp in distribution)
+            foreach (KeyValuePair<int, int> kvp in distribution)
             {
                 result.Add(new TaskDistributionDTO
                 {
@@ -159,26 +150,23 @@ namespace TaskTrackerAPI.Services
             return result;
         }
 
-        private async Task<List<TaskDistributionDTO>> GetTasksByCategoryAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<List<TaskDistributionDTO>> GetTasksByCategoryAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
-            var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
+            IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            Dictionary<int, string> categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
             
             // Use an approach that doesn't involve null keys in dictionaries
-            var categoryTaskCounts = new Dictionary<int, int>();
-            var uncategorizedCount = 0;
+            Dictionary<int, int> categoryTaskCounts = new Dictionary<int, int>();
+            int uncategorizedCount = 0;
             
-            foreach (var category in categories)
+            foreach (Category category in categories)
             {
                 categoryTaskCounts[category.Id] = 0;
             }
 
-            foreach (var task in tasks)
+            foreach (TaskItem task in tasks)
             {
                 if (task.CategoryId.HasValue)
                 {
@@ -198,9 +186,9 @@ namespace TaskTrackerAPI.Services
             }
 
             int totalTasks = tasks.Count();
-            var result = new List<TaskDistributionDTO>();
+            List<TaskDistributionDTO> result = new List<TaskDistributionDTO>();
 
-            foreach (var kvp in categoryTaskCounts)
+            foreach (KeyValuePair<int, int> kvp in categoryTaskCounts)
             {
                 string label = categoryMap.GetValueOrDefault(kvp.Key, "Unknown");
                 
@@ -226,15 +214,12 @@ namespace TaskTrackerAPI.Services
             return result;
         }
 
-        private async Task<TaskCompletionTimeDTO> GetCompletionTimeAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<TaskCompletionTimeDTO> GetCompletionTimeAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
             // Add CompletedAt property to TaskItem model or use UpdatedAt as a proxy
-            var completedTasks = tasks.Where(t => 
+            List<TaskItem> completedTasks = tasks.Where(t => 
                 t.Status == TaskItemStatus.Completed && 
                 t.UpdatedAt.HasValue && 
                 t.CreatedAt != default).ToList();
@@ -249,7 +234,7 @@ namespace TaskTrackerAPI.Services
             }
 
             double totalHours = 0;
-            foreach (var task in completedTasks)
+            foreach (TaskItem task in completedTasks)
             {
                 TimeSpan completionTime = task.UpdatedAt!.Value - task.CreatedAt;
                 totalHours += completionTime.TotalHours;
@@ -262,27 +247,24 @@ namespace TaskTrackerAPI.Services
             };
         }
 
-        private async Task<List<ProductivityDataPointDTO>> GetProductivityTrendAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<List<ProductivityDataPointDTO>> GetProductivityTrendAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
             // Get data for the last 30 days
-            var endDate = DateTime.UtcNow.Date;
-            var startDate = endDate.AddDays(-29); // 30 days including today
+            DateTime endDate = DateTime.UtcNow.Date;
+            DateTime startDate = endDate.AddDays(-29); // 30 days including today
             
-            var result = new List<ProductivityDataPointDTO>();
+            List<ProductivityDataPointDTO> result = new List<ProductivityDataPointDTO>();
             
-            for (var date = startDate; date <= endDate; date = date.AddDays(1))
+            for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
             {
-                var tasksCompleted = tasks.Count(t => 
+                int tasksCompleted = tasks.Count(t => 
                     t.Status == TaskItemStatus.Completed && 
                     t.UpdatedAt.HasValue && 
                     t.UpdatedAt.Value.Date == date);
                     
-                var tasksCreated = tasks.Count(t => 
+                int tasksCreated = tasks.Count(t => 
                     t.CreatedAt.Date == date);
                 
                 result.Add(new ProductivityDataPointDTO
@@ -296,20 +278,17 @@ namespace TaskTrackerAPI.Services
             return result;
         }
 
-        private async Task<DTOs.OverdueTasksStatisticsDTO> GetOverdueTasksStatisticsAsync(int userId, IEnumerable<TaskItem> tasks = null)
+        private async Task<DTOs.OverdueTasksStatisticsDTO> GetOverdueTasksStatisticsAsync(int userId, IEnumerable<TaskItem> tasks = null!)
         {
-            if (tasks == null)
-            {
-                tasks = await _taskRepository.GetAllTasksAsync(userId);
-            }
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
             
-            var today = DateTime.UtcNow.Date;
-            var overdueTasks = tasks.Where(t => 
+            DateTime today = DateTime.UtcNow.Date;
+            List<TaskItem> overdueTasks = tasks.Where(t => 
                 t.DueDate.HasValue && 
                 t.DueDate.Value.Date < today && 
                 t.Status != TaskItemStatus.Completed).ToList();
                 
-            var result = new DTOs.OverdueTasksStatisticsDTO
+            DTOs.OverdueTasksStatisticsDTO result = new DTOs.OverdueTasksStatisticsDTO
             {
                 TotalOverdueTasks = overdueTasks.Count,
                 PercentageOfAllTasks = tasks.Any() ? (double)overdueTasks.Count / tasks.Count() * 100 : 0
@@ -319,7 +298,7 @@ namespace TaskTrackerAPI.Services
             {
                 // Calculate average days overdue
                 double totalDaysOverdue = 0;
-                foreach (var task in overdueTasks)
+                foreach (TaskItem task in overdueTasks)
                 {
                     if (task.DueDate.HasValue)
                     {
@@ -330,11 +309,11 @@ namespace TaskTrackerAPI.Services
                 result.AverageDaysOverdue = totalDaysOverdue / overdueTasks.Count;
                 
                 // Group by priority
-                var priorityGroups = overdueTasks.GroupBy(t => t.Priority)
+                Dictionary<int, int> priorityGroups = overdueTasks.GroupBy(t => t.Priority)
                     .OrderByDescending(g => g.Key)
                     .ToDictionary(g => g.Key, g => g.Count());
                     
-                foreach (var kvp in priorityGroups)
+                foreach (KeyValuePair<int, int> kvp in priorityGroups)
                 {
                     result.OverdueByPriority.Add(new TaskDistributionDTO
                     {
@@ -351,14 +330,14 @@ namespace TaskTrackerAPI.Services
         // Keeping the original method for API compatibility
         public async Task<double> GetTaskCompletionRateAsync(int userId)
         {
-            var stats = await GetCompletionRateAsync(userId);
+            TaskCompletionRateDTO stats = await GetCompletionRateAsync(userId);
             return stats.CompletionRate;
         }
 
         // Keeping the original method for API compatibility
         public async Task<Dictionary<TaskItemStatus, int>> GetTasksByStatusDistributionAsync(int userId)
         {
-            var distribution = await GetTasksByStatusAsync(userId);
+            List<TaskDistributionDTO> distribution = await GetTasksByStatusAsync(userId);
             return distribution.ToDictionary(
                 d => Enum.Parse<TaskItemStatus>(d.Label), 
                 d => d.Count);
@@ -367,14 +346,14 @@ namespace TaskTrackerAPI.Services
         // Keeping the original method for API compatibility
         public async Task<TimeSpan> GetTaskCompletionTimeAverageAsync(int userId)
         {
-            var stats = await GetCompletionTimeAsync(userId);
+            TaskCompletionTimeDTO stats = await GetCompletionTimeAsync(userId);
             return TimeSpan.FromHours(stats.AverageCompletionTimeInHours);
         }
 
         // Keeping the original method for API compatibility
         public async Task<Dictionary<int, int>> GetTasksByPriorityDistributionAsync(int userId)
         {
-            var distribution = await GetTasksByPriorityAsync(userId);
+            List<TaskDistributionDTO> distribution = await GetTasksByPriorityAsync(userId);
             return distribution.ToDictionary(
                 d => int.Parse(d.Label.Replace("Priority ", "")), 
                 d => d.Count);
@@ -383,21 +362,21 @@ namespace TaskTrackerAPI.Services
         // Method to get most active categories
         public async Task<List<CategoryActivityDTO>> GetMostActiveCategoriesAsync(int userId, int limit)
         {
-            var tasks = await _taskRepository.GetAllTasksAsync(userId);
-            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
+            IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
             
-            var categoryActivities = categories.Select(category => 
+            List<CategoryActivityDTO> categoryActivities = categories.Select(category => 
             {
-                var categoryTasks = tasks.Where(t => t.CategoryId == category.Id).ToList();
-                var completedTasks = categoryTasks.Count(t => t.Status == TaskItemStatus.Completed);
-                var lastActivity = categoryTasks.Any() 
+                List<TaskItem> categoryTasks = tasks.Where(t => t.CategoryId == category.Id).ToList();
+                int completedTasks = categoryTasks.Count(t => t.Status == TaskItemStatus.Completed);
+                DateTime lastActivity = categoryTasks.Any() 
                     ? categoryTasks.Max(t => t.UpdatedAt ?? t.CreatedAt) 
                     : DateTime.MinValue;
                 
                 return new CategoryActivityDTO
                 {
                     CategoryId = category.Id,
-                    Name = category.Name,
+                    Name = category.Name ?? string.Empty,
                     TaskCount = categoryTasks.Count,
                     CompletedTaskCount = completedTasks,
                     LastActivityDate = lastActivity,
