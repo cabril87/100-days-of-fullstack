@@ -603,7 +603,7 @@ namespace TaskTrackerAPI.Services
                 // Top categories
                 var categoryDistribution = weekGroup
                     .Where(t => t.CategoryId.HasValue)
-                    .GroupBy(t => t.CategoryId.Value)
+                    .GroupBy(t => t.CategoryId!.Value)
                     .Select(g => new { CategoryId = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .Take(3);
@@ -686,7 +686,7 @@ namespace TaskTrackerAPI.Services
                 // Top categories
                 var categoryDistribution = monthGroup
                     .Where(t => t.CategoryId.HasValue)
-                    .GroupBy(t => t.CategoryId.Value)
+                    .GroupBy(t => t.CategoryId!.Value)
                     .Select(g => new { CategoryId = g.Key, Count = g.Count() })
                     .OrderByDescending(x => x.Count)
                     .Take(3);
