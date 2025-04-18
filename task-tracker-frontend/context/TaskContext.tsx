@@ -119,9 +119,12 @@ export function TaskProvider({ children }: TaskProviderProps) {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      console.log("TaskContext.createTask called with:", task);
       const response = await api.tasks.create(task);
+      console.log("Raw API response in TaskContext:", response);
       
       if (response.succeeded && response.data) {
+        console.log("Task created successfully:", response.data);
         setState((prev) => ({
           ...prev,
           tasks: [...prev.tasks, response.data],
@@ -129,6 +132,7 @@ export function TaskProvider({ children }: TaskProviderProps) {
         }));
         return response.data;
       } else {
+        console.error("API succeeded but no data returned:", response);
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -137,6 +141,7 @@ export function TaskProvider({ children }: TaskProviderProps) {
         return null;
       }
     } catch (error) {
+      console.error("Error in TaskContext.createTask:", error);
       setState((prev) => ({
         ...prev,
         isLoading: false,

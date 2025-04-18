@@ -102,15 +102,28 @@ export async function apiFetch<T>(
       } as ApiError;
     }
     
-    const data = await response.json();
+    const contentType = response.headers.get("content-type");
+    let data;
+    
+    if (contentType && contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.error(`Non-JSON response from ${endpoint}:`, text);
+      throw {
+        statusCode: response.status,
+        message: `Invalid response format: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`,
+      } as ApiError;
+    }
     
     // Debug logging
     console.log(`API Response for ${endpoint}:`, data);
     
     if (!response.ok) {
+      console.error(`Error response from ${endpoint}:`, data);
       throw {
         statusCode: response.status,
-        message: data.message || 'An error occurred',
+        message: data.message || data.title || 'An error occurred',
         errors: data.errors,
       } as ApiError;
     }
@@ -157,7 +170,10 @@ export const api = {
   tasks: {
     getAll: () => apiFetch('TaskItems'),
     getById: (id: number) => apiFetch(`TaskItems/${id}`),
-    create: (task: any) => apiFetch('TaskItems', { method: 'POST', body: task }),
+    create: (task: any) => {
+      console.log("API.tasks.create called with:", task);
+      return apiFetch('TaskItems', { method: 'POST', body: task });
+    },
     update: (id: number, task: any) => apiFetch(`TaskItems/${id}`, { method: 'PUT', body: task }),
     delete: (id: number) => apiFetch(`TaskItems/${id}`, { method: 'DELETE' }),
   },

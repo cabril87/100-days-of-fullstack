@@ -78,6 +78,7 @@ export default function TaskForm({ task }: TaskFormProps) {
   // Handle form submission
   const onSubmit = async (values: TaskFormValues) => {
     setIsLoading(true);
+    console.log("Form submitted with values:", values);
 
     try {
       if (task) {
@@ -97,6 +98,15 @@ export default function TaskForm({ task }: TaskFormProps) {
         }
       } else {
         // Create new task
+        console.log("Creating new task with data:", {
+          title: values.title,
+          description: values.description || "",
+          status: values.status,
+          priority: values.priority,
+          dueDate: values.dueDate ? format(values.dueDate, "yyyy-MM-dd'T'HH:mm:ss") : null,
+          categoryId: values.categoryId,
+        });
+        
         const newTask = await createTask({
           title: values.title,
           description: values.description || "",
@@ -106,9 +116,14 @@ export default function TaskForm({ task }: TaskFormProps) {
           categoryId: values.categoryId,
         });
         
+        console.log("API response:", newTask);
+        
         if (newTask) {
           toast.success("Task created successfully");
           router.push(`/tasks/${newTask.id}`);
+        } else {
+          console.error("Failed to create task: API returned null");
+          toast.error("Failed to create task. Please check the console for details.");
         }
       }
     } catch (error) {
