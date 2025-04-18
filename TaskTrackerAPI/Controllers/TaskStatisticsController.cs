@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers
 {
@@ -16,11 +17,11 @@ namespace TaskTrackerAPI.Controllers
     [Route("api/[controller]")]
     public class TaskStatisticsController : BaseApiController
     {
-        private readonly TaskStatisticsService _taskStatisticsService;
+        private readonly ITaskStatisticsService _taskStatisticsService;
         private readonly ILogger<TaskStatisticsController> _logger;
 
         public TaskStatisticsController(
-            TaskStatisticsService taskStatisticsService,
+            ITaskStatisticsService taskStatisticsService,
             ILogger<TaskStatisticsController> logger)
         {
             _taskStatisticsService = taskStatisticsService;
@@ -56,6 +57,22 @@ namespace TaskTrackerAPI.Controllers
             {
                 _logger.LogError(ex, "Error retrieving task status distribution");
                 return StatusCode(500, "An error occurred while retrieving task status distribution.");
+            }
+        }
+
+        [HttpGet("tasks-by-status")]
+        public async Task<IActionResult> GetTasksByStatus()
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                Dictionary<TaskItemStatus, int> distribution = await _taskStatisticsService.GetTasksByStatusDistributionAsync(userId);
+                return Ok(distribution);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving tasks by status");
+                return StatusCode(500, "An error occurred while retrieving tasks by status.");
             }
         }
 
@@ -152,6 +169,151 @@ namespace TaskTrackerAPI.Controllers
             {
                 _logger.LogError(ex, "Error retrieving task statistics");
                 return StatusCode(500, "An error occurred while retrieving task statistics.");
+            }
+        }
+
+        [HttpGet("productivity")]
+        public async Task<IActionResult> GetProductivityAnalytics(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                return Ok(analytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving productivity analytics");
+                return StatusCode(500, "An error occurred while retrieving productivity analytics.");
+            }
+        }
+
+        [HttpGet("productivity/time-of-day")]
+        public async Task<IActionResult> GetTimeOfDayProductivity(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                return Ok(analytics.TimeOfDayAnalytics);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving time of day productivity analytics");
+                return StatusCode(500, "An error occurred while retrieving time of day productivity analytics.");
+            }
+        }
+
+        [HttpGet("productivity/daily")]
+        public async Task<IActionResult> GetDailyProductivity(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                return Ok(analytics.DailyProductivity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving daily productivity analytics");
+                return StatusCode(500, "An error occurred while retrieving daily productivity analytics.");
+            }
+        }
+
+        [HttpGet("productivity/weekly")]
+        public async Task<IActionResult> GetWeeklyProductivity(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                return Ok(analytics.WeeklyProductivity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving weekly productivity analytics");
+                return StatusCode(500, "An error occurred while retrieving weekly productivity analytics.");
+            }
+        }
+
+        [HttpGet("productivity/monthly")]
+        public async Task<IActionResult> GetMonthlyProductivity(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                return Ok(analytics.MonthlyProductivity);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving monthly productivity analytics");
+                return StatusCode(500, "An error occurred while retrieving monthly productivity analytics.");
+            }
+        }
+
+        [HttpGet("productivity-summary")]
+        public async Task<IActionResult> GetProductivitySummary(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                ProductivityAnalyticsDTO analytics = await _taskStatisticsService.GetProductivityAnalyticsAsync(
+                    userId, startDate, endDate);
+                
+                // Calculate average tasks per day
+                double avgTasksPerDay = analytics.DailyProductivity.Count > 0
+                    ? analytics.DailyProductivity.Average(dp => dp.TasksCompleted + dp.TasksCreated) / 2
+                    : 0;
+                
+                // Calculate average tasks per week
+                double avgTasksPerWeek = avgTasksPerDay * 7;
+                
+                // Use the pre-calculated average completion rate from the DTO
+                double avgCompletionRate = analytics.AverageCompletionRate;
+                
+                // Format average time to complete
+                var avgTime = analytics.AverageTimeToComplete;
+                int days = (int)avgTime.TotalDays;
+                int hours = (int)(avgTime.TotalHours % 24);
+                int minutes = (int)(avgTime.TotalMinutes % 60);
+                
+                return Ok(new ProductivitySummaryDTO
+                {
+                    AverageTasksPerDay = avgTasksPerDay,
+                    AverageTasksPerWeek = avgTasksPerWeek,
+                    AverageCompletionRate = avgCompletionRate,
+                    AverageTimeToComplete = new
+                    {
+                        Days = days,
+                        Hours = hours,
+                        Minutes = minutes,
+                        TotalHours = avgTime.TotalHours
+                    },
+                    GeneratedAt = DateTime.UtcNow.ToString("o")
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving productivity summary");
+                return StatusCode(500, "An error occurred while retrieving productivity summary.");
             }
         }
     }
