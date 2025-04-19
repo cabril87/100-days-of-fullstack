@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Check } from 'lucide-react';
 import { useTasks, CreateTaskDto, TaskStatus } from '@/context/TaskContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface TodoItem {
   id: string;
@@ -160,27 +161,33 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
                 className="flex items-center justify-between p-2 rounded-md border bg-background"
               >
                 <div className="flex items-center gap-2">
-                  <Checkbox
-                    id={`todo-${todo.id}`}
-                    checked={todo.completed}
-                    onCheckedChange={(checked) => {
-                      // Completely detach the state update from the render cycle
-                      if (typeof checked === 'boolean') {
-                        // Only trigger if the state actually changed
-                        if (checked !== todo.completed) {
-                          requestAnimationFrame(() => {
-                            handleToggleTodo(todo.id);
-                          });
-                        }
-                      }
+                  <div 
+                    className="relative flex items-center justify-center"
+                    onClick={() => {
+                      setTimeout(() => handleToggleTodo(todo.id), 10);
                     }}
-                  />
-                  <label 
-                    htmlFor={`todo-${todo.id}`}
-                    className={todo.completed ? "line-through text-muted-foreground cursor-pointer" : "cursor-pointer"}
+                  >
+                    <div 
+                      className={cn(
+                        "h-4 w-4 rounded-sm border border-primary cursor-pointer",
+                        todo.completed ? "bg-primary" : "bg-background"
+                      )}
+                    />
+                    {todo.completed && (
+                      <Check className="h-3 w-3 absolute text-white" />
+                    )}
+                  </div>
+                  <span 
+                    className={cn(
+                      "cursor-pointer", 
+                      todo.completed ? "line-through text-muted-foreground" : ""
+                    )}
+                    onClick={() => {
+                      setTimeout(() => handleToggleTodo(todo.id), 10);
+                    }}
                   >
                     {todo.text}
-                  </label>
+                  </span>
                 </div>
                 <Button
                   variant="ghost"
