@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,20 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
   const { createTask, updateTask, tasks } = useTasks();
   const [isAdding, setIsAdding] = useState(false);
 
+  // Sync with existing tasks when component mounts
+  useEffect(() => {
+    // Convert recent tasks to todo items format (limit to 5 most recent)
+    const recentTasks = tasks
+      .slice(0, 5)
+      .map(task => ({
+        id: task.id.toString(),
+        text: task.title,
+        completed: task.status === TaskStatus.Completed
+      }));
+    
+    setTodos(recentTasks);
+  }, [tasks]);
+
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTodo.trim()) return;
@@ -46,12 +60,12 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
       if (createdTask) {
         // Add to local state for immediate display
         setTodos([
-          ...todos,
           { 
             id: createdTask.id.toString(), 
             text: newTodo, 
             completed: false 
-          }
+          },
+          ...todos.slice(0, 4) // Keep only the 5 most recent tasks (including the new one)
         ]);
         setNewTodo("");
         toast.success("Task added successfully");
@@ -63,8 +77,8 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
       // Add to local state anyway to preserve UX
       const tempId = Date.now().toString();
       setTodos([
-        ...todos,
-        { id: tempId, text: newTodo, completed: false }
+        { id: tempId, text: newTodo, completed: false },
+        ...todos.slice(0, 4)
       ]);
       setNewTodo("");
     } finally {

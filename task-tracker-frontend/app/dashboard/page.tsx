@@ -20,15 +20,15 @@ export default function DashboardPage() {
     tasksByStatusDistribution,
     isLoading, 
     error,
-    fetchAllData
+    retryFetchAll
   } = useStatistics();
 
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Function to retry loading statistics
-  const retryFetchAll = useCallback(() => {
-    fetchAllData();
+  const handleRetryFetch = useCallback(() => {
+    retryFetchAll();
     
     // Set a timeout to stop waiting after 2 seconds
     if (loadTimeout) {
@@ -44,12 +44,12 @@ export default function DashboardPage() {
     return () => {
       if (timeout) clearTimeout(timeout);
     };
-  }, [fetchAllData, loadTimeout]);
+  }, [retryFetchAll, loadTimeout]);
 
   // Load data on component mount
   useEffect(() => {
-    retryFetchAll();
-  }, [retryFetchAll]);
+    handleRetryFetch();
+  }, [handleRetryFetch]);
 
   // Count tasks by status
   const todoCount = tasks.filter(task => task.status === 'ToDo').length;
@@ -108,7 +108,7 @@ export default function DashboardPage() {
 
   // Handle retry button click
   const handleRetry = () => {
-    retryFetchAll();
+    handleRetryFetch();
   };
 
   return (
@@ -205,44 +205,44 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex items-center">
-                    <div className="text-muted-foreground w-24">To Do</div>
+                    <div className="text-muted-foreground w-28">To Do</div>
                     <div className="flex-1">
-                      <div className="bg-gray-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-gray-100 h-4 rounded-full overflow-hidden">
                         <div 
-                          className="bg-gray-500 h-full" 
+                          className="bg-gray-500 h-full rounded-full" 
                           style={{ width: totalTasks ? `${(todoCount / totalTasks) * 100}%` : '0%' }}
                         />
                       </div>
                     </div>
-                    <div className="ml-2 text-sm font-medium">{todoCount}</div>
+                    <div className="ml-3 text-sm font-medium w-10 text-right">{todoCount}</div>
                   </div>
                   
                   <div className="flex items-center">
-                    <div className="text-muted-foreground w-24">In Progress</div>
+                    <div className="text-muted-foreground w-28">In Progress</div>
                     <div className="flex-1">
-                      <div className="bg-gray-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-gray-100 h-4 rounded-full overflow-hidden">
                         <div 
-                          className="bg-blue-500 h-full" 
+                          className="bg-blue-500 h-full rounded-full" 
                           style={{ width: totalTasks ? `${(inProgressCount / totalTasks) * 100}%` : '0%' }}
                         />
                       </div>
                     </div>
-                    <div className="ml-2 text-sm font-medium">{inProgressCount}</div>
+                    <div className="ml-3 text-sm font-medium w-10 text-right">{inProgressCount}</div>
                   </div>
                   
                   <div className="flex items-center">
-                    <div className="text-muted-foreground w-24">Completed</div>
+                    <div className="text-muted-foreground w-28">Completed</div>
                     <div className="flex-1">
-                      <div className="bg-gray-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-gray-100 h-4 rounded-full overflow-hidden">
                         <div 
-                          className="bg-green-500 h-full" 
+                          className="bg-green-500 h-full rounded-full" 
                           style={{ width: totalTasks ? `${(completedCount / totalTasks) * 100}%` : '0%' }}
                         />
                       </div>
                     </div>
-                    <div className="ml-2 text-sm font-medium">{completedCount}</div>
+                    <div className="ml-3 text-sm font-medium w-10 text-right">{completedCount}</div>
                   </div>
                 </div>
                 
@@ -262,15 +262,18 @@ export default function DashboardPage() {
                           outerRadius={80}
                           paddingAngle={5}
                           dataKey="value"
-                          label={({ name, percent }) => 
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
+                          labelLine={false}
+                          label={({ name, percent }) => {
+                            // Don't render labels for very small segments (less than 5%)
+                            if (percent < 0.05) return null;
+                            return `${name}: ${(percent * 100).toFixed(0)}%`;
+                          }}
                         >
                           <Cell fill="#6b7280" />
                           <Cell fill="#3b82f6" />
                           <Cell fill="#22c55e" />
                         </Pie>
-                        <Tooltip />
+                        <Tooltip formatter={(value) => [`${value} tasks`, 'Count']} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -293,7 +296,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* Task Boards section */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
