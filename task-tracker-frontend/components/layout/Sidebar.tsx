@@ -11,12 +11,12 @@ import {
   Home, 
   CheckSquare, 
   BarChart2, 
-  Tag, 
   Settings, 
   LogOut,
   Menu,
   Folder,
-  LayoutGrid
+  LayoutGrid,
+  Move
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -58,6 +58,11 @@ export default function Sidebar() {
       name: 'Task Board',
       href: '/tasks/board',
       icon: <LayoutGrid className="h-5 w-5" />,
+    },
+    {
+      name: 'Modern Board',
+      href: '/tasks/board-dnd-kit',
+      icon: <Move className="h-5 w-5" />,
     },
     {
       name: 'Categories',

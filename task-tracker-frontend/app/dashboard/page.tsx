@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
-import { AlertCircle, CheckCircle, Clock, PlusCircle, RotateCw } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, PlusCircle, RotateCw, LayoutGrid, Move } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import Link from "next/link";
 import { Todo } from "@/components/ui/Todo";
@@ -313,32 +313,32 @@ export default function DashboardPage() {
                   View Overdue Tasks ({overdueTasks.length})
                 </Button>
               </Link>
-              <Link href="/tasks/board">
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Clock className="mr-2 h-4 w-4" />
-                  Task Board
-                </Button>
-              </Link>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Priority Tasks</CardTitle>
+            <CardTitle>Task Boards</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
+              <Link href="/tasks/board">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <LayoutGrid className="mr-2 h-4 w-4" />
+                  Task Board
+                </Button>
+              </Link>
+              <Link href="/tasks/board-dnd-kit">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Move className="mr-2 h-4 w-4" />
+                  Modern Task Board
+                </Button>
+              </Link>
               <Link href="/tasks?priority=high">
                 <Button variant="outline" className="w-full justify-start" size="sm">
                   <AlertCircle className="mr-2 h-4 w-4" />
                   High Priority Tasks ({highPriorityCount})
-                </Button>
-              </Link>
-              <Link href="/tasks?status=in-progress">
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Clock className="mr-2 h-4 w-4" />
-                  In Progress Tasks ({inProgressCount})
                 </Button>
               </Link>
             </div>
