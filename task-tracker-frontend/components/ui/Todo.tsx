@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,20 +25,25 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const { createTask, updateTask, tasks } = useTasks();
   const [isAdding, setIsAdding] = useState(false);
+  const initialLoadDone = useRef(false);
 
-  // Sync with existing tasks when component mounts
+  // Sync with existing tasks when component mounts or when tasks change significantly
   useEffect(() => {
-    // Convert recent tasks to todo items format (limit to 5 most recent)
-    const recentTasks = tasks
-      .slice(0, 5)
-      .map(task => ({
-        id: task.id.toString(),
-        text: task.title,
-        completed: task.status === TaskStatus.Completed
-      }));
-    
-    setTodos(recentTasks);
-  }, [tasks]);
+    // Only update todos on first load or when tasks length changes
+    if (!initialLoadDone.current || tasks.length !== todos.length) {
+      // Convert recent tasks to todo items format (limit to 5 most recent)
+      const recentTasks = tasks
+        .slice(0, 5)
+        .map(task => ({
+          id: task.id.toString(),
+          text: task.title,
+          completed: task.status === TaskStatus.Completed
+        }));
+      
+      setTodos(recentTasks);
+      initialLoadDone.current = true;
+    }
+  }, [tasks, todos.length]);
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,12 +150,19 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
               >
                 <div className="flex items-center gap-2">
                   <Checkbox
+                    id={`todo-${todo.id}`}
                     checked={todo.completed}
-                    onCheckedChange={() => handleToggleTodo(todo.id)}
+                    onCheckedChange={() => {
+                      // Use a timeout to break the potential render update cycle
+                      setTimeout(() => handleToggleTodo(todo.id), 0);
+                    }}
                   />
-                  <span className={todo.completed ? "line-through text-muted-foreground" : ""}>
+                  <label 
+                    htmlFor={`todo-${todo.id}`}
+                    className={todo.completed ? "line-through text-muted-foreground cursor-pointer" : "cursor-pointer"}
+                  >
                     {todo.text}
-                  </span>
+                  </label>
                 </div>
                 <Button
                   variant="ghost"
