@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTasks, TaskStatus } from "@/context/TaskContext";
 import { useStatistics } from "@/context/StatisticsContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,39 +17,37 @@ export default function DashboardPage() {
   const { 
     productivitySummary,
     completionRate,
-    tasksByStatusDistribution,
+    tasksByStatus,
     isLoading, 
     error,
     retryFetchAll
   } = useStatistics();
 
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
+  const loadAttemptedRef = useRef(false);
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Function to retry loading statistics
-  const handleRetryFetch = useCallback(() => {
-    retryFetchAll();
-    
-    // Set a timeout to stop waiting after 2 seconds
-    if (loadTimeout) {
-      clearTimeout(loadTimeout);
-    }
-    
-    const timeout = setTimeout(() => {
-      setHasAttemptedLoad(true);
-    }, 2000);
-    
-    setLoadTimeout(timeout);
-    
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [retryFetchAll, loadTimeout]);
-
-  // Load data on component mount
+  // Load data on component mount only once
   useEffect(() => {
-    handleRetryFetch();
-  }, [handleRetryFetch]);
+    if (!loadAttemptedRef.current) {
+      loadAttemptedRef.current = true;
+      
+      // Call retry fetch directly
+      retryFetchAll();
+      
+      // Set a timeout to mark that we've attempted loading
+      const timeout = setTimeout(() => {
+        setHasAttemptedLoad(true);
+      }, 2000);
+      
+      setLoadTimeout(timeout);
+      
+      // Clean up the timeout on unmount
+      return () => {
+        if (timeout) clearTimeout(timeout);
+      };
+    }
+  }, [retryFetchAll]);
 
   // Count tasks by status
   const todoCount = tasks.filter(task => task.status === 'ToDo').length;
@@ -63,7 +61,7 @@ export default function DashboardPage() {
     : 0;
     
   // Use API completion rate if available, otherwise use calculated
-  const displayCompletionRate = completionRate?.overallCompletionRate ?? calculatedCompletionRate;
+  const displayCompletionRate = completionRate?.completionRate ?? calculatedCompletionRate;
 
   // Find overdue tasks
   const overdueTasks = tasks.filter(task => {
@@ -108,7 +106,18 @@ export default function DashboardPage() {
 
   // Handle retry button click
   const handleRetry = () => {
-    handleRetryFetch();
+    retryFetchAll();
+    
+    // Reset loadTimeout
+    if (loadTimeout) {
+      clearTimeout(loadTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      setHasAttemptedLoad(true);
+    }, 2000);
+    
+    setLoadTimeout(timeout);
   };
 
   return (
