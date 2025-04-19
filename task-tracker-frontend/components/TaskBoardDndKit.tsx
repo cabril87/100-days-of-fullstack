@@ -20,7 +20,6 @@ import {
 } from '@dnd-kit/sortable';
 import { useTasks, Task, TaskStatus } from '@/context/TaskContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, Plus, AlertCircle } from 'lucide-react';
 import { formatDate, getPriorityColor, getPriorityLabel } from '@/lib/utils';
@@ -28,6 +27,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { TaskCard } from './TaskCard';
 import { Column } from './Column';
+import { TaskBadge } from '@/components/ui/task-badge';
 
 interface TaskBoardProps {
   className?: string;
@@ -276,16 +276,20 @@ export function TaskBoardDndKit({ className = "", showAddButton = true }: TaskBo
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm">{activeTask.title}</h4>
-                      <Badge className={getPriorityColor(activeTask.priority)}>
-                        {getPriorityLabel(activeTask.priority)}
-                      </Badge>
+                      <TaskBadge
+                        type="priority"
+                        priority={activeTask.priority}
+                        animated={activeTask.priority === 5}
+                      />
                     </div>
                     
                     {activeTask.categoryName && (
                       <div className="mb-2">
-                        <Badge variant="outline" className="text-xs">
+                        <TaskBadge
+                          type="category"
+                        >
                           {activeTask.categoryName}
-                        </Badge>
+                        </TaskBadge>
                       </div>
                     )}
                     

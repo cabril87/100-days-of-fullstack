@@ -5,9 +5,9 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Task, TaskStatus } from '@/context/TaskContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { TaskBadge } from '@/components/ui/task-badge';
 import { AlertCircle, Clock } from 'lucide-react';
-import { formatDate, getPriorityColor, getPriorityLabel } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 
 interface TaskCardProps {
@@ -50,16 +50,20 @@ export function TaskCard({ task }: TaskCardProps) {
           <CardContent className="p-3">
             <div className="flex justify-between items-start mb-2">
               <h4 className="font-medium text-sm">{task.title}</h4>
-              <Badge className={getPriorityColor(task.priority)}>
-                {getPriorityLabel(task.priority)}
-              </Badge>
+              <TaskBadge 
+                type="priority" 
+                priority={task.priority}
+                animated={task.priority === 5}
+              />
             </div>
             
             {task.categoryName && (
               <div className="mb-2">
-                <Badge variant="outline" className="text-xs">
+                <TaskBadge 
+                  type="category"
+                >
                   {task.categoryName}
-                </Badge>
+                </TaskBadge>
               </div>
             )}
             
