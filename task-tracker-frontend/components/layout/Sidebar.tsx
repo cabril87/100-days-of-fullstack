@@ -14,9 +14,12 @@ import {
   Tag, 
   Settings, 
   LogOut,
-  Menu
+  Menu,
+  Folder,
+  LayoutGrid
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { toast } from 'sonner';
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
@@ -31,12 +34,46 @@ export default function Sidebar() {
     setSidebarOpen(false);
   };
 
+  const isActive = (path: string) => {
+    return pathname === path || pathname?.startsWith(`${path}/`);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success("Logged out successfully");
+  };
+
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
-    { name: 'Tasks', href: '/tasks', icon: <CheckSquare className="h-5 w-5" /> },
-    { name: 'Categories', href: '/categories', icon: <Tag className="h-5 w-5" /> },
-    { name: 'Statistics', href: '/statistics', icon: <BarChart2 className="h-5 w-5" /> },
-    { name: 'Settings', href: '/settings', icon: <Settings className="h-5 w-5" /> },
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: <Home className="h-5 w-5" />,
+    },
+    {
+      name: 'Tasks',
+      href: '/tasks',
+      icon: <CheckSquare className="h-5 w-5" />,
+    },
+    {
+      name: 'Task Board',
+      href: '/tasks/board',
+      icon: <LayoutGrid className="h-5 w-5" />,
+    },
+    {
+      name: 'Categories',
+      href: '/categories',
+      icon: <Folder className="h-5 w-5" />,
+    },
+    {
+      name: 'Statistics',
+      href: '/statistics',
+      icon: <BarChart2 className="h-5 w-5" />,
+    },
+    {
+      name: 'Settings',
+      href: '/settings',
+      icon: <Settings className="h-5 w-5" />,
+    },
   ];
 
   return (
@@ -82,7 +119,7 @@ export default function Sidebar() {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
-                pathname === item.href || pathname.startsWith(`${item.href}/`)
+                isActive(item.href)
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-foreground/70 hover:text-foreground hover:bg-muted"
               )}
@@ -108,7 +145,7 @@ export default function Sidebar() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => logout()}
+                onClick={handleLogout}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="h-5 w-5" />
