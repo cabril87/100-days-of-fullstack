@@ -82,4 +82,7 @@ $RECYCLE.BIN/
 
 # Coverage report files
 coverage-report/
-coverage*.xml 
+coverage*.xml
+
+# Frontend projects
+task-tracker-frontend/ 
