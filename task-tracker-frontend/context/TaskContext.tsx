@@ -118,6 +118,27 @@ export function TaskProvider({ children }: TaskProviderProps) {
   const createTask = async (task: CreateTaskDto): Promise<Task | null> => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     
+    // Create an optimistic temporary task for better UX
+    const tempId = -(Date.now()); // Using negative ID to ensure it doesn't conflict with real IDs
+    const optimisticTask: Task = {
+      id: tempId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate || null,
+      categoryId: task.categoryId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+      completedAt: task.status === TaskStatus.Completed ? new Date().toISOString() : null
+    };
+    
+    // Optimistically update state
+    setState(prev => ({
+      ...prev,
+      tasks: [optimisticTask, ...prev.tasks]
+    }));
+    
     try {
       console.log("TaskContext.createTask called with:", task);
       const response = await api.tasks.create(task);
@@ -126,9 +147,10 @@ export function TaskProvider({ children }: TaskProviderProps) {
       // Check for both 'success' and 'succeeded' to handle different API response formats
       if ((response.success || response.succeeded) && response.data) {
         console.log("Task created successfully:", response.data);
+        // Replace the optimistic task with the real one
         setState((prev) => ({
           ...prev,
-          tasks: [...prev.tasks, response.data],
+          tasks: prev.tasks.map(t => t.id === tempId ? response.data : t),
           isLoading: false,
         }));
         return response.data;
@@ -136,6 +158,8 @@ export function TaskProvider({ children }: TaskProviderProps) {
         console.error("API succeeded but no data returned:", response);
         setState((prev) => ({
           ...prev,
+          // Remove the optimistic task
+          tasks: prev.tasks.filter(t => t.id !== tempId),
           isLoading: false,
           error: response.message || 'Failed to create task',
         }));
@@ -145,6 +169,8 @@ export function TaskProvider({ children }: TaskProviderProps) {
       console.error("Error in TaskContext.createTask:", error);
       setState((prev) => ({
         ...prev,
+        // Remove the optimistic task
+        tasks: prev.tasks.filter(t => t.id !== tempId),
         isLoading: false,
         error: (error as ApiError).message || 'Failed to create task',
       }));

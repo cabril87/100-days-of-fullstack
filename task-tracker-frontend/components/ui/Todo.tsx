@@ -26,11 +26,12 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
   const { createTask, updateTask, tasks } = useTasks();
   const [isAdding, setIsAdding] = useState(false);
   const initialLoadDone = useRef(false);
+  const previousTasksLength = useRef(0);
 
-  // Sync with existing tasks when component mounts or when tasks change significantly
+  // Sync with existing tasks when component mounts or when tasks length changes
   useEffect(() => {
-    // Only update todos on first load or when tasks length changes
-    if (!initialLoadDone.current || tasks.length !== todos.length) {
+    // Only update todos on first load or when tasks length changes significantly
+    if (!initialLoadDone.current || previousTasksLength.current !== tasks.length) {
       // Convert recent tasks to todo items format (limit to 5 most recent)
       const recentTasks = tasks
         .slice(0, 5)
@@ -42,8 +43,9 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
       
       setTodos(recentTasks);
       initialLoadDone.current = true;
+      previousTasksLength.current = tasks.length;
     }
-  }, [tasks, todos.length]);
+  }, [tasks]);
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,20 +99,29 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
     if (todoIndex === -1) return;
     
     const todo = todos[todoIndex];
+    const newCompletedState = !todo.completed;
+    
+    // Update local state first for immediate feedback
     const newTodos = [...todos];
-    newTodos[todoIndex] = { ...todo, completed: !todo.completed };
+    newTodos[todoIndex] = { ...todo, completed: newCompletedState };
     setTodos(newTodos);
     
     // Try to update the task in the API
     const taskId = parseInt(id);
     if (!isNaN(taskId)) {
       try {
+        // We'll update the task status without affecting the local UI again
+        // This ensures we don't get update loops
         await updateTask(taskId, { 
-          status: newTodos[todoIndex].completed ? TaskStatus.Completed : TaskStatus.ToDo 
+          status: newCompletedState ? TaskStatus.Completed : TaskStatus.ToDo 
         });
       } catch (error) {
         console.error("Failed to update task status:", error);
-        // We don't revert the UI to avoid confusing the user
+        // If API fails, revert the UI change
+        const revertedTodos = [...todos];
+        revertedTodos[todoIndex] = { ...todo, completed: !newCompletedState };
+        setTodos(revertedTodos);
+        toast.error("Failed to update task status");
       }
     }
   };
@@ -152,9 +163,16 @@ export function Todo({ title = "Quick Tasks", className = "" }: TodoProps) {
                   <Checkbox
                     id={`todo-${todo.id}`}
                     checked={todo.completed}
-                    onCheckedChange={() => {
-                      // Use a timeout to break the potential render update cycle
-                      setTimeout(() => handleToggleTodo(todo.id), 0);
+                    onCheckedChange={(checked) => {
+                      // Completely detach the state update from the render cycle
+                      if (typeof checked === 'boolean') {
+                        // Only trigger if the state actually changed
+                        if (checked !== todo.completed) {
+                          requestAnimationFrame(() => {
+                            handleToggleTodo(todo.id);
+                          });
+                        }
+                      }
                     }}
                   />
                   <label 
