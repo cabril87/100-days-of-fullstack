@@ -22,6 +22,8 @@ public class TaskItem // Changed from Task to TaskItem
     
     public DateTime? UpdatedAt { get; set; }
     
+    public DateTime? CompletedAt { get; set; }
+    
     public int Priority { get; set; } = 0;
     
     // Foreign keys
@@ -42,6 +44,7 @@ public enum TaskItemStatus // Changed from TaskStatus to TaskItemStatus
     ToDo,
     InProgress,
     OnHold,
+    Pending,
     Completed,
     Cancelled
 }

@@ -2564,11 +2564,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Abril\\Documents\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\PortfolioBackend.csproj",
+      "projectUniqueName": "C:\\Users\\Abril\\Documents\\coding-projects\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\PortfolioBackend.csproj",
       "projectName": "PortfolioBackend",
-      "projectPath": "C:\\Users\\Abril\\Documents\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\PortfolioBackend.csproj",
+      "projectPath": "C:\\Users\\Abril\\Documents\\coding-projects\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\PortfolioBackend.csproj",
       "packagesPath": "C:\\Users\\Abril\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Abril\\Documents\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\obj\\",
+      "outputPath": "C:\\Users\\Abril\\Documents\\coding-projects\\100-days-of-fullstack\\PortfolioRebuild\\PortfolioBackend\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

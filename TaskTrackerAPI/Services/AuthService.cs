@@ -77,64 +77,84 @@ public class AuthService : IAuthService
 
     public async Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress)
     {
-        // Find user by email
-        User? user = await _userRepository.GetUserByEmailAsync(loginDto.Email);
-
-        if (user == null || !user.IsActive)
+        try
         {
-            throw new UnauthorizedAccessException("Invalid email or password");
-        }
+            // Find user by email
+            User? user = await _userRepository.GetUserByEmailAsync(loginDto.Email);
 
-        // Verify password
-        if (!await _userRepository.CheckPasswordAsync(user, loginDto.Password))
-        {
-            _logger.LogWarning("Failed login attempt for user: {Email}", loginDto.Email);
-            throw new UnauthorizedAccessException("Invalid email or password");
-        }
+            _logger.LogInformation("Login attempt for {Email}, user found: {UserFound}", loginDto.Email, user != null);
 
-        // Generate JWT token
-        string accessToken = GenerateAccessToken(user);
-        
-        // Generate refresh token
-        string refreshToken = GenerateRefreshToken();
-        DateTime refreshTokenExpiry = _authHelper.GetRefreshTokenExpiryTime();
-        
-        // Store refresh token in database
-        RefreshToken refreshTokenEntity = new RefreshToken
-        {
-            Token = refreshToken,
-            ExpiryDate = refreshTokenExpiry,
-            UserId = user.Id,
-            CreatedDate = DateTime.UtcNow,
-            RevokedByIp = null
-        };
-        
-        await _userRepository.CreateRefreshTokenAsync(refreshTokenEntity);
-        
-        // Update last login time
-        user.UpdatedAt = DateTime.UtcNow;
-        await _userRepository.UpdateUserAsync(user);
-
-        // Create response
-        TokensResponseDTO response = new TokensResponseDTO
-        {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            Expiration = refreshTokenExpiry,
-            User = new UserDTO
+            if (user == null || !user.IsActive)
             {
-                Id = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Role = user.Role,
-                CreatedAt = user.CreatedAt
+                _logger.LogWarning("Invalid login: user not found or not active for {Email}", loginDto.Email);
+                throw new UnauthorizedAccessException("Invalid email or password");
             }
-        };
 
-        _logger.LogInformation("User logged in successfully: {Username}", user.Username);
-        return response;
+            // Verify password
+            bool isPasswordValid = await _userRepository.CheckPasswordAsync(user, loginDto.Password);
+            _logger.LogInformation("Password validation result for {Email}: {Result}", loginDto.Email, isPasswordValid);
+
+            if (!isPasswordValid)
+            {
+                _logger.LogWarning("Failed login attempt for user: {Email} - Invalid password", loginDto.Email);
+                throw new UnauthorizedAccessException("Invalid email or password");
+            }
+
+            // Generate JWT token
+            string accessToken = GenerateAccessToken(user);
+            
+            // Generate refresh token
+            string refreshToken = GenerateRefreshToken();
+            DateTime refreshTokenExpiry = _authHelper.GetRefreshTokenExpiryTime();
+            
+            // Store refresh token in database
+            RefreshToken refreshTokenEntity = new RefreshToken
+            {
+                Token = refreshToken,
+                ExpiryDate = refreshTokenExpiry,
+                UserId = user.Id,
+                CreatedDate = DateTime.UtcNow,
+                RevokedByIp = null
+            };
+            
+            await _userRepository.CreateRefreshTokenAsync(refreshTokenEntity);
+            
+            // Update last login time
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateUserAsync(user);
+
+            // Create response
+            TokensResponseDTO response = new TokensResponseDTO
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                Expiration = refreshTokenExpiry,
+                User = new UserDTO
+                {
+                    Id = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Role = user.Role,
+                    CreatedAt = user.CreatedAt
+                }
+            };
+
+            _logger.LogInformation("User logged in successfully: {Username}", user.Username);
+            return response;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Re-throw unauthorized exceptions which should be handled by the controller
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Log the detailed exception for debugging
+            _logger.LogError(ex, "Unexpected error during login for {Email}: {ErrorMessage}", loginDto.Email, ex.Message);
+            throw;
+        }
     }
 
     public async Task<TokensResponseDTO> RefreshTokenAsync(string refreshToken, string ipAddress)
@@ -341,6 +361,20 @@ public class AuthService : IAuthService
         if (user == null)
         {
             throw new KeyNotFoundException("User not found");
+        }
+        
+        // Get the admin user to verify they have admin privileges
+        User? adminUser = await _userRepository.GetUserByIdAsync(adminId);
+        
+        if (adminUser == null)
+        {
+            throw new KeyNotFoundException("Admin user not found");
+        }
+        
+        // Check if the user performing the update is an admin
+        if (adminUser.Role != "Admin")
+        {
+            throw new UnauthorizedAccessException("Only administrators can update user roles");
         }
         
         // Don't allow admin to demote themselves

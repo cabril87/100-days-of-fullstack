@@ -45,7 +45,7 @@ public class Program
             });
             options.OperationFilter<SecurityRequirementsOperationFilter>();
         });
-        builder.Services.AddCors((options) =>
+        builder.Services.AddCors(options =>
         {
             options.AddPolicy("DevCors", (corsBuilder) =>
             {
@@ -175,14 +175,14 @@ public class Program
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseCors("DevCors");
             app.UseSwagger();
             app.UseSwaggerUI();
+            app.UseCors("DevCors");
         }
         else
         {
             app.UseCors("ProdCors");
-            app.UseHttpsRedirection();
+            app.UseHsts();
         }
 
         // Add global exception handling middleware

@@ -29,6 +29,10 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
+    public DbSet<Reminder> Reminders { get; set; } = null!;
+
+    public DbSet<Note> Notes { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured && _configuration != null)
@@ -154,5 +158,31 @@ public class ApplicationDbContext : DbContext
                    Priority = 1
                }
            );
+
+        // Configure Reminder relationships
+        modelBuilder.Entity<Reminder>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Reminder>()
+            .HasOne(r => r.TaskItem)
+            .WithMany()
+            .HasForeignKey(r => r.TaskItemId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure Note relationships
+        modelBuilder.Entity<Note>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Note>()
+            .HasOne(n => n.TaskItem)
+            .WithMany()
+            .HasForeignKey(n => n.TaskItemId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

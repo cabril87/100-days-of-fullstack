@@ -640,7 +640,7 @@ namespace TaskTrackerAPI.Services
 
         private async Task<List<MonthlyProductivityDTO>> GetMonthlyProductivityAsync(
             int userId, 
-            IEnumerable<TaskItem> tasks = null!, 
+            IEnumerable<TaskItem>? tasks = null, 
             DateTime startDate = default, 
             DateTime endDate = default)
         {
@@ -724,6 +724,61 @@ namespace TaskTrackerAPI.Services
         {
             int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
             return date.AddDays(-1 * diff).Date;
+        }
+
+        private async Task<EfficiencyMetricsDTO> GetEfficiencyMetricsAsync(
+            int userId, 
+            IEnumerable<TaskItem>? tasks = null)
+        {
+            tasks ??= await _taskRepository.GetAllTasksAsync(userId);
+
+            var completedTasks = tasks.Where(t => t.Status == TaskItemStatus.Completed && t.CompletedAt.HasValue);
+            
+            // Calculate average time to complete (in hours)
+            double avgTimeToComplete = 0;
+            int completedCount = 0;
+            
+            foreach (var task in completedTasks)
+            {
+                if (task.CompletedAt.HasValue)
+                {
+                    TimeSpan duration = task.CompletedAt.Value - task.CreatedAt;
+                    avgTimeToComplete += duration.TotalHours;
+                    completedCount++;
+                }
+            }
+            
+            if (completedCount > 0)
+                avgTimeToComplete /= completedCount;
+
+            // Tasks completed on time (due date respected)
+            int onTimeCount = completedTasks.Count(t => 
+                !t.DueDate.HasValue || // No due date
+                (t.CompletedAt.HasValue && t.CompletedAt.Value <= t.DueDate.Value)); // Completed before due
+            
+            // Overdue tasks at completion
+            int overdueCount = completedTasks.Count(t => 
+                t.DueDate.HasValue && t.CompletedAt.HasValue && t.CompletedAt.Value > t.DueDate.Value);
+            
+            // Currently overdue tasks
+            int currentlyOverdue = tasks.Count(t => 
+                t.Status != TaskItemStatus.Completed && 
+                t.DueDate.HasValue && 
+                t.DueDate.Value < DateTime.UtcNow);
+            
+            // On-time completion rate
+            double onTimeCompletionRate = completedCount > 0 
+                ? (double)onTimeCount / completedCount 
+                : 0;
+            
+            return new EfficiencyMetricsDTO
+            {
+                AverageTimeToComplete = Math.Round(avgTimeToComplete, 1),
+                TasksCompletedOnTime = onTimeCount,
+                OverdueTasks = overdueCount,
+                CurrentlyOverdueTasks = currentlyOverdue,
+                OnTimeCompletionRate = Math.Round(onTimeCompletionRate * 100, 1)
+            };
         }
     }
 

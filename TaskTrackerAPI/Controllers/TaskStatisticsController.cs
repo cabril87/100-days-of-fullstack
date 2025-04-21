@@ -14,7 +14,7 @@ namespace TaskTrackerAPI.Controllers
 {
     [Authorize]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/statistics")]  // Keep this lowercase route
     public class TaskStatisticsController : BaseApiController
     {
         private readonly ITaskStatisticsService _taskStatisticsService;

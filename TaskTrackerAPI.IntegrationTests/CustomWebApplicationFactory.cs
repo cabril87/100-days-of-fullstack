@@ -58,9 +58,11 @@ namespace TaskTrackerAPI.IntegrationTests
                 Dictionary<string, string> configDict = new Dictionary<string, string>
                 {
                     {"AppSettings:Secret", "test_secret_key_for_integration_testing_with_sufficient_length_12345"},
-                    {"AppSettings:PasswordPepper", "test_pepper_for_integration_tests"},
+                    {"AppSettings:PasswordKey", "test_password_pepper_key_for_integration_tests_123456789"},
                     {"AppSettings:RefreshTokenTTL", "2"},
                     {"AppSettings:TokenKey", "test_token_key_with_sufficient_length_for_testing_purposes_123456"},
+                    {"AppSettings:AccessTokenExpireMinutes", "60"},
+                    {"AppSettings:RefreshTokenExpireDays", "7"},
                     {"ConnectionStrings:DefaultConnection", "InMemoryConnection"},
                     {"AppSettings:ValidIssuer", "testIssuer"},
                     {"AppSettings:ValidAudience", "testAudience"}
@@ -97,12 +99,12 @@ namespace TaskTrackerAPI.IntegrationTests
                 // Configure test authentication
                 services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = "TestScheme";
-                    options.DefaultChallengeScheme = "TestScheme";
-                    options.DefaultScheme = "TestScheme";
+                    options.DefaultAuthenticateScheme = "MockScheme";
+                    options.DefaultChallengeScheme = "MockScheme";
+                    options.DefaultScheme = "MockScheme";
                 })
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
-                    "TestScheme", options => { });
+                .AddScheme<AuthenticationSchemeOptions, MockAuthHandler>(
+                    "MockScheme", options => { });
 
                 // Register repositories
                 services.AddScoped<ITaskItemRepository, TaskItemRepository>();

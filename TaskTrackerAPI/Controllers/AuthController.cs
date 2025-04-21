@@ -31,12 +31,12 @@ public class AuthController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error registering user");
-            return StatusCode(500, "An error occurred while registering. Please try again later.");
+            return StatusCode(500, new { message = "An error occurred while registering. Please try again later." });
         }
     }
 
@@ -52,12 +52,12 @@ public class AuthController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Unauthorized(ex.Message);
+            return Unauthorized(new { message = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login");
-            return StatusCode(500, "An error occurred during login. Please try again later.");
+            return StatusCode(500, new { message = "An error occurred during login. Please try again later." });
         }
     }
 
@@ -72,12 +72,12 @@ public class AuthController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Unauthorized(ex.Message);
+            return Unauthorized(new { message = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error refreshing token");
-            return StatusCode(500, "An error occurred while refreshing the token.");
+            return StatusCode(500, new { message = "An error occurred while refreshing the token." });
         }
     }
 

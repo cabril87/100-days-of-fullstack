@@ -80,8 +80,18 @@ public class UserRepository : IUserRepository
 
     public Task<bool> CheckPasswordAsync(User user, string password)
     {
-        bool result = _authHelper.VerifyPasswordHash(password, user.PasswordHash, user.Salt);
-        return Task.FromResult(result);
+        try
+        {
+            bool result = _authHelper.VerifyPasswordHash(password, user.PasswordHash, user.Salt);
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't expose the specifics in the exception
+            Console.WriteLine($"Error verifying password hash: {ex.Message}");
+            // Return false in case of any crypto errors
+            return Task.FromResult(false);
+        }
     }
 
     public async Task ChangePasswordAsync(User user, string newPassword)

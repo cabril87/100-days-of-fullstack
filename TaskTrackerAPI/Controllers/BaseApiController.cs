@@ -95,13 +95,12 @@ namespace TaskTrackerAPI.Controllers
             if (User.Identity?.IsAuthenticated != true)
                 throw new UnauthorizedAccessException("User is not authenticated");
                 
-            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
-                            throw new InvalidOperationException("User ID claim not found");
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        throw new InvalidOperationException("User ID claim not found");
                 
-            if (!int.TryParse(userId, out int id))
-                throw new InvalidOperationException("User ID is not a valid integer");
-                
-            return id;
+            return int.TryParse(userId, out int id) 
+                ? id 
+                : throw new InvalidOperationException("User ID is not a valid integer");
         }
     }
 } 

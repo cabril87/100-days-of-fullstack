@@ -40,6 +40,15 @@ namespace TaskTrackerAPI.DTOs
         public List<TaskDistributionDTO> OverdueByPriority { get; set; } = new List<TaskDistributionDTO>();
     }
 
+    public class EfficiencyMetricsDTO
+    {
+        public double AverageTimeToComplete { get; set; }
+        public int TasksCompletedOnTime { get; set; }
+        public int OverdueTasks { get; set; }
+        public int CurrentlyOverdueTasks { get; set; }
+        public double OnTimeCompletionRate { get; set; }
+    }
+
     public class TaskStatisticsDTO
     {
         public TaskCompletionRateDTO CompletionRate { get; set; } = new TaskCompletionRateDTO();

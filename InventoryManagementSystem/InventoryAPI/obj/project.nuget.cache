@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "RAza/xP7FuU=",
+  "dgSpecHash": "JScWnPWqO/s=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Abril\\Documents\\100-days-of-fullstack\\InventoryManagementSystem\\InventoryAPI\\InventoryAPI.csproj",
+  "projectFilePath": "C:\\Users\\Abril\\Documents\\coding-projects\\100-days-of-fullstack\\InventoryManagementSystem\\InventoryAPI\\InventoryAPI.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Abril\\.nuget\\packages\\automapper\\14.0.0\\automapper.14.0.0.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",

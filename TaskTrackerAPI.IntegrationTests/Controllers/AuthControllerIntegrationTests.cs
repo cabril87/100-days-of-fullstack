@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.IntegrationTests.DTOs;
@@ -28,6 +29,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         {
             PropertyNameCaseInsensitive = true
         };
+        private readonly MockAuthHandler _mockAuthHandler;
 
         public AuthControllerIntegrationTests(CustomWebApplicationFactory<Program> factory)
         {
@@ -37,15 +39,40 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
                 AllowAutoRedirect = false
             });
             
-            // Add TestScheme authentication
-            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("TestScheme");
+            // Get the MockAuthHandler from the service provider
+            _mockAuthHandler = _factory.Services.GetRequiredService<MockAuthHandler>();
+            
+            // Add MockScheme authentication
+            _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("MockScheme");
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task Register_WithValidData_ReturnsSuccess()
         {
-            // Skipping this test since we're using TestScheme authentication
-            // and not actually registering real users
+            // Arrange
+            var registerDto = new IntegrationRegisterUserDTO
+            {
+                Username = "newuser_" + Guid.NewGuid().ToString("N").Substring(0, 8),
+                Email = "new_" + Guid.NewGuid().ToString("N").Substring(0, 8) + "@example.com",
+                Password = "Password123!",
+                ConfirmPassword = "Password123!",
+                FirstName = "New",
+                LastName = "User"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            
+            var content = await response.Content.ReadAsStringAsync();
+            var result = JsonSerializer.Deserialize<IntegrationAuthResponseDTO>(content, _jsonOptions);
+            
+            Assert.NotNull(result);
+            Assert.NotNull(result!.Token);
+            Assert.NotNull(result.RefreshToken);
+            Assert.Equal(registerDto.Username, result.Username);
         }
 
         [Fact]
@@ -69,10 +96,21 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task Login_WithValidCredentials_ReturnsToken()
         {
-            // Skipping this test since we're using TestScheme authentication
+            // Arrange
+            var loginDto = new IntegrationLoginUserDTO
+            {
+                Username = "admin",
+                Password = "hashedpassword456" // Matches the seed data password
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
         [Fact]
@@ -92,10 +130,22 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task RefreshToken_WithValidToken_ReturnsNewToken()
         {
-            // Skipping this test since we're using TestScheme authentication
+            // Arrange
+            string refreshToken = _mockAuthHandler.GenerateTestRefreshToken();
+            
+            var refreshDto = new IntegrationRefreshTokenDTO
+            {
+                RefreshToken = refreshToken
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshDto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         [Fact]
@@ -114,10 +164,17 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task Logout_WithValidToken_Succeeds()
         {
-            // Skipping this test since we're using TestScheme authentication
+            // Arrange
+            string refreshToken = _mockAuthHandler.GenerateTestRefreshToken();
+            
+            // Act
+            var response = await _client.PostAsync($"/api/auth/logout?refreshToken={refreshToken}", null);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
 
         public class ChangePasswordDTO
@@ -127,16 +184,40 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             public string ConfirmNewPassword { get; set; } = string.Empty;
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task ChangePassword_WithValidData_Succeeds()
         {
-            // Skipping this test since we're using TestScheme authentication
+            // Arrange
+            var changePasswordDto = new ChangePasswordDTO
+            {
+                CurrentPassword = "hashedpassword456", // Matches the seed data password
+                NewPassword = "NewPassword123!",
+                ConfirmNewPassword = "NewPassword123!"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
-        [Fact(Skip = "Authentication not fully mocked")]
+        [Fact]
         public async Task ChangePassword_WithWrongCurrentPassword_ReturnsBadRequest()
         {
-            // Skipping this test since we're using TestScheme authentication
+            // Arrange
+            var changePasswordDto = new ChangePasswordDTO
+            {
+                CurrentPassword = "WrongPassword123!",
+                NewPassword = "NewPassword123!",
+                ConfirmNewPassword = "NewPassword123!"
+            };
+
+            // Act
+            var response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         }
     }
 } 

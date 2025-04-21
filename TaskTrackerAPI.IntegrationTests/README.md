@@ -1,6 +1,65 @@
 # TaskTrackerAPI Integration Tests
 
-This project contains integration tests for the TaskTrackerAPI, ensuring that API endpoints and controllers work correctly with all dependencies in a close-to-production environment.
+This project contains integration tests for the TaskTrackerAPI application. Integration tests verify that different components work together correctly, focusing on API endpoints and end-to-end functionality.
+
+## Project Structure
+
+- **Controllers/**: Tests for API controllers
+  - Tests HTTP endpoints using an in-memory test server
+  - Verifies correct status codes, response formats, and behavior
+  - Tests authentication and authorization
+
+- **Helpers/**: Test infrastructure and utilities
+  - `MockAuthHandler.cs` - Mock authentication handler for testing secured endpoints
+  - Authentication-related test helpers
+
+- **CustomWebApplicationFactory.cs**: Central test setup
+  - Configures the test server with in-memory database
+  - Sets up authentication for testing
+  - Seeds test data
+
+## Test Configuration
+
+Integration tests use a custom configuration setup in `CustomWebApplicationFactory.cs`:
+- `TokenKey` - Used for JWT token signing in tests
+- `PasswordKey` - Used for password pepper in tests
+- Other necessary configuration values
+
+These test keys are intentionally using safe test values and are not used in production.
+
+## Test Naming Convention
+
+Tests follow a clear naming pattern: `EndpointName_Scenario_ExpectedResult`
+
+For example:
+- `Register_WithValidData_ReturnsSuccess`
+- `GetCategoryById_WithNonExistentId_ReturnsNotFound`
+
+## Testing Strategy
+
+These tests use:
+- **WebApplicationFactory** - To create an in-memory test server
+- **HttpClient** - To make requests to the test server
+- **In-memory database** - To simulate the application database
+- **Mock authentication** - To test secured endpoints
+
+## Running the Tests
+
+```bash
+# Run all tests in the project
+dotnet test TaskTrackerAPI.IntegrationTests
+
+# Run with a specific filter
+dotnet test TaskTrackerAPI.IntegrationTests --filter "CategoryName=Controllers"
+```
+
+## Guidelines for Adding New Tests
+
+1. Organize tests by controller/feature
+2. Test both successful and error scenarios
+3. Include authentication when testing secured endpoints
+4. Verify correct HTTP status codes and response formats
+5. Test with realistic scenarios that mirror actual API usage
 
 ## Overview
 

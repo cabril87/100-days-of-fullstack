@@ -15,6 +15,7 @@ using TaskTrackerAPI.Services.Interfaces;
 namespace TaskTrackerAPI.Controllers;
 
 [Route("api/[controller]")]
+[Route("api/tasks")]
 [ApiController]
 [Authorize]
 public class TaskItemsController : ControllerBase

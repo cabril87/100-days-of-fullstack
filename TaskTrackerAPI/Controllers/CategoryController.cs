@@ -14,7 +14,9 @@ using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers;
 
-[Route("api/[controller]")]
+// Remove one of these routes to fix the ambiguous match
+// [Route("api/[controller]")] 
+[Route("api/categories")]
 [ApiController]
 [Authorize]
 public class CategoriesController : ControllerBase
