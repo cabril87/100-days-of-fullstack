@@ -102,5 +102,14 @@ namespace TaskTrackerAPI.Controllers
                 ? id 
                 : throw new InvalidOperationException("User ID is not a valid integer");
         }
+        
+        /// <summary>
+        /// Gets the current user's ID from claims
+        /// </summary>
+        /// <returns>The authenticated user's ID</returns>
+        protected int GetUserId()
+        {
+            return GetUserIdFromClaims();
+        }
     }
 } 

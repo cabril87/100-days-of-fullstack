@@ -1,0 +1,123 @@
+using AutoMapper;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.Services.Interfaces;
+
+namespace TaskTrackerAPI.Services;
+
+public class NotificationService : INotificationService
+{
+    private readonly INotificationRepository _notificationRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IMapper _mapper;
+
+    public NotificationService(
+        INotificationRepository notificationRepository,
+        IUserRepository userRepository,
+        IMapper mapper)
+    {
+        _notificationRepository = notificationRepository;
+        _userRepository = userRepository;
+        _mapper = mapper;
+    }
+
+    public async Task<IEnumerable<NotificationDTO>> GetAllNotificationsAsync(int userId)
+    {
+        var notifications = await _notificationRepository.GetAllNotificationsAsync(userId);
+        return _mapper.Map<IEnumerable<NotificationDTO>>(notifications);
+    }
+
+    public async Task<IEnumerable<NotificationDTO>> GetFilteredNotificationsAsync(int userId, NotificationFilterDTO filter)
+    {
+        var notifications = await _notificationRepository.GetFilteredNotificationsAsync(userId, filter);
+        return _mapper.Map<IEnumerable<NotificationDTO>>(notifications);
+    }
+
+    public async Task<NotificationDTO?> GetNotificationByIdAsync(int userId, int notificationId)
+    {
+        if (!await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId))
+        {
+            return null;
+        }
+
+        var notification = await _notificationRepository.GetNotificationByIdAsync(notificationId);
+        return notification != null ? _mapper.Map<NotificationDTO>(notification) : null;
+    }
+
+    public async Task<NotificationDTO?> CreateNotificationAsync(int userId, CreateNotificationDTO notificationDto)
+    {
+        return await CreateNotificationForUserAsync(userId, userId, notificationDto);
+    }
+
+    public async Task<NotificationDTO?> CreateNotificationForUserAsync(int creatorUserId, int targetUserId, CreateNotificationDTO notificationDto)
+    {
+        // Verify the target user exists
+        var user = await _userRepository.GetUserByIdAsync(targetUserId);
+        if (user == null)
+        {
+            return null;
+        }
+
+        var notification = _mapper.Map<Notification>(notificationDto);
+        notification.UserId = targetUserId;
+        notification.CreatedAt = DateTime.UtcNow;
+
+        await _notificationRepository.CreateNotificationAsync(notification);
+        return _mapper.Map<NotificationDTO>(notification);
+    }
+
+    public async Task<NotificationDTO?> MarkNotificationAsReadAsync(int userId, int notificationId)
+    {
+        if (!await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId))
+        {
+            return null;
+        }
+
+        await _notificationRepository.MarkNotificationAsReadAsync(notificationId);
+        var notification = await _notificationRepository.GetNotificationByIdAsync(notificationId);
+        return notification != null ? _mapper.Map<NotificationDTO>(notification) : null;
+    }
+
+    public async Task<int> MarkAllNotificationsAsReadAsync(int userId)
+    {
+        return await _notificationRepository.MarkAllNotificationsAsReadAsync(userId);
+    }
+
+    public async Task DeleteNotificationAsync(int userId, int notificationId)
+    {
+        if (!await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId))
+        {
+            return;
+        }
+
+        var notification = await _notificationRepository.GetNotificationByIdAsync(notificationId);
+        if (notification != null)
+        {
+            await _notificationRepository.DeleteNotificationAsync(notification);
+        }
+    }
+
+    public async Task DeleteAllNotificationsAsync(int userId)
+    {
+        await _notificationRepository.DeleteAllNotificationsAsync(userId);
+    }
+
+    public async Task<NotificationCountDTO> GetNotificationCountsAsync(int userId)
+    {
+        return await _notificationRepository.GetNotificationCountsAsync(userId);
+    }
+
+    public async Task<int> GetUnreadNotificationCountAsync(int userId)
+    {
+        return await _notificationRepository.GetUnreadNotificationCountAsync(userId);
+    }
+
+    public async Task<bool> IsNotificationOwnedByUserAsync(int notificationId, int userId)
+    {
+        return await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId);
+    }
+} 
