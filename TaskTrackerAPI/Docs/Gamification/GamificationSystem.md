@@ -92,6 +92,136 @@ The Gamification System adds engagement and motivation elements to the Task Trac
 * Challenge progress is updated automatically based on user actions
 * Achievements can trigger automatically when conditions are met
 
+## Model Definitions
+
+### UserProgress
+
+```csharp
+public class UserProgress
+{
+    [Key]
+    public int Id { get; set; }
+    
+    [Required]
+    public int UserId { get; set; }
+    
+    [Required]
+    public int Level { get; set; } = 1;
+    
+    [Required]
+    public int CurrentPoints { get; set; } = 0;
+    
+    [Required]
+    public int TotalPointsEarned { get; set; } = 0;
+    
+    [Required]
+    public int NextLevelThreshold { get; set; } = 100;
+    
+    [Required]
+    public int CurrentStreak { get; set; } = 0;
+    
+    [Required]
+    public int LongestStreak { get; set; } = 0;
+    
+    public DateTime? LastActivityDate { get; set; }
+    
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    [Required]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Navigation property
+    [ForeignKey("UserId")]
+    public User? User { get; set; }
+}
+```
+
+### Achievement
+
+```csharp
+public class Achievement
+{
+    [Key]
+    public int Id { get; set; }
+    
+    [Required]
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(500)]
+    public string Description { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(50)]
+    public string Category { get; set; } = string.Empty;
+    
+    [Required]
+    public string Criteria { get; set; } = string.Empty;
+    
+    [Required]
+    public int PointValue { get; set; } = 50;
+    
+    [MaxLength(250)]
+    public string? IconPath { get; set; }
+    
+    [Required]
+    public bool IsHidden { get; set; } = false;
+    
+    [Required]
+    public int Difficulty { get; set; } = 1;
+    
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Navigation property
+    public ICollection<UserAchievement>? UserAchievements { get; set; }
+}
+```
+
+### Badge
+
+```csharp
+public class Badge
+{
+    [Key]
+    public int Id { get; set; }
+    
+    [Required]
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(500)]
+    public string Description { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(50)]
+    public string Category { get; set; } = string.Empty;
+    
+    [Required]
+    public int PointValue { get; set; } = 100;
+    
+    [Required]
+    [MaxLength(250)]
+    public string IconPath { get; set; } = string.Empty;
+    
+    public int? RequiredAchievementId { get; set; }
+    
+    [Required]
+    public bool IsSpecial { get; set; } = false;
+    
+    [Required]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Navigation property
+    public ICollection<UserBadge>? UserBadges { get; set; }
+}
+```
+
+For detailed information about the integration with family achievements and challenges, see [Family/FamilyGamification.md](Family/FamilyGamification.md).
+
 ## Future Enhancements (Day 22)
 
 * Social features - sharing achievements, team challenges

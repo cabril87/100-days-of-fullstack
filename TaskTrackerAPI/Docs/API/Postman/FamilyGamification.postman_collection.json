@@ -1,0 +1,404 @@
+{
+	"info": {
+		"_postman_id": "51d3e7c2-f183-49d1-a7ba-58df9ae6f541",
+		"name": "Family Gamification API",
+		"description": "Collection of endpoints for the family gamification system.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Get All Family Achievements",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements"
+					]
+				},
+				"description": "Returns all family achievements. Admin access only."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Achievement By ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"1"
+					]
+				},
+				"description": "Returns a specific family achievement by ID."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Achievements By Family ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/family/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"family",
+						"1"
+					]
+				},
+				"description": "Returns all achievements for a specific family. User must be a member of the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Completed Achievements By Family ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/family/1/completed",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"family",
+						"1",
+						"completed"
+					]
+				},
+				"description": "Returns all completed achievements for a specific family. User must be a member of the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Get In-Progress Achievements By Family ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/family/1/in-progress",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"family",
+						"1",
+						"in-progress"
+					]
+				},
+				"description": "Returns all in-progress achievements for a specific family. User must be a member of the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Family Achievement",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"familyId\": 1,\n    \"name\": \"Complete 10 Family Tasks\",\n    \"description\": \"Work together to complete 10 tasks assigned to family members\",\n    \"pointValue\": 50,\n    \"iconUrl\": \"https://example.com/icons/family-tasks.png\",\n    \"progressTarget\": 10,\n    \"type\": \"Family\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements"
+					]
+				},
+				"description": "Creates a new family achievement. User must have the 'manage_achievements' permission in the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Update Family Achievement",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Complete 15 Family Tasks\",\n    \"description\": \"Work together to complete 15 tasks assigned to family members\",\n    \"pointValue\": 75,\n    \"progressTarget\": 15\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"1"
+					]
+				},
+				"description": "Updates an existing family achievement. User must have the 'manage_achievements' permission in the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Family Achievement",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"1"
+					]
+				},
+				"description": "Deletes a family achievement. User must have the 'manage_achievements' permission in the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Update Achievement Progress",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"progressIncrease\": 1,\n    \"memberId\": 1\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/1/progress",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"1",
+						"progress"
+					]
+				},
+				"description": "Updates the progress of a family achievement. User must be a member of the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Family Leaderboard",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/leaderboard?limit=10",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"leaderboard"
+					],
+					"query": [
+						{
+							"key": "limit",
+							"value": "10"
+						}
+					]
+				},
+				"description": "Returns the top families ranked by achievement points."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Family Stats",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/family/1/stats",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"family",
+						"1",
+						"stats"
+					]
+				},
+				"description": "Returns achievement statistics for a specific family. User must be a member of the family."
+			},
+			"response": []
+		},
+		{
+			"name": "Track Task Completion",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"memberId\": 1\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/FamilyAchievements/task/1/complete",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"FamilyAchievements",
+						"task",
+						"1",
+						"complete"
+					]
+				},
+				"description": "Updates progress on relevant family achievements when a task is completed. User must be a member of the family."
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5211",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "YOUR_AUTH_TOKEN",
+			"type": "string"
+		}
+	]
+} 
