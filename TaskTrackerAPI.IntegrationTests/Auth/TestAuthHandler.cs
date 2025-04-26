@@ -43,16 +43,16 @@ namespace TaskTrackerAPI.IntegrationTests.Auth
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            var claims = new[]
+            Claim[] claims = new Claim[]
             {
                 new Claim(ClaimTypes.NameIdentifier, UserId),
                 new Claim(ClaimTypes.Name, Username),
                 new Claim(ClaimTypes.Role, Role)
             };
 
-            var identity = new ClaimsIdentity(claims, "Test");
-            var principal = new ClaimsPrincipal(identity);
-            var ticket = new AuthenticationTicket(principal, "TestScheme");
+            ClaimsIdentity identity = new ClaimsIdentity(claims, "Test");
+            ClaimsPrincipal principal = new ClaimsPrincipal(identity);
+            AuthenticationTicket ticket = new AuthenticationTicket(principal, "TestScheme");
 
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }

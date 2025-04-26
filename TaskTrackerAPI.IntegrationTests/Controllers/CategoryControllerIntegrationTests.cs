@@ -48,13 +48,13 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetCategories_ReturnsAllCategoriesForUser()
         {
             // Act
-            var response = await _client.GetAsync("/api/Categories");
+            HttpResponseMessage response = await _client.GetAsync("/api/Categories");
             
             // Assert
             response.EnsureSuccessStatusCode();
             
-            var content = await response.Content.ReadAsStringAsync();
-            var categories = JsonSerializer.Deserialize<List<CategoryDTO>>(content, _jsonOptions);
+            string content = await response.Content.ReadAsStringAsync();
+            List<CategoryDTO>? categories = JsonSerializer.Deserialize<List<CategoryDTO>>(content, _jsonOptions);
             
             Assert.NotNull(categories);
             Assert.NotEmpty(categories);
@@ -64,25 +64,25 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetCategoryById_WithValidId_ReturnsCategory()
         {
             // Arrange
-            var categoriesResponse = await _client.GetAsync("/api/Categories");
+            HttpResponseMessage categoriesResponse = await _client.GetAsync("/api/Categories");
             categoriesResponse.EnsureSuccessStatusCode();
             
-            var categoriesContent = await categoriesResponse.Content.ReadAsStringAsync();
-            var categories = JsonSerializer.Deserialize<List<CategoryDTO>>(categoriesContent, _jsonOptions);
+            string categoriesContent = await categoriesResponse.Content.ReadAsStringAsync();
+            List<CategoryDTO>? categories = JsonSerializer.Deserialize<List<CategoryDTO>>(categoriesContent, _jsonOptions);
             
             Assert.NotNull(categories);
             Assert.NotEmpty(categories);
             
-            var categoryId = categories[0].Id;
+            int categoryId = categories[0].Id;
             
             // Act
-            var response = await _client.GetAsync($"/api/Categories/{categoryId}");
+            HttpResponseMessage response = await _client.GetAsync($"/api/Categories/{categoryId}");
             
             // Assert
             response.EnsureSuccessStatusCode();
             
-            var content = await response.Content.ReadAsStringAsync();
-            var category = JsonSerializer.Deserialize<CategoryDTO>(content, _jsonOptions);
+            string content = await response.Content.ReadAsStringAsync();
+            CategoryDTO? category = JsonSerializer.Deserialize<CategoryDTO>(content, _jsonOptions);
             
             Assert.NotNull(category);
             Assert.Equal(categoryId, category.Id);
@@ -92,7 +92,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetCategoryById_WithInvalidId_ReturnsNotFound()
         {
             // Act
-            var response = await _client.GetAsync("/api/Categories/999");
+            HttpResponseMessage response = await _client.GetAsync("/api/Categories/999");
             
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -102,22 +102,22 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task CreateCategory_WithValidData_ReturnsCreatedCategory()
         {
             // Arrange
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var createCategoryDto = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO createCategoryDto = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Test category description"
             };
             
             // Act
-            var response = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             
             // Assert
             response.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             
-            var content = await response.Content.ReadAsStringAsync();
-            var category = JsonSerializer.Deserialize<CategoryDTO>(content, _jsonOptions);
+            string content = await response.Content.ReadAsStringAsync();
+            CategoryDTO? category = JsonSerializer.Deserialize<CategoryDTO>(content, _jsonOptions);
             
             Assert.NotNull(category);
             Assert.Equal(categoryName, category.Name);
@@ -128,18 +128,18 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task CreateCategory_WithDuplicateName_ReturnsBadRequest()
         {
             // Arrange - First create a category
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var createCategoryDto = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO createCategoryDto = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Test category description"
             };
             
-            var firstResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage firstResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             firstResponse.EnsureSuccessStatusCode();
             
             // Act - Try to create another with the same name
-            var duplicateResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage duplicateResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, duplicateResponse.StatusCode);
@@ -149,30 +149,30 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task UpdateCategory_ReturnsExpectedResponse()
         {
             // Arrange - First create a category
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var createCategoryDto = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO createCategoryDto = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Test category description"
             };
             
-            var createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             createResponse.EnsureSuccessStatusCode();
             
-            var createContent = await createResponse.Content.ReadAsStringAsync();
-            var createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
+            string createContent = await createResponse.Content.ReadAsStringAsync();
+            CategoryDTO? createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
             
             Assert.NotNull(createdCategory);
             
             // Use a dynamic object with proper casing for property names
-            var updateData = new 
+            object updateData = new 
             {
                 Name = $"Updated {categoryName}",
                 Description = "Updated description"
             };
             
             // Act
-            var response = await _client.PutAsJsonAsync($"/api/Categories/{createdCategory.Id}", updateData);
+            HttpResponseMessage response = await _client.PutAsJsonAsync($"/api/Categories/{createdCategory.Id}", updateData);
             
             // In the test environment, this call returns BadRequest
             // In a real application, it should return NoContent if validation passes
@@ -186,14 +186,14 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task UpdateCategory_WithInvalidId_ReturnsNotFound()
         {
             // Arrange
-            var updateData = new 
+            object updateData = new 
             {
                 Name = "Updated Category",
                 Description = "Updated description"
             };
             
             // Act
-            var response = await _client.PutAsJsonAsync("/api/Categories/999", updateData);
+            HttpResponseMessage response = await _client.PutAsJsonAsync("/api/Categories/999", updateData);
             
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -203,29 +203,29 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task DeleteCategory_WithValidId_ReturnsNoContent()
         {
             // Arrange - First create a category
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var createCategoryDto = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO createCategoryDto = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Test category description"
             };
             
-            var createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             createResponse.EnsureSuccessStatusCode();
             
-            var createContent = await createResponse.Content.ReadAsStringAsync();
-            var createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
+            string createContent = await createResponse.Content.ReadAsStringAsync();
+            CategoryDTO? createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
             
             Assert.NotNull(createdCategory);
             
             // Act
-            var response = await _client.DeleteAsync($"/api/Categories/{createdCategory.Id}");
+            HttpResponseMessage response = await _client.DeleteAsync($"/api/Categories/{createdCategory.Id}");
             
             // Assert
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
             
             // Verify it's actually deleted
-            var getResponse = await _client.GetAsync($"/api/Categories/{createdCategory.Id}");
+            HttpResponseMessage getResponse = await _client.GetAsync($"/api/Categories/{createdCategory.Id}");
             Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
         }
         
@@ -233,7 +233,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task DeleteCategory_WithInvalidId_ReturnsNotFound()
         {
             // Act
-            var response = await _client.DeleteAsync("/api/Categories/999");
+            HttpResponseMessage response = await _client.DeleteAsync("/api/Categories/999");
             
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -243,25 +243,25 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTasksByCategory_WithValidId_ReturnsTasks()
         {
             // Arrange - First get all categories
-            var categoriesResponse = await _client.GetAsync("/api/Categories");
+            HttpResponseMessage categoriesResponse = await _client.GetAsync("/api/Categories");
             categoriesResponse.EnsureSuccessStatusCode();
             
-            var categoriesContent = await categoriesResponse.Content.ReadAsStringAsync();
-            var categories = JsonSerializer.Deserialize<List<CategoryDTO>>(categoriesContent, _jsonOptions);
+            string categoriesContent = await categoriesResponse.Content.ReadAsStringAsync();
+            List<CategoryDTO>? categories = JsonSerializer.Deserialize<List<CategoryDTO>>(categoriesContent, _jsonOptions);
             
             Assert.NotNull(categories);
             Assert.NotEmpty(categories);
             
-            var categoryId = categories[0].Id;
+            int categoryId = categories[0].Id;
             
             // Act
-            var response = await _client.GetAsync($"/api/Categories/{categoryId}/tasks");
+            HttpResponseMessage response = await _client.GetAsync($"/api/Categories/{categoryId}/tasks");
             
             // Assert
             response.EnsureSuccessStatusCode();
             
-            var content = await response.Content.ReadAsStringAsync();
-            var tasks = JsonSerializer.Deserialize<List<IntegrationTaskItemDTO>>(content, _jsonOptions);
+            string content = await response.Content.ReadAsStringAsync();
+            List<IntegrationTaskItemDTO>? tasks = JsonSerializer.Deserialize<List<IntegrationTaskItemDTO>>(content, _jsonOptions);
             
             Assert.NotNull(tasks);
             // Tasks might be empty if there are no tasks in the category, but the response should be successful
@@ -271,7 +271,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTasksByCategory_WithInvalidId_ReturnsNotFound()
         {
             // Act
-            var response = await _client.GetAsync("/api/Categories/999/tasks");
+            HttpResponseMessage response = await _client.GetAsync("/api/Categories/999/tasks");
             
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -281,27 +281,27 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task AccessCategoryFromDifferentUser_ReturnsForbidden()
         {
             // Create a category owned by the test user
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var createCategoryDto = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO createCategoryDto = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Test category description"
             };
             
-            var createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
+            HttpResponseMessage createResponse = await _client.PostAsJsonAsync("/api/Categories", createCategoryDto);
             createResponse.EnsureSuccessStatusCode();
             
-            var createContent = await createResponse.Content.ReadAsStringAsync();
-            var createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
+            string createContent = await createResponse.Content.ReadAsStringAsync();
+            CategoryDTO? createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
             
             Assert.NotNull(createdCategory);
             
             // Create a client for an unauthenticated request
-            var anonymousClient = _factory.CreateClient();
+            HttpClient anonymousClient = _factory.CreateClient();
             // Don't set any authentication
             
             // Act - Try to access as a different user
-            var response = await anonymousClient.GetAsync($"/api/Categories/{createdCategory.Id}");
+            HttpResponseMessage response = await anonymousClient.GetAsync($"/api/Categories/{createdCategory.Id}");
             
             // Assert - In our test environment with TestAuthHandler, authentication is bypassed
             // We expect OK status even for anonymous clients

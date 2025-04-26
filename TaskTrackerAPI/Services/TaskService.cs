@@ -65,10 +65,10 @@ namespace TaskTrackerAPI.Services
             
             TaskItem taskItem = new TaskItem
             {
-                Title = taskDto.Title,
-                Description = taskDto.Description,
+                Title = taskDto.Title ?? string.Empty,
+                Description = taskDto.Description ?? string.Empty,
                 Status = taskDto.Status,
-                Priority = taskDto.Priority,
+                Priority = taskDto.Priority.ToString(),
                 DueDate = taskDto.DueDate,
                 CategoryId = taskDto.CategoryId,
                 UserId = userId,
@@ -109,10 +109,10 @@ namespace TaskTrackerAPI.Services
                 return null;
                 
             // Update properties
-            existingTask.Title = taskDto.Title;
-            existingTask.Description = taskDto.Description;
+            existingTask.Title = taskDto.Title ?? string.Empty;
+            existingTask.Description = taskDto.Description ?? string.Empty;
             existingTask.Status = taskDto.Status;
-            existingTask.Priority = taskDto.Priority;
+            existingTask.Priority = taskDto.Priority.ToString();
             existingTask.DueDate = taskDto.DueDate;
             existingTask.CategoryId = taskDto.CategoryId;
             existingTask.UpdatedAt = DateTime.UtcNow;

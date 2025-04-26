@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -27,7 +28,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task Get_SecureEndpoint_ReturnsSuccess_WithTestAuth()
         {
             // Arrange & Act
-            var response = await _client.GetAsync("/api/categories");
+            HttpResponseMessage response = await _client.GetAsync("/api/categories");
 
             // Assert
             response.EnsureSuccessStatusCode();

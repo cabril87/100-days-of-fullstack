@@ -182,7 +182,7 @@ public class TagService : ITagService
             DueDate = task.DueDate,
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,
-            Priority = task.Priority,
+            Priority = int.Parse(task.Priority),
             UserId = task.UserId,
             CategoryId = task.CategoryId,
             CategoryName = task.Category?.Name,

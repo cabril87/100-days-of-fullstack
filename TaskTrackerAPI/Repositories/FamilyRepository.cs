@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace TaskTrackerAPI.Repositories;
 
-public class FamilyRepository : TaskTrackerAPI.Repositories.Interfaces.IFamilyRepository
+public class FamilyRepository :IFamilyRepository
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<FamilyRepository> _logger;
@@ -63,15 +63,51 @@ public class FamilyRepository : TaskTrackerAPI.Repositories.Interfaces.IFamilyRe
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var family = await _context.Families.FindAsync(id);
-        if (family == null)
+        try
         {
+            _logger.LogInformation("Attempting to delete family with ID: {FamilyId}", id);
+            
+            var family = await _context.Families.FindAsync(id);
+            if (family == null)
+            {
+                _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);
+                return false;
+            }
+
+            // Delete any associated records first to avoid foreign key constraints
+            var members = await _context.FamilyMembers
+                .Where(m => m.FamilyId == id)
+                .ToListAsync();
+                
+            if (members.Any())
+            {
+                _logger.LogInformation("Removing {Count} members from family {FamilyId}", members.Count, id);
+                _context.FamilyMembers.RemoveRange(members);
+            }
+            
+            // Delete any family invitations
+            var invitations = await _context.Invitations
+                .Where(i => i.FamilyId == id)
+                .ToListAsync();
+                
+            if (invitations.Any())
+            {
+                _logger.LogInformation("Removing {Count} invitations from family {FamilyId}", invitations.Count, id);
+                _context.Invitations.RemoveRange(invitations);
+            }
+
+            // Now delete the family
+            _context.Families.Remove(family);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Successfully deleted family with ID: {FamilyId}", id);
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting family with ID {FamilyId}", id);
             return false;
         }
-
-        _context.Families.Remove(family);
-        await _context.SaveChangesAsync();
-        return true;
     }
 
     public async Task<bool> AddMemberAsync(int familyId, int userId, int roleId)

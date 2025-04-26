@@ -47,7 +47,7 @@ namespace TaskTrackerAPI.IntegrationTests
             // Assert
             response.EnsureSuccessStatusCode();
             
-            var content = await response.Content.ReadAsStringAsync();
+            string content = await response.Content.ReadAsStringAsync();
             
             // Try to deserialize directly first
             ApiResponse<List<TaskItemDTO>>? apiResponse = null;
@@ -70,12 +70,12 @@ namespace TaskTrackerAPI.IntegrationTests
         public async Task GetCategories_OnlyReturnsCategoriesForCurrentUser()
         {
             // Act - Get categories for user 1 (default user)
-            var response = await _client.GetAsync("/api/Categories");
+            HttpResponseMessage response = await _client.GetAsync("/api/Categories");
             
             // Assert
             response.EnsureSuccessStatusCode();
             
-            var content = await response.Content.ReadAsStringAsync();
+            string content = await response.Content.ReadAsStringAsync();
             
             // Try to deserialize directly first
             List<CategoryDTO>? categories = null;
@@ -86,7 +86,7 @@ namespace TaskTrackerAPI.IntegrationTests
             catch (JsonException)
             {
                 // If direct deserialization fails, try with ApiResponse wrapper
-                var apiResponse = JsonSerializer.Deserialize<ApiResponse<List<CategoryDTO>>>(content, _jsonOptions);
+                ApiResponse<List<CategoryDTO>>? apiResponse = JsonSerializer.Deserialize<ApiResponse<List<CategoryDTO>>>(content, _jsonOptions);
                 categories = apiResponse?.Data;
             }
             
@@ -98,7 +98,7 @@ namespace TaskTrackerAPI.IntegrationTests
         public async Task CannotAccessOtherUsersTasks()
         {
             // Create a task with user 1 (default user)
-            var newTask = new TaskItemDTO
+            TaskItemDTO newTask = new TaskItemDTO
             {
                 Title = "User Isolation Test Task",
                 Description = "This task is owned by user 1",
@@ -108,10 +108,10 @@ namespace TaskTrackerAPI.IntegrationTests
             };
             
             // Use user 1's client to create a task
-            var createResponse = await _client.PostAsJsonAsync("/api/TaskItems", newTask);
+            HttpResponseMessage createResponse = await _client.PostAsJsonAsync("/api/TaskItems", newTask);
             createResponse.EnsureSuccessStatusCode();
             
-            var createContent = await createResponse.Content.ReadAsStringAsync();
+            string createContent = await createResponse.Content.ReadAsStringAsync();
             TaskItemDTO? createdTask = null;
             
             try
@@ -121,27 +121,26 @@ namespace TaskTrackerAPI.IntegrationTests
             catch (JsonException)
             {
                 // Try with API response wrapper
-                var apiResponse = JsonSerializer.Deserialize<ApiResponse<TaskItemDTO>>(createContent, _jsonOptions);
+                ApiResponse<TaskItemDTO>? apiResponse = JsonSerializer.Deserialize<ApiResponse<TaskItemDTO>>(createContent, _jsonOptions);
                 createdTask = apiResponse?.Data;
             }
             
             Assert.NotNull(createdTask);
             
             // Create a fresh client with user 2's identity
-            // We'll create a separate factory to avoid test contamination
-            var factory2 = new CustomWebApplicationFactory<Program>();
+            CustomWebApplicationFactory<Program> factory2 = new CustomWebApplicationFactory<Program>();
             Auth.TestAuthHandler.UserId = "2"; // Set static user ID to 2
             Auth.TestAuthHandler.Username = "admin";
             Auth.TestAuthHandler.Role = "Admin";
             
-            var user2Client = factory2.CreateClient(new WebApplicationFactoryClientOptions
+            HttpClient user2Client = factory2.CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false
             });
             user2Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("TestScheme");
             
             // Attempt to access user 1's task with user 2's client
-            var response = await user2Client.GetAsync($"/api/TaskItems/{createdTask.Id}");
+            HttpResponseMessage response = await user2Client.GetAsync($"/api/TaskItems/{createdTask.Id}");
             
             // Should return 404 Not Found (resource doesn't exist for user 2)
             // or 403 Forbidden
@@ -156,37 +155,36 @@ namespace TaskTrackerAPI.IntegrationTests
         public async Task CannotAccessOtherUsersCategories()
         {
             // Create a category with user 1 (default user)
-            var categoryName = $"Test Category {Guid.NewGuid()}";
-            var newCategory = new CategoryCreateDTO
+            string categoryName = $"Test Category {Guid.NewGuid()}";
+            CategoryCreateDTO newCategory = new CategoryCreateDTO
             {
                 Name = categoryName,
                 Description = "Category for isolation test"
             };
             
             // Use user 1's client to create a category
-            var createResponse = await _client.PostAsJsonAsync("/api/Categories", newCategory);
+            HttpResponseMessage createResponse = await _client.PostAsJsonAsync("/api/Categories", newCategory);
             createResponse.EnsureSuccessStatusCode();
             
-            var createContent = await createResponse.Content.ReadAsStringAsync();
+            string createContent = await createResponse.Content.ReadAsStringAsync();
             CategoryDTO? createdCategory = JsonSerializer.Deserialize<CategoryDTO>(createContent, _jsonOptions);
             
             Assert.NotNull(createdCategory);
             
             // Create a fresh client with user 2's identity
-            // We'll create a separate factory to avoid test contamination
-            var factory2 = new CustomWebApplicationFactory<Program>();
+            CustomWebApplicationFactory<Program> factory2 = new CustomWebApplicationFactory<Program>();
             Auth.TestAuthHandler.UserId = "2"; // Set static user ID to 2
             Auth.TestAuthHandler.Username = "admin";
             Auth.TestAuthHandler.Role = "Admin";
             
-            var user2Client = factory2.CreateClient(new WebApplicationFactoryClientOptions
+            HttpClient user2Client = factory2.CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false
             });
             user2Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("TestScheme");
             
             // Attempt to access user 1's category with user 2's client
-            var response = await user2Client.GetAsync($"/api/Categories/{createdCategory.Id}");
+            HttpResponseMessage response = await user2Client.GetAsync($"/api/Categories/{createdCategory.Id}");
             
             // Should return 404 Not Found (resource doesn't exist for user 2) 
             // or 403 Forbidden

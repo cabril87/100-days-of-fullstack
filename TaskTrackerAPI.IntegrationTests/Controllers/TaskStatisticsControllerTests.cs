@@ -37,11 +37,11 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTaskCompletionRate_ReturnsTaskCompletionRate()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/completion-rate");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/completion-rate");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var completionRate = await response.Content.ReadFromJsonAsync<TaskCompletionRateDTO>(_jsonOptions);
+            TaskCompletionRateDTO? completionRate = await response.Content.ReadFromJsonAsync<TaskCompletionRateDTO>(_jsonOptions);
             
             Assert.NotNull(completionRate);
             // Validate that it's within valid range (0-100%)
@@ -53,11 +53,11 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTasksByStatusDistribution_ReturnsStatusDistribution()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/status-distribution");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/status-distribution");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var distribution = await response.Content.ReadFromJsonAsync<Dictionary<string, int>>(_jsonOptions);
+            Dictionary<string, int>? distribution = await response.Content.ReadFromJsonAsync<Dictionary<string, int>>(_jsonOptions);
             
             Assert.NotNull(distribution);
             
@@ -65,7 +65,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             Assert.True(distribution.Count > 0, "Status distribution should have at least one status");
             
             // Verify that all values are non-negative
-            foreach (var count in distribution.Values)
+            foreach (int count in distribution.Values)
             {
                 Assert.True(count >= 0, "Status count should be non-negative");
             }
@@ -75,16 +75,16 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTasksByPriorityDistribution_ReturnsPriorityDistribution()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/priority-distribution");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/priority-distribution");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var distribution = await response.Content.ReadFromJsonAsync<Dictionary<string, int>>(_jsonOptions);
+            Dictionary<string, int>? distribution = await response.Content.ReadFromJsonAsync<Dictionary<string, int>>(_jsonOptions);
             
             Assert.NotNull(distribution);
             
             // Verify that all values are non-negative
-            foreach (var count in distribution.Values)
+            foreach (int count in distribution.Values)
             {
                 Assert.True(count >= 0, "Priority count should be non-negative");
             }
@@ -94,11 +94,11 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetMostActiveCategories_ReturnsActiveCategoriesList()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/active-categories?limit=3");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/active-categories?limit=3");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var categories = await response.Content.ReadFromJsonAsync<List<CategoryActivityDTO>>(_jsonOptions);
+            List<CategoryActivityDTO>? categories = await response.Content.ReadFromJsonAsync<List<CategoryActivityDTO>>(_jsonOptions);
             
             Assert.NotNull(categories);
             
@@ -108,7 +108,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             // If we have results, verify they have the expected properties
             if (categories.Count > 0)
             {
-                var firstCategory = categories[0];
+                CategoryActivityDTO firstCategory = categories[0];
                 Assert.True(firstCategory.CategoryId > 0, "Category ID should be positive");
                 Assert.False(string.IsNullOrEmpty(firstCategory.Name), "Category name should not be empty");
                 Assert.True(firstCategory.TaskCount >= 0, "Task count should be non-negative");
@@ -119,13 +119,12 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetTaskCompletionTimeAverage_ReturnsAverageTime()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/completion-time-average");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/completion-time-average");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var averageTime = await response.Content.ReadFromJsonAsync<TimeSpan>(_jsonOptions);
-            
-            Assert.NotNull(averageTime);
+            TimeSpan averageTime = await response.Content.ReadFromJsonAsync<TimeSpan>(_jsonOptions);
+
             // TimeSpan can be negative but in this context it should be non-negative
             Assert.True(averageTime.TotalMilliseconds >= 0, 
                 "Average completion time should be non-negative");
@@ -135,11 +134,11 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetOverdueTasksStatistics_ReturnsOverdueStats()
         {
             // Act
-            var response = await _client.GetAsync("/api/TaskStatistics/overdue");
+            HttpResponseMessage response = await _client.GetAsync("/api/TaskStatistics/overdue");
 
             // Assert
             response.EnsureSuccessStatusCode();
-            var overdueStats = await response.Content.ReadFromJsonAsync<OverdueTasksStatisticsDTO>(_jsonOptions);
+            OverdueTasksStatisticsDTO? overdueStats = await response.Content.ReadFromJsonAsync<OverdueTasksStatisticsDTO>(_jsonOptions);
             
             Assert.NotNull(overdueStats);
             Assert.True(overdueStats.TotalOverdueTasks >= 0, "Total overdue tasks should be non-negative");
@@ -149,7 +148,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         // Helper method to create a task for testing
         private async Task<TaskItemDTO> CreateTestTask(string title, TaskItemStatus status, int priority)
         {
-            var newTask = new TaskItemDTO
+            TaskItemDTO newTask = new TaskItemDTO
             {
                 Title = title,
                 Description = "Test task for statistics",
@@ -159,10 +158,11 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
                 CategoryId = 1 // Assuming category ID 1 exists
             };
 
-            var response = await _client.PostAsJsonAsync("/api/TaskItems", newTask);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/TaskItems", newTask);
             response.EnsureSuccessStatusCode();
             
-            return await response.Content.ReadFromJsonAsync<TaskItemDTO>(_jsonOptions);
+            TaskItemDTO? created = await response.Content.ReadFromJsonAsync<TaskItemDTO>(_jsonOptions);
+            return created!;
         }
     }
 } 

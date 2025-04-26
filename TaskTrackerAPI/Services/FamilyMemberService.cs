@@ -1,0 +1,109 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using AutoMapper;
+using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.Extensions.Logging;
+
+namespace TaskTrackerAPI.Services;
+
+public class FamilyMemberService : IFamilyMemberService
+{
+    private readonly IFamilyMemberRepository _familyMemberRepository;
+    private readonly IFamilyRepository _familyRepository;
+    private readonly IMapper _mapper;
+    private readonly ILogger<FamilyMemberService> _logger;
+
+    public FamilyMemberService(
+        IFamilyMemberRepository familyMemberRepository,
+        IFamilyRepository familyRepository,
+        IMapper mapper,
+        ILogger<FamilyMemberService> logger)
+    {
+        _familyMemberRepository = familyMemberRepository;
+        _familyRepository = familyRepository;
+        _mapper = mapper;
+        _logger = logger;
+    }
+
+    public async Task<IEnumerable<FamilyPersonDTO>> GetAllAsync()
+    {
+        var members = await _familyMemberRepository.GetAllAsync();
+        return _mapper.Map<IEnumerable<FamilyPersonDTO>>(members);
+    }
+
+    public async Task<FamilyPersonDTO?> GetByIdAsync(int id)
+    {
+        var member = await _familyMemberRepository.GetByIdAsync(id);
+        if (member == null)
+            return null;
+
+        return _mapper.Map<FamilyPersonDTO>(member);
+    }
+
+    public async Task<FamilyPersonDetailDTO?> GetDetailsByIdAsync(int id)
+    {
+        var member = await _familyMemberRepository.GetByIdWithDetailsAsync(id);
+        if (member == null)
+            return null;
+
+        return _mapper.Map<FamilyPersonDetailDTO>(member);
+    }
+
+    public async Task<FamilyPersonDTO> CreateAsync(CreateFamilyPersonDTO memberDto, int userId)
+    {
+        if (!await _familyRepository.IsMemberAsync(memberDto.FamilyId, userId))
+        {
+            _logger.LogWarning("User {UserId} attempted to create a family member in family {FamilyId} without being a member", userId, memberDto.FamilyId);
+            throw new UnauthorizedAccessException("You are not a member of this family");
+        }
+
+        var member = _mapper.Map<FamilyMember>(memberDto);
+        
+        var result = await _familyMemberRepository.CreateAsync(member);
+        return _mapper.Map<FamilyPersonDTO>(result);
+    }
+
+    public async Task<FamilyPersonDTO?> UpdateAsync(int id, UpdateFamilyPersonDTO memberDto, int userId)
+    {
+        var member = await _familyMemberRepository.GetByIdAsync(id);
+        if (member == null)
+            return null;
+
+        if (!await _familyRepository.IsMemberAsync(member.FamilyId, userId))
+        {
+            _logger.LogWarning("User {UserId} attempted to update a family member in family {FamilyId} without being a member", userId, member.FamilyId);
+            throw new UnauthorizedAccessException("You are not a member of this family");
+        }
+
+        _mapper.Map(memberDto, member);
+        
+        var result = await _familyMemberRepository.UpdateAsync(member);
+        return _mapper.Map<FamilyPersonDTO>(result);
+    }
+
+    public async Task<bool> DeleteAsync(int id, int userId)
+    {
+        var member = await _familyMemberRepository.GetByIdAsync(id);
+        if (member == null)
+            return false;
+
+        if (!await _familyRepository.IsMemberAsync(member.FamilyId, userId))
+        {
+            _logger.LogWarning("User {UserId} attempted to delete a family member in family {FamilyId} without being a member", userId, member.FamilyId);
+            return false;
+        }
+
+        return await _familyMemberRepository.DeleteAsync(id);
+    }
+
+    public async Task<bool> IsUserMemberOfFamilyAsync(int userId, int familyId)
+    {
+        return await _familyRepository.IsMemberAsync(familyId, userId);
+    }
+} 

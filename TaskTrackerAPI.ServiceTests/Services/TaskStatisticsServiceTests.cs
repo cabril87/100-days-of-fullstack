@@ -36,7 +36,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
         private void SetupMockRepositories()
         {
             // Sample tasks for testing
-            var tasks = new List<TaskItem>
+            List<TaskItem> tasks = new List<TaskItem>
             {
                 // Completed tasks
                 new TaskItem
@@ -45,7 +45,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                     Title = "Task 1",
                     Description = "Description 1",
                     Status = TaskItemStatus.Completed,
-                    Priority = 1,
+                    Priority = "1",
                     UserId = _userId,
                     CategoryId = 1,
                     CreatedAt = DateTime.UtcNow.AddDays(-10),
@@ -57,7 +57,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                     Title = "Task 2",
                     Description = "Description 2",
                     Status = TaskItemStatus.Completed,
-                    Priority = 2,
+                    Priority = "2",
                     UserId = _userId,
                     CategoryId = 1,
                     CreatedAt = DateTime.UtcNow.AddDays(-5),
@@ -70,7 +70,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                     Title = "Task 3",
                     Description = "Description 3",
                     Status = TaskItemStatus.InProgress,
-                    Priority = 3,
+                    Priority = "3",
                     UserId = _userId,
                     CategoryId = 2,
                     CreatedAt = DateTime.UtcNow.AddDays(-3),
@@ -83,7 +83,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                     Title = "Task 4",
                     Description = "Description 4",
                     Status = TaskItemStatus.Pending,
-                    Priority = 3,
+                    Priority = "3",
                     UserId = _userId,
                     CategoryId = 2,
                     CreatedAt = DateTime.UtcNow.AddDays(-2),
@@ -96,7 +96,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                     Title = "Task 5",
                     Description = "Description 5",
                     Status = TaskItemStatus.Pending,
-                    Priority = 4,
+                    Priority = "4",
                     UserId = _userId,
                     CategoryId = 3,
                     CreatedAt = DateTime.UtcNow.AddDays(-20),
@@ -106,7 +106,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
             };
 
             // Sample categories
-            var categories = new List<Category>
+            List<Category> categories = new List<Category>
             {
                 new Category { Id = 1, Name = "Work", UserId = _userId },
                 new Category { Id = 2, Name = "Personal", UserId = _userId },
@@ -124,7 +124,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
         public async Task GetProductivityAnalyticsAsync_ReturnsCorrectData()
         {
             // Act
-            var result = await _service.GetProductivityAnalyticsAsync(_userId);
+            ProductivityAnalyticsDTO result = await _service.GetProductivityAnalyticsAsync(_userId);
 
             // Assert
             Assert.NotNull(result);
@@ -149,7 +149,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
         public async Task GetProductivityAnalyticsAsync_CalculatesAveragesCorrectly()
         {
             // Act
-            var result = await _service.GetProductivityAnalyticsAsync(_userId);
+            ProductivityAnalyticsDTO result = await _service.GetProductivityAnalyticsAsync(_userId);
 
             // Assert
             Assert.True(result.AverageCompletionRate >= 0 && result.AverageCompletionRate <= 1);
@@ -161,17 +161,17 @@ namespace TaskTrackerAPI.ServiceTests.Services
         public async Task GetProductivityAnalyticsAsync_FiltersCorrectlyByDateRange()
         {
             // Arrange
-            var startDate = DateTime.UtcNow.AddDays(-6);
-            var endDate = DateTime.UtcNow;
+            DateTime startDate = DateTime.UtcNow.AddDays(-6);
+            DateTime endDate = DateTime.UtcNow;
 
             // Act
-            var result = await _service.GetProductivityAnalyticsAsync(_userId, startDate, endDate);
+            ProductivityAnalyticsDTO result = await _service.GetProductivityAnalyticsAsync(_userId, startDate, endDate);
 
             // Assert
             Assert.NotNull(result);
             
             // Check that all daily productivity entries are within the date range
-            foreach (var entry in result.DailyProductivity)
+            foreach (DailyProductivityDTO entry in result.DailyProductivity)
             {
                 Assert.True(entry.Date >= startDate.Date);
                 Assert.True(entry.Date <= endDate.Date);
@@ -182,7 +182,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
         public async Task GetTaskStatisticsAsync_ReturnsCorrectStatistics()
         {
             // Act
-            var result = await _service.GetTaskStatisticsAsync(_userId);
+            TaskStatisticsDTO result = await _service.GetTaskStatisticsAsync(_userId);
 
             // Assert
             Assert.NotNull(result);

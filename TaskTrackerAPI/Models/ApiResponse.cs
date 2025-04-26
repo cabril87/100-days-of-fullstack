@@ -82,5 +82,15 @@ namespace TaskTrackerAPI.Models
         {
             return FailureResponse(message, (int)HttpStatusCode.InternalServerError);
         }
+
+        public static ApiResponse<T> ErrorResponse(string message)
+        {
+            return new ApiResponse<T>
+            {
+                Success = false,
+                Message = message,
+                Data = default
+            };
+        }
     }
-} 
+}

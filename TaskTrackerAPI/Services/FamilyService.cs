@@ -16,17 +16,20 @@ public class FamilyService : IFamilyService
 {
     private readonly IFamilyRepository _familyRepository;
     private readonly IFamilyRoleRepository _roleRepository;
+    private readonly IInvitationRepository _invitationRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<FamilyService> _logger;
 
     public FamilyService(
-        IFamilyRepository familyRepository,
-        IFamilyRoleRepository roleRepository,
-        IMapper mapper,
-        ILogger<FamilyService> logger)
+       IFamilyRepository familyRepository,
+       IFamilyRoleRepository roleRepository,
+       IInvitationRepository invitationRepository, // Add this
+       IMapper mapper,
+       ILogger<FamilyService> logger)
     {
         _familyRepository = familyRepository;
         _roleRepository = roleRepository;
+        _invitationRepository = invitationRepository; // Initialize it
         _mapper = mapper;
         _logger = logger;
     }
@@ -51,23 +54,112 @@ public class FamilyService : IFamilyService
 
     public async Task<FamilyDTO> CreateAsync(FamilyCreateDTO familyDto, int userId)
     {
-        var family = _mapper.Map<Family>(familyDto);
-        family.CreatedAt = DateTime.UtcNow;
-        family.CreatedById = userId;
-
-        var createdFamily = await _familyRepository.CreateAsync(family);
-
-        // Add the creator as an admin
-        var adminRole = await _roleRepository.GetByNameAsync("Admin");
-        if (adminRole == null)
+        try
         {
-            _logger.LogError("Admin role not found when creating family");
-            throw new InvalidOperationException("Admin role not found");
+            // Map DTO to entity
+            var family = _mapper.Map<Family>(familyDto);
+            family.CreatedAt = DateTime.UtcNow;
+            family.CreatedById = userId;
+
+            // Create the family
+            var createdFamily = await _familyRepository.CreateAsync(family);
+
+            // Try to get the Admin role
+            var adminRole = await _roleRepository.GetByNameAsync("Admin");
+
+            // If Admin role doesn't exist, create it on the fly
+            if (adminRole == null)
+            {
+                _logger.LogWarning("Admin role not found, creating it now");
+
+                // Create the admin role
+                adminRole = new FamilyRole
+                {
+                    Name = "Admin",
+                    Description = "Full control over the family",
+                    IsDefault = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                // Save the role to get an ID
+                adminRole = await _roleRepository.CreateAsync(adminRole);
+
+                // Add basic permissions
+                var adminPermissions = new[] {
+                new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
+                new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
+                new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow }
+            };
+
+                foreach (var permission in adminPermissions)
+                {
+                    await _roleRepository.AddPermissionAsync(permission);
+                }
+            }
+
+            // Add the creator as an admin
+            bool memberAdded = await _familyRepository.AddMemberAsync(createdFamily.Id, userId, adminRole.Id);
+            if (!memberAdded)
+            {
+                _logger.LogWarning("Failed to add creator as admin for family {FamilyId}", createdFamily.Id);
+            }
+
+            // Get the updated family with members for the DTO
+            var completeFamily = await _familyRepository.GetByIdAsync(createdFamily.Id);
+            if (completeFamily == null)
+            {
+                throw new InvalidOperationException("Family was created but could not be retrieved");
+            }
+
+            return _mapper.Map<FamilyDTO>(completeFamily);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in CreateAsync: {Message}", ex.Message);
+            throw; // Rethrow to let the controller handle it
+        }
+    }
+
+    // In FamilyService.cs
+    public async Task<FamilyDTO> JoinFamilyAsync(string inviteCode, int userId)
+    {
+        // Get invitation by token
+        var invitation = await _invitationRepository.GetByTokenAsync(inviteCode);
+
+        if (invitation == null)
+        {
+            throw new InvalidOperationException("Invalid or expired invitation code");
         }
 
-        await _familyRepository.AddMemberAsync(createdFamily.Id, userId, adminRole.Id);
+        // Check if user is already a member
+        bool isAlreadyMember = await _familyRepository.IsMemberAsync(invitation.FamilyId, userId);
+        if (isAlreadyMember)
+        {
+            throw new InvalidOperationException("You are already a member of this family");
+        }
 
-        return _mapper.Map<FamilyDTO>(createdFamily);
+        // Get member role if not specified in invitation
+        int roleId = invitation.RoleId;
+        if (roleId == 0) // Assuming 0 means no role specified
+        {
+            // Get a default member role
+            var memberRole = await _roleRepository.GetByNameAsync("Member");
+            if (memberRole == null)
+            {
+                throw new InvalidOperationException("No suitable role found for new member");
+            }
+            roleId = memberRole.Id;
+        }
+
+        // Add user to family
+        await _familyRepository.AddMemberAsync(invitation.FamilyId, userId, roleId);
+
+        // Mark invitation as used
+        await _invitationRepository.MarkAsAcceptedAsync(invitation.Id);
+
+        // Return the complete family
+        var family = await _familyRepository.GetByIdAsync(invitation.FamilyId);
+        return _mapper.Map<FamilyDTO>(family);
     }
 
     public async Task<FamilyDTO?> UpdateAsync(int id, FamilyUpdateDTO familyDto, int userId)
@@ -91,6 +183,22 @@ public class FamilyService : IFamilyService
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
+        // Get the family first to check if the user is the creator
+        var family = await _familyRepository.GetByIdAsync(id);
+        if (family == null)
+        {
+            _logger.LogWarning("User {UserId} attempted to delete non-existent family {FamilyId}", userId, id);
+            return false;
+        }
+
+        // Allow deletion if user is the creator of the family
+        if (family.CreatedById == userId)
+        {
+            _logger.LogInformation("User {UserId} is deleting family {FamilyId} as the creator", userId, id);
+            return await _familyRepository.DeleteAsync(id);
+        }
+
+        // Otherwise, check for the manage_family permission
         if (!await HasPermissionAsync(id, userId, "manage_family"))
         {
             _logger.LogWarning("User {UserId} attempted to delete family {FamilyId} without permission", userId, id);
@@ -149,10 +257,10 @@ public class FamilyService : IFamilyService
     {
         var members = await _familyRepository.GetMembersAsync(familyId);
         var userMember = members.FirstOrDefault(m => m.UserId == userId);
-        
+
         if (userMember == null)
             return false;
-        
+
         var role = userMember.Role;
         return role.Permissions.Any(p => p.Name == permission);
     }
@@ -224,9 +332,9 @@ public class FamilyService : IFamilyService
             throw new UnauthorizedAccessException("You don't have permission to reject members");
 
         // Log rejection reason
-        _logger.LogInformation("Member {MemberId} rejected by admin {AdminId}. Reason: {Reason}", 
+        _logger.LogInformation("Member {MemberId} rejected by admin {AdminId}. Reason: {Reason}",
             memberId, adminId, reason);
 
         return await _familyRepository.DeleteMemberAsync(memberId);
     }
-} 
+}

@@ -10,7 +10,7 @@ public class InvitationDTO
     public string Token { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public FamilyDTO Family { get; set; } = null!;
-    public FamilyRoleDTO Role { get; set; } = null!;
+    public FamilyRoleDTO FamilyRole { get; set; } = null!;
     public UserDTO CreatedBy { get; set; } = null!;
     public string? Message { get; set; }
     public bool IsAccepted { get; set; }
@@ -29,7 +29,7 @@ public class InvitationCreateDTO
     public int FamilyId { get; set; }
     
     [Required]
-    public int RoleId { get; set; }
+    public int FamilyRoleId { get; set; }
     
     public string? Message { get; set; }
 }

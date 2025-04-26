@@ -1,0 +1,51 @@
+{
+	"id": "12345678-abcd-4321-efgh-987654321abc",
+	"name": "TaskTracker API - Development",
+	"values": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:5001",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testTaskId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testCategoryId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testTagId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2023-06-01T12:00:00.000Z",
+	"_postman_exported_using": "Postman/10.14.9"
+} 

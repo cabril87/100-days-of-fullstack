@@ -1,10 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace TaskTrackerAPI.DTOs.Family
+namespace TaskTrackerAPI.DTOs.Family;
+
+public class InvitationAcceptDTO
 {
-    public class InvitationAcceptDTO
-    {
-        [Required]
-        public required string Token { get; set; }
-    }
+    [Required]
+    public string Token { get; set; } = string.Empty;
 } 

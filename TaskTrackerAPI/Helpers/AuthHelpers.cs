@@ -22,7 +22,7 @@ public class AuthHelper
     {
         // Generate a random salt
         byte[] saltBytes = new byte[16]; // 128 bits
-        using (var rng = RandomNumberGenerator.Create())
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(saltBytes);
         }
@@ -36,7 +36,7 @@ public class AuthHelper
         byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
         
         // Use Argon2id for password hashing
-        using var argon2 = new Argon2id(passwordBytes);
+        using Argon2id argon2 = new Argon2id(passwordBytes);
         
         // Configure Argon2id parameters
         argon2.Salt = saltBytes;
@@ -65,7 +65,7 @@ public class AuthHelper
         byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
         
         // Use Argon2id for password verification
-        using var argon2 = new Argon2id(passwordBytes);
+        using Argon2id argon2 = new Argon2id(passwordBytes);
         
         // Configure Argon2id parameters - must match the ones used for creating the hash
         argon2.Salt = saltBytes;
@@ -132,7 +132,7 @@ public class AuthHelper
     {
         // Generate a random refresh token
         byte[] randomBytes = new byte[64]; // 512 bits
-        using var rng = RandomNumberGenerator.Create();
+        using RandomNumberGenerator rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes);
     }
@@ -156,7 +156,7 @@ public class AuthHelper
         }
         
         // Setup token validation parameters
-        var tokenValidationParameters = new TokenValidationParameters
+        TokenValidationParameters tokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKeyString)),
@@ -167,15 +167,15 @@ public class AuthHelper
         };
         
         // Try to validate the token
-        var tokenHandler = new JwtSecurityTokenHandler();
+        JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
         SecurityToken securityToken;
         
         try
         {
-            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
+            ClaimsPrincipal principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out securityToken);
             
             // Verify it's a valid JWT
-            var jwtSecurityToken = securityToken as JwtSecurityToken;
+            JwtSecurityToken? jwtSecurityToken = securityToken as JwtSecurityToken;
             if (jwtSecurityToken == null || 
                 !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, 
                 StringComparison.InvariantCultureIgnoreCase))

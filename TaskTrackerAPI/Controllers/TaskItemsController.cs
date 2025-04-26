@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Utils;
 
 namespace TaskTrackerAPI.Controllers;
 
@@ -22,11 +22,14 @@ public class TaskItemsController : ControllerBase
 {
     private readonly ITaskService _taskService;
     private readonly ILogger<TaskItemsController> _logger;
+    private readonly IFamilyMemberService _familyMemberService;
 
-    public TaskItemsController(ITaskService taskService, ILogger<TaskItemsController> logger)
+    public TaskItemsController(ITaskService taskService, ILogger<TaskItemsController> logger, 
+        IFamilyMemberService familyMemberService)
     {
         _taskService = taskService;
         _logger = logger;
+        _familyMemberService = familyMemberService;
     }
 
     // GET: api/TaskItems

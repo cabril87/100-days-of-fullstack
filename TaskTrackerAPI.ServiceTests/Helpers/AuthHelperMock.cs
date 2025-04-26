@@ -19,7 +19,7 @@ namespace TaskTrackerAPI.ServiceTests.Helpers
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.test.json", optional: true);
             
-            var config = configBuilder.Build();
+            IConfiguration config = configBuilder.Build();
             
             // If token key is missing, fallback to in-memory config
             if (string.IsNullOrEmpty(config.GetSection("AppSettings:TokenKey").Value))

@@ -150,4 +150,10 @@ public class UserRepository : IUserRepository
 
         return await CheckPasswordAsync(user, password);
     }
+
+    public async Task<User?> GetByIdAsync(int id)
+{
+    return await _context.Users
+        .FirstOrDefaultAsync(u => u.Id == id);
+}
 }

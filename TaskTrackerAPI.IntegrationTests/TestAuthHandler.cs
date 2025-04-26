@@ -21,7 +21,7 @@ namespace TaskTrackerAPI.IntegrationTests
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             // Create test claims for a mocked user
-            var claims = new[] 
+            Claim[] claims = new Claim[]
             {
                 new Claim(ClaimTypes.Name, "testuser"),
                 new Claim(ClaimTypes.NameIdentifier, "1"),
@@ -30,11 +30,11 @@ namespace TaskTrackerAPI.IntegrationTests
             };
 
             // Create the identity and principal
-            var identity = new ClaimsIdentity(claims, "Test");
-            var principal = new ClaimsPrincipal(identity);
+            ClaimsIdentity identity = new ClaimsIdentity(claims, "Test");
+            ClaimsPrincipal principal = new ClaimsPrincipal(identity);
             
             // Create the authentication ticket
-            var ticket = new AuthenticationTicket(principal, "TestScheme");
+            AuthenticationTicket ticket = new AuthenticationTicket(principal, "TestScheme");
 
             // Return a successful authentication result with the ticket
             return Task.FromResult(AuthenticateResult.Success(ticket));

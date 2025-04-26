@@ -88,13 +88,19 @@ This document provides a comprehensive list of all API endpoints available in th
 |--------|----------|-------------|
 | GET | `/api/Family` | Get all families for current user |
 | GET | `/api/Family/{id}` | Get a specific family by ID |
-| POST | `/api/Family` | Create a new family |
+| POST | `/api/Family/createFamily` | Create a new family (creator becomes leader) |
 | PUT | `/api/Family/{id}` | Update an existing family |
 | DELETE | `/api/Family/{id}` | Delete a family |
 | GET | `/api/Family/{id}/members` | Get all members of a family |
 | POST | `/api/Family/{id}/members` | Add a member to a family |
 | DELETE | `/api/Family/{id}/members/{memberId}` | Remove a member from a family |
 | PUT | `/api/Family/{id}/members/{memberId}/role` | Update a member's role |
+| POST | `/api/Family/{familyId}/invitations` | Create invitation for a new family member |
+| GET | `/api/Family/{familyId}/invitations` | Get all invitations for a family |
+| POST | `/api/Family/members/{memberId}/complete-profile` | Complete member profile |
+| GET | `/api/Family/pending-members` | Get pending family members (admin only) |
+| POST | `/api/Family/members/{memberId}/approve` | Approve a pending member (admin only) |
+| POST | `/api/Family/members/{memberId}/reject` | Reject a pending member (admin only) |
 
 ## Family Members
 
@@ -147,6 +153,13 @@ This document provides a comprehensive list of all API endpoints available in th
 | GET | `/api/FamilyAchievements/leaderboard` | Get family leaderboard |
 | GET | `/api/FamilyAchievements/family/{familyId}/stats` | Get achievement stats for a family |
 | POST | `/api/FamilyAchievements/task/{taskId}/complete` | Track task completion for family achievements |
+
+## Invitations
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/Invitation/token/{token}` | Get invitation details by token |
+| POST | `/api/Invitation/accept` | Accept a family invitation |
 
 ## Statistics
 

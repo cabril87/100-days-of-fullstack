@@ -28,8 +28,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var notifications = await _notificationService.GetUserNotificationsAsync(userId);
+                int userId = GetUserId();
+                IEnumerable<NotificationDTO> notifications = await _notificationService.GetUserNotificationsAsync(userId);
                 return ApiOk(notifications, "Notifications retrieved successfully");
             }
             catch (Exception ex)
@@ -46,8 +46,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var notification = await _notificationService.GetNotificationByIdAsync(id);
+                int userId = GetUserId();
+                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
                 
                 if (notification == null)
                     return ApiNotFound<NotificationDTO>("Notification not found");
@@ -71,8 +71,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var count = await _notificationService.GetUnreadNotificationCountAsync(userId);
+                int userId = GetUserId();
+                int count = await _notificationService.GetUnreadNotificationCountAsync(userId);
                 return ApiOk(count, "Unread notification count retrieved successfully");
             }
             catch (Exception ex)
@@ -89,8 +89,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var counts = await _notificationService.GetNotificationCountsAsync(userId);
+                int userId = GetUserId();
+                NotificationCountsDTO counts = await _notificationService.GetNotificationCountsAsync(userId);
                 return ApiOk(counts, "Notification counts retrieved successfully");
             }
             catch (Exception ex)
@@ -107,8 +107,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var notifications = await _notificationService.FilterNotificationsAsync(userId, filter);
+                int userId = GetUserId();
+                IEnumerable<NotificationDTO> notifications = await _notificationService.FilterNotificationsAsync(userId, filter);
                 return ApiOk(notifications, "Filtered notifications retrieved successfully");
             }
             catch (Exception ex)
@@ -125,8 +125,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var createdNotification = await _notificationService.CreateNotificationAsync(notification, userId);
+                int userId = GetUserId();
+                NotificationDTO createdNotification = await _notificationService.CreateNotificationAsync(notification, userId);
                 return ApiCreated(createdNotification, message: "Notification created successfully");
             }
             catch (Exception ex)
@@ -143,8 +143,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var notification = await _notificationService.GetNotificationByIdAsync(id);
+                int userId = GetUserId();
+                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
                 
                 if (notification == null)
                     return ApiNotFound<NotificationDTO>("Notification not found");
@@ -152,7 +152,7 @@ namespace TaskTrackerAPI.Controllers
                 if (notification.UserId != userId)
                     return ApiForbidden<NotificationDTO>("You don't have permission to update this notification");
                 
-                var updatedNotification = await _notificationService.MarkNotificationAsReadAsync(id);
+                NotificationDTO updatedNotification = await _notificationService.MarkNotificationAsReadAsync(id);
                 return ApiOk(updatedNotification, "Notification marked as read");
             }
             catch (Exception ex)
@@ -169,7 +169,7 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
+                int userId = GetUserId();
                 await _notificationService.MarkAllNotificationsAsReadAsync(userId);
                 return ApiOk(true, "All notifications marked as read");
             }
@@ -187,8 +187,8 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var notification = await _notificationService.GetNotificationByIdAsync(id);
+                int userId = GetUserId();
+                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
                 
                 if (notification == null)
                     return ApiNotFound<bool>("Notification not found");
@@ -213,7 +213,7 @@ namespace TaskTrackerAPI.Controllers
         {
             try
             {
-                var userId = GetUserId();
+                int userId = GetUserId();
                 await _notificationService.DeleteAllUserNotificationsAsync(userId);
                 return ApiOk(true, "All notifications deleted successfully");
             }

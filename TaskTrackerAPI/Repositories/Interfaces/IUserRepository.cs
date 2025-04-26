@@ -27,4 +27,5 @@ public interface IUserRepository
     
     // Authentication helper methods
     Task<bool> IsValidUserCredentialsAsync(string email, string password);
+    Task<User?> GetByIdAsync(int id);
 }

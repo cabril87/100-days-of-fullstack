@@ -23,4 +23,6 @@ public interface IFamilyService
     Task<IEnumerable<FamilyMemberDTO>> GetPendingMembersAsync();
     Task<FamilyMemberDTO> ApproveMemberAsync(int memberId, int adminId);
     Task<bool> RejectMemberAsync(int memberId, int adminId, string reason);
-} 
+    Task<FamilyDTO> JoinFamilyAsync(string inviteCode, int userId);
+
+}

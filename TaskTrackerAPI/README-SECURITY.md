@@ -64,7 +64,7 @@ Update your `Program.cs`:
 // Add Azure Key Vault configuration
 if (!builder.Environment.IsDevelopment())
 {
-    var keyVaultUrl = builder.Configuration["KeyVaultUrl"];
+    string keyVaultUrl = builder.Configuration["KeyVaultUrl"];
     builder.Configuration.AddAzureKeyVault(
         new Uri(keyVaultUrl),
         new DefaultAzureCredential());

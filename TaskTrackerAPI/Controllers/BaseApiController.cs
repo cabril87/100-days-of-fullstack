@@ -15,7 +15,7 @@ namespace TaskTrackerAPI.Controllers
         /// <summary>
         /// Creates a successful response with the provided data
         /// </summary>
-        protected ActionResult<ApiResponse<T>> ApiOk<T>(T data, string? message = null) where T : class
+        protected ActionResult<ApiResponse<T>> ApiOk<T>(T data, string? message = null)
         {
             return Ok(ApiResponse<T>.SuccessResponse(data, message));
         }
@@ -47,7 +47,7 @@ namespace TaskTrackerAPI.Controllers
         /// <summary>
         /// Creates a not found response (404)
         /// </summary>
-        protected ActionResult<ApiResponse<T>> ApiNotFound<T>(string message = "Resource not found") where T : class
+        protected ActionResult<ApiResponse<T>> ApiNotFound<T>(string message = "Resource not found")
         {
             return NotFound(ApiResponse<T>.NotFoundResponse(message));
         }
@@ -63,7 +63,7 @@ namespace TaskTrackerAPI.Controllers
         /// <summary>
         /// Creates a server error response (500)
         /// </summary>
-        protected ActionResult<ApiResponse<T>> ApiServerError<T>(string message = "An unexpected error occurred") where T : class
+        protected ActionResult<ApiResponse<T>> ApiServerError<T>(string message = "An unexpected error occurred")
         {
             return StatusCode(500, ApiResponse<T>.ServerErrorResponse(message));
         }
@@ -79,7 +79,7 @@ namespace TaskTrackerAPI.Controllers
         /// <summary>
         /// Creates a forbidden response (403)
         /// </summary>
-        protected ActionResult<ApiResponse<T>> ApiForbidden<T>(string message = "Access forbidden") where T : class
+        protected ActionResult<ApiResponse<T>> ApiForbidden<T>(string message = "Access forbidden")
         {
             return StatusCode(403, ApiResponse<T>.ForbiddenResponse(message));
         }
@@ -95,7 +95,7 @@ namespace TaskTrackerAPI.Controllers
             if (User.Identity?.IsAuthenticated != true)
                 throw new UnauthorizedAccessException("User is not authenticated");
                 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
                         throw new InvalidOperationException("User ID claim not found");
                 
             return int.TryParse(userId, out int id) 

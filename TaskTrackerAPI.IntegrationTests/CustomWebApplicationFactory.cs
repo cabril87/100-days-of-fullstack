@@ -30,6 +30,25 @@ namespace TaskTrackerAPI.IntegrationTests
         {
             builder.UseEnvironment("Testing");
 
+            // Use in-memory settings for Program.cs config (including DefaultConnection)
+            var configDict = new Dictionary<string, string>
+            {
+                { "AppSettings:Secret", "test_secret_key_for_integration_testing_with_sufficient_length_12345" },
+                { "AppSettings:PasswordKey", "test_password_pepper_key_for_integration_tests_123456789" },
+                { "AppSettings:RefreshTokenTTL", "2" },
+                { "AppSettings:TokenKey", "test_token_key_with_sufficient_length_for_testing_purposes_123456" },
+                { "AppSettings:AccessTokenExpireMinutes", "60" },
+                { "AppSettings:RefreshTokenExpireDays", "7" },
+                { "ConnectionStrings:DefaultConnection", "InMemoryConnection" },
+                { "AppSettings:ValidIssuer", "testIssuer" },
+                { "AppSettings:ValidAudience", "testAudience" }
+            };
+
+            builder.ConfigureAppConfiguration((context, configBuilder) =>
+            {
+                configBuilder.AddInMemoryCollection(configDict);
+            });
+
             builder.ConfigureServices(services =>
             {
                 // Create a unique database name for this test run
@@ -53,26 +72,6 @@ namespace TaskTrackerAPI.IntegrationTests
                 {
                     services.Remove(contextDescriptor);
                 }
-
-                // Add a mock configuration with required settings
-                Dictionary<string, string> configDict = new Dictionary<string, string>
-                {
-                    {"AppSettings:Secret", "test_secret_key_for_integration_testing_with_sufficient_length_12345"},
-                    {"AppSettings:PasswordKey", "test_password_pepper_key_for_integration_tests_123456789"},
-                    {"AppSettings:RefreshTokenTTL", "2"},
-                    {"AppSettings:TokenKey", "test_token_key_with_sufficient_length_for_testing_purposes_123456"},
-                    {"AppSettings:AccessTokenExpireMinutes", "60"},
-                    {"AppSettings:RefreshTokenExpireDays", "7"},
-                    {"ConnectionStrings:DefaultConnection", "InMemoryConnection"},
-                    {"AppSettings:ValidIssuer", "testIssuer"},
-                    {"AppSettings:ValidAudience", "testAudience"}
-                };
-                
-                IConfiguration configuration = new ConfigurationBuilder()
-                    .AddInMemoryCollection(configDict.Select(kvp => new KeyValuePair<string, string?>(kvp.Key, kvp.Value)))
-                    .Build();
-                    
-                services.AddSingleton<IConfiguration>(configuration);
 
                 // Create DbContextOptions with the in-memory database
                 services.AddDbContext<ApplicationDbContext>(options => 
@@ -219,7 +218,7 @@ namespace TaskTrackerAPI.IntegrationTests
                 Description = "Complete the current project",
                 DueDate = DateTime.Now.AddDays(7),
                 Status = TaskItemStatus.InProgress,
-                Priority = 2,
+                Priority = "2",
                 CategoryId = 1,
                 UserId = 1
             };
@@ -231,7 +230,7 @@ namespace TaskTrackerAPI.IntegrationTests
                 Description = "Get items from the supermarket",
                 DueDate = DateTime.Now.AddDays(1),
                 Status = TaskItemStatus.ToDo,
-                Priority = 1,
+                Priority = "1",
                 CategoryId = 2,
                 UserId = 1
             };
@@ -248,7 +247,7 @@ namespace TaskTrackerAPI.IntegrationTests
             Auth.TestAuthHandler.SetUser(userId, username, role);
             
             // Create client
-            var client = CreateClient(new WebApplicationFactoryClientOptions
+            HttpClient client = CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false
             });

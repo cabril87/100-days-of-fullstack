@@ -50,7 +50,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task Register_WithValidData_ReturnsSuccess()
         {
             // Arrange
-            var registerDto = new IntegrationRegisterUserDTO
+            IntegrationRegisterUserDTO registerDto = new IntegrationRegisterUserDTO
             {
                 Username = "newuser_" + Guid.NewGuid().ToString("N").Substring(0, 8),
                 Email = "new_" + Guid.NewGuid().ToString("N").Substring(0, 8) + "@example.com",
@@ -61,13 +61,13 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
 
             // Assert
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<IntegrationAuthResponseDTO>(content, _jsonOptions);
+            string content = await response.Content.ReadAsStringAsync();
+            IntegrationAuthResponseDTO? result = JsonSerializer.Deserialize<IntegrationAuthResponseDTO>(content, _jsonOptions);
             
             Assert.NotNull(result);
             Assert.NotNull(result!.Token);
@@ -79,7 +79,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task Register_WithExistingUsername_ReturnsBadRequest()
         {
             // Arrange
-            var registerDto = new IntegrationRegisterUserDTO
+            IntegrationRegisterUserDTO registerDto = new IntegrationRegisterUserDTO
             {
                 Username = "admin", // Using existing username from seed data
                 Email = "new.admin@example.com",
@@ -90,7 +90,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/register", registerDto);
 
             // Assert - we expect BadRequest due to duplicate username
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -100,14 +100,14 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task Login_WithValidCredentials_ReturnsToken()
         {
             // Arrange
-            var loginDto = new IntegrationLoginUserDTO
+            IntegrationLoginUserDTO loginDto = new IntegrationLoginUserDTO
             {
                 Username = "admin",
                 Password = "hashedpassword456" // Matches the seed data password
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -117,14 +117,14 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task Login_WithInvalidCredentials_ReturnsBadRequest()
         {
             // Arrange
-            var loginDto = new IntegrationLoginUserDTO
+            IntegrationLoginUserDTO loginDto = new IntegrationLoginUserDTO
             {
                 Username = "nonexistent-user",
                 Password = "WrongPassword123!"
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/login", loginDto);
 
             // Assert - In this implementation it's returning BadRequest instead of Unauthorized
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -136,13 +136,13 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             // Arrange
             string refreshToken = _mockAuthHandler.GenerateTestRefreshToken();
             
-            var refreshDto = new IntegrationRefreshTokenDTO
+            IntegrationRefreshTokenDTO refreshDto = new IntegrationRefreshTokenDTO
             {
                 RefreshToken = refreshToken
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshDto);
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -152,13 +152,13 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task RefreshToken_WithInvalidToken_ReturnsNotFound()
         {
             // Arrange
-            var refreshDto = new IntegrationRefreshTokenDTO
+            IntegrationRefreshTokenDTO refreshDto = new IntegrationRefreshTokenDTO
             {
                 RefreshToken = "invalid-refresh-token"
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/refresh", refreshDto);
 
             // Assert - In this implementation it's returning NotFound instead of Unauthorized
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -171,7 +171,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             string refreshToken = _mockAuthHandler.GenerateTestRefreshToken();
             
             // Act
-            var response = await _client.PostAsync($"/api/auth/logout?refreshToken={refreshToken}", null);
+            HttpResponseMessage response = await _client.PostAsync($"/api/auth/logout?refreshToken={refreshToken}", null);
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -188,7 +188,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task ChangePassword_WithValidData_Succeeds()
         {
             // Arrange
-            var changePasswordDto = new ChangePasswordDTO
+            ChangePasswordDTO changePasswordDto = new ChangePasswordDTO
             {
                 CurrentPassword = "hashedpassword456", // Matches the seed data password
                 NewPassword = "NewPassword123!",
@@ -196,7 +196,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
 
             // Assert
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
@@ -206,7 +206,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task ChangePassword_WithWrongCurrentPassword_ReturnsBadRequest()
         {
             // Arrange
-            var changePasswordDto = new ChangePasswordDTO
+            ChangePasswordDTO changePasswordDto = new ChangePasswordDTO
             {
                 CurrentPassword = "WrongPassword123!",
                 NewPassword = "NewPassword123!",
@@ -214,7 +214,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             };
 
             // Act
-            var response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
+            HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/change-password", changePasswordDto);
 
             // Assert
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);

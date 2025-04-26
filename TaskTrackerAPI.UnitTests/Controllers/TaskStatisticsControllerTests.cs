@@ -23,13 +23,13 @@ namespace TaskTrackerAPI.UnitTests.Controllers
     {
         public Task<TaskStatisticsDTO> GetTaskStatisticsAsync(int userId)
         {
-            var result = new TaskStatisticsDTO();
+            TaskStatisticsDTO result = new TaskStatisticsDTO();
             return Task.FromResult(result);
         }
 
         public Task<ProductivityAnalyticsDTO> GetProductivityAnalyticsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null)
         {
-            var result = new ProductivityAnalyticsDTO();
+            ProductivityAnalyticsDTO result = new ProductivityAnalyticsDTO();
             return Task.FromResult(result);
         }
 
@@ -40,7 +40,7 @@ namespace TaskTrackerAPI.UnitTests.Controllers
 
         public Task<Dictionary<TaskItemStatus, int>> GetTasksByStatusDistributionAsync(int userId)
         {
-            var result = new Dictionary<TaskItemStatus, int>();
+            Dictionary<TaskItemStatus, int> result = new Dictionary<TaskItemStatus, int>();
             return Task.FromResult(result);
         }
 
@@ -51,13 +51,13 @@ namespace TaskTrackerAPI.UnitTests.Controllers
 
         public Task<Dictionary<int, int>> GetTasksByPriorityDistributionAsync(int userId)
         {
-            var result = new Dictionary<int, int>();
+            Dictionary<int, int> result = new Dictionary<int, int>();
             return Task.FromResult(result);
         }
 
         public Task<List<CategoryActivityDTO>> GetMostActiveCategoriesAsync(int userId, int limit)
         {
-            var result = new List<CategoryActivityDTO>();
+            List<CategoryActivityDTO> result = new List<CategoryActivityDTO>();
             return Task.FromResult(result);
         }
 
@@ -388,8 +388,8 @@ namespace TaskTrackerAPI.UnitTests.Controllers
             // The controller calculates avgTasksPerDay differently than what we expect in the mock setup
             // It calculates (completedTasks + createdTasks) / 2 for each day, then averages those values
             // With our mock data: ((3+5)/2 + (2+3)/2) / 2 = (4+2.5)/2 = 6.5/2 = 3.25
-            var expectedAvgTasksPerDay = 3.25;
-            var expectedAvgTasksPerWeek = expectedAvgTasksPerDay * 7; // = 22.75
+            double expectedAvgTasksPerDay = 3.25;
+            double expectedAvgTasksPerWeek = expectedAvgTasksPerDay * 7; // = 22.75
 
             // Test properties individually - adjusted to match controller's calculation
             Assert.True(summaryDict.ContainsKey("AverageTasksPerDay"));

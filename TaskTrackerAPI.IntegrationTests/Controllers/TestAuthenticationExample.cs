@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
+using System.Net.Http;
 
 namespace TaskTrackerAPI.IntegrationTests.Controllers
 {
@@ -27,7 +28,7 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
             // Arrange - Using the TestAuthHandler, we can access secured endpoints
 
             // Act - Try to access a secured endpoint
-            var response = await _client.GetAsync("/api/categories");
+            HttpResponseMessage response = await _client.GetAsync("/api/categories");
 
             // Assert - Should return success as we're using the TestAuthHandler
             response.EnsureSuccessStatusCode();
@@ -38,14 +39,14 @@ namespace TaskTrackerAPI.IntegrationTests.Controllers
         public async Task GetCategories_ReturnsSuccess()
         {
             // Act
-            var response = await _client.GetAsync("/api/categories");
+            HttpResponseMessage response = await _client.GetAsync("/api/categories");
             
             // Assert
             response.EnsureSuccessStatusCode();
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             
             // Just check we're getting some content
-            var content = await response.Content.ReadAsStringAsync();
+            string content = await response.Content.ReadAsStringAsync();
             Assert.NotEmpty(content);
         }
     }

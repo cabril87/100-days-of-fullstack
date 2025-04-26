@@ -16,6 +16,7 @@ using Swashbuckle.AspNetCore.Filters;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using TaskTrackerAPI.Models;
+using QRCoder;
 
 namespace TaskTrackerAPI;
 
@@ -24,7 +25,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         builder.Services.AddControllers()
             .AddJsonOptions(options =>
@@ -35,9 +36,11 @@ public class Program
         // Add services to the container.
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options => {
+        builder.Services.AddSwaggerGen(options =>
+        {
             // Configure Swagger for JWT authentication
-            options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme {
+            options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+            {
                 Description = "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
                 In = ParameterLocation.Header,
                 Name = "Authorization",
@@ -50,16 +53,18 @@ public class Program
             options.AddPolicy("DevCors", (corsBuilder) =>
             {
                 corsBuilder.WithOrigins(
-                       "http://localhost:4200", 
-                       "http://localhost:3000", 
-                       "http://localhost:8000", 
-                       "http://localhost:5173", 
-                       "http://localhost:8080", 
+                       "http://localhost:4200",
+                       "http://localhost:3000",
+                       "http://localhost:8000",
+                       "http://localhost:5173",
+                       "http://localhost:8080",
                        "http://localhost:5211",
                        "http://127.0.0.1:5173",
                        "http://127.0.0.1:3000",
                        "http://127.0.0.1:5211",
-                       "http://localhost"
+                       "http://localhost",
+                       "http://10.0.2.2:5211",  // Add this for Android emulator
+                       "http://10.0.2.2:8081"   // Add this for React Native dev server
                     )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
@@ -80,15 +85,16 @@ public class Program
         builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
         // Register repository
-        builder.Services.AddScoped<IUserRepository, UserRepository>();
-
-        // Register TaskItem Repository
-        builder.Services.AddScoped<ITaskItemRepository, TaskItemRepository>(); 
-        // Register Category Repository
-        builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-
-        // Register Tag Repository
-        builder.Services.AddScoped<ITagRepository, TagRepository>();
+        builder.Services.AddScoped<IUserRepository, TaskTrackerAPI.Repositories.UserRepository>();
+        builder.Services.AddScoped<ITaskItemRepository, TaskTrackerAPI.Repositories.TaskItemRepository>();
+        builder.Services.AddScoped<ICategoryRepository, TaskTrackerAPI.Repositories.CategoryRepository>();
+        builder.Services.AddScoped<ITagRepository, TaskTrackerAPI.Repositories.TagRepository>();
+        builder.Services.AddScoped<IFamilyRepository, TaskTrackerAPI.Repositories.FamilyRepository>();
+        builder.Services.AddScoped<IFamilyRoleRepository, TaskTrackerAPI.Repositories.FamilyRoleRepository>();
+        builder.Services.AddScoped<IInvitationRepository, TaskTrackerAPI.Repositories.InvitationRepository>();
+        builder.Services.AddScoped<IUserDeviceRepository, TaskTrackerAPI.Repositories.UserDeviceRepository>();
+        builder.Services.AddScoped<IFamilyMemberRepository, TaskTrackerAPI.Repositories.FamilyMemberRepository>();
+        builder.Services.AddScoped<IFamilyAchievementRepository, TaskTrackerAPI.Repositories.FamilyAchievementRepository>();
 
         // Register helpers
         builder.Services.AddScoped<AuthHelper>();
@@ -100,20 +106,46 @@ public class Program
         builder.Services.AddScoped<ITagService, TagService>();
 
         // Register services
-        builder.Services.AddScoped<IAuthService, AuthService>();
-
-        // Register TaskService
+        builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<ITaskService, TaskService>();
-        
+        builder.Services.AddScoped<ICategoryService, CategoryService>();
+        builder.Services.AddScoped<ITagService, TagService>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IReminderService, ReminderService>();
+        builder.Services.AddScoped<IBoardService, BoardService>();
+        builder.Services.AddScoped<IFamilyMemberService, FamilyMemberService>();
+        builder.Services.AddScoped<ITaskTemplateService, TaskTemplateService>();
+        builder.Services.AddScoped<INotificationService, NotificationService>();
+        builder.Services.AddScoped<IGamificationService, GamificationService>();
+        builder.Services.AddScoped<IFamilyService, FamilyService>();
+        builder.Services.AddScoped<IFamilyRoleService, FamilyRoleService>();
+        builder.Services.AddScoped<IInvitationService, InvitationService>();
+        builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
+        builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
+        builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
+
+
         // Register TaskStatisticsService
         builder.Services.AddScoped<ITaskStatisticsService, TaskStatisticsService>();
-            
+
+        // Register Board repositories and services
+        builder.Services.AddScoped<IBoardRepository, BoardRepository>();
+
+        // Register Reminder, TaskTemplate, and Notification repositories
+        builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
+        builder.Services.AddScoped<ITaskTemplateRepository, TaskTemplateRepository>();
+        builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Register QRCode Generator as singleton
+        builder.Services.AddSingleton<QRCodeGenerator>();
+        builder.Services.AddSingleton<QRCodeHelper>();
+
         // Load configuration from environment variables
         if (builder.Environment.IsDevelopment())
         {
-            builder.Configuration["AppSettings:TokenKey"] = builder.Configuration["TokenKey"] ?? 
+            builder.Configuration["AppSettings:TokenKey"] = builder.Configuration["TokenKey"] ??
                 builder.Configuration["AppSettings:TokenKey"];
-            builder.Configuration["AppSettings:PasswordKey"] = builder.Configuration["PasswordKey"] ?? 
+            builder.Configuration["AppSettings:PasswordKey"] = builder.Configuration["PasswordKey"] ??
                 builder.Configuration["AppSettings:PasswordKey"];
         }
 
@@ -156,12 +188,17 @@ public class Program
             };
         }
 
-        // Only add the SQL Server DbContext if we're not in the Testing environment
-        // This allows the test project to set up its own in-memory database
-        if (builder.Environment.EnvironmentName != "Testing")
+        // Register DbContext: skip SQL if DefaultConnection is set to InMemoryConnection
+        string defaultConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+        if (builder.Environment.IsEnvironment("Testing") || defaultConn.Equals("InMemoryConnection", StringComparison.OrdinalIgnoreCase))
         {
-            builder.Services.AddDbContext<ApplicationDbContext>(options => 
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseInMemoryDatabase("IntegrationTestDb"));
+        }
+        else
+        {
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(defaultConn));
         }
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -170,7 +207,7 @@ public class Program
                 options.TokenValidationParameters = tokenValidationParameters;
             });
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -196,26 +233,26 @@ public class Program
         app.MapControllers();
 
         // Seed the database if needed
-        using (var scope = app.Services.CreateScope())
+        using (IServiceScope scope = app.Services.CreateScope())
         {
-            var services = scope.ServiceProvider;
-            var dbContext = services.GetRequiredService<ApplicationDbContext>();
-            
+            IServiceProvider services = scope.ServiceProvider;
+            ApplicationDbContext dbContext = services.GetRequiredService<ApplicationDbContext>();
+
             if (app.Environment.IsDevelopment())
             {
                 dbContext.Database.EnsureCreated();
-                
+
                 // Seed initial data if needed
                 if (!dbContext.Users.Any())
                 {
                     // Get the auth helper service
-                    var authHelper = services.GetRequiredService<AuthHelper>();
-                    
+                    AuthHelper authHelper = services.GetRequiredService<AuthHelper>();
+
                     // Create a proper password hash for a very simple password
                     authHelper.CreatePasswordHash("password", out string passwordHash, out string salt);
-                    
+
                     // Add default admin user for testing
-                    var user = new User
+                    User user = new User
                     {
                         Username = "admin",
                         Email = "admin@tasktracker.com",
@@ -229,9 +266,102 @@ public class Program
                     };
                     dbContext.Users.Add(user);
                     dbContext.SaveChanges();
-                    
+
                     Console.WriteLine("Admin user created with email: admin@tasktracker.com and password: password");
                 }
+            }
+
+            if (!dbContext.FamilyRoles.Any())
+            {
+                Console.WriteLine("Creating family roles...");
+
+                // Create Admin role
+                var adminRole = new FamilyRole
+                {
+                    Name = "Admin",
+                    Description = "Full control over the family",
+                    IsDefault = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                dbContext.FamilyRoles.Add(adminRole);
+
+                // Create Member role
+                var memberRole = new FamilyRole
+                {
+                    Name = "Member",
+                    Description = "Regular family member",
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                dbContext.FamilyRoles.Add(memberRole);
+                dbContext.SaveChanges();
+
+                // Add permissions for Admin role
+                // Add permissions for Admin role
+                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
+                {
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "assign_tasks", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_tasks", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "create_tasks", CreatedAt = DateTime.UtcNow }
+                });
+
+                // Add permissions for Member role
+                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
+                {
+                    new FamilyRolePermission { RoleId = memberRole.Id, Name = "view_members", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = memberRole.Id, Name = "manage_own_tasks", CreatedAt = DateTime.UtcNow }
+                });
+
+                dbContext.SaveChanges();
+                Console.WriteLine("Family roles created successfully!");
+            }
+
+            // Add Child and Adult roles for family task management
+            if (!dbContext.FamilyRoles.Any(r => r.Name == "Child" || r.Name == "Adult"))
+            {
+                Console.WriteLine("Creating Child and Adult family roles...");
+
+                // Create Adult role
+                var adultRole = new FamilyRole
+                {
+                    Name = "Adult",
+                    Description = "Adult family member with task management permissions",
+                    IsDefault = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                dbContext.FamilyRoles.Add(adultRole);
+
+                // Create Child role
+                var childRole = new FamilyRole
+                {
+                    Name = "Child",
+                    Description = "Child family member with limited permissions",
+                    IsDefault = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                dbContext.FamilyRoles.Add(childRole);
+                dbContext.SaveChanges();
+
+                // Add permissions for Adult role
+                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
+                {
+                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "assign_tasks", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "create_tasks", CreatedAt = DateTime.UtcNow }
+                });
+
+                // Add permissions for Child role (limited)
+                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
+                {
+                    new FamilyRolePermission { RoleId = childRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow }
+                });
+
+                dbContext.SaveChanges();
+                Console.WriteLine("Child and Adult family roles created successfully!");
             }
         }
 

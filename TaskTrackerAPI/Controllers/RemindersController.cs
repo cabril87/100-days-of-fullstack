@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Utils;
 
 namespace TaskTrackerAPI.Controllers
 {

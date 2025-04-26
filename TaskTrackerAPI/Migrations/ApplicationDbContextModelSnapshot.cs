@@ -328,6 +328,94 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("Families");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyAchievement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("FamilyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IconUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PointValue")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgressCurrent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgressTarget")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyId");
+
+                    b.ToTable("FamilyAchievements");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyAchievementMember", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AchievementId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ContributionPoints")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FamilyMemberId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AchievementId");
+
+                    b.HasIndex("FamilyMemberId");
+
+                    b.ToTable("FamilyAchievementMembers");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMember", b =>
                 {
                     b.Property<int>("Id")
@@ -985,7 +1073,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 4, 23, 16, 19, 13, 987, DateTimeKind.Utc).AddTicks(6179),
+                            UpdatedAt = new DateTime(2025, 4, 26, 15, 48, 51, 791, DateTimeKind.Utc).AddTicks(6875),
                             UserId = 1
                         },
                         new
@@ -1001,7 +1089,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 4, 23, 16, 19, 13, 987, DateTimeKind.Utc).AddTicks(6189),
+                            UpdatedAt = new DateTime(2025, 4, 26, 15, 48, 51, 791, DateTimeKind.Utc).AddTicks(6883),
                             UserId = 1
                         });
                 });
@@ -1076,6 +1164,9 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AgeGroup")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1126,6 +1217,7 @@ namespace TaskTrackerAPI.Migrations
                         new
                         {
                             Id = 1,
+                            AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Email = "admin@tasktracker.com",
                             FirstName = "Admin",
@@ -1392,6 +1484,36 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyAchievement", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.Family", "Family")
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Family");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyAchievementMember", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.FamilyAchievement", "Achievement")
+                        .WithMany("MemberContributions")
+                        .HasForeignKey("AchievementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.FamilyMember", "Member")
+                        .WithMany()
+                        .HasForeignKey("FamilyMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Achievement");
+
+                    b.Navigation("Member");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMember", b =>
@@ -1778,6 +1900,11 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("PrimaryFamilyUsers");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyAchievement", b =>
+                {
+                    b.Navigation("MemberContributions");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMember", b =>

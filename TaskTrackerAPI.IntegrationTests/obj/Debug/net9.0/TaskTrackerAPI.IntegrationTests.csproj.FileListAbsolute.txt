@@ -471,3 +471,15 @@ C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\b
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\bin\Debug\net9.0\Scrutor.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.dll
 C:\Users\Abril\Documents\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\bin\Debug\net9.0\Swashbuckle.AspNetCore.Filters.Abstractions.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\refint\TaskTrackerAPI.IntegrationTests.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.pdb
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\bin\Debug\net9.0\.msCoverageSourceRootsMapping_TaskTrackerAPI.IntegrationTests
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\bin\Debug\net9.0\CoverletSourceRootsMapping_TaskTrackerAPI.IntegrationTests
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.csproj.AssemblyReference.cache
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\MvcTestingAppManifest.json
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.AssemblyInfoInputs.cache
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.AssemblyInfo.cs
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.csproj.CoreCompileInputs.cache
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI.IntegrationTests\obj\Debug\net9.0\TaskTrackerAPI.IntegrationTests.sourcelink.json

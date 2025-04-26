@@ -9,6 +9,7 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers
 {
@@ -296,7 +297,7 @@ namespace TaskTrackerAPI.Controllers
                 double avgCompletionRate = analytics.AverageCompletionRate;
                 
                 // Format average time to complete
-                var avgTime = analytics.AverageTimeToComplete;
+                TimeSpan avgTime = analytics.AverageTimeToComplete;
                 int days = (int)avgTime.TotalDays;
                 int hours = (int)(avgTime.TotalHours % 24);
                 int minutes = (int)(avgTime.TotalMinutes % 60);

@@ -57,7 +57,8 @@ public class AuthService : IAuthService
             FirstName = userDto.FirstName,
             LastName = userDto.LastName,
             Role = "User",
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            AgeGroup = userDto.AgeGroup
         };
 
         await _userRepository.CreateUserAsync(user);
@@ -71,7 +72,8 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            AgeGroup = user.AgeGroup
         };
     }
 
@@ -137,7 +139,8 @@ public class AuthService : IAuthService
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     Role = user.Role,
-                    CreatedAt = user.CreatedAt
+                    CreatedAt = user.CreatedAt,
+                    AgeGroup = user.AgeGroup
                 }
             };
 
@@ -216,7 +219,8 @@ public class AuthService : IAuthService
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Role = user.Role,
-                CreatedAt = user.CreatedAt
+                CreatedAt = user.CreatedAt,
+                AgeGroup = user.AgeGroup
             }
         };
     }
@@ -239,7 +243,8 @@ public class AuthService : IAuthService
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            AgeGroup = user.AgeGroup
         };
     }
     

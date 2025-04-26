@@ -11,6 +11,11 @@ using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Services
 {
+    // Add helper records for explicit projections
+    internal record TimeFrame(string Name, int Start, int End);
+    internal record CategoryGroup(int CategoryId, int Count);
+    internal record YearMonth(int Year, int Month);
+
     public class TaskStatisticsService : ITaskStatisticsService
     {
         private readonly ITaskItemRepository _taskRepository;
@@ -117,12 +122,13 @@ namespace TaskTrackerAPI.Services
         {
             tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            Dictionary<int, int> distribution = new Dictionary<int, int>();
-            // Assuming priorities are 1-5, adjust as needed
-            for (int i = 1; i <= 5; i++)
+            Dictionary<string, int> distribution = new Dictionary<string, int>
             {
-                distribution[i] = 0;
-            }
+                { "Low", 0 },
+                { "Medium", 0 },
+                { "High", 0 },
+                { "Critical", 0 }
+            };
 
             foreach (TaskItem task in tasks)
             {
@@ -139,7 +145,7 @@ namespace TaskTrackerAPI.Services
             int totalTasks = tasks.Count();
             List<TaskDistributionDTO> result = new List<TaskDistributionDTO>();
 
-            foreach (KeyValuePair<int, int> kvp in distribution)
+            foreach (KeyValuePair<string, int> kvp in distribution)
             {
                 result.Add(new TaskDistributionDTO
                 {
@@ -220,10 +226,9 @@ namespace TaskTrackerAPI.Services
         {
             tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            // Add CompletedAt property to TaskItem model or use UpdatedAt as a proxy
+            // Filter completed tasks
             List<TaskItem> completedTasks = tasks.Where(t => 
                 t.Status == TaskItemStatus.Completed && 
-                t.UpdatedAt.HasValue && 
                 t.CreatedAt != default).ToList();
             
             if (!completedTasks.Any())
@@ -238,7 +243,7 @@ namespace TaskTrackerAPI.Services
             double totalHours = 0;
             foreach (TaskItem task in completedTasks)
             {
-                TimeSpan completionTime = task.UpdatedAt!.Value - task.CreatedAt;
+                TimeSpan completionTime = task.UpdatedAt - task.CreatedAt;
                 totalHours += completionTime.TotalHours;
             }
 
@@ -263,8 +268,7 @@ namespace TaskTrackerAPI.Services
             {
                 int tasksCompleted = tasks.Count(t => 
                     t.Status == TaskItemStatus.Completed && 
-                    t.UpdatedAt.HasValue && 
-                    t.UpdatedAt.Value.Date == date);
+                    t.UpdatedAt.Date == date);
                     
                 int tasksCreated = tasks.Count(t => 
                     t.CreatedAt.Date == date);
@@ -311,11 +315,11 @@ namespace TaskTrackerAPI.Services
                 result.AverageDaysOverdue = totalDaysOverdue / overdueTasks.Count;
                 
                 // Group by priority
-                Dictionary<int, int> priorityGroups = overdueTasks.GroupBy(t => t.Priority)
+                Dictionary<string, int> priorityGroups = overdueTasks.GroupBy(t => t.Priority)
                     .OrderByDescending(g => g.Key)
                     .ToDictionary(g => g.Key, g => g.Count());
                     
-                foreach (KeyValuePair<int, int> kvp in priorityGroups)
+                foreach (KeyValuePair<string, int> kvp in priorityGroups)
                 {
                     result.OverdueByPriority.Add(new TaskDistributionDTO
                     {
@@ -372,7 +376,7 @@ namespace TaskTrackerAPI.Services
                 List<TaskItem> categoryTasks = tasks.Where(t => t.CategoryId == category.Id).ToList();
                 int completedTasks = categoryTasks.Count(t => t.Status == TaskItemStatus.Completed);
                 DateTime lastActivity = categoryTasks.Any() 
-                    ? categoryTasks.Max(t => t.UpdatedAt ?? t.CreatedAt) 
+                    ? categoryTasks.Max(t => t.UpdatedAt) 
                     : DateTime.MinValue;
                 
                 return new CategoryActivityDTO
@@ -445,7 +449,7 @@ namespace TaskTrackerAPI.Services
                 {
                     analytics.AverageCompletionRate = (double)completedTasks.Count() / tasksInRange.Count();
                     
-                    var completionTimes = completedTasks
+                    List<TimeSpan> completionTimes = completedTasks
                         .Where(t => t.CompletedAt.HasValue)
                         .Select(t => t.CompletedAt!.Value - t.CreatedAt)
                         .ToList();
@@ -470,18 +474,18 @@ namespace TaskTrackerAPI.Services
             tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
             // Define time frames
-            var timeFrames = new[] 
+            TimeFrame[] timeFrames = new[]
             {
-                new { Name = "Early Morning (5AM-8AM)", Start = 5, End = 8 },
-                new { Name = "Morning (8AM-12PM)", Start = 8, End = 12 },
-                new { Name = "Afternoon (12PM-5PM)", Start = 12, End = 17 },
-                new { Name = "Evening (5PM-9PM)", Start = 17, End = 21 },
-                new { Name = "Night (9PM-5AM)", Start = 21, End = 5 }
+                new TimeFrame("Early Morning (5AM-8AM)", 5, 8),
+                new TimeFrame("Morning (8AM-12PM)", 8, 12),
+                new TimeFrame("Afternoon (12PM-5PM)", 12, 17),
+                new TimeFrame("Evening (5PM-9PM)", 17, 21),
+                new TimeFrame("Night (9PM-5AM)", 21, 5)
             };
 
             List<TimeOfDayProductivityDTO> result = new List<TimeOfDayProductivityDTO>();
 
-            foreach (var timeFrame in timeFrames)
+            foreach (TimeFrame timeFrame in timeFrames)
             {
                 // Tasks created in this time frame
                 int created = tasks.Count(t => 
@@ -569,25 +573,25 @@ namespace TaskTrackerAPI.Services
                 endDate = DateTime.UtcNow;
 
             // Group tasks by ISO week number
-            var calendar = CultureInfo.CurrentCulture.Calendar;
-            var weekGroups = tasks
+            Calendar calendar = CultureInfo.CurrentCulture.Calendar;
+            List<IGrouping<int, TaskItem>> weekGroups = tasks
                 .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
                 .GroupBy(t => calendar.GetWeekOfYear(t.CreatedAt, CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday))
                 .OrderBy(g => g.Key)
                 .ToList();
 
             // Get categories for task analysis
-            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
-            var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
+            IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            Dictionary<int, string> categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
 
             List<WeeklyProductivityDTO> result = new List<WeeklyProductivityDTO>();
 
-            foreach (var weekGroup in weekGroups)
+            foreach (IGrouping<int, TaskItem> weekGroup in weekGroups)
             {
                 int weekNumber = weekGroup.Key;
                 
                 // Get week date range (Monday to Sunday)
-                var firstTask = weekGroup.OrderBy(t => t.CreatedAt).First();
+                TaskItem firstTask = weekGroup.OrderBy(t => t.CreatedAt).First();
                 DateTime weekStart = GetWeekStartDate(firstTask.CreatedAt);
                 DateTime weekEnd = weekStart.AddDays(6);
 
@@ -601,15 +605,15 @@ namespace TaskTrackerAPI.Services
                     t.CompletedAt.Value <= weekEnd);
 
                 // Top categories
-                var categoryDistribution = weekGroup
+                IEnumerable<CategoryGroup> categoryDistribution = weekGroup
                     .Where(t => t.CategoryId.HasValue)
                     .GroupBy(t => t.CategoryId!.Value)
-                    .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                    .Select(g => new CategoryGroup(g.Key, g.Count()))
                     .OrderByDescending(x => x.Count)
                     .Take(3);
                 
                 List<string> topCategories = new List<string>();
-                foreach (var category in categoryDistribution)
+                foreach (CategoryGroup category in categoryDistribution)
                 {
                     if (categoryMap.TryGetValue(category.CategoryId, out string? name) && !string.IsNullOrEmpty(name))
                     {
@@ -653,19 +657,20 @@ namespace TaskTrackerAPI.Services
                 endDate = DateTime.UtcNow;
 
             // Group tasks by month
-            var monthlyGroups = tasks
+            List<IGrouping<YearMonth, TaskItem>> monthlyGroups = tasks
                 .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate)
-                .GroupBy(t => new { Year = t.CreatedAt.Year, Month = t.CreatedAt.Month })
+                .GroupBy(t => new YearMonth(t.CreatedAt.Year, t.CreatedAt.Month))
                 .OrderBy(g => g.Key.Year)
-                .ThenBy(g => g.Key.Month);
+                .ThenBy(g => g.Key.Month)
+                .ToList();
 
             // Get categories for task analysis
-            var categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
-            var categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
+            IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
+            Dictionary<int, string> categoryMap = categories.ToDictionary(c => c.Id, c => c.Name);
 
             List<MonthlyProductivityDTO> result = new List<MonthlyProductivityDTO>();
 
-            foreach (var monthGroup in monthlyGroups)
+            foreach (IGrouping<YearMonth, TaskItem> monthGroup in monthlyGroups)
             {
                 int year = monthGroup.Key.Year;
                 int month = monthGroup.Key.Month;
@@ -684,15 +689,15 @@ namespace TaskTrackerAPI.Services
                     t.CompletedAt.Value.Month == month);
 
                 // Top categories
-                var categoryDistribution = monthGroup
+                IEnumerable<CategoryGroup> categoryDistribution = monthGroup
                     .Where(t => t.CategoryId.HasValue)
                     .GroupBy(t => t.CategoryId!.Value)
-                    .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                    .Select(g => new CategoryGroup(g.Key, g.Count()))
                     .OrderByDescending(x => x.Count)
                     .Take(3);
                 
                 List<string> topCategories = new List<string>();
-                foreach (var category in categoryDistribution)
+                foreach (CategoryGroup category in categoryDistribution)
                 {
                     if (categoryMap.TryGetValue(category.CategoryId, out string? name) && !string.IsNullOrEmpty(name))
                     {
@@ -732,13 +737,13 @@ namespace TaskTrackerAPI.Services
         {
             tasks ??= await _taskRepository.GetAllTasksAsync(userId);
 
-            var completedTasks = tasks.Where(t => t.Status == TaskItemStatus.Completed && t.CompletedAt.HasValue);
+            IEnumerable<TaskItem> completedTasks = tasks.Where(t => t.Status == TaskItemStatus.Completed && t.CompletedAt.HasValue);
             
             // Calculate average time to complete (in hours)
             double avgTimeToComplete = 0;
             int completedCount = 0;
             
-            foreach (var task in completedTasks)
+            foreach (TaskItem task in completedTasks)
             {
                 if (task.CompletedAt.HasValue)
                 {

@@ -14,15 +14,15 @@ public class Notification
     
     [Required]
     [MaxLength(100)]
-    public string Title { get; set; }
+    public string Title { get; set; } = string.Empty;
     
     [Required]
     [MaxLength(500)]
-    public string Message { get; set; }
+    public string Message { get; set; } = string.Empty;
     
     [Required]
     [MaxLength(50)]
-    public string NotificationType { get; set; }
+    public string NotificationType { get; set; } = string.Empty;
     
     [Required]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -30,19 +30,25 @@ public class Notification
     [Required]
     public bool IsRead { get; set; } = false;
     
+    public DateTime? ReadAt { get; set; }
+    
+    public bool IsImportant { get; set; } = false;
+    
+    public NotificationType? Type { get; set; }
+    
     public int? RelatedEntityId { get; set; }
     
     [MaxLength(50)]
-    public string RelatedEntityType { get; set; }
+    public string RelatedEntityType { get; set; } = string.Empty;
     
     public int? CreatedByUserId { get; set; }
     
     // Navigation properties
     [ForeignKey("UserId")]
-    public User User { get; set; }
+    public User? User { get; set; }
     
     [ForeignKey("CreatedByUserId")]
-    public User CreatedBy { get; set; }
+    public User? CreatedBy { get; set; }
 }
 
 public enum NotificationType

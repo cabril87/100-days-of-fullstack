@@ -43,7 +43,7 @@ public class NotificationRepository : INotificationRepository
             .ToListAsync();
     }
 
-    public async Task<Notification> GetNotificationByIdAsync(int id)
+    public async Task<Notification?> GetNotificationByIdAsync(int id)
     {
         return await _context.Notifications
             .Include(n => n.User)
@@ -64,7 +64,7 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<bool> DeleteNotificationAsync(int id)
     {
-        var notification = await _context.Notifications.FindAsync(id);
+        Notification? notification = await _context.Notifications.FindAsync(id);
         if (notification == null)
             return false;
 
@@ -72,9 +72,15 @@ public class NotificationRepository : INotificationRepository
         return await _context.SaveChangesAsync() > 0;
     }
 
+    public async Task<bool> DeleteNotificationAsync(Notification notification)
+    {
+        _context.Notifications.Remove(notification);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
     public async Task<bool> MarkAsReadAsync(int id)
     {
-        var notification = await _context.Notifications.FindAsync(id);
+        Notification? notification = await _context.Notifications.FindAsync(id);
         if (notification == null)
             return false;
 
@@ -85,14 +91,14 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<bool> MarkAllAsReadAsync(int userId)
     {
-        var notifications = await _context.Notifications
+        List<Notification> notifications = await _context.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
             .ToListAsync();
 
         if (!notifications.Any())
             return true;
 
-        foreach (var notification in notifications)
+        foreach (Notification notification in notifications)
         {
             notification.IsRead = true;
             notification.ReadAt = DateTime.UtcNow;
@@ -122,15 +128,21 @@ public class NotificationRepository : INotificationRepository
             .AnyAsync(n => n.Id == notificationId && n.UserId == userId);
     }
 
+    public async Task<bool> IsNotificationOwnedByUserAsync(int notificationId, int userId)
+    {
+        return await _context.Notifications
+            .AnyAsync(n => n.Id == notificationId && n.UserId == userId);
+    }
+
     public async Task<IEnumerable<Notification>> FilterNotificationsAsync(
         int userId, 
         bool? isRead = null, 
-        string notificationType = null, 
+        string? notificationType = null, 
         DateTime? fromDate = null, 
         DateTime? toDate = null, 
-        string searchTerm = null)
+        string? searchTerm = null)
     {
-        var query = _context.Notifications.Where(n => n.UserId == userId);
+        IQueryable<Notification> query = _context.Notifications.Where(n => n.UserId == userId);
 
         if (isRead.HasValue)
             query = query.Where(n => n.IsRead == isRead.Value);
@@ -154,7 +166,7 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<IEnumerable<Notification>> GetFilteredNotificationsAsync(int userId, NotificationFilterDTO filter)
     {
-        var query = _context.Notifications.Where(n => n.UserId == userId);
+        IQueryable<Notification> query = _context.Notifications.Where(n => n.UserId == userId);
 
         // Apply filters
         if (filter.IsRead.HasValue)
@@ -184,7 +196,7 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<Notification?> MarkNotificationAsReadAsync(int notificationId)
     {
-        var notification = await _context.Notifications
+        Notification? notification = await _context.Notifications
             .FirstOrDefaultAsync(n => n.Id == notificationId);
 
         if (notification == null)
@@ -199,12 +211,12 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<int> MarkAllNotificationsAsReadAsync(int userId)
     {
-        var now = DateTime.UtcNow;
-        var unreadNotifications = await _context.Notifications
+        DateTime now = DateTime.UtcNow;
+        List<Notification> unreadNotifications = await _context.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
             .ToListAsync();
 
-        foreach (var notification in unreadNotifications)
+        foreach (Notification notification in unreadNotifications)
         {
             notification.IsRead = true;
             notification.ReadAt = now;
@@ -222,7 +234,7 @@ public class NotificationRepository : INotificationRepository
 
     public async Task<NotificationCountDTO> GetNotificationCountsAsync(int userId)
     {
-        var counts = new NotificationCountDTO
+        NotificationCountDTO counts = new NotificationCountDTO
         {
             TotalCount = await _context.Notifications.CountAsync(n => n.UserId == userId),
             UnreadCount = await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead),
@@ -234,7 +246,7 @@ public class NotificationRepository : INotificationRepository
 
     public async Task DeleteAllNotificationsAsync(int userId)
     {
-        var userNotifications = await _context.Notifications
+        List<Notification> userNotifications = await _context.Notifications
             .Where(n => n.UserId == userId)
             .ToListAsync();
 
