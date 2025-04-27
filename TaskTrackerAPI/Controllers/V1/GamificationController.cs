@@ -7,62 +7,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models;
-using TaskTrackerAPI.Models.Gamification;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using System.Linq;
 using System.Text.Json;
 using System.Security.Claims;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
-    // Define DTOs used in the controller
-    public class BadgeDisplayDTO
-    {
-        public int Id { get; set; }
-        public int BadgeId { get; set; }
-        public int UserId { get; set; }
-        public DateTime AwardedAt { get; set; }
-        public bool IsDisplayed { get; set; }
-        public bool IsFeatured { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string ImageUrl { get; set; } = string.Empty;
-        public string UnlockCriteria { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
-        public string Rarity { get; set; } = string.Empty;
-    }
-
-    public class LoginStatusDTO
-    {
-        public int CurrentStreak { get; set; }
-        public bool CanClaimDailyReward { get; set; }
-        public int NextRewardAt { get; set; }
-        public DateTime? LastLoginDate { get; set; }
-    }
-
-    public class UserStatsDTO
-    {
-        public int TotalTasksCompleted { get; set; }
-        public int TasksCompletedThisWeek { get; set; }
-        public int TotalPointsEarned { get; set; }
-        public int PointsEarnedThisWeek { get; set; }
-        public int ConsecutiveLoginDays { get; set; }
-        public int BadgesEarned { get; set; }
-        public int CurrentLevel { get; set; }
-        public int ChallengesCompleted { get; set; }
-    }
-
-    public class LeaderboardDisplayDTO
-    {
-        public int UserId { get; set; }
-        public int Rank { get; set; }
-        public string Username { get; set; } = string.Empty;
-        public int Points { get; set; }
-        public int Level { get; set; }
-        public string AvatarUrl { get; set; } = string.Empty;
-    }
-
     [ApiVersion("1.0")]
     [Authorize]
     [ApiController]
@@ -72,13 +25,16 @@ namespace TaskTrackerAPI.Controllers.V1
     {
         private readonly IGamificationService _gamificationService;
         private readonly ILogger<GamificationController> _logger;
+        private readonly IMapper _mapper;
 
         public GamificationController(
             IGamificationService gamificationService,
-            ILogger<GamificationController> logger)
+            ILogger<GamificationController> logger,
+            IMapper mapper)
         {
             _gamificationService = gamificationService;
             _logger = logger;
+            _mapper = mapper;
         }
 
         #region User Progress
@@ -92,7 +48,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                TaskTrackerAPI.Models.UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
+                UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
                 UserProgressDTO userProgressDto = new UserProgressDTO
                 {
                     Id = userProgress.Id,
@@ -134,7 +90,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 int transactionId = await _gamificationService.AddPointsAsync(userId, dto.Points, dto.TransactionType, dto.Description, dto.RelatedEntityId);
                 
                 // Get the transaction through the service
-                TaskTrackerAPI.Models.PointTransaction transaction = await _gamificationService.GetTransactionAsync(transactionId);
+                PointTransaction transaction = await _gamificationService.GetTransactionAsync(transactionId);
                 
                 PointTransactionDTO pointTransactionDto = new PointTransactionDTO
                 {
@@ -167,10 +123,10 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                IEnumerable<TaskTrackerAPI.Models.UserAchievement> achievements = await _gamificationService.GetUserAchievementsAsync(userId);
+                IEnumerable<UserAchievement> achievements = await _gamificationService.GetUserAchievementsAsync(userId);
                 
                 List<UserAchievementDTO> result = new List<UserAchievementDTO>();
-                foreach (TaskTrackerAPI.Models.UserAchievement ua in achievements)
+                foreach (UserAchievement ua in achievements)
                 {
                     result.Add(new UserAchievementDTO
                     {
@@ -207,10 +163,10 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                IEnumerable<TaskTrackerAPI.Models.Achievement> achievements = await _gamificationService.GetAvailableAchievementsAsync(userId);
+                IEnumerable<Achievement> achievements = await _gamificationService.GetAvailableAchievementsAsync(userId);
                 
                 List<AchievementDTO> result = new List<AchievementDTO>();
-                foreach (TaskTrackerAPI.Models.Achievement achievement in achievements)
+                foreach (Achievement achievement in achievements)
                 {
                     // Skip admin-only achievements for regular users
                     // Use appropriate property - IsHidden, IsSecret, or check visibility another way
@@ -249,42 +205,43 @@ namespace TaskTrackerAPI.Controllers.V1
         [HttpGet("badges")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<BadgeDisplayDTO>>> GetUserBadges()
+        public async Task<ActionResult<IEnumerable<UserBadgeDTO>>> GetUserBadges()
         {
             try
             {
                 int userId = User.GetUserIdAsInt();
 
-                IEnumerable<TaskTrackerAPI.Models.UserBadge> badges = await _gamificationService.GetUserBadgesAsync(userId);
-                List<BadgeDisplayDTO> badgeResults = new List<BadgeDisplayDTO>();
+                IEnumerable<UserBadge> badges = await _gamificationService.GetUserBadgesAsync(userId);
+                List<UserBadgeDTO> badgeResults = new List<UserBadgeDTO>();
 
-                foreach (TaskTrackerAPI.Models.UserBadge badge in badges)
+                foreach (UserBadge badge in badges)
                 {
-                    BadgeDisplayDTO badgeDisplay = new BadgeDisplayDTO
+                    UserBadgeDTO badgeDisplay = new UserBadgeDTO
                     {
                         Id = badge.Id,
-                        BadgeId = badge.BadgeId,
-                        UserId = badge.UserId,
                         AwardedAt = badge.AwardedAt,
                         IsDisplayed = badge.IsDisplayed,
                         IsFeatured = false,
-                        Name = badge.Badge.Name,
-                        Description = badge.Badge.Description,
-                        ImageUrl = badge.Badge.IconPath ?? string.Empty,
-                        UnlockCriteria = badge.Badge.Description ?? string.Empty,
-                        Category = badge.Badge.Category,
-                        Rarity = "Common"
+                        Badge = new BadgeDTO
+                        {
+                            Id = badge.BadgeId,
+                            Name = badge?.Badge?.Name,
+                            Description = badge?.Badge?.Description,
+                            IconUrl = badge?.Badge?.IconPath ?? string.Empty,
+                            Category = badge?.Badge?.Category,
+                            Rarity = "Common"
+                        }
                     };
                     badgeResults.Add(badgeDisplay);
                 }
                 
-                return Ok(ApiResponse<IEnumerable<BadgeDisplayDTO>>.SuccessResponse(badgeResults));
+                return Ok(ApiResponse<IEnumerable<UserBadgeDTO>>.SuccessResponse(badgeResults));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving user badges");
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<IEnumerable<BadgeDisplayDTO>>.FailureResponse("Error retrieving user badges", StatusCodes.Status500InternalServerError));
+                    ApiResponse<IEnumerable<UserBadgeDTO>>.FailureResponse("Error retrieving user badges", StatusCodes.Status500InternalServerError));
             }
         }
 
@@ -328,8 +285,8 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                IEnumerable<TaskTrackerAPI.Models.Reward> rewards = await _gamificationService.GetAvailableRewardsAsync(userId);
-                IEnumerable<TaskTrackerAPI.Models.UserReward> userRewards = await _gamificationService.RedeemRewardAsync(userId, 0).ContinueWith(t => new List<TaskTrackerAPI.Models.UserReward>()); // Temporary fix for missing GetUserRewardsAsync
+                IEnumerable<Reward> rewards = await _gamificationService.GetAvailableRewardsAsync(userId);
+                IEnumerable<UserReward> userRewards = await _gamificationService.RedeemRewardAsync(userId, 0).ContinueWith(t => new List<UserReward>()); // Temporary fix for missing GetUserRewardsAsync
                 List<RewardDTO> result = rewards.Select(r => new RewardDTO
                     {
                     Id = r.Id,
@@ -364,7 +321,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 int userId = User.GetUserIdAsInt();
 
                 // Get reward by ID - using temporary implementation since GetRewardByIdAsync doesn't exist
-                TaskTrackerAPI.Models.Reward reward = await _gamificationService.GetAvailableRewardsAsync(userId)
+                Reward? reward = await _gamificationService.GetAvailableRewardsAsync(userId)
                     .ContinueWith(t => t.Result.FirstOrDefault(r => r.Id == rewardId));
                 
                 if (reward == null)
@@ -373,7 +330,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 RewardDTO rewardDto = new RewardDTO
-                    {
+                {
                     Id = reward.Id,
                     Name = reward.Name,
                     Description = reward.Description,
@@ -389,11 +346,11 @@ namespace TaskTrackerAPI.Controllers.V1
                     return BadRequest(ApiResponse<RewardDTO>.BadRequestResponse("This reward is not available for claiming"));
                 }
 
-                TaskTrackerAPI.Models.UserReward claimedReward = await _gamificationService.RedeemRewardAsync(userId, rewardId);
+                UserReward claimedReward = await _gamificationService.RedeemRewardAsync(userId, rewardId);
                 if (claimedReward == null)
                 {
                     return BadRequest(ApiResponse<RewardDTO>.BadRequestResponse("You don't have enough points to claim this reward"));
-            }
+                }
 
                 UserRewardDTO userRewardDto = new UserRewardDTO
                 {
@@ -456,7 +413,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                IEnumerable<TaskTrackerAPI.Models.Challenge> challenges = await _gamificationService.GetActiveChallengesAsync(userId);
+                IEnumerable<Challenge> challenges = await _gamificationService.GetActiveChallengesAsync(userId);
                 List<ChallengeDTO> result = challenges.Select(c => new ChallengeDTO
                 {
                     Id = c.Id,
@@ -488,13 +445,13 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                IEnumerable<TaskTrackerAPI.Models.Challenge> challenge = await _gamificationService.GetActiveChallengesAsync(userId);
+                IEnumerable<Challenge> challenge = await _gamificationService.GetActiveChallengesAsync(userId);
                 if (challenge == null || !challenge.Any())
                 {
                     return NotFound(ApiResponse<ChallengeDTO>.NotFoundResponse("No active challenge found"));
                 }
 
-                TaskTrackerAPI.Models.Challenge currentChallenge = challenge.First();
+                Challenge currentChallenge = challenge.First();
 
                 ChallengeDTO challengeDto = new ChallengeDTO
                 {
@@ -530,17 +487,21 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                // Get user progress for streak information
-                TaskTrackerAPI.Models.UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
+                // Get login status from service
+                LoginStatus loginStatus = await _gamificationService.GetDailyLoginStatusAsync(userId);
+                
+                // Get user progress for additional info
+                UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
                 
                 DailyLoginStatusDetailDTO loginStatusResponse = new DailyLoginStatusDetailDTO
                 {
                     UserId = userId,
-                    HasLoggedInToday = true, // Default value
-                    ConsecutiveDays = userProgress.CurrentStreak,
+                    HasLoggedInToday = loginStatus.HasClaimedToday,
+                    ConsecutiveDays = loginStatus.CurrentStreak,
+                    TotalLogins = 0, // Default value since UserProgress doesn't have TotalLogins
                     LastLoginDate = userProgress.LastActivityDate,
-                    CurrentStreakPoints = 0, // Default value 
-                    RewardClaimed = false // Default value
+                    CurrentStreakPoints = loginStatus.PotentialPoints,
+                    RewardClaimed = loginStatus.HasClaimedToday
                 };
 
                 return Ok(ApiResponse<DailyLoginStatusDetailDTO>.SuccessResponse(loginStatusResponse));
@@ -563,7 +524,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                TaskTrackerAPI.Models.PointTransaction transactionResult = await _gamificationService.ProcessDailyLoginAsync(userId);
+                PointTransaction transactionResult = await _gamificationService.ProcessDailyLoginAsync(userId);
                 if (transactionResult == null)
                 {
                     return BadRequest(ApiResponse<PointTransactionDTO>.BadRequestResponse("Daily login reward already claimed today"));
@@ -597,51 +558,70 @@ namespace TaskTrackerAPI.Controllers.V1
         [HttpGet("stats")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<UserStatsDTO>> GetUserStats()
+        public async Task<ActionResult<GamificationStatsDTO>> GetUserStats()
         {
             try
             {
                 int userId = User.GetUserIdAsInt();
-                TaskTrackerAPI.Models.UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
+                UserProgress userProgress = await _gamificationService.GetUserProgressAsync(userId);
 
-                UserStatsDTO stats = new UserStatsDTO
+                GamificationStatsDTO stats = new GamificationStatsDTO
                 {
-                    TotalTasksCompleted = 0, // Use default value
-                    TasksCompletedThisWeek = 0, // Default value
-                    TotalPointsEarned = userProgress.TotalPointsEarned,
-                    PointsEarnedThisWeek = 0, // Default value
-                    ConsecutiveLoginDays = userProgress.CurrentStreak,
-                    BadgesEarned = 0, // Use default value
-                    CurrentLevel = userProgress.Level,
-                    ChallengesCompleted = 0 // Default value
+                    Progress = new UserProgressDTO
+                    {
+                        Id = userProgress.Id,
+                        UserId = userProgress.UserId,
+                        CurrentLevel = userProgress.Level,
+                        TotalPoints = userProgress.CurrentPoints,
+                        HighestStreak = userProgress.LongestStreak,
+                        CurrentStreak = userProgress.CurrentStreak
+                    },
+                    CompletedTasks = 0, // Default value
+                    AchievementsUnlocked = 0, // Default value
+                    BadgesEarned = 0, // Default value
+                    RewardsRedeemed = 0, // Default value
+                    ConsistencyScore = 0 // Default value
                 };
 
-                return Ok(ApiResponse<UserStatsDTO>.SuccessResponse(stats));
+                return Ok(ApiResponse<GamificationStatsDTO>.SuccessResponse(stats));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving user gamification stats");
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<UserStatsDTO>.FailureResponse("Error retrieving user stats", StatusCodes.Status500InternalServerError));
+                    ApiResponse<GamificationStatsDTO>.FailureResponse("Error retrieving user stats", StatusCodes.Status500InternalServerError));
             }
         }
 
+        /// <summary>
+        /// Get personalized gamification suggestions for the current user
+        /// </summary>
+        /// <remarks>
+        /// Returns a list of suggestions that might help the user earn points or make progress.
+        /// Suggestions can include task completion, maintaining streaks, unlocking achievements, etc.
+        /// </remarks>
+        /// <response code="200">Returns a list of personalized suggestions</response>
+        /// <response code="500">If there was an internal server error</response>
         [HttpGet("suggestions")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<List<GamificationSuggestion>>> GetSuggestions()
+        public async Task<ActionResult<List<GamificationSuggestionDetailDTO>>> GetSuggestions()
         {
             try
             {
                 int userId = User.GetUserIdAsInt();
                 List<GamificationSuggestion> suggestions = await _gamificationService.GetGamificationSuggestionsAsync(userId);
-                return Ok(ApiResponse<List<GamificationSuggestion>>.SuccessResponse(suggestions));
+                
+                // Map to DTO using AutoMapper
+                List<GamificationSuggestionDetailDTO> suggestionDtos = _mapper.Map<List<GamificationSuggestionDetailDTO>>(suggestions);
+                
+                return Ok(ApiResponse<List<GamificationSuggestionDetailDTO>>.SuccessResponse(suggestionDtos));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving gamification suggestions");
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<List<GamificationSuggestion>>.FailureResponse("Error retrieving suggestions", StatusCodes.Status500InternalServerError));
+                    ApiResponse<List<GamificationSuggestionDetailDTO>>.FailureResponse("Error retrieving suggestions", StatusCodes.Status500InternalServerError));
             }
         }
 
@@ -652,33 +632,32 @@ namespace TaskTrackerAPI.Controllers.V1
         [HttpGet("leaderboard")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<LeaderboardDisplayDTO>>> GetLeaderboard([FromQuery] string timeFrame = "all")
+        public async Task<ActionResult<IEnumerable<LeaderboardEntryDTO>>> GetLeaderboard([FromQuery] string timeFrame = "all")
         {
             try
             {
                 int userId = User.GetUserIdAsInt();
 
                 // Instead of using enum, use string directly
-                List<TaskTrackerAPI.Models.LeaderboardEntry> leaderboardEntries = await _gamificationService.GetLeaderboardAsync(timeFrame, 10);
+                List<LeaderboardEntry> leaderboardEntries = await _gamificationService.GetLeaderboardAsync(timeFrame, 10);
                 
                 // Create simple anonymous objects for leaderboard to avoid property mapping issues
-                List<LeaderboardDisplayDTO> leaderboardData = leaderboardEntries.Select(e => new LeaderboardDisplayDTO
+                List<LeaderboardEntryDTO> leaderboardData = leaderboardEntries.Select(e => new LeaderboardEntryDTO
                     {
                     UserId = e.UserId,
                     Rank = e.Rank,
                     Username = e.Username ?? "User",
-                    Points = 0, // Default value
-                    Level = 0, // Default value 
+                    Value = 0, // Default value
                     AvatarUrl = string.Empty // Default value
                 }).ToList();
                 
-                return Ok(ApiResponse<IEnumerable<LeaderboardDisplayDTO>>.SuccessResponse(leaderboardData));
+                return Ok(ApiResponse<IEnumerable<LeaderboardEntryDTO>>.SuccessResponse(leaderboardData));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving leaderboard");
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<IEnumerable<LeaderboardDisplayDTO>>.FailureResponse("Error retrieving leaderboard", StatusCodes.Status500InternalServerError));
+                    ApiResponse<IEnumerable<LeaderboardEntryDTO>>.FailureResponse("Error retrieving leaderboard", StatusCodes.Status500InternalServerError));
             }
         }
 

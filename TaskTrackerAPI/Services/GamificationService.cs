@@ -637,6 +637,7 @@ namespace TaskTrackerAPI.Services
         {
             List<GamificationSuggestion> suggestions = new List<GamificationSuggestion>();
             UserProgress userProgress = await GetUserProgressAsync(userId);
+            int suggestionId = 1;
             
             // Suggestion 1: Complete a task if there are incomplete tasks
             List<TaskItem> incompleteTasks = await _context.Tasks
@@ -650,12 +651,17 @@ namespace TaskTrackerAPI.Services
                 {
                     suggestions.Add(new GamificationSuggestion
                     {
+                        Id = suggestionId++,
                         Type = "task",
                         Title = "Complete a task",
                         Description = $"Complete \"{task.Title}\" to earn points and make progress.",
                         Points = 10,
                         ActionType = "complete_task",
-                        ActionId = task.Id
+                        ActionId = task.Id,
+                        PotentialPoints = 10,
+                        RelevanceScore = 0.8,
+                        IsCompleted = false,
+                        CreatedAt = DateTime.UtcNow
                     });
                 }
             }
@@ -665,12 +671,17 @@ namespace TaskTrackerAPI.Services
             {
                 suggestions.Add(new GamificationSuggestion
                 {
+                    Id = suggestionId++,
                     Type = "login",
                     Title = "Check in today",
                     Description = $"Log in today to maintain your {userProgress.CurrentStreak} day streak.",
                     Points = 5,
                     ActionType = "login",
-                    ActionId = 0
+                    ActionId = 0,
+                    PotentialPoints = 5,
+                    RelevanceScore = 0.9,
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
             
@@ -689,24 +700,29 @@ namespace TaskTrackerAPI.Services
             {
                 suggestions.Add(new GamificationSuggestion
                 {
+                    Id = suggestionId++,
                     Type = "achievement",
                     Title = "Unlock an achievement",
                     Description = $"Try to unlock \"{nextAchievement.Name}\": {nextAchievement.Description}",
                     Points = nextAchievement.PointValue,
                     ActionType = "unlock_achievement",
-                    ActionId = nextAchievement.Id
+                    ActionId = nextAchievement.Id,
+                    PotentialPoints = nextAchievement.PointValue,
+                    RelevanceScore = 0.7,
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
                 });
             }
             
             // Suggestion 4: Redeem a reward if they have enough points
-            GamificationSuggestion? rewardSuggestion = await GetRewardSuggestionAsync(userId, userProgress.CurrentPoints);
+            GamificationSuggestion? rewardSuggestion = await GetRewardSuggestionAsync(userId, userProgress.CurrentPoints, suggestionId++);
             if (rewardSuggestion != null)
             {
                 suggestions.Add(rewardSuggestion);
             }
             
             // Suggestion 5: Work on active challenge
-            GamificationSuggestion? challengeSuggestion = await GetChallengeSuggestionAsync(userId);
+            GamificationSuggestion? challengeSuggestion = await GetChallengeSuggestionAsync(userId, suggestionId++);
             if (challengeSuggestion != null)
             {
                 suggestions.Add(challengeSuggestion);
@@ -715,7 +731,7 @@ namespace TaskTrackerAPI.Services
             return suggestions;
         }
 
-        private async Task<GamificationSuggestion?> GetRewardSuggestionAsync(int userId, int availablePoints)
+        private async Task<GamificationSuggestion?> GetRewardSuggestionAsync(int userId, int availablePoints, int suggestionId)
         {
             // Find a reward the user can afford
             Reward? affordableReward = await _context.Rewards
@@ -727,19 +743,24 @@ namespace TaskTrackerAPI.Services
             {
                 return new GamificationSuggestion
                 {
+                    Id = suggestionId,
                     Type = "reward",
                     Title = "Redeem a reward",
                     Description = $"You have enough points to redeem \"{affordableReward.Name}\"",
                     Points = 0, // No points earned for redeeming
                     ActionType = "redeem_reward",
-                    ActionId = affordableReward.Id
+                    ActionId = affordableReward.Id,
+                    PotentialPoints = 0,
+                    RelevanceScore = 0.6,
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
                 };
             }
             
             return null;
         }
         
-        private async Task<GamificationSuggestion?> GetChallengeSuggestionAsync(int userId)
+        private async Task<GamificationSuggestion?> GetChallengeSuggestionAsync(int userId, int suggestionId)
         {
             // Get an active challenge for the user
             Challenge? challenge = await GetChallengeForUserAsync(userId);
@@ -755,12 +776,17 @@ namespace TaskTrackerAPI.Services
                 
                 return new GamificationSuggestion
                 {
+                    Id = suggestionId,
                     Type = "challenge",
                     Title = "Complete a challenge",
                     Description = $"Work on '{challenge.Name}' - {remaining} more actions needed",
                     Points = challenge.PointReward,
                     ActionType = "work_on_challenge",
-                    ActionId = challenge.Id
+                    ActionId = challenge.Id,
+                    PotentialPoints = challenge.PointReward,
+                    RelevanceScore = 0.75,
+                    IsCompleted = false,
+                    CreatedAt = DateTime.UtcNow
                 };
             }
             
