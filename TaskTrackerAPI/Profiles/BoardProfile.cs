@@ -1,5 +1,5 @@
 using AutoMapper;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Profiles;

@@ -88,7 +88,7 @@ public class FamilyAchievementRepository : IFamilyAchievementRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var achievement = await _context.FamilyAchievements.FindAsync(id);
+        FamilyAchievement?  achievement = await _context.FamilyAchievements.FindAsync(id);
         if (achievement == null)
             return false;
 
@@ -99,7 +99,7 @@ public class FamilyAchievementRepository : IFamilyAchievementRepository
 
     public async Task<bool> UpdateProgressAsync(int achievementId, int progressIncrease)
     {
-        var achievement = await _context.FamilyAchievements.FindAsync(achievementId);
+        FamilyAchievement? achievement = await _context.FamilyAchievements.FindAsync(achievementId);
         if (achievement == null)
             return false;
 
@@ -119,7 +119,7 @@ public class FamilyAchievementRepository : IFamilyAchievementRepository
 
     public async Task<bool> AddMemberContributionAsync(int achievementId, int memberId, int points)
     {
-        var contribution = await _context.FamilyAchievementMembers
+        FamilyAchievementMember? contribution = await _context.FamilyAchievementMembers
             .FirstOrDefaultAsync(c => c.AchievementId == achievementId && c.FamilyMemberId == memberId);
             
         if (contribution != null)
@@ -155,7 +155,7 @@ public class FamilyAchievementRepository : IFamilyAchievementRepository
     
     public async Task<int> GetFamilyPointsTotalAsync(int familyId)
     {
-        var achievements = await _context.FamilyAchievements
+        IEnumerable<FamilyAchievement> achievements = await _context.FamilyAchievements
             .Where(a => a.FamilyId == familyId && a.IsCompleted)
             .ToListAsync();
             

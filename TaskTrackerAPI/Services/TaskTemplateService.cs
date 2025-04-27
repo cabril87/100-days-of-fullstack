@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using AutoMapper;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -47,7 +49,7 @@ public class TaskTemplateService : ITaskTemplateService
         return _mapper.Map<IEnumerable<TaskTemplateDTO>>(templates);
     }
 
-    public async Task<IEnumerable<TaskTemplateDTO>> GetTaskTemplatesByTypeAsync(TaskTemplateType type)
+    public async Task<IEnumerable<TaskTemplateDTO>> GetTaskTemplatesByTypeAsync(Models.TaskTemplateType type)
     {
         IEnumerable<TaskTemplate> templates = await _taskTemplateRepository.GetTaskTemplatesByTypeAsync(type);
         return _mapper.Map<IEnumerable<TaskTemplateDTO>>(templates);
@@ -100,7 +102,7 @@ public class TaskTemplateService : ITaskTemplateService
             existingTemplate.Description = templateDto.Description;
             
         if (templateDto.Type.HasValue)
-            existingTemplate.Type = templateDto.Type.Value;
+            existingTemplate.Type = (Models.TaskTemplateType)templateDto.Type.Value;
             
         if (templateDto.TemplateData != null)
             existingTemplate.TemplateData = templateDto.TemplateData;
@@ -173,19 +175,19 @@ public class TaskTemplateService : ITaskTemplateService
         // Handle different template types
         switch (template.Type)
         {
-            case TaskTemplateType.Board:
-            case TaskTemplateType.Kanban:
-            case TaskTemplateType.ProjectBoard:
+            case Models.TaskTemplateType.Board:
+            case Models.TaskTemplateType.Kanban:
+            case Models.TaskTemplateType.ProjectBoard:
                 result = await ApplyBoardTemplateAsync(userId, template, applyDto);
                 break;
                 
-            case TaskTemplateType.Daily:
-            case TaskTemplateType.Weekly:
-            case TaskTemplateType.Monthly:
+            case Models.TaskTemplateType.Daily:
+            case Models.TaskTemplateType.Weekly:
+            case Models.TaskTemplateType.Monthly:
                 result = await ApplyScheduleTemplateAsync(userId, template, applyDto);
                 break;
                 
-            case TaskTemplateType.Checklist:
+            case Models.TaskTemplateType.Checklist:
                 result = await ApplyChecklistTemplateAsync(userId, template, applyDto);
                 break;
                 
@@ -346,4 +348,33 @@ public class TaskTemplateService : ITaskTemplateService
 
         return result;
     }
+
+    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetAllTaskTemplatesAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetUserTaskTemplatesAsync(int userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetSystemTaskTemplatesAsync()
+    {
+        throw new NotImplementedException();
+    }
+
+
+    Task<DTOs.Tasks.TaskTemplateDTO?> ITaskTemplateService.GetTaskTemplateByIdAsync(int templateId)
+    {
+        throw new NotImplementedException();
+    }
+
+
+
+    Task<DTOs.Tasks.TaskTemplateDTO?> ITaskTemplateService.UpdateTaskTemplateAsync(int userId, int templateId, UpdateTaskTemplateDTO templateDto)
+    {
+        throw new NotImplementedException();
+    }
+
 } 

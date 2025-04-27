@@ -1,6 +1,8 @@
 // Services/AuthService.cs
 using System.Security.Claims;
+using System.Security;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Helpers;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
@@ -58,7 +60,7 @@ public class AuthService : IAuthService
             LastName = userDto.LastName,
             Role = "User",
             CreatedAt = DateTime.UtcNow,
-            AgeGroup = userDto.AgeGroup
+            AgeGroup = userDto.AgeGroup ?? FamilyMemberAgeGroup.Adult
         };
 
         await _userRepository.CreateUserAsync(user);
@@ -116,7 +118,9 @@ public class AuthService : IAuthService
                 ExpiryDate = refreshTokenExpiry,
                 UserId = user.Id,
                 CreatedDate = DateTime.UtcNow,
-                RevokedByIp = null
+                RevokedByIp = null,
+                CreatedByIp = ipAddress,
+                TokenFamily = Guid.NewGuid().ToString()
             };
             
             await _userRepository.CreateRefreshTokenAsync(refreshTokenEntity);
@@ -167,43 +171,66 @@ public class AuthService : IAuthService
             
         if (existingRefreshToken == null)
         {
+            _logger.LogWarning("Refresh token not found: {Token}", refreshToken);
             throw new UnauthorizedAccessException("Invalid refresh token");
         }
         
-        // Check if the refresh token is active
-        if (!existingRefreshToken.IsActive)
+        // Check if the refresh token is expired
+        if (existingRefreshToken.IsExpired)
         {
-            throw new UnauthorizedAccessException("Refresh token is expired or revoked");
+            _logger.LogWarning("Expired refresh token used: {Token}", refreshToken);
+            throw new UnauthorizedAccessException("Refresh token has expired");
+        }
+
+        // Check if the refresh token has been revoked
+        if (existingRefreshToken.RevokedByIp != null)
+        {
+            // This is a potential token reuse attack! Revoke all descendant tokens
+            _logger.LogWarning("Potential refresh token reuse detected: {Token}", refreshToken);
+            await _userRepository.RevokeRefreshTokenFamilyAsync(existingRefreshToken.UserId, ipAddress);
+            throw new SecurityException("Refresh token has been revoked due to security violation");
         }
         
         // Get user from token
         User? user = existingRefreshToken.User;
         if (user == null)
         {
+            _logger.LogWarning("User not found for refresh token: {Token}", refreshToken);
             throw new UnauthorizedAccessException("User not found");
         }
         
         // Revoke the current refresh token
         await _userRepository.RevokeRefreshTokenAsync(existingRefreshToken, ipAddress);
         
-        // Create a new refresh token
+        // Create a new refresh token in the same family
         string newRefreshToken = GenerateRefreshToken();
         DateTime newRefreshTokenExpiry = _authHelper.GetRefreshTokenExpiryTime();
         
-        // Store the new refresh token
+        // Store the new refresh token with reference to the previous token
         RefreshToken newRefreshTokenEntity = new RefreshToken
         {
             Token = newRefreshToken,
             ExpiryDate = newRefreshTokenExpiry,
             UserId = user.Id,
             CreatedDate = DateTime.UtcNow,
-            RevokedByIp = null
+            RevokedByIp = null,
+            ReplacedByToken = null,
+            TokenFamily = existingRefreshToken.TokenFamily ?? Guid.NewGuid().ToString(),
+            CreatedByIp = ipAddress
         };
         
+        // Update the old token to reference the new token (for audit trail)
+        existingRefreshToken.ReplacedByToken = newRefreshToken;
+        await _userRepository.UpdateRefreshTokenAsync(existingRefreshToken);
+        
+        // Save the new token
         await _userRepository.CreateRefreshTokenAsync(newRefreshTokenEntity);
         
         // Generate a new access token
         string newAccessToken = GenerateAccessToken(user);
+        
+        // Track this refresh operation
+        _logger.LogInformation("Refreshed token for user {UserId} from IP {IpAddress}", user.Id, ipAddress);
         
         // Return the new tokens
         return new TokensResponseDTO
@@ -292,24 +319,24 @@ public class AuthService : IAuthService
     }
 
     public async Task DeleteUserAsync(int userId, int currentUserId)
-{
-    // Don't allow users to delete themselves
-    if (userId == currentUserId)
     {
-        throw new InvalidOperationException("You cannot delete your own account");
+        // Don't allow users to delete themselves
+        if (userId == currentUserId)
+        {
+            throw new InvalidOperationException("You cannot delete your own account");
+        }
+        
+        User? user = await _userRepository.GetUserByIdAsync(userId);
+        
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+        
+        await _userRepository.DeleteUserAsync(userId);
     }
     
-    User? user = await _userRepository.GetUserByIdAsync(userId);
-    
-    if (user == null)
-    {
-        throw new KeyNotFoundException("User not found");
-    }
-    
-    await _userRepository.DeleteUserAsync(userId);
-}
-    
-    public async Task ChangePasswordAsync(int userId, ChangePasswordDTO changePasswordDto, string ipAddress)
+    public async Task ChangePasswordAsync(int userId, PasswordChangeDTO changePasswordDto, string ipAddress)
     {
         User? user = await _userRepository.GetUserByIdAsync(userId);
         
@@ -325,7 +352,7 @@ public class AuthService : IAuthService
         }
         
         // Confirm passwords match
-        if (changePasswordDto.NewPassword != changePasswordDto.ConfirmNewPassword)
+        if (changePasswordDto.NewPassword != changePasswordDto.NewPassword)
         {
             throw new ArgumentException("New passwords do not match");
         }

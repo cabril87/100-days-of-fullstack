@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
+using ModelReminderStatus = TaskTrackerAPI.Models.ReminderStatus;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 
@@ -10,7 +12,7 @@ public interface IReminderService
 {
     Task<IEnumerable<ReminderDTO>> GetAllRemindersAsync(int userId);
     Task<ReminderDTO?> GetReminderByIdAsync(int userId, int reminderId);
-    Task<IEnumerable<ReminderDTO>> GetRemindersByStatusAsync(int userId, ReminderStatus status);
+    Task<IEnumerable<ReminderDTO>> GetRemindersByStatusAsync(int userId, ModelReminderStatus status);
     Task<IEnumerable<ReminderDTO>> GetUpcomingRemindersAsync(int userId, int days);
     Task<IEnumerable<ReminderDTO>> GetOverdueRemindersAsync(int userId);
     Task<IEnumerable<ReminderDTO>> GetRemindersByTaskIdAsync(int userId, int taskId);
@@ -18,6 +20,6 @@ public interface IReminderService
     Task<ReminderDTO?> UpdateReminderAsync(int userId, int reminderId, UpdateReminderDTO reminderDto);
     Task DeleteReminderAsync(int userId, int reminderId);
     Task<bool> IsReminderOwnedByUserAsync(int reminderId, int userId);
-    Task<ReminderDTO?> UpdateReminderStatusAsync(int userId, int reminderId, ReminderStatus status);
+    Task<ReminderDTO?> UpdateReminderStatusAsync(int userId, int reminderId, ModelReminderStatus status);
     Task<ReminderStatisticsDTO> GetReminderStatisticsAsync(int userId);
 } 

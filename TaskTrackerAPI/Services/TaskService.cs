@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Tags;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -204,14 +201,14 @@ namespace TaskTrackerAPI.Services
             return _mapper.Map<IEnumerable<TaskItemDTO>>(dueThisWeekTasks);
         }
         
-        public async Task<TaskServiceStatisticsDTO> GetTaskStatisticsAsync(int userId)
+        public async Task<TimeRangeTaskStatisticsDTO> GetTaskStatisticsAsync(int userId)
         {
             IEnumerable<TaskItem> allTasks = await _taskRepository.GetAllTasksAsync(userId);
             DateTime today = DateTime.Today;
             DateTime endOfThisWeek = today.AddDays(7 - (int)today.DayOfWeek);
             DateTime endOfNextWeek = endOfThisWeek.AddDays(7);
             
-            TaskServiceStatisticsDTO statistics = new TaskServiceStatisticsDTO
+            TimeRangeTaskStatisticsDTO statistics = new TimeRangeTaskStatisticsDTO
             {
                 TotalTasks = allTasks.Count(),
                 CompletedTasksCount = allTasks.Count(t => t.Status == TaskItemStatus.Completed),

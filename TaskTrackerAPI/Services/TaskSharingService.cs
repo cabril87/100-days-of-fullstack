@@ -6,22 +6,10 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
-
-namespace TaskTrackerAPI.Services.Interfaces
-{
-    public interface ITaskSharingService
-    {
-        Task<FamilyTaskItemDTO?> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int userId, bool requiresApproval);
-        Task<bool> UnassignTaskFromFamilyMemberAsync(int taskId, int userId);
-        Task<IEnumerable<FamilyTaskItemDTO>> GetTasksAssignedToFamilyMemberAsync(int familyMemberId, int userId);
-        Task<IEnumerable<FamilyTaskItemDTO>> GetFamilyTasksAsync(int familyId, int userId);
-        Task<bool> ApproveTaskAsync(int taskId, int userId, TaskApprovalDTO approvalDto);
-        Task<FamilyTaskItemDTO?> GetFamilyTaskByIdAsync(int taskId, int userId);
-    }
-}
 
 namespace TaskTrackerAPI.Services
 {
@@ -269,7 +257,7 @@ namespace TaskTrackerAPI.Services
                 bool isMember = await _familyRepository.IsMemberAsync(familyId, userId);
                 if (!isMember)
                 {
-                    _logger.LogWarning("User {UserId} is not a member of family {FamilyId} associated with task {TaskId}", userId, familyId, taskId);
+                    _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", userId, familyId);
                     throw new UnauthorizedAccessException("You are not a member of this family");
                 }
 

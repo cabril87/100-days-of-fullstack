@@ -1,8 +1,11 @@
 // Services/TagService.cs
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Tags;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskDto = TaskTrackerAPI.DTOs.Tasks.TagDto;
 
 namespace TaskTrackerAPI.Services;
 
@@ -185,10 +188,10 @@ public class TagService : ITagService
             Priority = int.Parse(task.Priority),
             UserId = task.UserId,
             CategoryId = task.CategoryId,
-            CategoryName = task.Category?.Name,
+            CategoryName = task.Category?.Name ?? string.Empty,
             // Note: Tags are not included here to avoid circular references
             // They would be loaded separately if needed
-            Tags = new List<TagDTO>()
+            Tags = new List<TaskTrackerAPI.DTOs.Tasks.TagDto>()
         };
     }
 }

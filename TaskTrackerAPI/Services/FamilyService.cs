@@ -337,4 +337,17 @@ public class FamilyService : IFamilyService
 
         return await _familyRepository.DeleteMemberAsync(memberId);
     }
+
+    public async Task<bool> IsUserAdminOfFamilyAsync(int userId, int familyId)
+    {
+        // Check if user is the creator of the family
+        var family = await _familyRepository.GetByIdAsync(familyId);
+        if (family != null && family.CreatedById == userId)
+        {
+            return true;
+        }
+
+        // Check if user has admin permissions
+        return await HasPermissionAsync(familyId, userId, "manage_family");
+    }
 }

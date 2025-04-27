@@ -120,8 +120,77 @@ public class UserRepository : IUserRepository
     public async Task RevokeRefreshTokenAsync(RefreshToken refreshToken, string ipAddress)
     {
         refreshToken.RevokedByIp = ipAddress;
+        refreshToken.RevokedDate = DateTime.UtcNow;
+        refreshToken.ReasonRevoked = "Replaced by new token";
         _context.RefreshTokens.Update(refreshToken);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateRefreshTokenAsync(RefreshToken refreshToken)
+    {
+        _context.RefreshTokens.Update(refreshToken);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task RevokeRefreshTokenFamilyAsync(int userId, string ipAddress, string? reason = null)
+    {
+        // Get all active tokens for this user with the same family
+        IEnumerable<RefreshToken> userTokens = await _context.RefreshTokens
+            .Where(r => r.UserId == userId && r.RevokedByIp == null)
+            .ToListAsync();
+
+        // If we have a token family structure, use it
+        IEnumerable<IGrouping<string, RefreshToken>> tokenFamilies = userTokens
+            .Where(t => !string.IsNullOrEmpty(t.TokenFamily))
+            .GroupBy(t => t.TokenFamily)
+            .ToList();
+
+        foreach (IGrouping<string, RefreshToken> tokenFamily in tokenFamilies)
+        {
+            foreach (RefreshToken token in tokenFamily)
+            {
+                token.RevokedByIp = ipAddress;
+                token.RevokedDate = DateTime.UtcNow;
+                token.ReasonRevoked = reason ?? "Security violation detected";
+            }
+        }
+
+        // Also revoke any tokens without family (legacy tokens)
+        foreach (RefreshToken token in userTokens.Where(t => string.IsNullOrEmpty(t.TokenFamily)))
+        {
+            token.RevokedByIp = ipAddress;
+            token.RevokedDate = DateTime.UtcNow;
+            token.ReasonRevoked = reason ?? "Security violation detected";
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<RefreshToken>> GetRefreshTokensByFamilyAsync(string tokenFamily)
+    {
+        if (string.IsNullOrEmpty(tokenFamily))
+            return new List<RefreshToken>();
+
+        return await _context.RefreshTokens
+            .Where(r => r.TokenFamily == tokenFamily)
+            .OrderByDescending(r => r.CreatedDate)
+            .ToListAsync();
+    }
+
+    public async Task<bool> IsValidUserCredentialsAsync(string email, string password)
+    {
+        User? user = await GetUserByEmailAsync(email);
+
+        if (user == null)
+            return false;
+
+        return await CheckPasswordAsync(user, password);
+    }
+
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == id);
     }
 
     public async Task RevokeAllUserRefreshTokensAsync(int userId, string ipAddress)
@@ -136,24 +205,10 @@ public class UserRepository : IUserRepository
         foreach (RefreshToken token in activeTokens)
         {
             token.RevokedByIp = ipAddress;
+            token.RevokedDate = DateTime.UtcNow;
+            token.ReasonRevoked = "Logged out";
         }
 
         await _context.SaveChangesAsync();
     }
-
-    public async Task<bool> IsValidUserCredentialsAsync(string email, string password)
-    {
-        User? user = await GetUserByEmailAsync(email);
-
-        if (user == null)
-            return false;
-
-        return await CheckPasswordAsync(user, password);
-    }
-
-    public async Task<User?> GetByIdAsync(int id)
-{
-    return await _context.Users
-        .FirstOrDefaultAsync(u => u.Id == id);
-}
 }

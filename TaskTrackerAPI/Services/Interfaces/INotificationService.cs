@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Notifications;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

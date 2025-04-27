@@ -24,6 +24,9 @@ public interface IUserRepository
     Task<RefreshToken?> GetRefreshTokenAsync(string token);
     Task RevokeRefreshTokenAsync(RefreshToken refreshToken, string ipAddress);
     Task RevokeAllUserRefreshTokensAsync(int userId, string ipAddress);
+    Task UpdateRefreshTokenAsync(RefreshToken refreshToken);
+    Task RevokeRefreshTokenFamilyAsync(int userId, string ipAddress, string? reason = null);
+    Task<IEnumerable<RefreshToken>> GetRefreshTokensByFamilyAsync(string tokenFamily);
     
     // Authentication helper methods
     Task<bool> IsValidUserCredentialsAsync(string email, string password);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -95,6 +96,15 @@ namespace TaskTrackerAPI.Services
             return await _userRepository.IsValidUserCredentialsAsync(email, password);
         }
 
-        
+        Task<UserDTO?> IUserService.GetUserByIdAsync(int id)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task<IEnumerable<UserDTO>> IUserService.GetAllUsersAsync()
+        {
+            throw new NotImplementedException();
+        }
+
     }
 } 

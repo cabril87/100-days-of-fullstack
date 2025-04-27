@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.User;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Notifications
 {
-    /// <summary>
+    
     /// Base notification DTO
-    /// </summary>
+    
     public class NotificationDTO
     {
         public int Id { get; set; }
@@ -23,9 +24,9 @@ namespace TaskTrackerAPI.DTOs.Notifications
         public UserDTO? CreatedBy { get; set; }
     }
 
-    /// <summary>
+    
     /// DTO for creating a new notification
-    /// </summary>
+    
     public class NotificationCreateDTO
     {
         [Required]
@@ -49,9 +50,9 @@ namespace TaskTrackerAPI.DTOs.Notifications
         public string RelatedEntityType { get; set; } = string.Empty;
     }
 
-    /// <summary>
+    
     /// DTO for filtering notifications
-    /// </summary>
+    
     public class NotificationFilterDTO
     {
         public bool? IsRead { get; set; }
@@ -64,9 +65,9 @@ namespace TaskTrackerAPI.DTOs.Notifications
         public string SearchTerm { get; set; } = string.Empty;
     }
 
-    /// <summary>
+    
     /// DTO for notification counts by category/type
-    /// </summary>
+    
     public class NotificationCountsDTO
     {
         public int TotalCount { get; set; }
@@ -74,9 +75,9 @@ namespace TaskTrackerAPI.DTOs.Notifications
         public Dictionary<string, int> CountsByType { get; set; } = new Dictionary<string, int>();
     }
     
-    /// <summary>
+    
     /// DTO for notification count details
-    /// </summary>
+    
     public class NotificationCountDTO
     {
         public int TotalCount { get; set; }
@@ -85,9 +86,9 @@ namespace TaskTrackerAPI.DTOs.Notifications
         public Dictionary<string, int> CountsByType { get; set; } = new Dictionary<string, int>();
     }
     
-    /// <summary>
+    
     /// DTO for creating notifications
-    /// </summary>
+    
     public class CreateNotificationDTO
     {
         [Required]

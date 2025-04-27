@@ -1,7 +1,5 @@
 // Services/Interfaces/ICategoryService.cs
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Categories;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces;

@@ -62,7 +62,7 @@ public class FamilyMemberRepository : IFamilyMemberRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var member = await _context.FamilyMembers.FindAsync(id);
+        FamilyMember? member = await _context.FamilyMembers.FindAsync(id);
         if (member == null)
             return false;
 

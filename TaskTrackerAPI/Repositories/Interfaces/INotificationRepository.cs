@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Repositories.Interfaces;

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Tags;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces
@@ -29,7 +31,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task<IEnumerable<TaskItemDTO>> GetDueThisWeekTasksAsync(int userId);
         
         // Statistics and dashboard
-        Task<TaskServiceStatisticsDTO> GetTaskStatisticsAsync(int userId);
+        Task<TimeRangeTaskStatisticsDTO> GetTaskStatisticsAsync(int userId);
         
         // Batch operations
         Task CompleteTasksAsync(int userId, List<int> taskIds);

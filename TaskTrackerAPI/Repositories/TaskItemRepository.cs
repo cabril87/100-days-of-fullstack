@@ -230,11 +230,11 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int assignedByUserId, bool requiresApproval)
     {
-        var task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.Tasks.FindAsync(taskId);
         if (task == null)
             return false;
 
-        var familyMember = await _context.FamilyMembers
+        FamilyMember? familyMember = await _context.FamilyMembers
             .Include(fm => fm.Family)
             .FirstOrDefaultAsync(fm => fm.Id == familyMemberId);
 
@@ -253,7 +253,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> UnassignTaskFromFamilyMemberAsync(int taskId)
     {
-        var task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.Tasks.FindAsync(taskId);
         if (task == null)
             return false;
 
@@ -266,7 +266,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> ApproveTaskAsync(int taskId, int approverUserId, string? comment)
     {
-        var task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.Tasks.FindAsync(taskId);
         if (task == null || !task.RequiresApproval)
             return false;
 
@@ -282,7 +282,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> IsUserFamilyTaskOwnerAsync(int taskId, int userId)
     {
-        var task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.Tasks.FindAsync(taskId);
         if (task == null)
             return false;
 

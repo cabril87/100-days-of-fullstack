@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -119,12 +121,6 @@ public class BoardService : IBoardService
             
         if (boardDto.Description != null)
             existingBoard.Description = boardDto.Description;
-            
-        if (boardDto.Template != null)
-            existingBoard.Template = boardDto.Template;
-            
-        if (boardDto.CustomLayout != null)
-            existingBoard.CustomLayout = boardDto.CustomLayout;
 
         existingBoard.UpdatedAt = DateTime.UtcNow;
 
@@ -178,9 +174,9 @@ public class BoardService : IBoardService
         Board? updatedBoard = await _boardRepository.ReorderTaskInBoardAsync(
             boardId, 
             reorderDto.TaskId, 
-            reorderDto.PositionX, 
-            reorderDto.PositionY, 
-            reorderDto.BoardOrder
+            (int)reorderDto.SourceStatus, 
+            (int)reorderDto.TargetStatus, 
+            reorderDto.TargetPosition
         );
 
         if (updatedBoard == null)

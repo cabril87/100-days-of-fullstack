@@ -64,6 +64,12 @@ public class GlobalExceptionHandlingMiddleware
                 response = ApiResponse<object>.ForbiddenResponse(forbiddenEx.Message);
                 break;
                 
+            case SecurityException securityEx:
+                context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                response = ApiResponse<object>.ForbiddenResponse(securityEx.Message);
+                _logger.LogWarning(securityEx, "Security violation detected");
+                break;
+                
             default:
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 _logger.LogError(exception, "An unhandled exception occurred.");

@@ -1,8 +1,5 @@
 using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -128,5 +125,26 @@ public class NotificationService : INotificationService
     public async Task<bool> IsNotificationOwnedByUserAsync(int notificationId, int userId)
     {
         return await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId);
+    }
+
+    Task<IEnumerable<NotificationDTO>> INotificationService.GetAllNotificationsAsync(int userId)
+    {
+        throw new NotImplementedException();
+    }
+
+
+    Task<NotificationDTO?> INotificationService.GetNotificationByIdAsync(int userId, int notificationId)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<NotificationDTO?> INotificationService.MarkNotificationAsReadAsync(int userId, int notificationId)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<NotificationCountDTO> INotificationService.GetNotificationCountsAsync(int userId)
+    {
+        throw new NotImplementedException();
     }
 } 

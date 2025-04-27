@@ -4,6 +4,7 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
 using AutoMapper;
+using TaskTrackerAPI.DTOs.Categories;
 
 namespace TaskTrackerAPI.Services;
 
@@ -177,5 +178,25 @@ public class CategoryService : ICategoryService
             Description = category.Description,
             UserId = category.UserId
         };
+    }
+
+    Task<IEnumerable<CategoryDTO>> ICategoryService.GetAllCategoriesAsync(int userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<PagedResult<CategoryDTO>> ICategoryService.GetPagedCategoriesAsync(int userId, PaginationParams paginationParams)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<CategoryDTO?> ICategoryService.GetCategoryByIdAsync(int categoryId, int userId)
+    {
+        throw new NotImplementedException();
+    }
+
+    Task<IEnumerable<CategoryDTO>> ICategoryService.SearchCategoriesAsync(int userId, string searchTerm)
+    {
+        throw new NotImplementedException();
     }
 }

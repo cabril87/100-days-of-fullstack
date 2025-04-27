@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using ModelReminderStatus = TaskTrackerAPI.Models.ReminderStatus;
 
 namespace TaskTrackerAPI.Services;
 
@@ -45,7 +42,7 @@ public class ReminderService : IReminderService
         return reminder != null ? _mapper.Map<ReminderDTO>(reminder) : null;
     }
 
-    public async Task<IEnumerable<ReminderDTO>> GetRemindersByStatusAsync(int userId, ReminderStatus status)
+    public async Task<IEnumerable<ReminderDTO>> GetRemindersByStatusAsync(int userId, ModelReminderStatus status)
     {
         IEnumerable<Reminder> reminders = await _reminderRepository.GetRemindersByStatusAsync(userId, status);
         return _mapper.Map<IEnumerable<ReminderDTO>>(reminders);
@@ -80,12 +77,12 @@ public class ReminderService : IReminderService
     public async Task<ReminderDTO?> CreateReminderAsync(int userId, CreateReminderDTO reminderDto)
     {
         // If a task ID is provided, verify it belongs to the user
-        if (reminderDto.TaskItemId.HasValue)
+        if (reminderDto.TaskId.HasValue)
         {
-            bool isTaskOwned = await _taskItemRepository.IsTaskOwnedByUserAsync(reminderDto.TaskItemId.Value, userId);
+            bool isTaskOwned = await _taskItemRepository.IsTaskOwnedByUserAsync(reminderDto.TaskId.Value, userId);
             if (!isTaskOwned)
             {
-                throw new UnauthorizedAccessException($"Task with ID {reminderDto.TaskItemId.Value} does not belong to the user");
+                throw new UnauthorizedAccessException($"Task with ID {reminderDto.TaskId.Value} does not belong to the user");
             }
         }
 
@@ -107,16 +104,6 @@ public class ReminderService : IReminderService
             return null;
         }
 
-        // If a task ID is provided, verify it belongs to the user
-        if (reminderDto.TaskItemId.HasValue)
-        {
-            bool isTaskOwned = await _taskItemRepository.IsTaskOwnedByUserAsync(reminderDto.TaskItemId.Value, userId);
-            if (!isTaskOwned)
-            {
-                throw new UnauthorizedAccessException($"Task with ID {reminderDto.TaskItemId.Value} does not belong to the user");
-            }
-        }
-
         // Get the existing reminder
         Reminder? existingReminder = await _reminderRepository.GetReminderByIdAsync(reminderId);
         if (existingReminder == null)
@@ -134,16 +121,18 @@ public class ReminderService : IReminderService
         if (reminderDto.ReminderTime.HasValue)
             existingReminder.ReminderTime = reminderDto.ReminderTime.Value;
             
-        if (reminderDto.IsRepeating.HasValue)
-            existingReminder.IsRepeating = reminderDto.IsRepeating.Value;
+        if (reminderDto.IsRecurring.HasValue)
+            existingReminder.IsRepeating = reminderDto.IsRecurring.Value;
             
-        if (reminderDto.RepeatFrequency.HasValue)
-            existingReminder.RepeatFrequency = reminderDto.RepeatFrequency.Value;
+        if (reminderDto.RecurrencePattern != null)
+            existingReminder.RepeatFrequency = (RepeatFrequency)int.Parse(reminderDto.RecurrencePattern);
             
         if (reminderDto.Priority.HasValue)
-            existingReminder.Priority = reminderDto.Priority.Value;
+            existingReminder.Priority = (ReminderPriority)reminderDto.Priority.Value;
             
-        existingReminder.TaskItemId = reminderDto.TaskItemId;
+        if (reminderDto.Status.HasValue)
+            existingReminder.Status = (ModelReminderStatus)reminderDto.Status.Value;
+            
         existingReminder.UpdatedAt = DateTime.UtcNow;
 
         Reminder updatedReminder = await _reminderRepository.UpdateReminderAsync(existingReminder);
@@ -171,7 +160,7 @@ public class ReminderService : IReminderService
         return await _reminderRepository.IsReminderOwnedByUserAsync(reminderId, userId);
     }
 
-    public async Task<ReminderDTO?> UpdateReminderStatusAsync(int userId, int reminderId, ReminderStatus status)
+    public async Task<ReminderDTO?> UpdateReminderStatusAsync(int userId, int reminderId, ModelReminderStatus status)
     {
         // Ensure reminder exists and belongs to user
         bool isOwned = await _reminderRepository.IsReminderOwnedByUserAsync(reminderId, userId);
@@ -191,7 +180,7 @@ public class ReminderService : IReminderService
         existingReminder.Status = status;
         
         // Update completed timestamp if completing the reminder
-        if (status == ReminderStatus.Completed)
+        if (status == ModelReminderStatus.Completed)
         {
             existingReminder.IsCompleted = true;
             existingReminder.CompletedAt = DateTime.UtcNow;
@@ -209,8 +198,8 @@ public class ReminderService : IReminderService
         
         // Get counts
         int totalReminders = (await _reminderRepository.GetAllRemindersAsync(userId)).Count();
-        int pendingReminders = await _reminderRepository.GetReminderCountByStatusAsync(userId, ReminderStatus.Pending);
-        int completedReminders = await _reminderRepository.GetReminderCountByStatusAsync(userId, ReminderStatus.Completed);
+        int pendingReminders = await _reminderRepository.GetReminderCountByStatusAsync(userId, ModelReminderStatus.Pending);
+        int completedReminders = await _reminderRepository.GetReminderCountByStatusAsync(userId, ModelReminderStatus.Completed);
         
         // Get upcoming reminders (next 7 days)
         DateTime nextWeek = now.AddDays(7);
@@ -230,8 +219,8 @@ public class ReminderService : IReminderService
             PendingReminders = pendingReminders,
             CompletedReminders = completedReminders,
             UpcomingReminders = upcomingReminders,
-            OverdueReminders = overdueReminders,
-            CompletionRate = Math.Round(completionRate, 2)
+            MissedReminders = overdueReminders,
+            DueTodayReminders = 0 // Default value
         };
     }
 } 

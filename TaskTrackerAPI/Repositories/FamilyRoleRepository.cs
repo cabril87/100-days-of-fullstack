@@ -56,7 +56,7 @@ public class FamilyRoleRepository : IFamilyRoleRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var role = await _context.FamilyRoles.FindAsync(id);
+        FamilyRole? role = await _context.FamilyRoles.FindAsync(id);
         if (role == null)
         {
             return false;
@@ -92,7 +92,7 @@ public class FamilyRoleRepository : IFamilyRoleRepository
     }
     public async Task<bool> RemovePermissionAsync(int permissionId)
     {
-        var permission = await _context.FamilyRolePermissions.FindAsync(permissionId);
+        FamilyRolePermission? permission = await _context.FamilyRolePermissions.FindAsync(permissionId);
         if (permission == null)
         {
             return false;

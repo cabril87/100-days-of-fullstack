@@ -78,7 +78,7 @@ public class TaskTemplateRepository : ITaskTemplateRepository
 
     public async Task<bool> IsTaskTemplateOwnedByUserAsync(int templateId, int userId)
     {
-        var template = await _context.TaskTemplates
+        TaskTemplate? template = await _context.TaskTemplates
             .FirstOrDefaultAsync(t => t.Id == templateId);
 
         if (template == null)
@@ -100,7 +100,7 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         // Create the default templates
 
         // 1. Kanban Board Template
-        var kanbanTemplate = new TaskTemplate
+        TaskTemplate kanbanTemplate = new TaskTemplate
         {
             Name = "Kanban Board",
             Description = "A standard kanban board with To Do, In Progress, and Done columns",
@@ -118,7 +118,7 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         };
 
         // 2. Project Management Template
-        var projectTemplate = new TaskTemplate
+        TaskTemplate projectTemplate = new TaskTemplate
         {
             Name = "Project Management",
             Description = "Project management board with Backlog, To Do, In Progress, Testing, and Done columns",
@@ -138,7 +138,7 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         };
 
         // 3. Daily Tasks Template
-        var dailyTemplate = new TaskTemplate
+        TaskTemplate dailyTemplate = new TaskTemplate
         {
             Name = "Daily Tasks",
             Description = "Morning, Afternoon, and Evening task organization",

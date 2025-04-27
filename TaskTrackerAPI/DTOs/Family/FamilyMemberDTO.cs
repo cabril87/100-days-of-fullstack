@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.User;
 
 namespace TaskTrackerAPI.DTOs.Family;
 

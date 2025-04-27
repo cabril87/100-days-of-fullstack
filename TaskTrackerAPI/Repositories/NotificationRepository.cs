@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 
@@ -252,5 +253,10 @@ public class NotificationRepository : INotificationRepository
 
         _context.Notifications.RemoveRange(userNotifications);
         await _context.SaveChangesAsync();
+    }
+
+    Task<NotificationCountDTO> INotificationRepository.GetNotificationCountsAsync(int userId)
+    {
+        throw new NotImplementedException();
     }
 } 

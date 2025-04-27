@@ -1,6 +1,7 @@
 // Data/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Gamification;
 using System;
 using Microsoft.Extensions.Configuration;
 
@@ -50,13 +51,17 @@ public class ApplicationDbContext : DbContext
     // Gamification related entities
     public DbSet<UserProgress> UserProgresses { get; set; } = null!;
     public DbSet<PointTransaction> PointTransactions { get; set; } = null!;
-    public DbSet<Achievement> Achievements { get; set; } = null!;
-    public DbSet<UserAchievement> UserAchievements { get; set; } = null!;
-    public DbSet<Badge> Badges { get; set; } = null!;
-    public DbSet<UserBadge> UserBadges { get; set; } = null!;
+    public DbSet<TaskTrackerAPI.Models.Achievement> Achievements { get; set; } = null!;
+    public DbSet<TaskTrackerAPI.Models.UserAchievement> UserAchievements { get; set; } = null!;
+    public DbSet<TaskTrackerAPI.Models.Badge> Badges { get; set; } = null!;
+    public DbSet<TaskTrackerAPI.Models.UserBadge> UserBadges { get; set; } = null!;
     public DbSet<Reward> Rewards { get; set; } = null!;
     public DbSet<UserReward> UserRewards { get; set; } = null!;
     public DbSet<PriorityMultiplier> PriorityMultipliers { get; set; } = null!;
+    
+    // New gamification models
+    public DbSet<Models.Gamification.Achievement> GamificationAchievements { get; set; } = null!;
+    public DbSet<Models.Gamification.UserAchievement> GamificationUserAchievements { get; set; } = null!;
 
     // Family management entities
     public DbSet<Family> Families { get; set; } = null!;
@@ -233,26 +238,26 @@ public class ApplicationDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         // Configure UserAchievement relationships
-        modelBuilder.Entity<UserAchievement>()
+        modelBuilder.Entity<TaskTrackerAPI.Models.UserAchievement>()
             .HasOne(ua => ua.User)
             .WithMany()
             .HasForeignKey(ua => ua.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<UserAchievement>()
+        modelBuilder.Entity<TaskTrackerAPI.Models.UserAchievement>()
             .HasOne(ua => ua.Achievement)
             .WithMany(a => a.UserAchievements)
             .HasForeignKey(ua => ua.AchievementId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Configure UserBadge relationships
-        modelBuilder.Entity<UserBadge>()
+        modelBuilder.Entity<TaskTrackerAPI.Models.UserBadge>()
             .HasOne(ub => ub.User)
             .WithMany()
             .HasForeignKey(ub => ub.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<UserBadge>()
+        modelBuilder.Entity<TaskTrackerAPI.Models.UserBadge>()
             .HasOne(ub => ub.Badge)
             .WithMany(b => b.UserBadges)
             .HasForeignKey(ub => ub.BadgeId)
@@ -457,5 +462,16 @@ public class ApplicationDbContext : DbContext
             .WithMany()
             .HasForeignKey(fam => fam.FamilyMemberId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Configure new gamification models
+        modelBuilder.Entity<Models.Gamification.Achievement>()
+            .ToTable("GamificationAchievements");
+
+        modelBuilder.Entity<Models.Gamification.UserAchievement>()
+            .ToTable("GamificationUserAchievements")
+            .HasOne(ua => ua.Achievement)
+            .WithMany(a => a.UserAchievements)
+            .HasForeignKey(ua => ua.AchievementId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

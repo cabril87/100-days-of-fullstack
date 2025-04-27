@@ -13,13 +13,13 @@ public static class SeedData
 {
     public static async Task InitializeAsync(IServiceProvider serviceProvider)
     {
-        using var scope = serviceProvider.CreateScope();
-        var services = scope.ServiceProvider;
-        var logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
+        using IServiceScope scope = serviceProvider.CreateScope();
+        IServiceProvider services = scope.ServiceProvider;
+        ILogger<ApplicationDbContext> logger = services.GetRequiredService<ILogger<ApplicationDbContext>>();
 
         try
         {
-            var context = services.GetRequiredService<ApplicationDbContext>();
+            ApplicationDbContext context = services.GetRequiredService<ApplicationDbContext>();
 
             // Apply any pending migrations
             await context.Database.MigrateAsync();
@@ -49,7 +49,7 @@ public static class SeedData
         }
 
         // Create default admin user
-        var adminUser = new User
+        User adminUser = new User
         {
             Username = "admin",
             Email = "admin@tasktracker.com",
@@ -73,7 +73,7 @@ public static class SeedData
             return; // Default user already exists
         }
 
-        var defaultUser = new User
+        User defaultUser = new User
         {
             Username = "user",
             Email = "user@tasktracker.com",
@@ -97,7 +97,7 @@ public static class SeedData
             return; // Family roles already seeded
         }
 
-        var familyRoles = new List<FamilyRole>
+        List<FamilyRole> familyRoles = new List<FamilyRole>
         {
             new FamilyRole
             {
@@ -159,10 +159,10 @@ public static class SeedData
             return; // Categories already seeded
         }
 
-        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
+        User? adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
         if (adminUser == null) return;
 
-        var categories = new List<Category>
+        List<Category> categories = new List<Category>
         {
             new Category
             {
@@ -201,11 +201,11 @@ public static class SeedData
             return; // Tasks already seeded
         }
 
-        var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
-        var workCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Work");
+        User adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
+        Category workCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Work");
         if (adminUser == null || workCategory == null) return;
 
-        var tasks = new List<TaskItem>
+        List<TaskItem> tasks = new List<TaskItem>
         {
             new TaskItem
             {
@@ -244,7 +244,7 @@ public static class SeedData
             return; // Priority multipliers already seeded
         }
 
-        var multipliers = new List<PriorityMultiplier>
+        List<PriorityMultiplier> multipliers = new List<PriorityMultiplier>
         {
             new PriorityMultiplier { Priority = "Low", Multiplier = 0.5 },
             new PriorityMultiplier { Priority = "Medium", Multiplier = 1.0 },

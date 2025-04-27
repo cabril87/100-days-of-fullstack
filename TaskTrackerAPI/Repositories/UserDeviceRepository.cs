@@ -72,7 +72,7 @@ public class UserDeviceRepository : TaskTrackerAPI.Repositories.Interfaces.IUser
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var device = await _context.UserDevices.FindAsync(id);
+        UserDevice? device = await _context.UserDevices.FindAsync(id);
         if (device == null)
         {
             return false;
@@ -95,7 +95,7 @@ public class UserDeviceRepository : TaskTrackerAPI.Repositories.Interfaces.IUser
 
     public async Task<bool> ValidateDeviceAsync(int userId, string deviceId, string deviceToken)
     {
-        var device = await _context.UserDevices
+        UserDevice? device = await _context.UserDevices
             .FirstOrDefaultAsync(d => d.UserId == userId && 
                                d.DeviceId == deviceId && 
                                d.DeviceToken == deviceToken);
@@ -105,7 +105,7 @@ public class UserDeviceRepository : TaskTrackerAPI.Repositories.Interfaces.IUser
 
     public async Task<bool> UpdateLastActiveAsync(int deviceId)
     {
-        var device = await _context.UserDevices.FindAsync(deviceId);
+        UserDevice? device = await _context.UserDevices.FindAsync(deviceId);
         if (device == null)
             return false;
 
@@ -116,7 +116,7 @@ public class UserDeviceRepository : TaskTrackerAPI.Repositories.Interfaces.IUser
 
     public async Task<bool> VerifyDeviceAsync(string deviceId, string verificationCode)
     {
-        var device = await _context.UserDevices
+        UserDevice? device = await _context.UserDevices
             .FirstOrDefaultAsync(d => d.DeviceId == deviceId && 
                                      d.VerificationCode == verificationCode);
         

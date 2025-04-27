@@ -67,7 +67,7 @@ public class FamilyRepository :IFamilyRepository
         {
             _logger.LogInformation("Attempting to delete family with ID: {FamilyId}", id);
             
-            var family = await _context.Families.FindAsync(id);
+            Family? family = await _context.Families.FindAsync(id);
             if (family == null)
             {
                 _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);
@@ -75,24 +75,24 @@ public class FamilyRepository :IFamilyRepository
             }
 
             // Delete any associated records first to avoid foreign key constraints
-            var members = await _context.FamilyMembers
+            IEnumerable<FamilyMember> members = await _context.FamilyMembers
                 .Where(m => m.FamilyId == id)
                 .ToListAsync();
                 
             if (members.Any())
             {
-                _logger.LogInformation("Removing {Count} members from family {FamilyId}", members.Count, id);
+                _logger.LogInformation("Removing {Count} members from family {FamilyId}", members.Count(), id);
                 _context.FamilyMembers.RemoveRange(members);
             }
             
             // Delete any family invitations
-            var invitations = await _context.Invitations
+            IEnumerable<Invitation> invitations = await _context.Invitations
                 .Where(i => i.FamilyId == id)
                 .ToListAsync();
                 
             if (invitations.Any())
             {
-                _logger.LogInformation("Removing {Count} invitations from family {FamilyId}", invitations.Count, id);
+                _logger.LogInformation("Removing {Count} invitations from family {FamilyId}", invitations.Count(), id);
                 _context.Invitations.RemoveRange(invitations);
             }
 
@@ -121,7 +121,7 @@ public class FamilyRepository :IFamilyRepository
             return false;
         }
 
-        var member = new FamilyMember
+        FamilyMember member = new FamilyMember
         {
             FamilyId = familyId,
             UserId = userId,
@@ -136,7 +136,7 @@ public class FamilyRepository :IFamilyRepository
 
     public async Task<bool> RemoveMemberAsync(int familyId, int userId)
     {
-        var member = await _context.FamilyMembers
+        FamilyMember? member = await _context.FamilyMembers
             .FirstOrDefaultAsync(m => m.FamilyId == familyId && m.UserId == userId);
 
         if (member == null)
@@ -149,7 +149,7 @@ public class FamilyRepository :IFamilyRepository
 
     public async Task<bool> UpdateMemberRoleAsync(int familyId, int userId, int roleId)
     {
-        var member = await _context.FamilyMembers
+        FamilyMember? member = await _context.FamilyMembers
             .FirstOrDefaultAsync(m => m.FamilyId == familyId && m.UserId == userId);
 
         if (member == null)
@@ -182,7 +182,7 @@ public class FamilyRepository :IFamilyRepository
 
     public async Task<bool> HasPermissionAsync(int familyId, int userId, string permission)
     {
-        var member = await _context.FamilyMembers
+        FamilyMember? member = await _context.FamilyMembers
             .Include(m => m.Role)
                 .ThenInclude(r => r.Permissions)
             .FirstOrDefaultAsync(m => m.FamilyId == familyId && m.UserId == userId);
@@ -231,7 +231,7 @@ public class FamilyRepository :IFamilyRepository
 
     public async Task<bool> DeleteMemberAsync(int memberId)
     {
-        var member = await _context.FamilyMembers.FindAsync(memberId);
+        FamilyMember? member = await _context.FamilyMembers.FindAsync(memberId);
         if (member == null)
             return false;
 

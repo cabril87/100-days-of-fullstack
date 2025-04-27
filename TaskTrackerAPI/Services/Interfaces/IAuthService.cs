@@ -1,6 +1,9 @@
 // Services/Interfaces/IAuthService.cs
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces;
@@ -16,7 +19,7 @@ public interface IAuthService
     Task<UserDTO> GetUserProfileAsync(int userId);
     Task UpdateUserProfileAsync(int userId, UserProfileUpdateDTO updateDto);
     Task DeleteUserAsync(int userId, int currentUserId);
-    Task ChangePasswordAsync(int userId, ChangePasswordDTO changePasswordDto, string ipAddress);
+    Task ChangePasswordAsync(int userId, PasswordChangeDTO changePasswordDto, string ipAddress);
 
     // Admin operations
     Task<IEnumerable<UserDTO>> GetAllUsersAsync();

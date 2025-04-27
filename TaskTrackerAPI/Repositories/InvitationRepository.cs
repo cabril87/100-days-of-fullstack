@@ -81,7 +81,7 @@ public class InvitationRepository : IInvitationRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var invitation = await _context.Invitations.FindAsync(id);
+        Invitation? invitation = await _context.Invitations.FindAsync(id);
         if (invitation == null)
         {
             return false;
@@ -112,7 +112,7 @@ public class InvitationRepository : IInvitationRepository
 
     public async Task<bool> MarkAsAcceptedAsync(int id)
     {
-        var invitation = await _context.Invitations.FindAsync(id);
+        Invitation? invitation = await _context.Invitations.FindAsync(id);
         if (invitation == null)
         {
             return false;

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Boards;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

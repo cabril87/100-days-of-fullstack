@@ -168,8 +168,8 @@ namespace TaskTrackerAPI.Services
                 
             foreach (Achievement achievement in streakAchievements)
             {
-                // Assuming the threshold is stored in the achievement criteria as a number
-                if (int.TryParse(achievement.Criteria, out int threshold) && currentStreak >= threshold)
+                // Assuming the threshold is stored in the achievement target value
+                if (currentStreak >= achievement.TargetValue)
                 {
                     await UnlockAchievementAsync(userId, achievement.Id);
                 }
@@ -252,8 +252,8 @@ namespace TaskTrackerAPI.Services
                 
             foreach (Achievement achievement in levelAchievements)
             {
-                // Assuming the threshold is stored in the achievement criteria as a number
-                if (int.TryParse(achievement.Criteria, out int threshold) && level >= threshold)
+                // Compare current level against achievement target value
+                if (level >= achievement.TargetValue)
                 {
                     try
                     {

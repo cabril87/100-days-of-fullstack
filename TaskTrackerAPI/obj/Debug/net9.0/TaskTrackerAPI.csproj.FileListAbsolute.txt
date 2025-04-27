@@ -98,3 +98,5 @@ C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\ob
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\TaskTrackerAPI.pdb
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\TaskTrackerAPI.genruntimeconfig.cache
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\ref\TaskTrackerAPI.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Mvc.Versioning.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer.dll

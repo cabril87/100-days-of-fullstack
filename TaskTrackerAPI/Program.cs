@@ -17,6 +17,12 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using TaskTrackerAPI.Models;
 using QRCoder;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.Extensions.Options;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI;
 
@@ -33,9 +39,33 @@ public class Program
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
+
+        // Add API Versioning
+        builder.Services.AddApiVersioning(options =>
+        {
+            options.DefaultApiVersion = new ApiVersion(1, 0);
+            options.AssumeDefaultVersionWhenUnspecified = true;
+            options.ReportApiVersions = true;
+            options.ApiVersionReader = ApiVersionReader.Combine(
+                new UrlSegmentApiVersionReader(),
+                new HeaderApiVersionReader("X-API-Version"),
+                new QueryStringApiVersionReader("api-version")
+            );
+        });
+
+        // Add versioned API explorer
+        builder.Services.AddVersionedApiExplorer(options =>
+        {
+            options.GroupNameFormat = "'v'VVV";
+            options.SubstituteApiVersionInUrl = true;
+        });
+            
         // Add services to the container.
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddEndpointsApiExplorer();
+        
+        // Configure Swagger
+        builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
         builder.Services.AddSwaggerGen(options =>
         {
             // Configure Swagger for JWT authentication
@@ -48,6 +78,10 @@ public class Program
             });
             options.OperationFilter<SecurityRequirementsOperationFilter>();
         });
+        
+        // Configure Swagger API versioning
+        builder.Services.AddSwaggerGen();
+        builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("DevCors", (corsBuilder) =>
@@ -80,6 +114,11 @@ public class Program
                     .WithExposedHeaders("Content-Disposition");
             });
         });
+
+        // Add FluentValidation
+        // builder.Services.AddFluentValidationAutoValidation();
+        // builder.Services.AddFluentValidationClientsideAdapters();
+        // builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
         // Register AutoMapper
         builder.Services.AddAutoMapper(typeof(Program).Assembly);
@@ -123,7 +162,8 @@ public class Program
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
-
+        builder.Services.AddScoped<IAchievementService, AchievementService>();
+        builder.Services.AddScoped<IBadgeService, BadgeService>();
 
         // Register TaskStatisticsService
         builder.Services.AddScoped<ITaskStatisticsService, TaskStatisticsService>();
@@ -209,11 +249,23 @@ public class Program
 
         WebApplication app = builder.Build();
 
+        // Get API version description provider
+        var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.UseSwaggerUI(options => 
+            {
+                // Build a swagger endpoint for each discovered API version
+                foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+                {
+                    options.SwaggerEndpoint(
+                        $"/swagger/{description.GroupName}/swagger.json", 
+                        $"TaskTracker API {description.GroupName.ToUpperInvariant()}");
+                }
+            });
             app.UseCors("DevCors");
         }
         else
@@ -223,7 +275,10 @@ public class Program
         }
 
         // Add global exception handling middleware
-        app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
+        app.UseGlobalExceptionHandling();
+
+        // Add CSRF protection middleware
+        app.UseMiddleware<CsrfProtectionMiddleware>();
 
         app.UseHttpsRedirection();
 
@@ -276,7 +331,7 @@ public class Program
                 Console.WriteLine("Creating family roles...");
 
                 // Create Admin role
-                var adminRole = new FamilyRole
+                FamilyRole adminRole = new FamilyRole
                 {
                     Name = "Admin",
                     Description = "Full control over the family",
@@ -286,7 +341,7 @@ public class Program
                 dbContext.FamilyRoles.Add(adminRole);
 
                 // Create Member role
-                var memberRole = new FamilyRole
+                FamilyRole memberRole = new FamilyRole
                 {
                     Name = "Member",
                     Description = "Regular family member",
@@ -326,7 +381,7 @@ public class Program
                 Console.WriteLine("Creating Child and Adult family roles...");
 
                 // Create Adult role
-                var adultRole = new FamilyRole
+                FamilyRole adultRole = new FamilyRole
                 {
                     Name = "Adult",
                     Description = "Adult family member with task management permissions",
@@ -336,7 +391,7 @@ public class Program
                 dbContext.FamilyRoles.Add(adultRole);
 
                 // Create Child role
-                var childRole = new FamilyRole
+                FamilyRole childRole = new FamilyRole
                 {
                     Name = "Child",
                     Description = "Child family member with limited permissions",

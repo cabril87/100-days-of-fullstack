@@ -3,6 +3,7 @@ using System.Security.Claims;
 
 namespace TaskTrackerAPI.Utils
 {
+    [Obsolete("This class is deprecated. Use TaskTrackerAPI.Extensions.ClaimsPrincipalExtensions instead.")]
     public static class ClaimsPrincipalExtensions
     {
         public static int GetUserId(this ClaimsPrincipal principal)
