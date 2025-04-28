@@ -5,6 +5,7 @@ using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.DTOs.Tags;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -14,6 +15,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [Route("api/tasks")]
 [ApiController]
 [Authorize]
+[RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds
 public class TaskItemsController : ControllerBase
 {
     private readonly ITaskService _taskService;
@@ -30,6 +32,7 @@ public class TaskItemsController : ControllerBase
 
     // GET: api/TaskItems
     [HttpGet]
+    [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
     public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks()
     {
         try
@@ -84,6 +87,7 @@ public class TaskItemsController : ControllerBase
 
     // POST: api/TaskItems
     [HttpPost]
+    [RateLimit(30, 60)] // Limit creation rate to prevent abuse
     public async Task<ActionResult<TaskItemDTO>> CreateTaskItem(TaskItemDTO taskDto)
     {
         try
@@ -312,6 +316,7 @@ public class TaskItemsController : ControllerBase
     
     // GET: api/TaskItems/statistics
     [HttpGet("statistics")]
+    [RateLimit(20, 30)] // Statistics can be resource-intensive
     public async Task<ActionResult<TimeRangeTaskStatisticsDTO>> GetTaskStatistics()
     {
         try
@@ -331,6 +336,7 @@ public class TaskItemsController : ControllerBase
     
     // POST: api/TaskItems/complete-batch
     [HttpPost("complete-batch")]
+    [RateLimit(20, 60)] // Limit batch operations more strictly
     public async Task<IActionResult> CompleteTasks([FromBody] List<int> taskIds)
     {
         try

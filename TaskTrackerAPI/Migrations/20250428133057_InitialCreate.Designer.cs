@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250426154852_AddAgeGroupToUser")]
-    partial class AddAgeGroupToUser
+    [Migration("20250428133057_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,10 +41,6 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Criteria")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -53,11 +49,12 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("Difficulty")
                         .HasColumnType("int");
 
-                    b.Property<string>("IconPath")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
+                    b.Property<string>("IconUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.Property<bool>("IsHidden")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -67,6 +64,12 @@ namespace TaskTrackerAPI.Migrations
 
                     b.Property<int>("PointValue")
                         .HasColumnType("int");
+
+                    b.Property<int>("TargetValue")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -535,6 +538,93 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("FamilyRolePermissions");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.Achievement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Criteria")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Difficulty")
+                        .HasColumnType("int");
+
+                    b.Property<string>("IconUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PointValue")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GamificationAchievements", (string)null);
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.UserAchievement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AchievementId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Progress")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AchievementId");
+
+                    b.ToTable("GamificationUserAchievements", (string)null);
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Invitation", b =>
                 {
                     b.Property<int>("Id")
@@ -788,17 +878,32 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CreatedByIp")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ReasonRevoked")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReplacedByToken")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RevokedByIp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("RevokedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Token")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TokenFamily")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("UserId")
@@ -1076,7 +1181,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 4, 26, 15, 48, 51, 791, DateTimeKind.Utc).AddTicks(6875),
+                            UpdatedAt = new DateTime(2025, 4, 28, 13, 30, 57, 528, DateTimeKind.Utc).AddTicks(9557),
                             UserId = 1
                         },
                         new
@@ -1092,7 +1197,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 4, 26, 15, 48, 51, 791, DateTimeKind.Utc).AddTicks(6883),
+                            UpdatedAt = new DateTime(2025, 4, 28, 13, 30, 57, 528, DateTimeKind.Utc).AddTicks(9564),
                             UserId = 1
                         });
                 });
@@ -1557,6 +1662,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.UserAchievement", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.Gamification.Achievement", "Achievement")
+                        .WithMany("UserAchievements")
+                        .HasForeignKey("AchievementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Achievement");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Invitation", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.User", "CreatedBy")
@@ -1920,6 +2036,11 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Members");
 
                     b.Navigation("Permissions");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.Achievement", b =>
+                {
+                    b.Navigation("UserAchievements");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Reward", b =>

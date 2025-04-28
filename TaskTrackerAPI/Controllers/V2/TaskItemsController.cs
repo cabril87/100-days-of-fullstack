@@ -13,6 +13,7 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using AutoMapper;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V2;
 
@@ -20,6 +21,7 @@ namespace TaskTrackerAPI.Controllers.V2;
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize]
+[RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds
 public class TaskItemsController : ControllerBase
 {
     private readonly ITaskService _taskService;
@@ -52,6 +54,7 @@ public class TaskItemsController : ControllerBase
     /// <param name="searchTerm">Search within task title and description</param>
     /// <returns>Paginated list of tasks with metadata</returns>
     [HttpGet]
+    [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
     [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemCollectionResponseDTO>), 200)]
     public async Task<ActionResult<Utils.ApiResponse<TaskItemCollectionResponseDTO>>> GetTasks(
         [FromQuery] int page = 1, 
@@ -136,10 +139,10 @@ public class TaskItemsController : ControllerBase
             );
             
             // Add pagination headers
-            Response.Headers.Add("X-Pagination-TotalCount", pagedFilteredResult.TotalCount.ToString());
-            Response.Headers.Add("X-Pagination-PageSize", pagedFilteredResult.PageSize.ToString());
-            Response.Headers.Add("X-Pagination-CurrentPage", pagedFilteredResult.PageNumber.ToString());
-            Response.Headers.Add("X-Pagination-TotalPages", pagedFilteredResult.TotalPages.ToString());
+            Response.Headers.Append("X-Pagination-TotalCount", pagedFilteredResult.TotalCount.ToString());
+            Response.Headers.Append("X-Pagination-PageSize", pagedFilteredResult.PageSize.ToString());
+            Response.Headers.Append("X-Pagination-CurrentPage", pagedFilteredResult.PageNumber.ToString());
+            Response.Headers.Append("X-Pagination-TotalPages", pagedFilteredResult.TotalPages.ToString());
             
             // Create HATEOAS links
             string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
@@ -232,6 +235,7 @@ public class TaskItemsController : ControllerBase
     
     // POST: api/v2/TaskItems
     [HttpPost]
+    [RateLimit(30, 60)] // Limit creation rate to prevent abuse
     [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemResponseDTO>), 201)]
     [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
     public async Task<ActionResult<Utils.ApiResponse<TaskItemResponseDTO>>> CreateTaskItem([FromBody] TaskItemCreateRequestDTO createRequest)
@@ -505,6 +509,55 @@ public class TaskItemsController : ControllerBase
         {
             _logger.LogError(ex, "Error completing batch of tasks");
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // POST: api/TaskItems/smart-prioritize
+    [HttpGet("smart-prioritize")]
+    [RateLimit(10, 60)] // Strict limit due to complex algorithm
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetSmartPrioritizedTasks()
+    {
+        try 
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Get user tasks first
+            var tasks = await _taskService.GetAllTasksAsync(userId);
+            
+            // Here you would implement your prioritization algorithm
+            // For now, just returning the tasks ordered by due date and priority
+            var prioritizedTasks = tasks
+                .OrderBy(t => t.DueDate)
+                .ThenByDescending(t => t.Priority)
+                .ToList();
+                
+            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(prioritizedTasks));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting smart prioritized tasks");
+            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+        }
+    }
+
+    // GET: api/TaskItems/statistics
+    [HttpGet("statistics")]
+    [RateLimit(20, 30)] // Statistics can be resource-intensive
+    public async Task<ActionResult<TimeRangeTaskStatisticsDTO>> GetTaskStatistics()
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Get task statistics directly from the service - using the existing DTO
+            var statistics = await _taskService.GetTaskStatisticsAsync(userId);
+            
+            return Ok(Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.SuccessResponse(statistics));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving task statistics");
+            return StatusCode(500, Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.ServerErrorResponse());
         }
     }
 } 

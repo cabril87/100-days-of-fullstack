@@ -12,7 +12,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task<IEnumerable<BadgeDTO>> GetAllBadgesAsync();
         
         /// Get badge by ID
-        Task<BadgeDTO> GetBadgeByIdAsync(int id);
+        Task<BadgeDTO?> GetBadgeByIdAsync(int id);
         
         /// Get badges by category
         Task<IEnumerable<BadgeDTO>> GetBadgesByCategoryAsync(string category);

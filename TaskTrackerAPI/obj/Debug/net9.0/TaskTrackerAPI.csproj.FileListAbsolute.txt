@@ -100,3 +100,4 @@ C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\ob
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\obj\Debug\net9.0\ref\TaskTrackerAPI.dll
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Mvc.Versioning.dll
 C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer.dll
+C:\Users\Abril\Documents\coding-projects\100-days-of-fullstack\TaskTrackerAPI\bin\Debug\net9.0\EmersSuite_Postman_Collection.json

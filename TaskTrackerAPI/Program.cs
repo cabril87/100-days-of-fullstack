@@ -11,8 +11,6 @@ using TaskTrackerAPI.Services.Interfaces;
 using AutoMapper;
 using TaskTrackerAPI.Middleware;
 using TaskTrackerAPI.Exceptions;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.Filters;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Identity;
 using TaskTrackerAPI.Models;
@@ -21,7 +19,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.Extensions.Options;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI;
@@ -61,27 +58,8 @@ public class Program
         });
             
         // Add services to the container.
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddEndpointsApiExplorer();
         
-        // Configure Swagger
-        builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
-        builder.Services.AddSwaggerGen(options =>
-        {
-            // Configure Swagger for JWT authentication
-            options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
-            {
-                Description = "Standard Authorization header using the Bearer scheme. Example: \"bearer {token}\"",
-                In = ParameterLocation.Header,
-                Name = "Authorization",
-                Type = SecuritySchemeType.ApiKey
-            });
-            options.OperationFilter<SecurityRequirementsOperationFilter>();
-        });
-        
-        // Configure Swagger API versioning
-        builder.Services.AddSwaggerGen();
-        builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("DevCors", (corsBuilder) =>
@@ -115,13 +93,11 @@ public class Program
             });
         });
 
-        // Add FluentValidation
-        // builder.Services.AddFluentValidationAutoValidation();
-        // builder.Services.AddFluentValidationClientsideAdapters();
-        // builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-
         // Register AutoMapper
         builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+        // Add Memory Cache for rate limiting
+        builder.Services.AddMemoryCache();
 
         // Register repository
         builder.Services.AddScoped<IUserRepository, TaskTrackerAPI.Repositories.UserRepository>();
@@ -255,17 +231,6 @@ public class Program
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
-            app.UseSwaggerUI(options => 
-            {
-                // Build a swagger endpoint for each discovered API version
-                foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
-                {
-                    options.SwaggerEndpoint(
-                        $"/swagger/{description.GroupName}/swagger.json", 
-                        $"TaskTracker API {description.GroupName.ToUpperInvariant()}");
-                }
-            });
             app.UseCors("DevCors");
         }
         else
@@ -276,6 +241,9 @@ public class Program
 
         // Add global exception handling middleware
         app.UseGlobalExceptionHandling();
+
+        // Add rate limiting middleware BEFORE CSRF protection
+        app.UseRateLimiting();
 
         // Add CSRF protection middleware
         app.UseMiddleware<CsrfProtectionMiddleware>();

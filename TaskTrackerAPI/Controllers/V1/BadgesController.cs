@@ -63,7 +63,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                BadgeDTO badge = await _badgeService.GetBadgeByIdAsync(id);
+                BadgeDTO? badge = await _badgeService.GetBadgeByIdAsync(id);
 
                 if (badge == null)
                 {
@@ -319,7 +319,7 @@ namespace TaskTrackerAPI.Controllers.V1
                         "Badge could not be awarded. User may already have this badge or the badge does not exist."));
                 }
 
-                return Ok(ApiResponse<object>.SuccessResponse(data: null, message: "Badge awarded successfully"));
+                return Ok(ApiResponse<object>.SuccessResponse(data: new {}, message: "Badge awarded successfully"));
             }
             catch (Exception ex)
             {
@@ -358,7 +358,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     return NotFound(ApiResponse<object>.NotFoundResponse("User badge not found"));
                 }
 
-                return Ok(ApiResponse<object>.SuccessResponse(data: null, message: "Display status updated successfully"));
+                return Ok(ApiResponse<object>.SuccessResponse(data: new {}, message: "Display status updated successfully"));
             }
             catch (Exception ex)
             {
@@ -398,7 +398,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 string message = isFeatured ? "Badge set as featured successfully" : "Badge removed from featured successfully";
-                return Ok(ApiResponse<object>.SuccessResponse(data: null, message: message));
+                return Ok(ApiResponse<object>.SuccessResponse(data: new {}, message: message));
             }
             catch (Exception ex)
             {

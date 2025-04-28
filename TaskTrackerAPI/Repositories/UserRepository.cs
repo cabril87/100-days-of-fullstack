@@ -140,12 +140,12 @@ public class UserRepository : IUserRepository
             .ToListAsync();
 
         // If we have a token family structure, use it
-        IEnumerable<IGrouping<string, RefreshToken>> tokenFamilies = userTokens
+        IEnumerable<IGrouping<string?, RefreshToken>> tokenFamilies = userTokens
             .Where(t => !string.IsNullOrEmpty(t.TokenFamily))
             .GroupBy(t => t.TokenFamily)
             .ToList();
 
-        foreach (IGrouping<string, RefreshToken> tokenFamily in tokenFamilies)
+        foreach (IGrouping<string?, RefreshToken> tokenFamily in tokenFamilies)
         {
             foreach (RefreshToken token in tokenFamily)
             {

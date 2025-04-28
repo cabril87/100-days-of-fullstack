@@ -202,7 +202,7 @@ namespace TaskTrackerAPI.DTOs.Gamification
         /// Optional notes about why the badge was awarded
         /// </summary>
         [StringLength(200)]
-        public string AwardNotes { get; set; }
+        public string AwardNotes { get; set; } = string.Empty;
 
         /// <summary>
         /// Whether the badge should be displayed on the user's profile

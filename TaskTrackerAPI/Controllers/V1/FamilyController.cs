@@ -246,7 +246,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 int userId = User.GetUserId();
                 
                 // First check if the family exists
-                FamilyDTO family = await _familyService.GetByIdAsync(id);
+                FamilyDTO? family = await _familyService.GetByIdAsync(id);
                 if (family == null)
                 {
                     _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);

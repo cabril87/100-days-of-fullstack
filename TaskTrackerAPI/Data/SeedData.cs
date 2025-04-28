@@ -201,8 +201,8 @@ public static class SeedData
             return; // Tasks already seeded
         }
 
-        User adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
-        Category workCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Work");
+        User? adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
+        Category? workCategory = await context.Categories.FirstOrDefaultAsync(c => c.Name == "Work");
         if (adminUser == null || workCategory == null) return;
 
         List<TaskItem> tasks = new List<TaskItem>

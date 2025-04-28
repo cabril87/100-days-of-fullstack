@@ -128,14 +128,21 @@ This document provides a comprehensive list of all API endpoints available in th
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/Gamification/progress` | Get user progress |
+| POST | `/api/Gamification/points` | Add points to a user (Admin only) |
 | GET | `/api/Gamification/achievements` | Get user achievements |
-| GET | `/api/Gamification/achievements/{id}` | Get a specific achievement |
+| GET | `/api/Gamification/achievements/available` | Get available achievements |
 | GET | `/api/Gamification/badges` | Get user badges |
-| GET | `/api/Gamification/badges/{id}` | Get a specific badge |
-| GET | `/api/Gamification/leaderboard` | Get user leaderboard |
+| POST | `/api/Gamification/badges/toggle` | Toggle badge display status |
+| GET | `/api/Gamification/rewards` | Get available rewards |
+| POST | `/api/Gamification/rewards/claim/{rewardId}` | Claim a reward |
+| POST | `/api/Gamification/rewards/use` | Use a claimed reward |
+| GET | `/api/Gamification/challenges` | Get active challenges |
+| GET | `/api/Gamification/challenges/current` | Get the current challenge |
+| GET | `/api/Gamification/login/status` | Get daily login status |
+| POST | `/api/Gamification/login/claim` | Claim daily login reward |
 | GET | `/api/Gamification/stats` | Get user gamification stats |
-| POST | `/api/Gamification/task/{id}/complete` | Track task completion for points |
-| POST | `/api/Gamification/daily-login` | Record daily login for points |
+| GET | `/api/Gamification/suggestions` | Get personalized gamification suggestions |
+| GET | `/api/Gamification/leaderboard` | Get user leaderboard |
 
 ## Family Gamification
 

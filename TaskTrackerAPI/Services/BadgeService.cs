@@ -45,7 +45,7 @@ namespace TaskTrackerAPI.Services
         }
 
         /// <inheritdoc/>
-        public async Task<BadgeDTO> GetBadgeByIdAsync(int id)
+        public async Task<BadgeDTO?> GetBadgeByIdAsync(int id)
         {
             try
             {
@@ -127,7 +127,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                Badge existingBadge = await _context.Badges.FindAsync(id);
+                Badge? existingBadge = await _context.Badges.FindAsync(id);
                 if (existingBadge == null)
                 {
                     return false;

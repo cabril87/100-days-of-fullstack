@@ -17,5 +17,10 @@ namespace TaskTrackerAPI.Extensions
         {
             return builder.UseMiddleware<ExceptionHandlingMiddleware>();
         }
+
+        public static IApplicationBuilder UseRateLimiting(this IApplicationBuilder app)
+        {
+            return app.UseMiddleware<RateLimitingMiddleware>();
+        }
     }
 } 

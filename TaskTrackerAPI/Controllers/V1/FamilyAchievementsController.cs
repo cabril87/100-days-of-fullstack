@@ -245,7 +245,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserId();
-                FamilyLeaderboardDTO stats = await _achievementService.GetFamilyStatsAsync(familyId, userId);
+                FamilyLeaderboardDTO? stats = await _achievementService.GetFamilyStatsAsync(familyId, userId);
                 
                 if (stats == null)
                     return NotFound();

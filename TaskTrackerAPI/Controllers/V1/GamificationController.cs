@@ -631,33 +631,72 @@ namespace TaskTrackerAPI.Controllers.V1
 
         [HttpGet("leaderboard")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<LeaderboardEntryDTO>>> GetLeaderboard([FromQuery] string timeFrame = "all")
         {
             try
             {
+                _logger.LogInformation($"Fetching leaderboard with timeFrame: {timeFrame}");
                 int userId = User.GetUserIdAsInt();
 
-                // Instead of using enum, use string directly
-                List<LeaderboardEntry> leaderboardEntries = await _gamificationService.GetLeaderboardAsync(timeFrame, 10);
+                // Validate timeFrame parameter
+                if (string.IsNullOrEmpty(timeFrame))
+                {
+                    timeFrame = "points"; // Default to points if empty
+                }
+
+                if (timeFrame != "points" && timeFrame != "streak" && timeFrame != "tasks" && timeFrame != "all")
+                {
+                    _logger.LogWarning($"Invalid timeFrame parameter: {timeFrame}");
+                    return BadRequest(ApiResponse<IEnumerable<LeaderboardEntryDTO>>.BadRequestResponse($"Invalid timeFrame parameter: {timeFrame}. Valid values are 'points', 'streak', 'tasks', or 'all'"));
+                }
+
+                // Use "points" as default category if "all" is specified
+                string category = timeFrame == "all" ? "points" : timeFrame;
                 
-                // Create simple anonymous objects for leaderboard to avoid property mapping issues
+                try
+                {
+                    // Get leaderboard data
+                    List<LeaderboardEntry> leaderboardEntries = await _gamificationService.GetLeaderboardAsync(category, 10);
+                
+                    // Create leaderboard DTOs
                 List<LeaderboardEntryDTO> leaderboardData = leaderboardEntries.Select(e => new LeaderboardEntryDTO
                     {
                     UserId = e.UserId,
                     Rank = e.Rank,
                     Username = e.Username ?? "User",
-                    Value = 0, // Default value
+                        Value = e.Value, // Use the actual value from the LeaderboardEntry
                     AvatarUrl = string.Empty // Default value
                 }).ToList();
+                    
+                    // Add rank if not set
+                    for (int i = 0; i < leaderboardData.Count; i++)
+                    {
+                        if (leaderboardData[i].Rank == 0)
+                        {
+                            leaderboardData[i].Rank = i + 1;
+                        }
+                    }
                 
                 return Ok(ApiResponse<IEnumerable<LeaderboardEntryDTO>>.SuccessResponse(leaderboardData));
+                }
+                catch (ArgumentException argEx)
+                {
+                    _logger.LogWarning(argEx, $"Invalid argument for leaderboard: {argEx.Message}");
+                    return BadRequest(ApiResponse<IEnumerable<LeaderboardEntryDTO>>.BadRequestResponse(argEx.Message));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving leaderboard");
+                _logger.LogError(ex, "Error retrieving leaderboard: {ErrorMessage}", ex.Message);
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner exception: {InnerError}", ex.InnerException.Message);
+                }
+                
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<IEnumerable<LeaderboardEntryDTO>>.FailureResponse("Error retrieving leaderboard", StatusCodes.Status500InternalServerError));
+                    ApiResponse<IEnumerable<LeaderboardEntryDTO>>.FailureResponse($"Error retrieving leaderboard: {ex.Message}", StatusCodes.Status500InternalServerError));
             }
         }
 

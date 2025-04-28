@@ -203,7 +203,11 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                string userId = User.GetUserId(); // Extension method to get user ID from claims
+                string? userId = User.GetUserId(); // Extension method to get user ID from claims
+                if (userId == null)
+                {
+                    return Unauthorized();
+                }
                 IEnumerable<UserAchievementDTO> userAchievements = await _achievementService.GetUserAchievementsAsync(userId);
                 return Ok(userAchievements);
             }

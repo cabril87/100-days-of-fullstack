@@ -174,7 +174,7 @@ namespace TaskTrackerAPI.Services
                 int userIdInt = int.Parse(userId);
                 IEnumerable<UserAchievement> userAchievements = await _context.UserAchievements
                     .Include(ua => ua.Achievement)
-                    .Where(ua => ua.UserId == userIdInt && ua.Achievement.IsActive)
+                    .Where(ua => ua.UserId == userIdInt && ua.Achievement != null && ua.Achievement.IsActive)
                     .ToListAsync();
                 
                 return _mapper.Map<IEnumerable<UserAchievementDTO>>(userAchievements);
@@ -256,8 +256,8 @@ namespace TaskTrackerAPI.Services
                 foreach (Achievement achievement in relevantAchievements)
                 {
                     // Skip already unlocked achievements
-                    if (userAchievementDict.TryGetValue(achievement.Id, out UserAchievement userAchievement) && 
-                        userAchievement.UnlockedAt != default)
+                    if (userAchievementDict.TryGetValue(achievement.Id, out UserAchievement? userAchievement) && 
+                        userAchievement != null && userAchievement.UnlockedAt != default)
                     {
                         continue;
                     }
@@ -303,7 +303,7 @@ namespace TaskTrackerAPI.Services
                     .Include(ua => ua.Achievement)
                     .Where(ua => 
                         ua.UserId == userIdInt && 
-                        ua.Achievement.IsActive && 
+                        ua.Achievement != null && ua.Achievement.IsActive && 
                         ua.UnlockedAt != default)
                     .OrderByDescending(ua => ua.UnlockedAt)
                     .Take(count)
