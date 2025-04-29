@@ -1,0 +1,20 @@
+# Apply copyright header checks to all C# files
+*.cs text eol=lf
+
+# Exclude generated files from copyright checks
+**/obj/** -copyright
+**/bin/** -copyright
+
+# Attribute all source code files to the copyright holder for git blame purposes
+*.cs ident
+
+# Set the default behavior for all files
+* text=auto
+
+# Denote all files that are truly binary and should not be modified
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.dll binary
+*.zip binary 
