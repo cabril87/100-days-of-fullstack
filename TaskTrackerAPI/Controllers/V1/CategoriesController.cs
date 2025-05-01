@@ -1,10 +1,26 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Categories;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -32,7 +48,7 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             IEnumerable<CategoryDTO> categories = await _categoryService.GetAllCategoriesAsync(userId);
             return Ok(categories);
         }
@@ -59,7 +75,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             // First check if the category exists and belongs to the user
             bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
@@ -101,7 +117,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             // First check if the category exists
             bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
@@ -149,7 +165,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Category name cannot exceed 100 characters" });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             CategoryDTO? newCategory = await _categoryService.CreateCategoryAsync(userId, categoryDto);
             
@@ -193,7 +209,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Category name cannot exceed 100 characters" });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             CategoryDTO? updatedCategory = await _categoryService.UpdateCategoryAsync(id, userId, categoryDto);
             
@@ -232,7 +248,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             bool success = await _categoryService.DeleteCategoryAsync(id, userId);
             
@@ -265,7 +281,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Search term is required" });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             IEnumerable<CategoryDTO> categories = await _categoryService.SearchCategoriesAsync(userId, term);
             
@@ -288,7 +304,7 @@ public class CategoriesController : ControllerBase
                 return BadRequest(new { error = "Invalid category ID. ID must be greater than zero." });
             }
             
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             // First check if the category exists
             bool isCategoryOwned = await _categoryService.IsCategoryOwnedByUserAsync(id, userId);
@@ -314,7 +330,7 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             
             Dictionary<string, int> statistics = await _categoryService.GetCategoryStatisticsAsync(userId);
             
@@ -332,7 +348,7 @@ public class CategoriesController : ControllerBase
     {
         try
         {
-            int userId = User.GetUserId();
+            int userId = User.GetUserIdAsInt();
             PagedResult<CategoryDTO> pagedCategories = await _categoryService.GetPagedCategoriesAsync(userId, paginationParams);
             return Ok(pagedCategories);
         }

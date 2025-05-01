@@ -1,8 +1,23 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -41,7 +56,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 IEnumerable<BoardDTO> boards = await _boardService.GetAllBoardsAsync(userId);
                 
@@ -67,7 +82,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 BoardDTO? board = await _boardService.GetBoardByIdAsync(userId, id);
                 
@@ -98,7 +113,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 BoardDetailDTO? boardDetail = await _boardService.GetBoardWithTasksAsync(userId, id);
                 
@@ -134,7 +149,7 @@ namespace TaskTrackerAPI.Controllers.V1
             
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 BoardDTO? createdBoard = await _boardService.CreateBoardAsync(userId, boardDTO);
                 
@@ -171,7 +186,7 @@ namespace TaskTrackerAPI.Controllers.V1
             
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 BoardDTO? updatedBoard = await _boardService.UpdateBoardAsync(userId, id, boardDTO);
                 
@@ -202,7 +217,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 await _boardService.DeleteBoardAsync(userId, id);
                 
@@ -240,7 +255,7 @@ namespace TaskTrackerAPI.Controllers.V1
             
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 BoardDTO? updatedBoard = await _boardService.ReorderTaskInBoardAsync(userId, id, reorderDTO);
                 

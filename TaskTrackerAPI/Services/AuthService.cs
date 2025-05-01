@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 // Services/AuthService.cs
 using System.Security.Claims;
 using System.Security;
@@ -49,6 +59,29 @@ public class AuthService : IAuthService
         // Create password hash and salt
         _authHelper.CreatePasswordHash(userDto.Password, out string passwordHash, out string salt);
 
+        // Determine age group based on birth date if provided
+        FamilyMemberAgeGroup ageGroup = FamilyMemberAgeGroup.Adult; // Default to Adult
+        
+        if (userDto.DateOfBirth.HasValue)
+        {
+            // Calculate age
+            var today = DateTime.Today;
+            var birthDate = userDto.DateOfBirth.Value;
+            var age = today.Year - birthDate.Year;
+            
+            // Adjust age if birthday hasn't occurred yet this year
+            if (birthDate.Date > today.AddYears(-age)) 
+                age--;
+            
+            // Assign age group based on age
+            if (age < 13)
+                ageGroup = FamilyMemberAgeGroup.Child;
+            else if (age < 18)
+                ageGroup = FamilyMemberAgeGroup.Teen;
+            else
+                ageGroup = FamilyMemberAgeGroup.Adult;
+        }
+        
         // Create new user
         User user = new User
         {
@@ -60,7 +93,7 @@ public class AuthService : IAuthService
             LastName = userDto.LastName,
             Role = "User",
             CreatedAt = DateTime.UtcNow,
-            AgeGroup = userDto.AgeGroup ?? FamilyMemberAgeGroup.Adult
+            AgeGroup = userDto.AgeGroup ?? ageGroup // Use provided age group or calculated one
         };
 
         await _userRepository.CreateUserAsync(user);
@@ -102,6 +135,24 @@ public class AuthService : IAuthService
             {
                 _logger.LogWarning("Failed login attempt for user: {Email} - Invalid password", loginDto.Email);
                 throw new UnauthorizedAccessException("Invalid email or password");
+            }
+
+            // Check if the hash is in the old ASP.NET Identity format and rehash it
+            if (user.PasswordHash.StartsWith("AQAAAA"))
+            {
+                _logger.LogInformation("Upgrading password hash to Argon2id for user: {Email}", loginDto.Email);
+                
+                // Create a new Argon2id hash
+                _authHelper.CreatePasswordHash(loginDto.Password, out string newPasswordHash, out string newSalt);
+                
+                // Update the user's password hash and salt
+                user.PasswordHash = newPasswordHash;
+                user.Salt = newSalt;
+                
+                // Save the updated user
+                await _userRepository.UpdateUserAsync(user);
+                
+                _logger.LogInformation("Password hash upgraded successfully for user: {Email}", loginDto.Email);
             }
 
             // Generate JWT token

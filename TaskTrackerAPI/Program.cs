@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +30,11 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.Extensions.Options;
 using TaskTrackerAPI.Extensions;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.SignalR;
+using TaskTrackerAPI.Hubs;
+using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
 
 namespace TaskTrackerAPI;
 
@@ -36,6 +51,20 @@ public class Program
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
+
+        // Add security headers service
+        builder.Services.AddAntiforgery(options => 
+        {
+            options.HeaderName = "X-XSRF-TOKEN";
+        });
+
+        // Configure HTTP Security Headers
+        builder.Services.AddHsts(options =>
+        {
+            options.Preload = true;
+            options.IncludeSubDomains = true;
+            options.MaxAge = TimeSpan.FromDays(365);
+        });
 
         // Add API Versioning
         builder.Services.AddApiVersioning(options =>
@@ -81,35 +110,46 @@ public class Program
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials()
-                    .WithExposedHeaders("Content-Disposition");
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
             options.AddPolicy("ProdCors", (corsBuilder) =>
             {
-                corsBuilder.WithOrigins("https://myProductionSite.com")
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
+                corsBuilder.WithOrigins(
+                       "https://myProductionSite.com",
+                       "https://api.myProductionSite.com",
+                       "https://admin.myProductionSite.com"
+                    )
+                    .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                    .WithHeaders("Authorization", "Content-Type", "Accept", "X-XSRF-TOKEN", "X-CSRF-TOKEN")
                     .AllowCredentials()
-                    .WithExposedHeaders("Content-Disposition");
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
         });
 
         // Register AutoMapper
-        builder.Services.AddAutoMapper(typeof(Program).Assembly);
+        builder.Services.AddAutoMapper(config =>
+        {
+            config.AddMaps(typeof(Program).Assembly);
+        });
 
-        // Add Memory Cache for rate limiting
+        // Add Memory Cache for rate limiting and response caching
         builder.Services.AddMemoryCache();
+        
+        // Add distributed cache for more robust caching across multiple instances
+        builder.Services.AddDistributedMemoryCache();
 
         // Register repository
-        builder.Services.AddScoped<IUserRepository, TaskTrackerAPI.Repositories.UserRepository>();
-        builder.Services.AddScoped<ITaskItemRepository, TaskTrackerAPI.Repositories.TaskItemRepository>();
-        builder.Services.AddScoped<ICategoryRepository, TaskTrackerAPI.Repositories.CategoryRepository>();
-        builder.Services.AddScoped<ITagRepository, TaskTrackerAPI.Repositories.TagRepository>();
-        builder.Services.AddScoped<IFamilyRepository, TaskTrackerAPI.Repositories.FamilyRepository>();
-        builder.Services.AddScoped<IFamilyRoleRepository, TaskTrackerAPI.Repositories.FamilyRoleRepository>();
-        builder.Services.AddScoped<IInvitationRepository, TaskTrackerAPI.Repositories.InvitationRepository>();
-        builder.Services.AddScoped<IUserDeviceRepository, TaskTrackerAPI.Repositories.UserDeviceRepository>();
-        builder.Services.AddScoped<IFamilyMemberRepository, TaskTrackerAPI.Repositories.FamilyMemberRepository>();
-        builder.Services.AddScoped<IFamilyAchievementRepository, TaskTrackerAPI.Repositories.FamilyAchievementRepository>();
+        builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<ITaskItemRepository,TaskItemRepository>();
+        builder.Services.AddScoped<ICategoryRepository,CategoryRepository>();
+        builder.Services.AddScoped<ITagRepository,TagRepository>();
+        builder.Services.AddScoped<IFamilyRepository,FamilyRepository>();
+        builder.Services.AddScoped<IFamilyRoleRepository,FamilyRoleRepository>();
+        builder.Services.AddScoped<IInvitationRepository,InvitationRepository>();
+        builder.Services.AddScoped<IUserDeviceRepository,UserDeviceRepository>();
+        builder.Services.AddScoped<IFamilyMemberRepository,FamilyMemberRepository>();
+        builder.Services.AddScoped<IFamilyAchievementRepository,FamilyAchievementRepository>();
+        builder.Services.AddScoped<IFamilyCalendarRepository,FamilyCalendarRepository>();
 
         // Register helpers
         builder.Services.AddScoped<AuthHelper>();
@@ -140,6 +180,24 @@ public class Program
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
         builder.Services.AddScoped<IAchievementService, AchievementService>();
         builder.Services.AddScoped<IBadgeService, BadgeService>();
+        builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
+
+        // Register SignalR for real-time updates
+        builder.Services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+            options.MaximumReceiveMessageSize = 102400; // 100KB
+        });
+        
+        // Register task synchronization service
+        builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
+
+        // Register HttpContextAccessor and UserAccessor
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IUserAccessor, UserAccessor>();
+
+        // Register TaskPriorityService
+        builder.Services.AddScoped<ITaskPriorityService, TaskPriorityService>();
 
         // Register TaskStatisticsService
         builder.Services.AddScoped<ITaskStatisticsService, TaskStatisticsService>();
@@ -151,10 +209,39 @@ public class Program
         builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
         builder.Services.AddScoped<ITaskTemplateRepository, TaskTemplateRepository>();
         builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+        builder.Services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
 
         // Register QRCode Generator as singleton
         builder.Services.AddSingleton<QRCodeGenerator>();
         builder.Services.AddSingleton<QRCodeHelper>();
+
+        // Register RateLimitBackoffHelper as singleton
+        builder.Services.AddHttpClient();
+        builder.Services.AddSingleton<Utils.RateLimitBackoffHelper>(sp => {
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var logger = sp.GetRequiredService<ILogger<Utils.RateLimitBackoffHelper>>();
+            return new Utils.RateLimitBackoffHelper(httpClient, logger);
+        });
+
+        // Add response compression
+        builder.Services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+        });
+
+        // Configure Brotli compression level
+        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(options =>
+        {
+            options.Level = System.IO.Compression.CompressionLevel.Optimal;
+        });
+
+        // Configure Gzip compression level
+        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(options =>
+        {
+            options.Level = System.IO.Compression.CompressionLevel.Optimal;
+        });
 
         // Load configuration from environment variables
         if (builder.Environment.IsDevelopment())
@@ -190,7 +277,7 @@ public class Program
         }
         else
         {
-            // Production settings
+            // Production settings - more strict validation
             tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -200,7 +287,8 @@ public class Program
                 ValidateAudience = true,
                 ValidAudience = builder.Configuration.GetSection("AppSettings:ValidAudience").Value,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.FromMinutes(2),
+                RequireExpirationTime = true
             };
         }
 
@@ -214,13 +302,59 @@ public class Program
         else
         {
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(defaultConn));
+            {
+                options.UseSqlServer(defaultConn, 
+                    sqlOptions => sqlOptions.EnableRetryOnFailure());
+            });
         }
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = tokenValidationParameters;
+                
+                // In production, require HTTPS for tokens
+                if (!builder.Environment.IsDevelopment())
+                {
+                    options.RequireHttpsMetadata = true;
+                }
+                
+                // Add events for additional security checks
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        // Additional validation if needed, e.g. check if user still exists and is active
+                        var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+                        
+                        // Get user ID from claims
+                        var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        
+                        if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int id))
+                        {
+                            var user = await userService.GetUserByIdAsync(id);
+                            
+                            // Reject token if user no longer exists 
+                            if (user == null)
+                            {
+                                context.Fail("User no longer exists");
+                            }
+                            // Check if the IsActive property exists and is false
+                            else 
+                            {
+                                var isActiveProperty = user.GetType().GetProperty("IsActive");
+                                if (isActiveProperty != null)
+                                {
+                                    var isActiveValue = isActiveProperty.GetValue(user);
+                                    if (isActiveValue != null && isActiveValue is bool isActive && !isActive)
+                                    {
+                                        context.Fail("User has been deactivated");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
             });
 
         WebApplication app = builder.Build();
@@ -228,15 +362,27 @@ public class Program
         // Get API version description provider
         var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
 
+        // Enable response compression
+        app.UseResponseCompression();
+
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
             app.UseCors("DevCors");
+            
+            // Don't force HTTPS in dev, but still add middleware
+            app.UseHttpsRedirection();
         }
         else
         {
+            // In production, use the production CORS policy
             app.UseCors("ProdCors");
+            
+            // Enable HTTP Strict Transport Security (HSTS)
             app.UseHsts();
+            
+            // Force HTTPS
+            app.UseHttpsRedirection();
         }
 
         // Add global exception handling middleware
@@ -248,11 +394,47 @@ public class Program
         // Add CSRF protection middleware
         app.UseMiddleware<CsrfProtectionMiddleware>();
 
-        app.UseHttpsRedirection();
-
-        // Map controllers
+        // Add response caching after authentication and rate limiting
+        // but before endpoints are executed
         app.UseAuthentication();
         app.UseAuthorization();
+
+        // Security headers middleware - add in production only
+        if (!app.Environment.IsDevelopment())
+        {
+            app.Use(async (context, next) =>
+            {
+                // Add security headers
+                context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+                context.Response.Headers.Append("X-Frame-Options", "DENY");
+                context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+                context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+                
+                // Content Security Policy - very strict for API
+                context.Response.Headers.Append(
+                    "Content-Security-Policy",
+                    "default-src 'none'; frame-ancestors 'none'"
+                );
+                
+                // Permissions Policy (formerly Feature-Policy)
+                context.Response.Headers.Append(
+                    "Permissions-Policy", 
+                    "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+                );
+                
+                await next();
+            });
+        }
+        
+        // Add response caching middleware
+        app.UseCustomResponseCaching();
+        
+        // Add query batching middleware
+        app.UseMiddleware<QueryBatchingMiddleware>();
+
+        // Map SignalR hubs
+        app.MapHub<TaskHub>("/hubs/tasks");
+
         app.MapControllers();
 
         // Seed the database if needed
@@ -285,7 +467,8 @@ public class Program
                         FirstName = "Admin",
                         LastName = "User",
                         CreatedAt = DateTime.UtcNow,
-                        IsActive = true
+                        IsActive = true,
+                        AgeGroup = FamilyMemberAgeGroup.Adult
                     };
                     dbContext.Users.Add(user);
                     dbContext.SaveChanges();

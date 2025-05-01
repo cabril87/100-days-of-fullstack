@@ -1,13 +1,25 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System.Collections.Concurrent;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
-using TaskTrackerAPI.Utils;
+using System.Text.Json;
 
 namespace TaskTrackerAPI.Middleware;
 
+/// <summary>
+/// Middleware that implements rate limiting to prevent abuse of the API
+/// </summary>
 public class RateLimitingMiddleware
 {
     private readonly RequestDelegate _next;
@@ -20,6 +32,8 @@ public class RateLimitingMiddleware
     private readonly int _defaultTimeWindowInSeconds;
     private readonly int _authEndpointRateLimit;
     private readonly int _authEndpointTimeWindowInSeconds;
+    private readonly int _maxRetryCount;
+    private readonly int _baseBackoffDelaySeconds;
     
     // Cache for rate limiters
     private readonly ConcurrentDictionary<string, FixedWindowRateLimiter> _limiters = new();
@@ -35,11 +49,12 @@ public class RateLimitingMiddleware
         _cache = cache;
         _configuration = configuration;
         
-        // Load settings from configuration or use defaults
         _defaultRateLimit = _configuration.GetValue<int>("RateLimiting:DefaultLimit", 100);
         _defaultTimeWindowInSeconds = _configuration.GetValue<int>("RateLimiting:DefaultTimeWindowSeconds", 60);
         _authEndpointRateLimit = _configuration.GetValue<int>("RateLimiting:AuthEndpointLimit", 5);
         _authEndpointTimeWindowInSeconds = _configuration.GetValue<int>("RateLimiting:AuthEndpointTimeWindowSeconds", 60);
+        _maxRetryCount = _configuration.GetValue<int>("RateLimiting:MaxRetryCount", 5);
+        _baseBackoffDelaySeconds = _configuration.GetValue<int>("RateLimiting:BaseBackoffDelaySeconds", 1);
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -63,7 +78,7 @@ public class RateLimitingMiddleware
         
         using RateLimitLease lease = await limiter.AcquireAsync(1);
         
-        // Calculate remaining permits - instead of GetAllowedPermits which doesn't exist
+        // Calculate remaining permits
         int remainingPermits = lease.IsAcquired ? Math.Max(0, limit - 1) : 0;
         
         // Add rate limit headers
@@ -75,17 +90,58 @@ public class RateLimitingMiddleware
         {
             _logger.LogWarning("Rate limit exceeded for {Key}", key);
             
+            // Get retry count if it exists in cache
+            string retryKey = $"RetryCount_{key}";
+            int retryCount = _cache.TryGetValue(retryKey, out int cachedCount) ? cachedCount + 1 : 1;
+            
+            // Store retry count with expiration
+            _cache.Set(retryKey, retryCount, TimeSpan.FromSeconds(timeWindow * 2));
+            
+            // Calculate backoff time with exponential backoff and jitter
+            int baseDelay = _baseBackoffDelaySeconds;
+            int maxDelay = timeWindow;
+            
+            // Exponential backoff: baseDelay * (2^retryCount)
+            double exponentialDelay = baseDelay * Math.Pow(2, Math.Min(retryCount, _maxRetryCount));
+            
+            // Apply jitter (random value between 0-1 seconds)
+            Random random = new Random();
+            double jitter = random.NextDouble();
+            
+            // Cap the delay at the time window
+            int retryAfterSeconds = (int)Math.Min(exponentialDelay + jitter, maxDelay);
+            
             // Return 429 Too Many Requests
             context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
-            context.Response.Headers.Append("Retry-After", timeWindow.ToString());
+            context.Response.Headers.Append("Retry-After", retryAfterSeconds.ToString());
+            context.Response.Headers.Append("X-Backoff-Strategy", "exponential");
+            context.Response.Headers.Append("X-Retry-Count", retryCount.ToString());
+            context.Response.Headers.Append("X-Max-Retry", _maxRetryCount.ToString());
             
-            var response = ApiResponse<object>.ErrorResponse(
-                "Too many requests. Please try again later.", 
-                (int)HttpStatusCode.TooManyRequests);
+            object response = new
+            {
+                Success = false,
+                StatusCode = (int)HttpStatusCode.TooManyRequests,
+                Message = "Rate limit exceeded. Please try again later.",
+                RetryAfter = retryAfterSeconds,
+                RetryCount = retryCount,
+                MaxRetry = _maxRetryCount,
+                BackoffStrategy = new
+                {
+                    Type = "exponential",
+                    BaseDelay = baseDelay,
+                    Formula = "delay = baseDelay * (2^retryAttempt) + jitter",
+                    Jitter = true
+                }
+            };
             
             await context.Response.WriteAsJsonAsync(response);
             return;
         }
+        
+        // Reset retry count on successful request
+        string successRetryKey = $"RetryCount_{key}";
+        _cache.Remove(successRetryKey);
         
         // Continue with the request
         await _next(context);
@@ -114,7 +170,7 @@ public class RateLimitingMiddleware
     
     private string GetRateLimitKey(HttpContext context, string endpoint)
     {
-        // For authenticated requests, use the user's ID
+        // Get user ID if authenticated
         if (context.User.Identity?.IsAuthenticated == true)
         {
             string? userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -124,8 +180,8 @@ public class RateLimitingMiddleware
             }
         }
         
-        // For unauthenticated requests, use the client's IP address
-        string clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        // Fall back to client IP if not authenticated
+        string? clientIp = context.Connection.RemoteIpAddress?.ToString();
         return $"ip_{clientIp}_{endpoint}";
     }
 } 

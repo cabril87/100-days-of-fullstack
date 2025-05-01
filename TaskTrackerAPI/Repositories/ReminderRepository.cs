@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -56,13 +66,21 @@ public class ReminderRepository : IReminderRepository
 
     public async Task<IEnumerable<Reminder>> GetOverdueRemindersAsync(int userId)
     {
-        DateTime now = DateTime.UtcNow;
         return await _context.Reminders
             .Where(r => r.UserId == userId && 
-                   r.ReminderTime < now &&
-                   r.Status != ReminderStatus.Completed &&
-                   r.Status != ReminderStatus.Dismissed)
-            .OrderBy(r => r.ReminderTime)
+                    r.DueDate < DateTime.Today && 
+                    r.Status == ReminderStatus.Pending)
+            .OrderBy(r => r.DueDate)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<Reminder>> GetDueTodayRemindersAsync(int userId)
+    {
+        return await _context.Reminders
+            .Where(r => r.UserId == userId && 
+                        r.DueDate.Date == DateTime.Today.Date && 
+                        r.Status == ReminderStatus.Pending)
+            .OrderBy(r => r.DueDate)
             .ToListAsync();
     }
 

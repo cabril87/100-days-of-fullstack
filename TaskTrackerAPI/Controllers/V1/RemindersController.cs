@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -189,6 +199,25 @@ namespace TaskTrackerAPI.Controllers.V1
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving overdue reminders");
+                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+            }
+        }
+
+        // GET: api/Reminders/duetoday
+        [HttpGet("duetoday")]
+        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetDueTodayReminders()
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                
+                IEnumerable<ReminderDTO> reminders = await _reminderService.GetDueTodayRemindersAsync(userId);
+                
+                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving reminders due today");
                 return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
             }
         }

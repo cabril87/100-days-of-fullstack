@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -7,6 +17,7 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -69,7 +80,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<FamilyAchievementDTO> achievements = await _achievementService.GetByFamilyIdAsync(familyId, userId);
                 return Ok(achievements);
             }
@@ -90,7 +101,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<FamilyAchievementDTO> achievements = await _achievementService.GetCompletedByFamilyIdAsync(familyId, userId);
                 return Ok(achievements);
             }
@@ -111,7 +122,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<FamilyAchievementDTO> achievements = await _achievementService.GetInProgressByFamilyIdAsync(familyId, userId);
                 return Ok(achievements);
             }
@@ -132,7 +143,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyAchievementDTO achievement = await _achievementService.CreateAsync(achievementDto, userId);
                 return CreatedAtAction(nameof(GetAchievementById), new { id = achievement.Id }, achievement);
             }
@@ -153,7 +164,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyAchievementDTO? achievement = await _achievementService.UpdateAsync(id, achievementDto, userId);
                 
                 if (achievement == null)
@@ -178,7 +189,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 bool result = await _achievementService.DeleteAsync(id, userId);
                 
                 if (!result)
@@ -203,7 +214,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 bool result = await _achievementService.UpdateProgressAsync(id, progressDto.MemberId, progressDto.ProgressIncrease, userId);
                 
                 if (!result)
@@ -244,7 +255,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyLeaderboardDTO? stats = await _achievementService.GetFamilyStatsAsync(familyId, userId);
                 
                 if (stats == null)
@@ -269,7 +280,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 bool result = await _achievementService.TrackTaskCompletionAsync(taskId, completionDto.MemberId, userId);
                 
                 if (!result)

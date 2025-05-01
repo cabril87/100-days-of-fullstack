@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
@@ -61,6 +71,12 @@ public class ReminderService : IReminderService
         return _mapper.Map<IEnumerable<ReminderDTO>>(reminders);
     }
 
+    public async Task<IEnumerable<ReminderDTO>> GetDueTodayRemindersAsync(int userId)
+    {
+        IEnumerable<Reminder> reminders = await _reminderRepository.GetDueTodayRemindersAsync(userId);
+        return _mapper.Map<IEnumerable<ReminderDTO>>(reminders);
+    }
+
     public async Task<IEnumerable<ReminderDTO>> GetRemindersByTaskIdAsync(int userId, int taskId)
     {
         // Verify the task belongs to the user
@@ -90,6 +106,12 @@ public class ReminderService : IReminderService
         Reminder reminder = _mapper.Map<Reminder>(reminderDto);
         reminder.UserId = userId;
         reminder.CreatedAt = DateTime.UtcNow;
+        
+        // Set the DueDate to the same date as ReminderTime if not explicitly set
+        if (reminder.DueDate == default)
+        {
+            reminder.DueDate = reminder.ReminderTime.Date;
+        }
 
         Reminder createdReminder = await _reminderRepository.CreateReminderAsync(reminder);
         return _mapper.Map<ReminderDTO>(createdReminder);
@@ -119,7 +141,14 @@ public class ReminderService : IReminderService
             existingReminder.Description = reminderDto.Description;
             
         if (reminderDto.ReminderTime.HasValue)
+        {
             existingReminder.ReminderTime = reminderDto.ReminderTime.Value;
+            // Update DueDate to match the date part of ReminderTime unless DueDate is explicitly set
+            existingReminder.DueDate = reminderDto.DueDate ?? reminderDto.ReminderTime.Value.Date;
+        }
+        
+        if (reminderDto.DueDate.HasValue)
+            existingReminder.DueDate = reminderDto.DueDate.Value;
             
         if (reminderDto.IsRecurring.HasValue)
             existingReminder.IsRepeating = reminderDto.IsRecurring.Value;
@@ -208,6 +237,9 @@ public class ReminderService : IReminderService
         // Get overdue reminders
         int overdueReminders = (await _reminderRepository.GetOverdueRemindersAsync(userId)).Count();
         
+        // Get due today reminders
+        int dueTodayReminders = (await _reminderRepository.GetDueTodayRemindersAsync(userId)).Count();
+        
         // Calculate completion rate
         double completionRate = totalReminders > 0 
             ? (double)completedReminders / totalReminders * 100 
@@ -220,7 +252,7 @@ public class ReminderService : IReminderService
             CompletedReminders = completedReminders,
             UpcomingReminders = upcomingReminders,
             MissedReminders = overdueReminders,
-            DueTodayReminders = 0 // Default value
+            DueTodayReminders = dueTodayReminders
         };
     }
 } 

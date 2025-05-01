@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -199,18 +209,18 @@ public class FamilyRepository :IFamilyRepository
     {
         return await _context.FamilyMembers
             .Include(m => m.User)
-            .Include(m => m.Family)
             .Include(m => m.Role)
+                .ThenInclude(r => r.Permissions)
             .FirstOrDefaultAsync(m => m.Id == memberId);
     }
 
-    public async Task<FamilyMember?> GetMemberByUserIdAsync(int userId)
+    public async Task<FamilyMember?> GetMemberByUserIdAsync(int userId, int familyId)
     {
         return await _context.FamilyMembers
             .Include(m => m.User)
-            .Include(m => m.Family)
             .Include(m => m.Role)
-            .FirstOrDefaultAsync(m => m.UserId == userId);
+                .ThenInclude(r => r.Permissions)
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.FamilyId == familyId);
     }
 
     public async Task<IEnumerable<FamilyMember>> GetPendingMembersAsync()

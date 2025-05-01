@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -83,6 +93,18 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Error refreshing token");
             return StatusCode(500, new { message = "An error occurred while refreshing the token." });
         }
+    }
+
+    /// <summary>
+    /// Provides a CSRF token for SignalR connections
+    /// </summary>
+    /// <returns>Success response with token in cookie</returns>
+    [HttpGet("csrf")]
+    [Authorize]
+    public ActionResult GetCsrfToken()
+    {
+        // CSRF token is automatically set in a cookie by the middleware for GET requests
+        return Ok(new { message = "CSRF token has been set" });
     }
 
     [Authorize]

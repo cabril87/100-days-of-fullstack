@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -9,6 +19,7 @@ using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Extensions;
 
 
 namespace TaskTrackerAPI.Controllers.V1
@@ -39,7 +50,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<FamilyDTO> families = await _familyService.GetByUserIdAsync(userId);
                 return Ok(families);
             }
@@ -56,7 +67,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyDTO family = await _familyService.CreateAsync(familyDto, userId);
                 return Ok(new
                 {
@@ -100,7 +111,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
 
                 // Validate familyId matches the one in the DTO
                 if (familyId != invitationDto.FamilyId)
@@ -135,7 +146,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<InvitationDTO> invitations = await _invitationService.GetByFamilyIdAsync(familyId, userId);
                 return Ok(invitations);
             }
@@ -152,7 +163,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyMemberDTO member = await _familyService.CompleteMemberProfileAsync(memberId, userId, profileDto);
                 return Ok(member);
             }
@@ -193,7 +204,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int adminId = User.GetUserId();
+                int adminId = User.GetUserIdAsInt();
                 FamilyMemberDTO member = await _familyService.ApproveMemberAsync(memberId, adminId);
                 return Ok(member);
             }
@@ -218,7 +229,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int adminId = User.GetUserId();
+                int adminId = User.GetUserIdAsInt();
                 await _familyService.RejectMemberAsync(memberId, adminId, rejectDto.Reason);
                 return NoContent();
             }
@@ -243,7 +254,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 _logger.LogInformation("Received request to delete family with ID: {FamilyId}", id);
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 
                 // First check if the family exists
                 FamilyDTO? family = await _familyService.GetByIdAsync(id);

@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -8,6 +18,7 @@ using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -33,7 +44,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 IEnumerable<FamilyPersonDTO> members = await _familyMemberService.GetAllAsync();
                 return Ok(members);
             }
@@ -50,6 +61,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
+                int userId = User.GetUserIdAsInt();
                 FamilyPersonDTO? member = await _familyMemberService.GetByIdAsync(id);
                 if (member == null)
                     return NotFound();
@@ -69,6 +81,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
+                int userId = User.GetUserIdAsInt();
                 FamilyPersonDetailDTO? member = await _familyMemberService.GetDetailsByIdAsync(id);
                 if (member == null)
                     return NotFound();
@@ -88,7 +101,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyPersonDTO member = await _familyMemberService.CreateAsync(memberDto, userId);
                 return CreatedAtAction(nameof(GetFamilyMemberById), new { id = member.Id }, member);
             }
@@ -109,7 +122,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 FamilyPersonDTO? member = await _familyMemberService.UpdateAsync(id, memberDto, userId);
                 if (member == null)
                     return NotFound();
@@ -133,7 +146,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserId();
+                int userId = User.GetUserIdAsInt();
                 bool result = await _familyMemberService.DeleteAsync(id, userId);
                 if (!result)
                     return NotFound();

@@ -1,108 +1,108 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System.Net;
 using System.Text.Json;
-using System.Threading.Tasks;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Exceptions;
 
-namespace TaskTrackerAPI.Middleware
+namespace TaskTrackerAPI.Middleware;
+
+/// <summary>
+/// Middleware that handles exceptions globally
+/// </summary>
+public class ExceptionHandlingMiddleware
 {
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IWebHostEnvironment _env;
     
-    /// Middleware for global exception handling
-    
-    public class ExceptionHandlingMiddleware
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<ExceptionHandlingMiddleware> logger,
+        IWebHostEnvironment env)
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<ExceptionHandlingMiddleware> _logger;
-
-        
-        /// Initializes a new instance of the <see cref="ExceptionHandlingMiddleware"/> class.
-        
-        /// <param name="next">The next middleware in the pipeline</param>
-        /// <param name="logger">The logger</param>
-        public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+        _next = next;
+        _logger = logger;
+        _env = env;
+    }
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
         {
-            _next = next;
-            _logger = logger;
+            await _next(context);
         }
-
-        
-        /// Invokes the middleware
-        
-        /// <param name="context">The HTTP context</param>
-        /// <returns>A task representing the asynchronous operation</returns>
-        public async Task InvokeAsync(HttpContext context)
+        catch (Exception ex)
         {
-            try
-            {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                await HandleExceptionAsync(context, ex);
-            }
+            await HandleExceptionAsync(context, ex);
         }
-
-        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    }
+    
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        _logger.LogError(exception, "An unhandled exception occurred");
+        
+        HttpStatusCode statusCode = HttpStatusCode.InternalServerError;
+        string message = "An unexpected error occurred";
+        object? details = null;
+        
+        // Determine the status code and message based on the exception type
+        if (exception is NotFoundException)
         {
-            _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
-
-            HttpStatusCode statusCode = HttpStatusCode.InternalServerError;
-            string message = "An unexpected error occurred";
-            List<string> errors = new List<string>();
-
-            // Customize response based on exception type
-            switch (exception)
-            {
-                case ArgumentException argEx:
-                    statusCode = HttpStatusCode.BadRequest;
-                    message = argEx.Message;
-                    break;
-
-                case UnauthorizedAccessException unauthorizedEx:
-                    statusCode = HttpStatusCode.Unauthorized;
-                    message = unauthorizedEx.Message;
-                    break;
-
-                case InvalidOperationException invalidOpEx:
-                    statusCode = HttpStatusCode.BadRequest;
-                    message = invalidOpEx.Message;
-                    break;
-
-                case KeyNotFoundException notFoundEx:
-                    statusCode = HttpStatusCode.NotFound;
-                    message = notFoundEx.Message;
-                    break;
-
-                default:
-                    // For unexpected exceptions, keep the generic message but log the details
-                    errors.Add(exception.Message);
-                    
-                    // Include inner exception details if available
-                    if (exception.InnerException != null)
-                    {
-                        errors.Add(exception.InnerException.Message);
-                    }
-                    break;
-            }
-
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)statusCode;
-
-            ApiResponse<object> response = ApiResponse<object>.ErrorResponse(
-                message,
-                (int)statusCode,
-                errors.Count > 0 ? errors : null
-            );
-
-            string result = JsonSerializer.Serialize(response, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-
-            await context.Response.WriteAsync(result);
+            statusCode = HttpStatusCode.NotFound;
+            message = exception.Message;
         }
+        else if (exception is BadRequestException)
+        {
+            statusCode = HttpStatusCode.BadRequest;
+            message = exception.Message;
+        }
+        else if (exception is UnauthorizedException)
+        {
+            statusCode = HttpStatusCode.Unauthorized;
+            message = exception.Message;
+        }
+        else if (exception is ForbiddenException)
+        {
+            statusCode = HttpStatusCode.Forbidden;
+            message = exception.Message;
+        }
+        else if (exception is ConcurrencyException concurrencyEx)
+        {
+            statusCode = HttpStatusCode.Conflict;
+            message = "A conflict occurred due to concurrent updates";
+            details = concurrencyEx.Conflict;
+            _logger.LogWarning("Concurrency conflict detected: {Message}", concurrencyEx.Message);
+        }
+        
+        // Set the response code
+        context.Response.StatusCode = (int)statusCode;
+        context.Response.ContentType = "application/json";
+        
+        // Create the response
+        object response = new 
+        {
+            status = (int)statusCode,
+            message = message,
+            details = details,
+            debugInfo = _env.IsDevelopment() ? exception.ToString() : null
+        };
+        
+        // Serialize and return the response
+        string json = JsonSerializer.Serialize(response, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = _env.IsDevelopment(),
+            PropertyNameCaseInsensitive = true
+        });
+        
+        await context.Response.WriteAsync(json);
     }
 } 

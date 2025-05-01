@@ -1,3 +1,13 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,8 +40,8 @@ public class TaskItemsController : ControllerBase
     private readonly IMapper _mapper;
 
     public TaskItemsController(
-        ITaskService taskService, 
-        ILogger<TaskItemsController> logger, 
+        ITaskService taskService,
+        ILogger<TaskItemsController> logger,
         IFamilyMemberService familyMemberService,
         IMapper mapper)
     {
@@ -41,9 +51,9 @@ public class TaskItemsController : ControllerBase
         _mapper = mapper;
     }
 
-    
+
     /// Gets tasks with pagination and advanced filtering capabilities
-    
+
     /// <param name="page">Page number (default: 1)</param>
     /// <param name="pageSize">Number of items per page (default: 10, max: 50)</param>
     /// <param name="status">Filter tasks by status</param>
@@ -57,7 +67,7 @@ public class TaskItemsController : ControllerBase
     [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
     [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemCollectionResponseDTO>), 200)]
     public async Task<ActionResult<Utils.ApiResponse<TaskItemCollectionResponseDTO>>> GetTasks(
-        [FromQuery] int page = 1, 
+        [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] TaskItemStatus? status = null,
         [FromQuery] int? categoryId = null,
@@ -70,66 +80,66 @@ public class TaskItemsController : ControllerBase
         {
             // Cap page size at 50 to prevent performance issues
             pageSize = Math.Min(pageSize, 50);
-            
+
             // Ensure valid page parameters
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
-            
+
             int userId = User.GetUserIdAsInt();
-            
+
             // Create pagination parameters
             PaginationParams paginationParams = new PaginationParams
             {
                 PageNumber = page,
                 PageSize = pageSize
             };
-            
+
             // Get paged tasks
             PagedResult<TaskItemDTO> tasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
-            
+
             // Apply filters (placeholder logic - should be implemented in repository layer)
             IEnumerable<TaskItemDTO> filteredTasks = tasks.Items;
-            
+
             // Apply status filter
             if (status.HasValue)
             {
                 filteredTasks = filteredTasks.Where(t => t.Status == status.Value);
             }
-            
+
             // Apply category filter
             if (categoryId.HasValue)
             {
                 filteredTasks = filteredTasks.Where(t => t.CategoryId == categoryId.Value);
             }
-            
+
             // Apply priority filter
             if (!string.IsNullOrEmpty(priorityLevel))
             {
                 filteredTasks = filteredTasks.Where(t => t.Priority.ToString().Equals(priorityLevel, StringComparison.OrdinalIgnoreCase));
             }
-            
+
             // Apply due date range filter
             if (dueDateStart.HasValue)
             {
                 filteredTasks = filteredTasks.Where(t => t.DueDate >= dueDateStart.Value);
             }
-            
+
             if (dueDateEnd.HasValue)
             {
                 filteredTasks = filteredTasks.Where(t => t.DueDate <= dueDateEnd.Value);
             }
-            
+
             // Apply search term filter
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                filteredTasks = filteredTasks.Where(t => 
-                    t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) || 
+                filteredTasks = filteredTasks.Where(t =>
+                    t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     (t.Description != null && t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
             }
-            
+
             // Map to response DTOs
             List<TaskItemResponseDTO> responseTasks = _mapper.Map<List<TaskItemResponseDTO>>(filteredTasks);
-            
+
             // Create new paged result with filtered items
             PagedResult<TaskItemResponseDTO> pagedFilteredResult = new PagedResult<TaskItemResponseDTO>(
                 responseTasks,
@@ -137,30 +147,30 @@ public class TaskItemsController : ControllerBase
                 paginationParams.PageNumber,
                 paginationParams.PageSize
             );
-            
+
             // Add pagination headers
             Response.Headers.Append("X-Pagination-TotalCount", pagedFilteredResult.TotalCount.ToString());
             Response.Headers.Append("X-Pagination-PageSize", pagedFilteredResult.PageSize.ToString());
             Response.Headers.Append("X-Pagination-CurrentPage", pagedFilteredResult.PageNumber.ToString());
             Response.Headers.Append("X-Pagination-TotalPages", pagedFilteredResult.TotalPages.ToString());
-            
+
             // Create HATEOAS links
             string baseUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
             Dictionary<string, string> links = new Dictionary<string, string>();
-            
+
             if (pagedFilteredResult.HasPreviousPage)
             {
                 links.Add("previousPage", $"{baseUrl}?page={pagedFilteredResult.PageNumber - 1}&pageSize={pageSize}");
             }
-            
+
             if (pagedFilteredResult.HasNextPage)
             {
                 links.Add("nextPage", $"{baseUrl}?page={pagedFilteredResult.PageNumber + 1}&pageSize={pageSize}");
             }
-            
+
             links.Add("firstPage", $"{baseUrl}?page=1&pageSize={pageSize}");
             links.Add("lastPage", $"{baseUrl}?page={pagedFilteredResult.TotalPages}&pageSize={pageSize}");
-            
+
             // Create response object
             TaskItemCollectionResponseDTO collectionResponse = new TaskItemCollectionResponseDTO
             {
@@ -168,7 +178,7 @@ public class TaskItemsController : ControllerBase
                 TotalCount = filteredTasks.Count(),
                 Links = links
             };
-            
+
             return Ok(Utils.ApiResponse<TaskItemCollectionResponseDTO>.SuccessResponse(collectionResponse));
         }
         catch (Exception ex)
@@ -187,25 +197,25 @@ public class TaskItemsController : ControllerBase
         try
         {
             int userId = User.GetUserIdAsInt();
-            
+
             // First check if the task exists and belongs to the user
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
-            
+
             if (!isTaskOwned)
             {
                 return NotFound(Utils.ApiResponse<TaskItemDetailResponseDTO>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             TaskItemDTO? task = await _taskService.GetTaskByIdAsync(userId, id);
-            
+
             if (task == null)
             {
                 return NotFound(Utils.ApiResponse<TaskItemDetailResponseDTO>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             // Map to response DTO
             TaskItemResponseDTO responseTask = _mapper.Map<TaskItemResponseDTO>(task);
-            
+
             // Add HATEOAS links
             TaskItemDetailResponseDTO detailResponse = new TaskItemDetailResponseDTO
             {
@@ -218,7 +228,7 @@ public class TaskItemsController : ControllerBase
                     { "related_tasks", $"{Request.Scheme}://{Request.Host}/api/v2/TaskItems?categoryId={task.CategoryId}" }
                 }
             };
-            
+
             return Ok(Utils.ApiResponse<TaskItemDetailResponseDTO>.SuccessResponse(detailResponse));
         }
         catch (UnauthorizedAccessException ex)
@@ -232,7 +242,7 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<TaskItemDetailResponseDTO>.ServerErrorResponse());
         }
     }
-    
+
     // POST: api/v2/TaskItems
     [HttpPost]
     [RateLimit(30, 60)] // Limit creation rate to prevent abuse
@@ -249,9 +259,9 @@ public class TaskItemsController : ControllerBase
                     .Select(e => e.ErrorMessage)
                     .ToList()));
             }
-            
+
             int userId = User.GetUserIdAsInt();
-            
+
             // Map to the service DTO
             TaskItemDTO taskDto = new TaskItemDTO
             {
@@ -263,31 +273,31 @@ public class TaskItemsController : ControllerBase
                 CategoryId = createRequest.CategoryId,
                 UserId = userId
             };
-            
+
             // Create the task
             TaskItemDTO? createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
-            
+
             if (createdTask == null)
             {
                 return BadRequest(Utils.ApiResponse<TaskItemResponseDTO>.BadRequestResponse("Failed to create task"));
             }
-            
+
             // Add tags if provided
             if (createRequest.TagIds.Count > 0)
             {
                 await _taskService.UpdateTaskTagsAsync(userId, createdTask.Id, createRequest.TagIds);
-                
+
                 // Refresh the task to include tags
                 createdTask = await _taskService.GetTaskByIdAsync(userId, createdTask.Id);
             }
-            
+
             // Map to response DTO
             TaskItemResponseDTO responseTask = _mapper.Map<TaskItemResponseDTO>(createdTask);
-            
+
             // Return created task with location header
             return CreatedAtAction(
-                nameof(GetTaskItem), 
-                new { id = responseTask.Id, version = "2.0" }, 
+                nameof(GetTaskItem),
+                new { id = responseTask.Id, version = "2.0" },
                 Utils.ApiResponse<TaskItemResponseDTO>.SuccessResponse(responseTask)
             );
         }
@@ -302,7 +312,7 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<TaskItemResponseDTO>.ServerErrorResponse());
         }
     }
-    
+
     // PUT: api/v2/TaskItems/5
     [HttpPut("{id}")]
     [ProducesResponseType(204)]
@@ -319,23 +329,23 @@ public class TaskItemsController : ControllerBase
                     .Select(e => e.ErrorMessage)
                     .ToList()));
             }
-            
+
             int userId = User.GetUserIdAsInt();
-            
+
             // Check if task exists and is owned by the user
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
                 return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             // Get existing task
             TaskItemDTO? existingTask = await _taskService.GetTaskByIdAsync(userId, id);
             if (existingTask == null)
             {
                 return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             // Update with provided values
             if (updateRequest.Title != null) existingTask.Title = updateRequest.Title;
             if (updateRequest.Description != null) existingTask.Description = updateRequest.Description;
@@ -343,16 +353,16 @@ public class TaskItemsController : ControllerBase
             if (updateRequest.DueDate.HasValue) existingTask.DueDate = updateRequest.DueDate;
             if (updateRequest.Priority.HasValue) existingTask.Priority = updateRequest.Priority.Value;
             if (updateRequest.CategoryId.HasValue) existingTask.CategoryId = updateRequest.CategoryId;
-            
+
             // Update task
             await _taskService.UpdateTaskAsync(userId, id, existingTask);
-            
+
             // Update tags if provided
             if (updateRequest.TagIds != null)
             {
                 await _taskService.UpdateTaskTagsAsync(userId, id, updateRequest.TagIds);
             }
-            
+
             return NoContent();
         }
         catch (UnauthorizedAccessException ex)
@@ -366,14 +376,14 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
         }
     }
-    
+
     // PUT: api/v2/TaskItems/5/status
     [HttpPut("{id}/status")]
     [ProducesResponseType(typeof(Utils.ApiResponse<TaskStatusUpdateResponseDTO>), 200)]
     [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
     [ProducesResponseType(typeof(Utils.ApiResponse<object>), 404)]
     public async Task<ActionResult<Utils.ApiResponse<TaskStatusUpdateResponseDTO>>> UpdateTaskStatus(
-        int id, 
+        int id,
         [FromBody] TaskStatusUpdateRequestDTO statusUpdate)
     {
         try
@@ -385,37 +395,37 @@ public class TaskItemsController : ControllerBase
                     .Select(e => e.ErrorMessage)
                     .ToList()));
             }
-            
+
             int userId = User.GetUserIdAsInt();
-            
+
             // Check if task exists and is owned by the user
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
                 return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             // Get existing task to capture previous status
             TaskItemDTO? existingTask = await _taskService.GetTaskByIdAsync(userId, id);
             if (existingTask == null)
             {
                 return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             TaskItemStatus previousStatus = existingTask.Status;
-            
+
             // Update task status
             await _taskService.UpdateTaskStatusAsync(userId, id, statusUpdate.Status);
-            
+
             // Create response
-            var statusUpdateResponse = new TaskStatusUpdateResponseDTO
+            TaskStatusUpdateResponseDTO statusUpdateResponse = new TaskStatusUpdateResponseDTO
             {
                 TaskId = id,
                 PreviousStatus = previousStatus,
                 NewStatus = statusUpdate.Status,
                 UpdatedAt = DateTime.UtcNow
             };
-            
+
             return Ok(Utils.ApiResponse<TaskStatusUpdateResponseDTO>.SuccessResponse(statusUpdateResponse));
         }
         catch (UnauthorizedAccessException ex)
@@ -434,7 +444,7 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
         }
     }
-    
+
     // DELETE: api/v2/TaskItems/5
     [HttpDelete("{id}")]
     [ProducesResponseType(204)]
@@ -444,16 +454,16 @@ public class TaskItemsController : ControllerBase
         try
         {
             int userId = User.GetUserIdAsInt();
-            
+
             // Check if task exists and belongs to user
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
                 return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
-            
+
             await _taskService.DeleteTaskAsync(userId, id);
-            
+
             return NoContent();
         }
         catch (Exception ex)
@@ -462,7 +472,7 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
         }
     }
-    
+
     // POST: api/v2/TaskItems/batch-complete
     [HttpPost("batch-complete")]
     [ProducesResponseType(204)]
@@ -478,9 +488,9 @@ public class TaskItemsController : ControllerBase
                     .Select(e => e.ErrorMessage)
                     .ToList()));
             }
-            
+
             int userId = User.GetUserIdAsInt();
-            
+
             // Verify task ownership for all tasks
             List<int> validTaskIds = new List<int>();
             foreach (int taskId in batchRequest.TaskIds)
@@ -492,12 +502,12 @@ public class TaskItemsController : ControllerBase
                 }
                 validTaskIds.Add(taskId);
             }
-            
+
             if (validTaskIds.Count > 0)
             {
                 await _taskService.CompleteTasksAsync(userId, validTaskIds);
             }
-            
+
             return NoContent();
         }
         catch (UnauthorizedAccessException ex)
@@ -517,20 +527,20 @@ public class TaskItemsController : ControllerBase
     [RateLimit(10, 60)] // Strict limit due to complex algorithm
     public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetSmartPrioritizedTasks()
     {
-        try 
+        try
         {
             int userId = User.GetUserIdAsInt();
-            
+
             // Get user tasks first
-            var tasks = await _taskService.GetAllTasksAsync(userId);
-            
+            IEnumerable<TaskItemDTO> tasks = await _taskService.GetAllTasksAsync(userId);
+
             // Here you would implement your prioritization algorithm
             // For now, just returning the tasks ordered by due date and priority
-            var prioritizedTasks = tasks
-                .OrderBy(t => t.DueDate)
-                .ThenByDescending(t => t.Priority)
-                .ToList();
-                
+            IEnumerable<TaskItemDTO> prioritizedTasks = tasks
+                  .OrderBy(t => t.DueDate)
+                  .ThenByDescending(t => t.Priority)
+                  .ToList();
+
             return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(prioritizedTasks));
         }
         catch (Exception ex)
@@ -548,10 +558,10 @@ public class TaskItemsController : ControllerBase
         try
         {
             int userId = User.GetUserIdAsInt();
-            
+
             // Get task statistics directly from the service - using the existing DTO
-            var statistics = await _taskService.GetTaskStatisticsAsync(userId);
-            
+            TimeRangeTaskStatisticsDTO statistics = await _taskService.GetTaskStatisticsAsync(userId);
+
             return Ok(Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.SuccessResponse(statistics));
         }
         catch (Exception ex)
@@ -560,4 +570,178 @@ public class TaskItemsController : ControllerBase
             return StatusCode(500, Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.ServerErrorResponse());
         }
     }
-} 
+
+    // POST: api/v2/TaskItems/assign
+    [HttpPost("assign")]
+    [ProducesResponseType(typeof(Utils.ApiResponse<TaskAssignmentDTO>), 200)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 404)]
+    public async Task<ActionResult<Utils.ApiResponse<TaskAssignmentDTO>>> AssignTask(
+        [FromBody] CreateTaskAssignmentDTO assignmentDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Invalid assignment data", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList()));
+            }
+
+            int userId = User.GetUserIdAsInt();
+
+            // Check if the task exists and is owned by the user
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(assignmentDto.TaskId, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(Utils.ApiResponse<object>.NotFoundResponse(
+                    $"Task with ID {assignmentDto.TaskId} not found or you don't have permission to assign it"));
+            }
+
+            // Assign the task
+            TaskAssignmentDTO? assignment = await _taskService.AssignTaskAsync(userId, assignmentDto);
+
+            if (assignment == null)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to assign task"));
+            }
+
+            return Ok(Utils.ApiResponse<TaskAssignmentDTO>.SuccessResponse(assignment, "Task assigned successfully"));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User {UserId} tried to assign task without permission", User.GetUserIdAsInt());
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error assigning task");
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // POST: api/v2/TaskItems/batch-assign
+    [HttpPost("batch-assign")]
+    [ProducesResponseType(typeof(Utils.ApiResponse<List<TaskAssignmentDTO>>), 200)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
+    public async Task<ActionResult<Utils.ApiResponse<List<TaskAssignmentDTO>>>> BatchAssignTasks(
+        [FromBody] BatchAssignmentRequestDTO batchAssignmentDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Invalid batch assignment data", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList()));
+            }
+
+            int userId = User.GetUserIdAsInt();
+
+            // Verify task ownership for all tasks
+            List<int> validTaskIds = new List<int>();
+            foreach (int taskId in batchAssignmentDto.TaskIds)
+            {
+                bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+                if (!isTaskOwned)
+                {
+                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse(
+                        $"Task with ID {taskId} not found or you don't have permission to assign it"));
+                }
+                validTaskIds.Add(taskId);
+            }
+
+            if (validTaskIds.Count == 0)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No valid tasks to assign"));
+            }
+
+            // Assign the tasks
+            List<TaskAssignmentDTO> assignments = await _taskService.BatchAssignTasksAsync(userId, batchAssignmentDto);
+
+            if (assignments.Count == 0)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to assign tasks"));
+            }
+
+            return Ok(Utils.ApiResponse<List<TaskAssignmentDTO>>.SuccessResponse(
+                assignments, $"Successfully assigned {assignments.Count} tasks"));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User {UserId} tried to batch assign tasks without permission", User.GetUserIdAsInt());
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error batch assigning tasks");
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // POST: api/v2/TaskItems/batch-status-update
+    [HttpPost("batch-status-update")]
+    [ProducesResponseType(typeof(Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>), 200)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
+    public async Task<ActionResult<Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>>> BatchUpdateTaskStatus(
+        [FromBody] BatchStatusUpdateRequestDTO batchUpdateDto)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Invalid batch update data", ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList()));
+            }
+
+            int userId = User.GetUserIdAsInt();
+
+            // Verify task ownership for all tasks
+            List<int> validTaskIds = new List<int>();
+            foreach (int taskId in batchUpdateDto.TaskIds)
+            {
+                bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+                if (!isTaskOwned)
+                {
+                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                }
+                validTaskIds.Add(taskId);
+            }
+
+            if (validTaskIds.Count == 0)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No valid tasks to update"));
+            }
+
+            // Update task statuses
+            List<TaskStatusUpdateResponseDTO> updates = await _taskService.BatchUpdateTaskStatusAsync(userId, batchUpdateDto);
+
+            if (updates.Count == 0)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to update task statuses"));
+            }
+
+            return Ok(Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>.SuccessResponse(
+                updates, $"Successfully updated the status of {updates.Count} tasks"));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to update status for tasks they don't own");
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation on batch status update");
+            return BadRequest(Utils.ApiResponse<object>.BadRequestResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating status for multiple tasks");
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+}

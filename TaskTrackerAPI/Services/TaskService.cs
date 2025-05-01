@@ -1,9 +1,20 @@
+/*
+ * Copyright (c) 2025 Carlos Abril Jr
+ * All rights reserved.
+ *
+ * This source code is licensed under the Business Source License 1.1
+ * found in the LICENSE file in the root directory of this source tree.
+ *
+ * This file may not be used, copied, modified, or distributed except in
+ * accordance with the terms contained in the LICENSE file.
+ */
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Exceptions;
 
 namespace TaskTrackerAPI.Services
 {
@@ -12,12 +23,21 @@ namespace TaskTrackerAPI.Services
         private readonly ITaskItemRepository _taskRepository;
         private readonly IMapper _mapper;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly IChecklistItemRepository _checklistItemRepository;
+        private readonly ITaskSyncService _taskSyncService;
         
-        public TaskService(ITaskItemRepository taskRepository, IMapper mapper, ICategoryRepository categoryRepository)
+        public TaskService(
+            ITaskItemRepository taskRepository, 
+            IMapper mapper, 
+            ICategoryRepository categoryRepository,
+            IChecklistItemRepository checklistItemRepository,
+            ITaskSyncService taskSyncService)
         {
             _taskRepository = taskRepository;
             _mapper = mapper;
             _categoryRepository = categoryRepository;
+            _checklistItemRepository = checklistItemRepository;
+            _taskSyncService = taskSyncService;
         }
         
         public async Task<IEnumerable<TaskItemDTO>> GetAllTasksAsync(int userId)
@@ -70,7 +90,8 @@ namespace TaskTrackerAPI.Services
                 CategoryId = taskDto.CategoryId,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                Version = 1
             };
             
             await _taskRepository.CreateTaskAsync(taskItem);
@@ -82,7 +103,17 @@ namespace TaskTrackerAPI.Services
             }
             
             TaskItem? result = await _taskRepository.GetTaskByIdAsync(taskItem.Id, userId);
-            return result != null ? _mapper.Map<TaskItemDTO>(result) : null;
+            if (result != null)
+            {
+                var resultDto = _mapper.Map<TaskItemDTO>(result);
+                
+                // Notify via SignalR
+                await _taskSyncService.NotifyTaskCreatedAsync(userId, resultDto);
+                
+                return resultDto;
+            }
+            
+            return null;
         }
         
         public async Task<TaskItemDTO?> UpdateTaskAsync(int userId, int taskId, TaskItemDTO taskDto)
@@ -105,6 +136,37 @@ namespace TaskTrackerAPI.Services
             if (existingTask == null)
                 return null;
                 
+            // Store previous state for SignalR notification
+            var previousState = _mapper.Map<TaskItemDTO>(existingTask);
+                
+            // Check version for optimistic concurrency
+            if (taskDto.Version > 0 && taskDto.Version != existingTask.Version)
+            {
+                // Version mismatch - handle conflict
+                var conflict = new TaskConflictDTO
+                {
+                    TaskId = taskId,
+                    ClientVersion = taskDto.Version,
+                    ServerVersion = existingTask.Version,
+                    ClientChanges = taskDto,
+                    ServerState = previousState,
+                    ConflictTime = DateTime.UtcNow
+                };
+                
+                // Identify conflicting fields
+                if (taskDto.Title != previousState.Title) conflict.ConflictingFields.Add("title");
+                if (taskDto.Description != previousState.Description) conflict.ConflictingFields.Add("description");
+                if (taskDto.Status != previousState.Status) conflict.ConflictingFields.Add("status");
+                if (taskDto.Priority != previousState.Priority) conflict.ConflictingFields.Add("priority");
+                if (taskDto.DueDate != previousState.DueDate) conflict.ConflictingFields.Add("dueDate");
+                
+                // Notify about the conflict
+                await _taskSyncService.NotifyTaskConflictAsync(userId, conflict);
+                
+                // Return null to indicate conflict
+                throw new ConcurrencyException("Task was modified by another user", conflict);
+            }
+                
             // Update properties
             existingTask.Title = taskDto.Title ?? string.Empty;
             existingTask.Description = taskDto.Description ?? string.Empty;
@@ -113,6 +175,7 @@ namespace TaskTrackerAPI.Services
             existingTask.DueDate = taskDto.DueDate;
             existingTask.CategoryId = taskDto.CategoryId;
             existingTask.UpdatedAt = DateTime.UtcNow;
+            existingTask.Version++; // Increment version for optimistic concurrency
             
             await _taskRepository.UpdateTaskAsync(existingTask);
             
@@ -123,7 +186,17 @@ namespace TaskTrackerAPI.Services
             }
             
             TaskItem? result = await _taskRepository.GetTaskByIdAsync(taskId, userId);
-            return result != null ? _mapper.Map<TaskItemDTO>(result) : null;
+            if (result != null)
+            {
+                var resultDto = _mapper.Map<TaskItemDTO>(result);
+                
+                // Notify via SignalR
+                await _taskSyncService.NotifyTaskUpdatedAsync(userId, resultDto, previousState);
+                
+                return resultDto;
+            }
+            
+            return null;
         }
         
         public async Task DeleteTaskAsync(int userId, int taskId)
@@ -132,7 +205,14 @@ namespace TaskTrackerAPI.Services
             if (!isOwner)
                 return;
                 
+            // Get board ID for notification before deleting
+            TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+            int? boardId = task?.BoardId;
+            
             await _taskRepository.DeleteTaskAsync(taskId, userId);
+            
+            // Notify via SignalR
+            await _taskSyncService.NotifyTaskDeletedAsync(userId, taskId, boardId);
         }
         
         public async Task<bool> IsTaskOwnedByUserAsync(int taskId, int userId)
@@ -341,6 +421,229 @@ namespace TaskTrackerAPI.Services
                 
             IEnumerable<Tag> tags = await _taskRepository.GetTagsForTaskAsync(taskId);
             return _mapper.Map<IEnumerable<TagDTO>>(tags);
+        }
+        
+        public async Task<TaskAssignmentDTO?> AssignTaskAsync(int userId, CreateTaskAssignmentDTO assignmentDto)
+        {
+            // Verify task ownership
+            bool isTaskOwned = await IsTaskOwnedByUserAsync(assignmentDto.TaskId, userId);
+            if (!isTaskOwned)
+            {
+                throw new UnauthorizedAccessException($"User {userId} does not own task {assignmentDto.TaskId}");
+            }
+
+            // Create the assignment entity
+            var assignment = new TaskAssignment
+            {
+                TaskId = assignmentDto.TaskId,
+                AssignedToUserId = assignmentDto.AssignedToUserId,
+                AssignedByUserId = userId,
+                AssignedAt = DateTime.UtcNow,
+                Notes = assignmentDto.Notes,
+                IsAccepted = false
+            };
+
+            // In a real implementation, this would be saved to a repository
+            // For now, we'll just return a mapped DTO
+            return _mapper.Map<TaskAssignmentDTO>(assignment);
+        }
+        
+        public async Task<List<TaskAssignmentDTO>> BatchAssignTasksAsync(int userId, BatchAssignmentRequestDTO batchAssignmentDto)
+        {
+            List<TaskAssignmentDTO> results = new List<TaskAssignmentDTO>();
+
+            foreach (int taskId in batchAssignmentDto.TaskIds)
+            {
+                // Create assignment for each task
+                CreateTaskAssignmentDTO singleAssignment = new CreateTaskAssignmentDTO
+                {
+                    TaskId = taskId,
+                    AssignedToUserId = batchAssignmentDto.AssignedToUserId,
+                    Notes = batchAssignmentDto.Notes
+                };
+
+                try
+                {
+                    TaskAssignmentDTO? assignment = await AssignTaskAsync(userId, singleAssignment);
+                    if (assignment != null)
+                    {
+                        results.Add(assignment);
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Skip tasks that the user doesn't own
+                    continue;
+                }
+                catch (Exception)
+                {
+                    // Skip tasks that fail for other reasons
+                    continue;
+                }
+            }
+
+            return results;
+        }
+        
+        public async Task<List<TaskStatusUpdateResponseDTO>> BatchUpdateTaskStatusAsync(int userId, BatchStatusUpdateRequestDTO batchUpdateDto)
+        {
+            if (batchUpdateDto == null || batchUpdateDto.TaskIds == null || !batchUpdateDto.TaskIds.Any())
+            {
+                return new List<TaskStatusUpdateResponseDTO>();
+            }
+
+            List<TaskStatusUpdateResponseDTO> results = new List<TaskStatusUpdateResponseDTO>();
+            TaskItemStatus newStatus = batchUpdateDto.Status;
+
+            foreach (int taskId in batchUpdateDto.TaskIds)
+            {
+                try
+                {
+                    // Check if user owns the task
+                    bool isOwned = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
+                    if (!isOwned)
+                    {
+                        continue; // Skip this task
+                    }
+
+                    // Get the current task
+                    TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+                    if (task == null)
+                    {
+                        continue; // Skip if task not found
+                    }
+
+                    // Only update if the status is different
+                    if (task.Status == newStatus)
+                    {
+                        continue;
+                    }
+
+                    // Record the previous status
+                    var previousStatus = task.Status;
+
+                    // Update the task status
+                    task.Status = newStatus;
+                    task.UpdatedAt = DateTime.UtcNow;
+                    task.Version++; // Increment version for optimistic concurrency
+
+                    // If completing, set completed date
+                    if (newStatus == TaskItemStatus.Completed && previousStatus != TaskItemStatus.Completed)
+                    {
+                        task.CompletedAt = DateTime.UtcNow;
+                        task.IsCompleted = true;
+                    }
+                    // If moving from completed to something else, clear completed date
+                    else if (previousStatus == TaskItemStatus.Completed && newStatus != TaskItemStatus.Completed)
+                    {
+                        task.CompletedAt = null;
+                        task.IsCompleted = false;
+                    }
+
+                    await _taskRepository.UpdateTaskAsync(task);
+
+                    var response = new TaskStatusUpdateResponseDTO
+                    {
+                        TaskId = taskId,
+                        PreviousStatus = previousStatus,
+                        NewStatus = newStatus,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    results.Add(response);
+                }
+                catch (Exception)
+                {
+                    // Skip failed tasks and continue with the batch
+                    continue;
+                }
+            }
+
+            // Notify via SignalR about the batch update if any task was updated
+            if (results.Count > 0)
+            {
+                await _taskSyncService.NotifyTaskBatchUpdateAsync(userId, results);
+            }
+
+            return results;
+        }
+        
+        // Checklist operations
+        public async Task<IEnumerable<ChecklistItemDTO>> GetChecklistItemsAsync(int userId, int taskId)
+        {
+            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
+            if (!isOwner)
+                return new List<ChecklistItemDTO>();
+                
+            IEnumerable<ChecklistItem> checklistItems = await _checklistItemRepository.GetChecklistItemsByTaskIdAsync(taskId);
+            return _mapper.Map<IEnumerable<ChecklistItemDTO>>(checklistItems);
+        }
+        
+        public async Task<ChecklistItemDTO?> AddChecklistItemAsync(int userId, ChecklistItemDTO checklistItemDto)
+        {
+            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(checklistItemDto.TaskId, userId);
+            if (!isOwner)
+                return null;
+                
+            ChecklistItem checklistItem = _mapper.Map<ChecklistItem>(checklistItemDto);
+            
+            // Set creation metadata
+            checklistItem.CreatedAt = DateTime.UtcNow;
+            
+            // Add the checklist item
+            ChecklistItem addedItem = await _checklistItemRepository.AddChecklistItemAsync(checklistItem);
+            
+            return _mapper.Map<ChecklistItemDTO>(addedItem);
+        }
+        
+        public async Task<bool> UpdateChecklistItemAsync(int userId, ChecklistItemDTO checklistItemDto)
+        {
+            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(checklistItemDto.TaskId, userId);
+            if (!isOwner)
+                return false;
+                
+            // Get the existing item
+            ChecklistItem? existingItem = await _checklistItemRepository.GetChecklistItemByIdAsync(checklistItemDto.Id);
+            if (existingItem == null)
+                return false;
+                
+            // Ensure the item belongs to the specified task
+            if (existingItem.TaskId != checklistItemDto.TaskId)
+                return false;
+                
+            // Update the item
+            existingItem.Text = checklistItemDto.Text;
+            existingItem.IsCompleted = checklistItemDto.IsCompleted;
+            existingItem.DisplayOrder = checklistItemDto.DisplayOrder;
+            
+            // Set the completion date if the item is being marked as completed
+            if (checklistItemDto.IsCompleted && !existingItem.IsCompleted)
+            {
+                existingItem.CompletedAt = DateTime.UtcNow;
+            }
+            // Clear the completion date if the item is being marked as not completed
+            else if (!checklistItemDto.IsCompleted && existingItem.IsCompleted)
+            {
+                existingItem.CompletedAt = null;
+            }
+            
+            await _checklistItemRepository.UpdateChecklistItemAsync(existingItem);
+            
+            return true;
+        }
+        
+        public async Task<bool> DeleteChecklistItemAsync(int userId, int taskId, int itemId)
+        {
+            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
+            if (!isOwner)
+                return false;
+                
+            // Get the item and verify it belongs to the task
+            ChecklistItem? item = await _checklistItemRepository.GetChecklistItemByIdAsync(itemId);
+            if (item == null || item.TaskId != taskId)
+                return false;
+                
+            return await _checklistItemRepository.DeleteChecklistItemAsync(itemId);
         }
     }
 }

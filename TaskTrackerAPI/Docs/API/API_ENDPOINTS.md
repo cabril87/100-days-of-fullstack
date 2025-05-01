@@ -178,4 +178,63 @@ This document provides a comprehensive list of all API endpoints available in th
 | GET | `/api/TaskStatistics/completed-over-time` | Get completed tasks over time |
 | GET | `/api/TaskStatistics/completion-rate` | Get task completion rate |
 | GET | `/api/TaskStatistics/average-completion-time` | Get average task completion time |
-| GET | `/api/TaskStatistics/dashboard` | Get dashboard statistics | 
+| GET | `/api/TaskStatistics/dashboard` | Get dashboard statistics |
+
+## Real-Time Synchronization (SignalR)
+
+The API provides real-time updates via SignalR for task synchronization across devices.
+
+### SignalR Hub Connection
+
+| Connection URL                  | Description                                               |
+|---------------------------------|-----------------------------------------------------------|
+| `/hubs/tasks`                   | SignalR hub for real-time task updates                    |
+
+### SignalR Client Methods
+
+These are the methods that the client can call on the server:
+
+| Method                          | Parameters                     | Description                                               |
+|---------------------------------|--------------------------------|-----------------------------------------------------------|
+| `JoinBoardRoom`                 | boardId: number                | Join a specific board room to receive updates for that board |
+| `LeaveBoardRoom`                | boardId: number                | Leave a specific board room                               |
+
+### SignalR Server Events
+
+These are the events that clients can subscribe to:
+
+| Event                           | Data Type                      | Description                                               |
+|---------------------------------|--------------------------------|-----------------------------------------------------------|
+| `TaskCreated`                   | TaskItemDTO                    | Triggered when a new task is created                      |
+| `TaskUpdated`                   | TaskUpdatePayload              | Triggered when a task is updated                          |
+| `TaskDeleted`                   | number (taskId)                | Triggered when a task is deleted                          |
+| `TaskBatchUpdated`              | TaskStatusUpdateResponseDTO[]  | Triggered when multiple tasks are updated in a batch      |
+| `TaskConflict`                  | TaskConflictDTO                | Triggered when there's a conflict during concurrent updates |
+
+### TaskUpdatePayload Structure
+
+```typescript
+interface TaskUpdatePayload {
+  current: TaskItemDTO;    // Current state of the task after update
+  previous: TaskItemDTO;   // Previous state of the task before update
+  updatedAt: string;       // ISO date string of when the update occurred
+}
+```
+
+### Optimistic Concurrency Support
+
+The API implements optimistic concurrency with version tracking to handle simultaneous updates:
+
+1. Each task has a `version` property that is incremented on every update
+2. When updating a task, clients must include the current version
+3. If the server version doesn't match the client version, a `TaskConflict` event is triggered
+4. The client can resolve conflicts using the provided conflict information
+
+### Client Reconnection Strategy
+
+The client should implement reconnection logic to handle temporary connection loss:
+
+1. Automatic reconnection attempts with exponential backoff
+2. Offline cache of pending changes during disconnection
+3. Synchronization of pending changes upon reconnection
+4. Conflict resolution for changes made during offline period 
