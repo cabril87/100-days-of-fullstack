@@ -17,6 +17,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
         private readonly Mock<ITaskItemRepository> _mockTaskRepository;
         private readonly Mock<IMapper> _mockMapper;
         private readonly Mock<ICategoryRepository> _mockCategoryRepository;
+        private readonly Mock<IChecklistItemRepository> _mockChecklistItemRepository;
         private readonly TaskService _taskService;
         
         public TaskServiceTests()
@@ -24,11 +25,13 @@ namespace TaskTrackerAPI.ServiceTests.Services
             _mockTaskRepository = new Mock<ITaskItemRepository>();
             _mockMapper = new Mock<IMapper>();
             _mockCategoryRepository = new Mock<ICategoryRepository>();
+            _mockChecklistItemRepository = new Mock<IChecklistItemRepository>();
             
             _taskService = new TaskService(
                 _mockTaskRepository.Object,
                 _mockMapper.Object,
-                _mockCategoryRepository.Object
+                _mockCategoryRepository.Object,
+                _mockChecklistItemRepository.Object
             );
             
             // Default setup for category ownership validation

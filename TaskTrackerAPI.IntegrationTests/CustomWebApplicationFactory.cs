@@ -109,6 +109,7 @@ namespace TaskTrackerAPI.IntegrationTests
                 services.AddScoped<ITaskItemRepository, TaskItemRepository>();
                 services.AddScoped<ICategoryRepository, CategoryRepository>();
                 services.AddScoped<ITagRepository, TagRepository>();
+                services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
                 
                 // Register services
                 services.AddScoped<ITaskService, TaskService>();
