@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Tasks;
 
 namespace TaskTrackerAPI.Services.Interfaces
 {
@@ -34,5 +35,12 @@ namespace TaskTrackerAPI.Services.Interfaces
         /// <param name="count">The number of tasks to return</param>
         /// <returns>A list of prioritized tasks</returns>
         Task<List<TaskItem>> GetPrioritizedTasksAsync(string userId, int count);
+
+        /// <summary>
+        /// Automatically adjusts the priority of tasks based on due dates and other factors
+        /// </summary>
+        /// <param name="userId">The ID of the user whose tasks should be adjusted</param>
+        /// <returns>A summary of the adjustments made</returns>
+        Task<PriorityAdjustmentSummaryDTO> AutoAdjustTaskPrioritiesAsync(int userId);
     }
 } 

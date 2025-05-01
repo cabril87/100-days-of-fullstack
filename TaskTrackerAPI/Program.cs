@@ -140,47 +140,58 @@ public class Program
 
         // Register repository
         builder.Services.AddScoped<IUserRepository, UserRepository>();
-        builder.Services.AddScoped<ITaskItemRepository,TaskItemRepository>();
-        builder.Services.AddScoped<ICategoryRepository,CategoryRepository>();
-        builder.Services.AddScoped<ITagRepository,TagRepository>();
-        builder.Services.AddScoped<IFamilyRepository,FamilyRepository>();
-        builder.Services.AddScoped<IFamilyRoleRepository,FamilyRoleRepository>();
-        builder.Services.AddScoped<IInvitationRepository,InvitationRepository>();
-        builder.Services.AddScoped<IUserDeviceRepository,UserDeviceRepository>();
-        builder.Services.AddScoped<IFamilyMemberRepository,FamilyMemberRepository>();
-        builder.Services.AddScoped<IFamilyAchievementRepository,FamilyAchievementRepository>();
-        builder.Services.AddScoped<IFamilyCalendarRepository,FamilyCalendarRepository>();
-
-        // Register helpers
+        builder.Services.AddScoped<ITaskItemRepository, TaskItemRepository>();
+        builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+        builder.Services.AddScoped<ITagRepository, TagRepository>();
+        builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
+        builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+        builder.Services.AddScoped<IFamilyRepository, FamilyRepository>();
+        builder.Services.AddScoped<IFamilyMemberRepository, FamilyMemberRepository>();
+        builder.Services.AddScoped<IFamilyRoleRepository, FamilyRoleRepository>();
+        builder.Services.AddScoped<IFocusRepository, FocusRepository>();
+        builder.Services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
+        
+        // Add repositories that exist in the project
+        builder.Services.AddScoped<IInvitationRepository, InvitationRepository>();
+        builder.Services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();
+        builder.Services.AddScoped<IFamilyAchievementRepository, FamilyAchievementRepository>();
+        builder.Services.AddScoped<IFamilyCalendarRepository, FamilyCalendarRepository>();
+        
+        // Register AuthHelper (critical dependency)
         builder.Services.AddScoped<AuthHelper>();
 
-        // Register Category Service
-        builder.Services.AddScoped<ICategoryService, CategoryService>();
-
-        // Register Tag Service
-        builder.Services.AddScoped<ITagService, TagService>();
-
-        // Register services
-        builder.Services.AddScoped<IUserService, UserService>();
+        // Register business services
         builder.Services.AddScoped<ITaskService, TaskService>();
+        builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<ICategoryService, CategoryService>();
         builder.Services.AddScoped<ITagService, TagService>();
+        builder.Services.AddScoped<IReminderService, ReminderService>();
+        builder.Services.AddScoped<INotificationService, NotificationService>();
+        
+        // Add services that exist in the project
+        builder.Services.AddScoped<IFamilyService, FamilyService>();
+        builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
+        builder.Services.AddScoped<IInvitationService, InvitationService>();
+        builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
+        builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
+        builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
+        
+        builder.Services.AddScoped<IGamificationService, GamificationService>();
+        builder.Services.AddScoped<IFocusService, FocusService>();
+        builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
+        builder.Services.AddScoped<ITaskPriorityService, TaskPriorityService>();
+
+        // Register auth services
         builder.Services.AddScoped<IAuthService, AuthService>();
+        
+        // Re-add working services and add any missing ones from before
         builder.Services.AddScoped<IReminderService, ReminderService>();
         builder.Services.AddScoped<IBoardService, BoardService>();
         builder.Services.AddScoped<IFamilyMemberService, FamilyMemberService>();
         builder.Services.AddScoped<ITaskTemplateService, TaskTemplateService>();
-        builder.Services.AddScoped<INotificationService, NotificationService>();
-        builder.Services.AddScoped<IGamificationService, GamificationService>();
-        builder.Services.AddScoped<IFamilyService, FamilyService>();
         builder.Services.AddScoped<IFamilyRoleService, FamilyRoleService>();
-        builder.Services.AddScoped<IInvitationService, InvitationService>();
-        builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
-        builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
-        builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
         builder.Services.AddScoped<IAchievementService, AchievementService>();
         builder.Services.AddScoped<IBadgeService, BadgeService>();
-        builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
 
         // Register SignalR for real-time updates
         builder.Services.AddSignalR(options =>

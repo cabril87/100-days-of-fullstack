@@ -16,16 +16,22 @@ using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.DTOs.Tasks;
 
 namespace TaskTrackerAPI.Services
 {
     public class TaskPriorityService : ITaskPriorityService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITaskItemRepository _taskRepository;
+        private readonly ITaskService _taskService;
 
-        public TaskPriorityService(ApplicationDbContext context)
+        public TaskPriorityService(ApplicationDbContext context, ITaskItemRepository taskRepository, ITaskService taskService)
         {
             _context = context;
+            _taskRepository = taskRepository;
+            _taskService = taskService;
         }
 
         /// <inheritdoc />
@@ -131,6 +137,150 @@ namespace TaskTrackerAPI.Services
             }
 
             return priorityValue;
+        }
+
+        /// <summary>
+        /// Automatically adjusts the priority of a user's tasks based on due dates, completion patterns, and other factors
+        /// </summary>
+        /// <param name="userId">The ID of the user whose tasks to adjust</param>
+        /// <returns>A summary of priority adjustments made</returns>
+        public async Task<PriorityAdjustmentSummaryDTO> AutoAdjustTaskPrioritiesAsync(int userId)
+        {
+            // Get all incomplete tasks for the user
+            var notStartedTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.NotStarted);
+            var inProgressTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.InProgress);
+            
+            // Create a new list and add all items from both sources
+            List<TaskItem> incompleteTasks = new List<TaskItem>();
+            foreach (var task in notStartedTasks)
+            {
+                incompleteTasks.Add(task);
+            }
+            foreach (var task in inProgressTasks)
+            {
+                incompleteTasks.Add(task);
+            }
+            
+            PriorityAdjustmentSummaryDTO summary = new PriorityAdjustmentSummaryDTO
+            {
+                TotalTasksEvaluated = incompleteTasks.Count(),
+                TasksAdjusted = 0,
+                UpgradedTasks = 0,
+                DowngradedTasks = 0,
+                AdjustmentTimestamp = DateTime.UtcNow
+            };
+            
+            List<TaskPriorityAdjustmentDTO> adjustments = new List<TaskPriorityAdjustmentDTO>();
+            
+            foreach (var task in incompleteTasks)
+            {
+                TaskPriority calculatedPriority = CalculateIdealPriority(task);
+                TaskPriority originalPriority = Enum.Parse<TaskPriority>(task.Priority);
+                
+                // If the calculated priority differs from the current priority, adjust it
+                if (calculatedPriority != originalPriority)
+                {
+                    TaskItemDTO taskDto = new TaskItemDTO 
+                    {
+                        Id = task.Id,
+                        Title = task.Title,
+                        Description = task.Description,
+                        Status = task.Status,
+                        Priority = (int)calculatedPriority,
+                        DueDate = task.DueDate,
+                        CategoryId = task.CategoryId,
+                        BoardId = task.BoardId,
+                        Version = task.Version
+                    };
+                    
+                    // Update the task priority
+                    await _taskService.UpdateTaskAsync(userId, task.Id, taskDto);
+                    
+                    // Record the adjustment
+                    adjustments.Add(new TaskPriorityAdjustmentDTO
+                    {
+                        TaskId = task.Id,
+                        TaskTitle = task.Title,
+                        PreviousPriority = originalPriority,
+                        NewPriority = calculatedPriority,
+                        AdjustmentReason = GetAdjustmentReason(task, calculatedPriority)
+                    });
+                    
+                    summary.TasksAdjusted++;
+                    
+                    if ((int)calculatedPriority > (int)originalPriority)
+                        summary.UpgradedTasks++;
+                    else
+                        summary.DowngradedTasks++;
+                }
+            }
+            
+            summary.Adjustments = adjustments;
+            return summary;
+        }
+
+        /// <summary>
+        /// Calculates the ideal priority for a task based on due date, completion patterns, and status
+        /// </summary>
+        private TaskPriority CalculateIdealPriority(TaskItem task)
+        {
+            // Default to the current priority if parsing fails
+            if (!Enum.TryParse<TaskPriority>(task.Priority, out var currentPriority))
+            {
+                currentPriority = TaskPriority.Medium;
+            }
+            
+            // If no due date, don't change priority
+            if (!task.DueDate.HasValue)
+                return currentPriority;
+                
+            double daysUntilDue = (task.DueDate.Value - DateTime.UtcNow).TotalDays;
+            
+            // Overdue tasks should always be High priority
+            if (daysUntilDue < 0)
+                return TaskPriority.High;
+                
+            // Due today or tomorrow -> increase priority
+            if (daysUntilDue < 1)
+                return TaskPriority.High;
+                
+            // Due within 3 days -> at least Medium priority
+            if (daysUntilDue < 3)
+                return currentPriority < TaskPriority.Medium ? TaskPriority.Medium : currentPriority;
+                
+            // Due in more than 2 weeks and currently High priority -> reduce to Medium
+            if (daysUntilDue > 14 && currentPriority == TaskPriority.High)
+                return TaskPriority.Medium;
+                
+            // In all other cases, maintain the current priority
+            return currentPriority;
+        }
+
+        /// <summary>
+        /// Generates a human-readable reason for the priority adjustment
+        /// </summary>
+        private string GetAdjustmentReason(TaskItem task, TaskPriority newPriority)
+        {
+            TaskPriority currentPriority = Enum.Parse<TaskPriority>(task.Priority);
+            
+            if (!task.DueDate.HasValue)
+                return "Manual adjustment based on task importance";
+                
+            var daysUntilDue = (task.DueDate.Value - DateTime.UtcNow).TotalDays;
+            
+            if (daysUntilDue < 0)
+                return "Task is overdue";
+                
+            if (daysUntilDue < 1)
+                return "Task is due today or tomorrow";
+                
+            if (daysUntilDue < 3 && newPriority > currentPriority)
+                return "Task is due within 3 days";
+                
+            if (daysUntilDue > 14 && newPriority < currentPriority)
+                return "Task due date is far in the future";
+                
+            return "Adjustment based on due date analysis";
         }
     }
 } 
