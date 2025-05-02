@@ -13,6 +13,10 @@ using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
 
 namespace TaskTrackerAPI.Services;
 
@@ -21,15 +25,18 @@ public class NotificationService : INotificationService
     private readonly INotificationRepository _notificationRepository;
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
+    private readonly IServiceProvider _serviceProvider;
 
     public NotificationService(
         INotificationRepository notificationRepository,
         IUserRepository userRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IServiceProvider serviceProvider)
     {
         _notificationRepository = notificationRepository;
         _userRepository = userRepository;
         _mapper = mapper;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<IEnumerable<NotificationDTO>> GetAllNotificationsAsync(int userId)
@@ -137,24 +144,72 @@ public class NotificationService : INotificationService
         return await _notificationRepository.IsNotificationOwnedByUserAsync(notificationId, userId);
     }
 
-    Task<IEnumerable<NotificationDTO>> INotificationService.GetAllNotificationsAsync(int userId)
+    public async Task<NotificationDTO?> CreateTaskDeadlineNotificationAsync(int userId, int taskId, string message)
     {
-        throw new NotImplementedException();
+        // Create a notification DTO for the task deadline
+        CreateNotificationDTO notificationDto = new CreateNotificationDTO
+        {
+            Title = "Task Deadline Reminder",
+            Message = message,
+            NotificationType = "TaskDue",
+            Type = Models.NotificationType.TaskDue,
+            IsImportant = true,
+            RelatedEntityId = taskId,
+            RelatedEntityType = "Task"
+        };
+        
+        return await CreateNotificationAsync(userId, notificationDto);
     }
-
-
-    Task<NotificationDTO?> INotificationService.GetNotificationByIdAsync(int userId, int notificationId)
+    
+    public async Task<IEnumerable<NotificationDTO>> GenerateUpcomingDeadlineNotificationsAsync(int hoursThreshold = 24)
     {
-        throw new NotImplementedException();
-    }
-
-    Task<NotificationDTO?> INotificationService.MarkNotificationAsReadAsync(int userId, int notificationId)
-    {
-        throw new NotImplementedException();
-    }
-
-    Task<NotificationCountDTO> INotificationService.GetNotificationCountsAsync(int userId)
-    {
-        throw new NotImplementedException();
+        // Get all tasks with due dates within the threshold
+        ITaskItemRepository taskRepository = _serviceProvider.GetRequiredService<ITaskItemRepository>();
+        
+        // Get current date/time
+        DateTime now = DateTime.UtcNow;
+        DateTime thresholdTime = now.AddHours(hoursThreshold);
+        
+        // Get tasks with due dates within the threshold that haven't been notified
+        IEnumerable<TaskItem> upcomingTasks = await taskRepository.GetTasksWithUpcomingDeadlinesAsync(now, thresholdTime);
+        
+        List<NotificationDTO> createdNotifications = new List<NotificationDTO>();
+        
+        // Create notifications for each task
+        foreach (TaskItem task in upcomingTasks)
+        {
+            // Skip tasks without due dates
+            if (!task.DueDate.HasValue)
+            {
+                continue;
+            }
+            
+            // Calculate hours remaining
+            double hoursRemaining = (task.DueDate.Value - now).TotalHours;
+            string timeMessage;
+            
+            if (hoursRemaining < 1)
+            {
+                timeMessage = "less than an hour";
+            }
+            else if (hoursRemaining < 2)
+            {
+                timeMessage = "about 1 hour";
+            }
+            else
+            {
+                timeMessage = $"about {Math.Round(hoursRemaining)} hours";
+            }
+            
+            string message = $"Task '{task.Title}' is due in {timeMessage}";
+            
+            NotificationDTO? notification = await CreateTaskDeadlineNotificationAsync(task.UserId, task.Id, message);
+            if (notification != null)
+            {
+                createdNotifications.Add(notification);
+            }
+        }
+        
+        return createdNotifications;
     }
 } 

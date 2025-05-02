@@ -147,16 +147,16 @@ namespace TaskTrackerAPI.Services
         public async Task<PriorityAdjustmentSummaryDTO> AutoAdjustTaskPrioritiesAsync(int userId)
         {
             // Get all incomplete tasks for the user
-            var notStartedTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.NotStarted);
-            var inProgressTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.InProgress);
+            IEnumerable<TaskItem> notStartedTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.NotStarted);
+            IEnumerable<TaskItem> inProgressTasks = await _taskRepository.GetTasksByStatusAsync(userId, TaskItemStatus.InProgress);
             
             // Create a new list and add all items from both sources
             List<TaskItem> incompleteTasks = new List<TaskItem>();
-            foreach (var task in notStartedTasks)
+            foreach (TaskItem task in notStartedTasks)
             {
                 incompleteTasks.Add(task);
             }
-            foreach (var task in inProgressTasks)
+            foreach (TaskItem task in inProgressTasks)
             {
                 incompleteTasks.Add(task);
             }
@@ -172,7 +172,7 @@ namespace TaskTrackerAPI.Services
             
             List<TaskPriorityAdjustmentDTO> adjustments = new List<TaskPriorityAdjustmentDTO>();
             
-            foreach (var task in incompleteTasks)
+            foreach (TaskItem task in incompleteTasks)
             {
                 TaskPriority calculatedPriority = CalculateIdealPriority(task);
                 TaskPriority originalPriority = Enum.Parse<TaskPriority>(task.Priority);
@@ -225,7 +225,7 @@ namespace TaskTrackerAPI.Services
         private TaskPriority CalculateIdealPriority(TaskItem task)
         {
             // Default to the current priority if parsing fails
-            if (!Enum.TryParse<TaskPriority>(task.Priority, out var currentPriority))
+            if (!Enum.TryParse<TaskPriority>(task.Priority, out TaskPriority currentPriority))
             {
                 currentPriority = TaskPriority.Medium;
             }
@@ -266,7 +266,7 @@ namespace TaskTrackerAPI.Services
             if (!task.DueDate.HasValue)
                 return "Manual adjustment based on task importance";
                 
-            var daysUntilDue = (task.DueDate.Value - DateTime.UtcNow).TotalDays;
+            double daysUntilDue = (task.DueDate.Value - DateTime.UtcNow).TotalDays;
             
             if (daysUntilDue < 0)
                 return "Task is overdue";

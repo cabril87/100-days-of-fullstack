@@ -14,6 +14,7 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Models.Gamification;
 using System;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace TaskTrackerAPI.Data;
 
@@ -95,6 +96,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<FamilyMemberAvailability> FamilyMemberAvailabilities { get; set; } = null!;
 
     public DbSet<ChecklistItem> ChecklistItems { get; set; } = null!;
+    public DbSet<ChecklistTemplateItem> ChecklistTemplateItems { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -116,9 +118,9 @@ public class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // Configure entity properties with value generators to use hardcoded values for snapshot generation
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
-            foreach (var property in entityType.GetProperties())
+            foreach (IMutableProperty property in entityType.GetProperties())
             {
                 if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
                 {
@@ -591,6 +593,13 @@ public class ApplicationDbContext : DbContext
             .HasOne(a => a.FamilyMember)
             .WithMany()
             .HasForeignKey(a => a.FamilyMemberId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure TaskTemplate-ChecklistTemplateItem relationship
+        modelBuilder.Entity<ChecklistTemplateItem>()
+            .HasOne(c => c.TaskTemplate)
+            .WithMany(t => t.ChecklistItems)
+            .HasForeignKey(c => c.TaskTemplateId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

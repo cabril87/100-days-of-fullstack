@@ -10,6 +10,7 @@
  */
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -100,7 +101,7 @@ namespace TaskTrackerAPI.Middleware
                 List<BatchResponse> responses = new List<BatchResponse>();
                 bool hasErrors = false;
                 
-                foreach (var request in batchRequest.Requests)
+                foreach (BatchRequestItem request in batchRequest.Requests)
                 {
                     // Validate relative URL (must start with /)
                     if (string.IsNullOrEmpty(request.RelativeUrl) || !request.RelativeUrl.StartsWith("/"))
@@ -175,7 +176,7 @@ namespace TaskTrackerAPI.Middleware
                 requestFeature.Scheme = originalContext.Request.Scheme;
                 
                 // Copy headers
-                foreach (var header in originalContext.Request.Headers)
+                foreach (KeyValuePair<string, StringValues> header in originalContext.Request.Headers)
                 {
                     newContext.Request.Headers[header.Key] = header.Value;
                 }

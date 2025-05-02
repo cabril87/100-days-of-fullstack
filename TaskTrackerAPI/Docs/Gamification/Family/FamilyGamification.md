@@ -251,20 +251,20 @@ One of the key features is the automatic integration with task completion. When 
 ```csharp
 public async Task<bool> TrackTaskCompletionAsync(int taskId, int memberId, int userId)
 {
-    var task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+    TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
     if (task == null)
         return false;
 
     // Find the family of the member
-    var member = await _familyRepository.GetMemberByIdAsync(memberId);
+    FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
     if (member == null)
         return false;
 
     // Get in-progress achievements for the family
-    var achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(member.FamilyId);
+    IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(member.FamilyId);
     
     // Update relevant achievements
-    foreach (var achievement in achievements)
+    foreach (FamilyAchievement achievement in achievements)
     {
         if (achievement.Type == AchievementType.Family || 
             achievement.Type == AchievementType.Daily ||

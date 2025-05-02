@@ -62,7 +62,7 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 _logger.LogInformation("Starting auto-adjustment of task priorities for user {UserId}", userIdInt);
                 
-                var adjustmentSummary = await _priorityService.AutoAdjustTaskPrioritiesAsync(userIdInt);
+                PriorityAdjustmentSummaryDTO? adjustmentSummary = await _priorityService.AutoAdjustTaskPrioritiesAsync(userIdInt);
                 
                 _logger.LogInformation(
                     "Completed priority auto-adjustment for user {UserId}. " +

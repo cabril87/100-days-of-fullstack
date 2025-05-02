@@ -86,7 +86,7 @@ public class FamilyCalendarRepository : IFamilyCalendarRepository
 
     public async Task<bool> DeleteEventAsync(int eventId)
     {
-        var eventEntity = await _context.FamilyCalendarEvents.FindAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _context.FamilyCalendarEvents.FindAsync(eventId);
         if (eventEntity == null)
         {
             return false;
@@ -135,7 +135,7 @@ public class FamilyCalendarRepository : IFamilyCalendarRepository
 
     public async Task<bool> DeleteAttendeeAsync(int attendeeId)
     {
-        var attendee = await _context.FamilyEventAttendees.FindAsync(attendeeId);
+        FamilyEventAttendee? attendee = await _context.FamilyEventAttendees.FindAsync(attendeeId);
         if (attendee == null)
         {
             return false;
@@ -181,7 +181,7 @@ public class FamilyCalendarRepository : IFamilyCalendarRepository
 
     public async Task<bool> DeleteReminderAsync(int reminderId)
     {
-        var reminder = await _context.FamilyEventReminders.FindAsync(reminderId);
+        FamilyEventReminder? reminder = await _context.FamilyEventReminders.FindAsync(reminderId);
         if (reminder == null)
         {
             return false;
@@ -246,7 +246,7 @@ public class FamilyCalendarRepository : IFamilyCalendarRepository
 
     public async Task<bool> DeleteAvailabilityAsync(int availabilityId)
     {
-        var availability = await _context.FamilyMemberAvailabilities.FindAsync(availabilityId);
+        FamilyMemberAvailability? availability = await _context.FamilyMemberAvailabilities.FindAsync(availabilityId);
         if (availability == null)
         {
             return false;

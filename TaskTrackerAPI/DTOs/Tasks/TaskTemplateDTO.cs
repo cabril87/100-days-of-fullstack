@@ -79,6 +79,10 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Number of times this template has been used
         
         public int UsageCount { get; set; } = 0;
+        
+        /// Checklist items if this is a checklist template
+        
+        public List<ChecklistTemplateItemDTO>? ChecklistItems { get; set; }
     }
 
     
@@ -115,6 +119,10 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Tags for the template
         
         public List<string>? Tags { get; set; }
+        
+        /// Checklist items for checklist templates
+        
+        public List<CreateChecklistTemplateItemDTO>? ChecklistItems { get; set; }
     }
 
     

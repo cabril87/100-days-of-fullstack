@@ -42,4 +42,7 @@ public interface ITaskItemRepository
     Task<bool> UnassignTaskFromFamilyMemberAsync(int taskId);
     Task<bool> ApproveTaskAsync(int taskId, int approverUserId, string? comment);
     Task<bool> IsUserFamilyTaskOwnerAsync(int taskId, int userId);
+    
+    // Deadline notifications
+    Task<IEnumerable<TaskItem>> GetTasksWithUpcomingDeadlinesAsync(DateTime start, DateTime end);
 }

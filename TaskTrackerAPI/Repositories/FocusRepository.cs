@@ -349,7 +349,7 @@ public class FocusRepository : IFocusRepository
     {
         try
         {
-            var query = _context.Distractions
+            IQueryable<Distraction> query = _context.Distractions
                 .Join(_context.FocusSessions,
                     d => d.FocusSessionId,
                     s => s.Id,
@@ -363,6 +363,8 @@ public class FocusRepository : IFocusRepository
             if (endDate.HasValue)
                 query = query.Where(d => d.Timestamp <= endDate.Value);
 
+            // Using var is appropriate here because we're dealing with an anonymous type
+            // that doesn't have a directly expressible concrete type
             var categoryGroups = await query
                 .GroupBy(d => d.Category)
                 .Select(g => new { Category = g.Key, Count = g.Count() })
@@ -384,11 +386,11 @@ public class FocusRepository : IFocusRepository
             DateTime startDate = DateTime.UtcNow.Date.AddDays(-numberOfDays + 1);
             DateTime endDate = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1); // End of today
 
-            var focusSessions = await _context.FocusSessions
+            IEnumerable<FocusSession> focusSessions = await _context.FocusSessions
                 .Where(f => f.UserId == userId && f.StartTime >= startDate && f.EndTime <= endDate)
                 .ToListAsync();
 
-            var dailyMinutes = new Dictionary<string, int>();
+            Dictionary<string, int> dailyMinutes = new Dictionary<string, int>();
 
             // Initialize dictionary with all days in range
             for (int i = 0; i < numberOfDays; i++)
@@ -398,7 +400,7 @@ public class FocusRepository : IFocusRepository
             }
 
             // Sum up minutes for each day
-            foreach (var session in focusSessions)
+            foreach (FocusSession session in focusSessions)
             {
                 if (session.EndTime.HasValue)
                 {

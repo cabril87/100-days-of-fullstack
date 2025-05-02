@@ -299,4 +299,15 @@ public class TaskItemRepository : ITaskItemRepository
         return task.UserId == userId || task.AssignedByUserId == userId;
     }
 
+    public async Task<IEnumerable<TaskItem>> GetTasksWithUpcomingDeadlinesAsync(DateTime start, DateTime end)
+    {
+        return await _context.Tasks
+            .Where(t => 
+                t.DueDate.HasValue && 
+                t.DueDate >= start && 
+                t.DueDate <= end &&
+                !t.IsCompleted)
+            .Include(t => t.User)
+            .ToListAsync();
+    }
 }

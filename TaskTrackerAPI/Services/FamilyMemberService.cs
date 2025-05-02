@@ -43,13 +43,13 @@ public class FamilyMemberService : IFamilyMemberService
 
     public async Task<IEnumerable<FamilyPersonDTO>> GetAllAsync()
     {
-        var members = await _familyMemberRepository.GetAllAsync();
+        IEnumerable<FamilyMember> members = await _familyMemberRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<FamilyPersonDTO>>(members);
     }
 
     public async Task<FamilyPersonDTO?> GetByIdAsync(int id)
     {
-        var member = await _familyMemberRepository.GetByIdAsync(id);
+        FamilyMember? member = await _familyMemberRepository.GetByIdAsync(id);
         if (member == null)
             return null;
 
@@ -58,7 +58,7 @@ public class FamilyMemberService : IFamilyMemberService
 
     public async Task<FamilyPersonDetailDTO?> GetDetailsByIdAsync(int id)
     {
-        var member = await _familyMemberRepository.GetByIdWithDetailsAsync(id);
+        FamilyMember? member = await _familyMemberRepository.GetByIdWithDetailsAsync(id);
         if (member == null)
             return null;
 
@@ -73,15 +73,21 @@ public class FamilyMemberService : IFamilyMemberService
             throw new UnauthorizedAccessException("You are not a member of this family");
         }
 
-        var member = _mapper.Map<FamilyMember>(memberDto);
+        FamilyMember member = _mapper.Map<FamilyMember>(memberDto);
         
-        var result = await _familyMemberRepository.CreateAsync(member);
+        FamilyMember? result = await _familyMemberRepository.CreateAsync(member);
+        if (result == null)
+        {
+            _logger.LogError("Failed to create family member in family {FamilyId}", memberDto.FamilyId);
+            throw new InvalidOperationException("Failed to create family member");
+        }
+        
         return _mapper.Map<FamilyPersonDTO>(result);
     }
 
     public async Task<FamilyPersonDTO?> UpdateAsync(int id, UpdateFamilyPersonDTO memberDto, int userId)
     {
-        var member = await _familyMemberRepository.GetByIdAsync(id);
+        FamilyMember? member = await _familyMemberRepository.GetByIdAsync(id);
         if (member == null)
             return null;
 
@@ -93,13 +99,13 @@ public class FamilyMemberService : IFamilyMemberService
 
         _mapper.Map(memberDto, member);
         
-        var result = await _familyMemberRepository.UpdateAsync(member);
-        return _mapper.Map<FamilyPersonDTO>(result);
+        FamilyMember? result = await _familyMemberRepository.UpdateAsync(member);
+        return result != null ? _mapper.Map<FamilyPersonDTO>(result) : null;
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
-        var member = await _familyMemberRepository.GetByIdAsync(id);
+        FamilyMember? member = await _familyMemberRepository.GetByIdAsync(id);
         if (member == null)
             return false;
 

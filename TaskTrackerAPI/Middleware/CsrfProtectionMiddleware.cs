@@ -12,6 +12,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 
 namespace TaskTrackerAPI.Middleware;
 
@@ -85,7 +86,7 @@ public class CsrfProtectionMiddleware
         if (_protectedMethods.Contains(context.Request.Method))
         {
             // Get the token from the request header
-            if (!context.Request.Headers.TryGetValue(CsrfTokenHeaderName, out var headerToken) || string.IsNullOrEmpty(headerToken))
+            if (!context.Request.Headers.TryGetValue(CsrfTokenHeaderName, out StringValues headerToken) || string.IsNullOrEmpty(headerToken))
             {
                 _logger.LogWarning("CSRF token missing from header for {Path}", path);
                 await RespondWithCsrfError(context);
@@ -142,7 +143,7 @@ public class CsrfProtectionMiddleware
     {
         // Generate a random token
         byte[] tokenBytes = new byte[32];
-        using (var rng = RandomNumberGenerator.Create())
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(tokenBytes);
         }

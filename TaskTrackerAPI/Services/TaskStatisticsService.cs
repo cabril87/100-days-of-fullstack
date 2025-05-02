@@ -44,13 +44,13 @@ namespace TaskTrackerAPI.Services
         }
 
         // Implement the interface method
-        public async Task<TaskTrackerAPI.DTOs.Tasks.TaskStatisticsDTO> GetTaskStatisticsAsync(int userId)
+        public async Task<TaskStatisticsDTO> GetTaskStatisticsAsync(int userId)
         {
             try
             {
                 IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
                 
-                var taskStatistics = new TaskTrackerAPI.DTOs.Tasks.TaskStatisticsDTO
+                TaskStatisticsDTO taskStatistics = new TaskStatisticsDTO
                 {
                     TotalTasks = tasks.Count(),
                     CompletedTasks = tasks.Count(t => t.Status == TaskItemStatus.Completed),
@@ -119,7 +119,7 @@ namespace TaskTrackerAPI.Services
             Dictionary<int, int> result = new Dictionary<int, int>();
             
             // Group tasks by priority
-            var priorityGroups = tasks
+            Dictionary<int, int> priorityGroups = tasks
                 .GroupBy(t => GetPriorityValue(t.Priority))
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -157,7 +157,7 @@ namespace TaskTrackerAPI.Services
 
         private double CalculateAverageCompletionTime(IEnumerable<TaskItem> tasks)
         {
-            var completedTasks = tasks.Where(t => 
+            List<TaskItem> completedTasks = tasks.Where(t => 
                 t.Status == TaskItemStatus.Completed && 
                 t.CompletedAt.HasValue).ToList();
             
@@ -165,7 +165,7 @@ namespace TaskTrackerAPI.Services
                 return 0;
                 
             double totalMinutes = 0;
-            foreach (var task in completedTasks)
+            foreach (TaskItem task in completedTasks)
             {
                 TimeSpan completionTime = task.CompletedAt!.Value - task.CreatedAt;
                 totalMinutes += completionTime.TotalMinutes;
@@ -176,12 +176,12 @@ namespace TaskTrackerAPI.Services
 
         private int GetMostActiveHour(IEnumerable<TaskItem> tasks)
         {
-            var completedTasks = tasks.Where(t => t.CompletedAt.HasValue);
+            IEnumerable<TaskItem> completedTasks = tasks.Where(t => t.CompletedAt.HasValue);
             if (!completedTasks.Any())
                 return 9; // Default to 9 AM
                 
             // Group by hour of day
-            var hourGroups = completedTasks
+            Dictionary<int, int> hourGroups = completedTasks
                 .GroupBy(t => t.CompletedAt!.Value.Hour)
                 .ToDictionary(g => g.Key, g => g.Count());
                 
@@ -190,12 +190,12 @@ namespace TaskTrackerAPI.Services
 
         private DayOfWeek GetMostActiveDay(IEnumerable<TaskItem> tasks)
         {
-            var completedTasks = tasks.Where(t => t.CompletedAt.HasValue);
+            IEnumerable<TaskItem> completedTasks = tasks.Where(t => t.CompletedAt.HasValue);
             if (!completedTasks.Any())
                 return DayOfWeek.Monday; // Default
                 
             // Group by day of week
-            var dayGroups = completedTasks
+            Dictionary<DayOfWeek, int> dayGroups = completedTasks
                 .GroupBy(t => t.CompletedAt!.Value.DayOfWeek)
                 .ToDictionary(g => g.Key, g => g.Count());
                 
@@ -227,7 +227,7 @@ namespace TaskTrackerAPI.Services
         }
 
         // Interface method implementation
-        public async Task<TaskTrackerAPI.DTOs.Tasks.ProductivityAnalyticsDTO> GetProductivityAnalyticsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null)
+        public async Task<ProductivityAnalyticsDTO> GetProductivityAnalyticsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null)
         {
             try
             {
@@ -242,7 +242,7 @@ namespace TaskTrackerAPI.Services
                     (t.CreatedAt <= effectiveEndDate || (t.CompletedAt.HasValue && t.CompletedAt <= effectiveEndDate)));
 
                 // Create productivity analytics object from Tasks namespace
-                TaskTrackerAPI.DTOs.Tasks.ProductivityAnalyticsDTO analytics = new TaskTrackerAPI.DTOs.Tasks.ProductivityAnalyticsDTO
+                ProductivityAnalyticsDTO analytics = new ProductivityAnalyticsDTO
                 {
                     StartDate = effectiveStartDate,
                     EndDate = effectiveEndDate
@@ -258,7 +258,7 @@ namespace TaskTrackerAPI.Services
                     hourlyDistribution[hour] = 0;
                 }
                 
-                foreach (var task in tasksInRange.Where(t => t.Status == TaskItemStatus.Completed))
+                foreach (TaskItem task in tasksInRange.Where(t => t.Status == TaskItemStatus.Completed))
                 {
                     if (task.CompletedAt.HasValue)
                     {
@@ -275,7 +275,7 @@ namespace TaskTrackerAPI.Services
                     dayOfWeekDistribution[day] = 0;
                 }
                 
-                foreach (var task in tasksInRange.Where(t => t.Status == TaskItemStatus.Completed))
+                foreach (TaskItem task in tasksInRange.Where(t => t.Status == TaskItemStatus.Completed))
                 {
                     if (task.CompletedAt.HasValue)
                     {
@@ -307,7 +307,7 @@ namespace TaskTrackerAPI.Services
                 if (completedTasks.Any())
                 {
                     double totalHours = 0;
-                    foreach (var task in completedTasks)
+                    foreach (TaskItem task in completedTasks)
                     {
                         TimeSpan completionTime = task.CompletedAt!.Value - task.CreatedAt;
                         totalHours += completionTime.TotalHours;
@@ -344,7 +344,7 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        private string GeneratePrimaryInsight(TaskTrackerAPI.DTOs.Tasks.ProductivityAnalyticsDTO analytics)
+        private string GeneratePrimaryInsight(ProductivityAnalyticsDTO analytics)
         {
             if (analytics.DailyCompletions.Any())
             {
@@ -364,7 +364,7 @@ namespace TaskTrackerAPI.Services
             return "Not enough data to generate insights yet.";
         }
 
-        private List<string> GenerateSuggestions(TaskTrackerAPI.DTOs.Tasks.ProductivityAnalyticsDTO analytics)
+        private List<string> GenerateSuggestions(ProductivityAnalyticsDTO analytics)
         {
             List<string> suggestions = new List<string>();
             
@@ -392,7 +392,7 @@ namespace TaskTrackerAPI.Services
         // Interface method implementation
         public async Task<double> GetTaskCompletionRateAsync(int userId)
         {
-            var tasks = await _taskRepository.GetAllTasksAsync(userId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
             int total = tasks.Count();
             int completed = tasks.Count(t => t.Status == TaskItemStatus.Completed);
             
@@ -402,7 +402,7 @@ namespace TaskTrackerAPI.Services
         // Interface method implementation
         public async Task<Dictionary<TaskItemStatus, int>> GetTasksByStatusDistributionAsync(int userId)
         {
-            var tasks = await _taskRepository.GetAllTasksAsync(userId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
             Dictionary<TaskItemStatus, int> result = new Dictionary<TaskItemStatus, int>();
             
             foreach (TaskItemStatus status in Enum.GetValues<TaskItemStatus>())
@@ -416,8 +416,8 @@ namespace TaskTrackerAPI.Services
         // Interface method implementation
         public async Task<TimeSpan> GetTaskCompletionTimeAverageAsync(int userId)
         {
-            var tasks = await _taskRepository.GetAllTasksAsync(userId);
-            var completedTasks = tasks
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
+            List<TaskItem> completedTasks = tasks
                 .Where(t => t.Status == TaskItemStatus.Completed && t.CompletedAt.HasValue)
                 .ToList();
 
@@ -425,7 +425,7 @@ namespace TaskTrackerAPI.Services
                 return TimeSpan.Zero;
                 
             double totalMinutes = 0;
-            foreach (var task in completedTasks)
+            foreach (TaskItem task in completedTasks)
             {
                 TimeSpan completionTime = task.CompletedAt!.Value - task.CreatedAt;
                 totalMinutes += completionTime.TotalMinutes;
@@ -437,7 +437,7 @@ namespace TaskTrackerAPI.Services
         // Interface method implementation
         public async Task<Dictionary<int, int>> GetTasksByPriorityDistributionAsync(int userId)
         {
-            var tasks = await _taskRepository.GetAllTasksAsync(userId);
+            IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
             
             return GetTasksByPriorityDictionary(tasks);
         }
@@ -455,17 +455,17 @@ namespace TaskTrackerAPI.Services
         }
 
         // Interface method implementation
-        public async Task<List<DTOs.Tasks.CategoryActivityDTO>> GetMostActiveCategoriesAsync(int userId, int limit)
+        public async Task<List<CategoryActivityDTO>> GetMostActiveCategoriesAsync(int userId, int limit)
         {
             IEnumerable<TaskItem> tasks = await _taskRepository.GetAllTasksAsync(userId);
             IEnumerable<Category> categories = await _categoryRepository.GetCategoriesForUserAsync(userId);
             
-            List<DTOs.Tasks.CategoryActivityDTO> categoryActivities = categories.Select(category => 
+            List<CategoryActivityDTO> categoryActivities = categories.Select(category => 
             {
                 List<TaskItem> categoryTasks = tasks.Where(t => t.CategoryId == category.Id).ToList();
                 int completedTasks = categoryTasks.Count(t => t.Status == TaskItemStatus.Completed);
                 
-                return new DTOs.Tasks.CategoryActivityDTO
+                return new CategoryActivityDTO
                 {
                     CategoryId = category.Id,
                     CategoryName = category.Name ?? string.Empty,

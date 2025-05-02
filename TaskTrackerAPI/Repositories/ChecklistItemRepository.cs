@@ -77,7 +77,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<bool> DeleteChecklistItemAsync(int itemId)
         {
-            var item = await _context.ChecklistItems.FindAsync(itemId);
+            ChecklistItem? item = await _context.ChecklistItems.FindAsync(itemId);
             if (item == null)
             {
                 return false;
@@ -91,13 +91,13 @@ namespace TaskTrackerAPI.Repositories
         public async Task<int> GetMaxDisplayOrderForTaskAsync(int taskId)
         {
             // Get the maximum display order for items in this task
-            var maxOrder = await _context.ChecklistItems
+            int? maxOrder = await _context.ChecklistItems
                 .Where(c => c.TaskId == taskId)
                 .OrderByDescending(c => c.DisplayOrder)
                 .Select(c => c.DisplayOrder)
                 .FirstOrDefaultAsync();
                 
-            return maxOrder;
+            return maxOrder ?? 0;
         }
     }
 } 

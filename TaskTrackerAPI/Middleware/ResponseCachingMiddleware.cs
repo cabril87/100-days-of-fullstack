@@ -11,6 +11,7 @@
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 
 namespace TaskTrackerAPI.Middleware;
 
@@ -99,12 +100,12 @@ public class ResponseCachingMiddleware
         }
         
         // Cache miss, capture the original body stream
-        var originalBodyStream = context.Response.Body;
+        Stream originalBodyStream = context.Response.Body;
         
         try
         {
             // Create a new memory stream to capture the response
-            using var responseBody = new MemoryStream();
+            using MemoryStream responseBody = new MemoryStream();
             context.Response.Body = responseBody;
             
             // Call the next middleware
@@ -117,16 +118,16 @@ public class ResponseCachingMiddleware
                 responseBody.Seek(0, SeekOrigin.Begin);
                 
                 // Read the response body
-                var responseContent = await new StreamReader(responseBody).ReadToEndAsync();
+                string responseContent = await new StreamReader(responseBody).ReadToEndAsync();
                 
                 // Create a cached response
-                var headers = new Dictionary<string, string>();
-                foreach (var header in context.Response.Headers)
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                foreach (KeyValuePair<string, StringValues> header in context.Response.Headers)
                 {
                     headers[header.Key] = header.Value.ToString();
                 }
                 
-                var cacheResponse = new CachedResponse
+                CachedResponse cacheResponse = new CachedResponse
                 {
                     Body = responseContent,
                     ContentType = context.Response.ContentType ?? "application/json",
@@ -135,7 +136,7 @@ public class ResponseCachingMiddleware
                 };
                 
                 // Cache the response with sliding expiration
-                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                MemoryCacheEntryOptions cacheEntryOptions = new MemoryCacheEntryOptions()
                     .SetSlidingExpiration(_defaultCacheDuration);
                     
                 _cache.Set(cacheKey, cacheResponse, cacheEntryOptions);
@@ -178,7 +179,7 @@ public class ResponseCachingMiddleware
     /// <returns>A string representing the cache key</returns>
     private string GenerateCacheKey(HttpContext context)
     {
-        var request = context.Request;
+        HttpRequest request = context.Request;
         
         // Include authenticated user ID in the cache key if available
         string userPart = "";
@@ -209,7 +210,7 @@ public class ResponseCachingMiddleware
         context.Response.ContentType = cachedResponse.ContentType;
         
         // Apply cached headers
-        foreach (var header in cachedResponse.Headers)
+        foreach (KeyValuePair<string, string> header in cachedResponse.Headers)
         {
             if (!context.Response.Headers.ContainsKey(header.Key))
             {

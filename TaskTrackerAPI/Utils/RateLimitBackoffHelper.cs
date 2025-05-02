@@ -114,7 +114,7 @@ namespace TaskTrackerAPI.Utils
                     int retryAfterSeconds = GetRetryAfterSeconds(response, retryCount);
 
                     // Override max retries if server specifies it
-                    if (response.Headers.TryGetValues("X-Max-Retry", out var maxRetryValues) &&
+                    if (response.Headers.TryGetValues("X-Max-Retry", out IEnumerable<string>? maxRetryValues) &&
                         int.TryParse(maxRetryValues.FirstOrDefault(), out int serverMaxRetry))
                     {
                         maxRetryAttempts = serverMaxRetry;
@@ -159,18 +159,18 @@ namespace TaskTrackerAPI.Utils
         private int GetRetryAfterSeconds(HttpResponseMessage response, int retryCount)
         {
             // Try to get Retry-After header (in seconds)
-            if (response.Headers.TryGetValues("Retry-After", out var retryAfterValues) &&
+            if (response.Headers.TryGetValues("Retry-After", out IEnumerable<string>? retryAfterValues) &&
                 int.TryParse(retryAfterValues.FirstOrDefault(), out int retryAfter))
             {
                 return retryAfter;
             }
 
             // Fall back to reset time if provided
-            if (response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues) &&
+            if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? resetValues) &&
                 long.TryParse(resetValues.FirstOrDefault(), out long resetTimestamp))
             {
-                var resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp);
-                var timeUntilReset = resetTime - DateTimeOffset.UtcNow;
+                DateTimeOffset resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp);
+                TimeSpan timeUntilReset = resetTime - DateTimeOffset.UtcNow;
                 
                 if (timeUntilReset.TotalSeconds > 0)
                 {
@@ -221,7 +221,7 @@ namespace TaskTrackerAPI.Utils
             bool useJitter = true,
             CancellationToken cancellationToken = default)
         {
-            var helper = new RateLimitBackoffHelper(client, logger, maxRetries, baseDelay, useJitter);
+            RateLimitBackoffHelper helper = new RateLimitBackoffHelper(client, logger, maxRetries, baseDelay, useJitter);
             return await helper.ExecuteWithBackoffAsync<T>(
                 request.RequestUri!.ToString(),
                 request.Method,

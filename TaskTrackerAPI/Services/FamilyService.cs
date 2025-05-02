@@ -46,19 +46,19 @@ public class FamilyService : IFamilyService
 
     public async Task<IEnumerable<FamilyDTO>> GetAllAsync()
     {
-        var families = await _familyRepository.GetAllAsync();
+        IEnumerable<Family> families = await _familyRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<FamilyDTO>>(families);
     }
 
     public async Task<FamilyDTO?> GetByIdAsync(int id)
     {
-        var family = await _familyRepository.GetByIdAsync(id);
+        Family? family = await _familyRepository.GetByIdAsync(id);
         return family != null ? _mapper.Map<FamilyDTO>(family) : null;
     }
 
     public async Task<IEnumerable<FamilyDTO>> GetByUserIdAsync(int userId)
     {
-        var families = await _familyRepository.GetByUserIdAsync(userId);
+        IEnumerable<Family> families = await _familyRepository.GetByUserIdAsync(userId);
         return _mapper.Map<IEnumerable<FamilyDTO>>(families);
     }
 
@@ -67,15 +67,15 @@ public class FamilyService : IFamilyService
         try
         {
             // Map DTO to entity
-            var family = _mapper.Map<Family>(familyDto);
+            Family family = _mapper.Map<Family>(familyDto);
             family.CreatedAt = DateTime.UtcNow;
             family.CreatedById = userId;
 
             // Create the family
-            var createdFamily = await _familyRepository.CreateAsync(family);
+            Family createdFamily = await _familyRepository.CreateAsync(family);
 
             // Try to get the Admin role
-            var adminRole = await _roleRepository.GetByNameAsync("Admin");
+            FamilyRole? adminRole = await _roleRepository.GetByNameAsync("Admin");
 
             // If Admin role doesn't exist, create it on the fly
             if (adminRole == null)
@@ -95,13 +95,13 @@ public class FamilyService : IFamilyService
                 adminRole = await _roleRepository.CreateAsync(adminRole);
 
                 // Add basic permissions
-                var adminPermissions = new[] {
+                FamilyRolePermission[] adminPermissions = new[] {
                 new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
                 new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
                 new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow }
             };
 
-                foreach (var permission in adminPermissions)
+                foreach (FamilyRolePermission permission in adminPermissions)
                 {
                     await _roleRepository.AddPermissionAsync(permission);
                 }
@@ -115,7 +115,7 @@ public class FamilyService : IFamilyService
             }
 
             // Get the updated family with members for the DTO
-            var completeFamily = await _familyRepository.GetByIdAsync(createdFamily.Id);
+            Family? completeFamily = await _familyRepository.GetByIdAsync(createdFamily.Id);
             if (completeFamily == null)
             {
                 throw new InvalidOperationException("Family was created but could not be retrieved");
@@ -133,30 +133,36 @@ public class FamilyService : IFamilyService
     // In FamilyService.cs
     public async Task<FamilyDTO> JoinFamilyAsync(string inviteCode, int userId)
     {
-        // Get invitation by token
-        var invitation = await _invitationRepository.GetByTokenAsync(inviteCode);
-
+        Invitation? invitation = await _invitationRepository.GetByTokenAsync(inviteCode);
         if (invitation == null)
         {
-            throw new InvalidOperationException("Invalid or expired invitation code");
+            throw new InvalidOperationException("Invalid invite code");
         }
 
-        // Check if user is already a member
-        bool isAlreadyMember = await _familyRepository.IsMemberAsync(invitation.FamilyId, userId);
-        if (isAlreadyMember)
+        if (invitation.IsAccepted)
+        {
+            throw new InvalidOperationException("This invite code has already been used");
+        }
+
+        if (invitation.ExpiresAt < DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("This invite code has expired");
+        }
+
+        if (await _familyRepository.IsMemberAsync(invitation.FamilyId, userId))
         {
             throw new InvalidOperationException("You are already a member of this family");
         }
 
-        // Get member role if not specified in invitation
+        // Get the default member role if not specified in invitation
         int roleId = invitation.RoleId;
         if (roleId == 0) // Assuming 0 means no role specified
         {
             // Get a default member role
-            var memberRole = await _roleRepository.GetByNameAsync("Member");
+            FamilyRole? memberRole = await _roleRepository.GetByNameAsync("Member");
             if (memberRole == null)
             {
-                throw new InvalidOperationException("No suitable role found for new member");
+                throw new InvalidOperationException("No default role found");
             }
             roleId = memberRole.Id;
         }
@@ -168,7 +174,12 @@ public class FamilyService : IFamilyService
         await _invitationRepository.MarkAsAcceptedAsync(invitation.Id);
 
         // Return the complete family
-        var family = await _familyRepository.GetByIdAsync(invitation.FamilyId);
+        Family? family = await _familyRepository.GetByIdAsync(invitation.FamilyId);
+        if (family == null)
+        {
+            throw new InvalidOperationException("Failed to retrieve family after joining");
+        }
+        
         return _mapper.Map<FamilyDTO>(family);
     }
 
@@ -180,21 +191,21 @@ public class FamilyService : IFamilyService
             return null;
         }
 
-        var family = await _familyRepository.GetByIdAsync(id);
+        Family? family = await _familyRepository.GetByIdAsync(id);
         if (family == null)
             return null;
 
         _mapper.Map(familyDto, family);
         family.UpdatedAt = DateTime.UtcNow;
 
-        var updatedFamily = await _familyRepository.UpdateAsync(family);
+        Family? updatedFamily = await _familyRepository.UpdateAsync(family);
         return updatedFamily != null ? _mapper.Map<FamilyDTO>(updatedFamily) : null;
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
         // Get the family first to check if the user is the creator
-        var family = await _familyRepository.GetByIdAsync(id);
+        Family? family = await _familyRepository.GetByIdAsync(id);
         if (family == null)
         {
             _logger.LogWarning("User {UserId} attempted to delete non-existent family {FamilyId}", userId, id);
@@ -259,25 +270,25 @@ public class FamilyService : IFamilyService
             return new List<FamilyMemberDTO>();
         }
 
-        var members = await _familyRepository.GetMembersAsync(familyId);
+        IEnumerable<FamilyMember> members = await _familyRepository.GetMembersAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyMemberDTO>>(members);
     }
 
     public async Task<bool> HasPermissionAsync(int familyId, int userId, string permission)
     {
-        var members = await _familyRepository.GetMembersAsync(familyId);
-        var userMember = members.FirstOrDefault(m => m.UserId == userId);
+        IEnumerable<FamilyMember> members = await _familyRepository.GetMembersAsync(familyId);
+        FamilyMember? userMember = members.FirstOrDefault(m => m.UserId == userId);
 
         if (userMember == null)
             return false;
 
-        var role = userMember.Role;
+        FamilyRole role = userMember.Role;
         return role.Permissions.Any(p => p.Name == permission);
     }
 
     public async Task<FamilyMemberDTO> CompleteMemberProfileAsync(int memberId, int userId, CompleteProfileDTO profileDto)
     {
-        var member = await _familyRepository.GetMemberByIdAsync(memberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
         if (member == null)
             throw new InvalidOperationException("Member not found");
 
@@ -300,13 +311,13 @@ public class FamilyService : IFamilyService
 
     public async Task<IEnumerable<FamilyMemberDTO>> GetPendingMembersAsync()
     {
-        var pendingMembers = await _familyRepository.GetPendingMembersAsync();
+        IEnumerable<FamilyMember> pendingMembers = await _familyRepository.GetPendingMembersAsync();
         return _mapper.Map<IEnumerable<FamilyMemberDTO>>(pendingMembers);
     }
 
     public async Task<FamilyMemberDTO> ApproveMemberAsync(int memberId, int adminId)
     {
-        var member = await _familyRepository.GetMemberByIdAsync(memberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
         if (member == null)
             throw new InvalidOperationException("Member not found");
 
@@ -314,7 +325,7 @@ public class FamilyService : IFamilyService
             throw new InvalidOperationException("Member has already been approved");
 
         // Verify admin has permission
-        var adminMember = await _familyRepository.GetMemberByUserIdAsync(adminId, member.FamilyId);
+        FamilyMember? adminMember = await _familyRepository.GetMemberByUserIdAsync(adminId, member.FamilyId);
         if (adminMember == null || !adminMember.Role.Permissions.Any(p => p.Name == "manage_members"))
             throw new UnauthorizedAccessException("You don't have permission to approve members");
 
@@ -327,7 +338,7 @@ public class FamilyService : IFamilyService
 
     public async Task<bool> RejectMemberAsync(int memberId, int adminId, string reason)
     {
-        var member = await _familyRepository.GetMemberByIdAsync(memberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
         if (member == null)
         {
             throw new InvalidOperationException("Member not found");
@@ -337,7 +348,7 @@ public class FamilyService : IFamilyService
             throw new InvalidOperationException("Member has already been processed");
 
         // Verify admin has permission
-        var adminMember = await _familyRepository.GetMemberByUserIdAsync(adminId, member.FamilyId);
+        FamilyMember? adminMember = await _familyRepository.GetMemberByUserIdAsync(adminId, member.FamilyId);
         if (adminMember == null || !adminMember.Role.Permissions.Any(p => p.Name == "manage_members"))
             throw new UnauthorizedAccessException("You don't have permission to reject members");
 
@@ -351,7 +362,7 @@ public class FamilyService : IFamilyService
     public async Task<bool> IsUserAdminOfFamilyAsync(int userId, int familyId)
     {
         // Check if user is the creator of the family
-        var family = await _familyRepository.GetByIdAsync(familyId);
+        Family? family = await _familyRepository.GetByIdAsync(familyId);
         if (family != null && family.CreatedById == userId)
         {
             return true;

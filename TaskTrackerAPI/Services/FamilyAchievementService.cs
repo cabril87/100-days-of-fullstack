@@ -45,13 +45,13 @@ public class FamilyAchievementService : IFamilyAchievementService
 
     public async Task<IEnumerable<FamilyAchievementDTO>> GetAllAsync()
     {
-        var achievements = await _achievementRepository.GetAllAsync();
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<FamilyAchievementDTO>>(achievements);
     }
 
     public async Task<FamilyAchievementDTO?> GetByIdAsync(int id)
     {
-        var achievement = await _achievementRepository.GetByIdAsync(id);
+        FamilyAchievement? achievement = await _achievementRepository.GetByIdAsync(id);
         return achievement != null ? _mapper.Map<FamilyAchievementDTO>(achievement) : null;
     }
 
@@ -64,7 +64,7 @@ public class FamilyAchievementService : IFamilyAchievementService
             return Enumerable.Empty<FamilyAchievementDTO>();
         }
 
-        var achievements = await _achievementRepository.GetByFamilyIdAsync(familyId);
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetByFamilyIdAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyAchievementDTO>>(achievements);
     }
 
@@ -77,7 +77,7 @@ public class FamilyAchievementService : IFamilyAchievementService
             return Enumerable.Empty<FamilyAchievementDTO>();
         }
 
-        var achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(familyId);
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyAchievementDTO>>(achievements);
     }
 
@@ -90,7 +90,7 @@ public class FamilyAchievementService : IFamilyAchievementService
             return Enumerable.Empty<FamilyAchievementDTO>();
         }
 
-        var achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(familyId);
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyAchievementDTO>>(achievements);
     }
 
@@ -103,16 +103,16 @@ public class FamilyAchievementService : IFamilyAchievementService
             throw new UnauthorizedAccessException("You don't have permission to create achievements for this family");
         }
 
-        var achievement = _mapper.Map<FamilyAchievement>(achievementDto);
+        FamilyAchievement achievement = _mapper.Map<FamilyAchievement>(achievementDto);
         achievement.CreatedAt = DateTime.UtcNow;
 
-        var createdAchievement = await _achievementRepository.CreateAsync(achievement);
+        FamilyAchievement createdAchievement = await _achievementRepository.CreateAsync(achievement);
         return _mapper.Map<FamilyAchievementDTO>(createdAchievement);
     }
 
     public async Task<FamilyAchievementDTO?> UpdateAsync(int id, FamilyAchievementUpdateDTO achievementDto, int userId)
     {
-        var achievement = await _achievementRepository.GetByIdAsync(id);
+        FamilyAchievement? achievement = await _achievementRepository.GetByIdAsync(id);
         if (achievement == null)
             return null;
 
@@ -141,13 +141,13 @@ public class FamilyAchievementService : IFamilyAchievementService
             
         achievement.UpdatedAt = DateTime.UtcNow;
 
-        var updatedAchievement = await _achievementRepository.UpdateAsync(achievement);
+        FamilyAchievement? updatedAchievement = await _achievementRepository.UpdateAsync(achievement);
         return updatedAchievement != null ? _mapper.Map<FamilyAchievementDTO>(updatedAchievement) : null;
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
-        var achievement = await _achievementRepository.GetByIdAsync(id);
+        FamilyAchievement? achievement = await _achievementRepository.GetByIdAsync(id);
         if (achievement == null)
             return false;
 
@@ -163,7 +163,7 @@ public class FamilyAchievementService : IFamilyAchievementService
 
     public async Task<bool> UpdateProgressAsync(int achievementId, int progressIncrease, int memberId, int userId)
     {
-        var achievement = await _achievementRepository.GetByIdAsync(achievementId);
+        FamilyAchievement? achievement = await _achievementRepository.GetByIdAsync(achievementId);
         if (achievement == null)
             return false;
 
@@ -185,13 +185,13 @@ public class FamilyAchievementService : IFamilyAchievementService
 
     public async Task<IEnumerable<FamilyLeaderboardDTO>> GetLeaderboardAsync(int limit = 10)
     {
-        var families = await _familyRepository.GetAllAsync();
-        var leaderboard = new List<FamilyLeaderboardDTO>();
+        IEnumerable<Family> families = await _familyRepository.GetAllAsync();
+        List<FamilyLeaderboardDTO> leaderboard = new List<FamilyLeaderboardDTO>();
 
-        foreach (var family in families)
+        foreach (Family family in families)
         {
-            var totalPoints = await _achievementRepository.GetFamilyPointsTotalAsync(family.Id);
-            var achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(family.Id);
+            int totalPoints = await _achievementRepository.GetFamilyPointsTotalAsync(family.Id);
+            IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(family.Id);
             
             leaderboard.Add(new FamilyLeaderboardDTO
             {
@@ -219,12 +219,12 @@ public class FamilyAchievementService : IFamilyAchievementService
             return null;
         }
 
-        var family = await _familyRepository.GetByIdAsync(familyId);
+        Family? family = await _familyRepository.GetByIdAsync(familyId);
         if (family == null)
             return null;
 
-        var totalPoints = await _achievementRepository.GetFamilyPointsTotalAsync(familyId);
-        var achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(familyId);
+        int totalPoints = await _achievementRepository.GetFamilyPointsTotalAsync(familyId);
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetCompletedByFamilyIdAsync(familyId);
 
         return new FamilyLeaderboardDTO
         {
@@ -238,20 +238,20 @@ public class FamilyAchievementService : IFamilyAchievementService
 
     public async Task<bool> TrackTaskCompletionAsync(int taskId, int memberId, int userId)
     {
-        var task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+        TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
         if (task == null)
             return false;
 
         // Find the family of the member
-        var member = await _familyRepository.GetMemberByIdAsync(memberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
         if (member == null)
             return false;
 
         // Get in-progress achievements for the family
-        var achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(member.FamilyId);
+        IEnumerable<FamilyAchievement> achievements = await _achievementRepository.GetInProgressByFamilyIdAsync(member.FamilyId);
         
         // Find task-related achievements and update their progress
-        foreach (var achievement in achievements)
+        foreach (FamilyAchievement achievement in achievements)
         {
             // This is a simplified example - in a real app, you'd have more complex logic
             // to match tasks to achievement types

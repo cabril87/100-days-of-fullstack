@@ -33,7 +33,7 @@ namespace TaskTrackerAPI.Services
         /// <returns>The current user ID as a string</returns>
         public string GetCurrentUserId()
         {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            string? userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
             
             if (string.IsNullOrEmpty(userId))
             {

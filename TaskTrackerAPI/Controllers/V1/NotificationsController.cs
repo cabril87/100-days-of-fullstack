@@ -14,8 +14,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Notifications;
-using TaskTrackerAPI.Interfaces;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -32,16 +32,16 @@ namespace TaskTrackerAPI.Controllers.V1
             _notificationService = notificationService;
         }
 
-        
+        /// <summary>
         /// Get all notifications for the current user
-        
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult<ApiResponse<IEnumerable<NotificationDTO>>>> GetAllNotifications()
         {
             try
             {
                 int userId = GetUserId();
-                IEnumerable<NotificationDTO> notifications = await _notificationService.GetUserNotificationsAsync(userId);
+                IEnumerable<NotificationDTO> notifications = await _notificationService.GetAllNotificationsAsync(userId);
                 return ApiOk(notifications, "Notifications retrieved successfully");
             }
             catch (Exception ex)
@@ -50,22 +50,19 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Get a specific notification by ID
-        
+        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<NotificationDTO>>> GetNotificationById(int id)
         {
             try
             {
                 int userId = GetUserId();
-                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
+                NotificationDTO? notification = await _notificationService.GetNotificationByIdAsync(userId, id);
                 
                 if (notification == null)
                     return ApiNotFound<NotificationDTO>("Notification not found");
-                
-                if (notification.UserId != userId)
-                    return ApiForbidden<NotificationDTO>("You don't have permission to view this notification");
                 
                 return ApiOk(notification, "Notification retrieved successfully");
             }
@@ -75,9 +72,9 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Get the count of unread notifications
-        
+        /// </summary>
         [HttpGet("unread-count")]
         public async Task<ActionResult<ApiResponse<int>>> GetUnreadCount()
         {
@@ -93,34 +90,34 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Get notification counts by type
-        
+        /// </summary>
         [HttpGet("counts")]
-        public async Task<ActionResult<ApiResponse<NotificationCountsDTO>>> GetNotificationCounts()
+        public async Task<ActionResult<ApiResponse<NotificationCountDTO>>> GetNotificationCounts()
         {
             try
             {
                 int userId = GetUserId();
-                NotificationCountsDTO counts = await _notificationService.GetNotificationCountsAsync(userId);
+                NotificationCountDTO counts = await _notificationService.GetNotificationCountsAsync(userId);
                 return ApiOk(counts, "Notification counts retrieved successfully");
             }
             catch (Exception ex)
             {
-                return ApiServerError<NotificationCountsDTO>(ex.Message);
+                return ApiServerError<NotificationCountDTO>(ex.Message);
             }
         }
 
-        
+        /// <summary>
         /// Filter notifications by criteria
-        
+        /// </summary>
         [HttpPost("filter")]
         public async Task<ActionResult<ApiResponse<IEnumerable<NotificationDTO>>>> FilterNotifications(NotificationFilterDTO filter)
         {
             try
             {
                 int userId = GetUserId();
-                IEnumerable<NotificationDTO> notifications = await _notificationService.FilterNotificationsAsync(userId, filter);
+                IEnumerable<NotificationDTO> notifications = await _notificationService.GetFilteredNotificationsAsync(userId, filter);
                 return ApiOk(notifications, "Filtered notifications retrieved successfully");
             }
             catch (Exception ex)
@@ -129,16 +126,20 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Create a new notification
-        
+        /// </summary>
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<NotificationDTO>>> CreateNotification(NotificationCreateDTO notification)
+        public async Task<ActionResult<ApiResponse<NotificationDTO>>> CreateNotification(CreateNotificationDTO notification)
         {
             try
             {
                 int userId = GetUserId();
-                NotificationDTO createdNotification = await _notificationService.CreateNotificationAsync(notification, userId);
+                NotificationDTO? createdNotification = await _notificationService.CreateNotificationAsync(userId, notification);
+                
+                if (createdNotification == null)
+                    return ApiBadRequest<NotificationDTO>("Failed to create notification");
+                    
                 return ApiCreated(createdNotification, message: "Notification created successfully");
             }
             catch (Exception ex)
@@ -147,24 +148,24 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Mark a notification as read
-        
+        /// </summary>
         [HttpPut("{id}/read")]
         public async Task<ActionResult<ApiResponse<NotificationDTO>>> MarkAsRead(int id)
         {
             try
             {
                 int userId = GetUserId();
-                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
                 
-                if (notification == null)
+                if (!await _notificationService.IsNotificationOwnedByUserAsync(id, userId))
                     return ApiNotFound<NotificationDTO>("Notification not found");
                 
-                if (notification.UserId != userId)
-                    return ApiForbidden<NotificationDTO>("You don't have permission to update this notification");
+                NotificationDTO? updatedNotification = await _notificationService.MarkNotificationAsReadAsync(userId, id);
                 
-                NotificationDTO updatedNotification = await _notificationService.MarkNotificationAsReadAsync(id);
+                if (updatedNotification == null)
+                    return ApiNotFound<NotificationDTO>("Notification not found");
+                    
                 return ApiOk(updatedNotification, "Notification marked as read");
             }
             catch (Exception ex)
@@ -173,42 +174,38 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Mark all notifications as read
-        
+        /// </summary>
         [HttpPut("mark-all-read")]
-        public async Task<ActionResult<ApiResponse<bool>>> MarkAllAsRead()
+        public async Task<ActionResult<ApiResponse<int>>> MarkAllAsRead()
         {
             try
             {
                 int userId = GetUserId();
-                await _notificationService.MarkAllNotificationsAsReadAsync(userId);
-                return ApiOk(true, "All notifications marked as read");
+                int count = await _notificationService.MarkAllNotificationsAsReadAsync(userId);
+                return ApiOk(count, "All notifications marked as read");
             }
             catch (Exception ex)
             {
-                return ApiServerError<bool>(ex.Message);
+                return ApiServerError<int>(ex.Message);
             }
         }
 
-        
+        /// <summary>
         /// Delete a notification
-        
+        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteNotification(int id)
         {
             try
             {
                 int userId = GetUserId();
-                NotificationDTO notification = await _notificationService.GetNotificationByIdAsync(id);
                 
-                if (notification == null)
+                if (!await _notificationService.IsNotificationOwnedByUserAsync(id, userId))
                     return ApiNotFound<bool>("Notification not found");
                 
-                if (notification.UserId != userId)
-                    return ApiForbidden<bool>("You don't have permission to delete this notification");
-                
-                await _notificationService.DeleteNotificationAsync(id);
+                await _notificationService.DeleteNotificationAsync(userId, id);
                 return ApiOk(true, "Notification deleted successfully");
             }
             catch (Exception ex)
@@ -217,16 +214,16 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        
+        /// <summary>
         /// Delete all notifications for the current user
-        
+        /// </summary>
         [HttpDelete]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteAllNotifications()
         {
             try
             {
                 int userId = GetUserId();
-                await _notificationService.DeleteAllUserNotificationsAsync(userId);
+                await _notificationService.DeleteAllNotificationsAsync(userId);
                 return ApiOk(true, "All notifications deleted successfully");
             }
             catch (Exception ex)

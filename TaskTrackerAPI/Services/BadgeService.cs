@@ -19,6 +19,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace TaskTrackerAPI.Services
 {
@@ -324,7 +325,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Begin transaction to ensure data consistency
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync();
 
                 try
                 {

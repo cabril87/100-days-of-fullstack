@@ -35,6 +35,7 @@ using Microsoft.AspNetCore.SignalR;
 using TaskTrackerAPI.Hubs;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
+using TaskTrackerAPI.DTOs.Auth;
 
 namespace TaskTrackerAPI;
 
@@ -222,6 +223,9 @@ public class Program
         builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
         builder.Services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
 
+        // Register DeadlineNotificationService as a hosted service
+        builder.Services.AddHostedService<DeadlineNotificationService>();
+
         // Register QRCode Generator as singleton
         builder.Services.AddSingleton<QRCodeGenerator>();
         builder.Services.AddSingleton<QRCodeHelper>();
@@ -229,8 +233,8 @@ public class Program
         // Register RateLimitBackoffHelper as singleton
         builder.Services.AddHttpClient();
         builder.Services.AddSingleton<Utils.RateLimitBackoffHelper>(sp => {
-            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-            var logger = sp.GetRequiredService<ILogger<Utils.RateLimitBackoffHelper>>();
+            HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            ILogger<Utils.RateLimitBackoffHelper> logger = sp.GetRequiredService<ILogger<Utils.RateLimitBackoffHelper>>();
             return new Utils.RateLimitBackoffHelper(httpClient, logger);
         });
 
@@ -336,14 +340,14 @@ public class Program
                     OnTokenValidated = async context =>
                     {
                         // Additional validation if needed, e.g. check if user still exists and is active
-                        var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+                        IUserService userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
                         
                         // Get user ID from claims
-                        var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                        string? userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                         
                         if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int id))
                         {
-                            var user = await userService.GetUserByIdAsync(id);
+                            UserDTO? user = await userService.GetUserByIdAsync(id);
                             
                             // Reject token if user no longer exists 
                             if (user == null)
@@ -353,10 +357,10 @@ public class Program
                             // Check if the IsActive property exists and is false
                             else 
                             {
-                                var isActiveProperty = user.GetType().GetProperty("IsActive");
+                                System.Reflection.PropertyInfo? isActiveProperty = user.GetType().GetProperty("IsActive");
                                 if (isActiveProperty != null)
                                 {
-                                    var isActiveValue = isActiveProperty.GetValue(user);
+                                    object? isActiveValue = isActiveProperty.GetValue(user);
                                     if (isActiveValue != null && isActiveValue is bool isActive && !isActive)
                                     {
                                         context.Fail("User has been deactivated");
@@ -371,7 +375,7 @@ public class Program
         WebApplication app = builder.Build();
 
         // Get API version description provider
-        var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+        IApiVersionDescriptionProvider apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
 
         // Enable response compression
         app.UseResponseCompression();

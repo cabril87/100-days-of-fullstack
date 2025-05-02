@@ -21,6 +21,8 @@ using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.Attributes;
+using System.Text.Json;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -48,17 +50,36 @@ public class TaskItemsController : ControllerBase
     // GET: api/TaskItems
     [HttpGet]
     [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
-    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks()
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks([FromQuery] string? due = null)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
-            IEnumerable<TaskItemDTO> tasks = await _taskService.GetAllTasksAsync(userId);
+            IEnumerable<TaskItemDTO> tasks;
+            
+            // Handle different 'due' parameter values
+            switch (due?.ToLower())
+            {
+                case "today":
+                    tasks = await _taskService.GetDueTodayTasksAsync(userId);
+                    break;
+                case "week":
+                case "thisweek":
+                    tasks = await _taskService.GetDueThisWeekTasksAsync(userId);
+                    break;
+                case "overdue":
+                    tasks = await _taskService.GetOverdueTasksAsync(userId);
+                    break;
+                default:
+                    tasks = await _taskService.GetAllTasksAsync(userId);
+                    break;
+            }
+            
             return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving all tasks");
+            _logger.LogError(ex, "Error retrieving tasks");
             return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
@@ -103,13 +124,54 @@ public class TaskItemsController : ControllerBase
     // POST: api/TaskItems
     [HttpPost]
     [RateLimit(30, 60)] // Limit creation rate to prevent abuse
-    public async Task<ActionResult<TaskItemDTO>> CreateTaskItem(TaskItemDTO taskDto)
+    public async Task<ActionResult<TaskItemDTO>> CreateTaskItem([FromBody] object taskData, [FromQuery] bool quick = false)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
+            TaskItemDTO? createdTask;
             
-            TaskItemDTO? createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+            if (quick)
+            {
+                // Handle quick task creation (minimal fields)
+                QuickTaskDTO? quickTaskDto = JsonSerializer.Deserialize<QuickTaskDTO>(
+                    taskData.ToString() ?? "", 
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                );
+                
+                if (quickTaskDto == null)
+                {
+                    return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid quick task data"));
+                }
+                
+                // Convert QuickTaskDTO to TaskItemDTO with default values
+                TaskItemDTO taskDto = new TaskItemDTO
+                {
+                    Title = quickTaskDto.Title,
+                    Description = quickTaskDto.Description,
+                    DueDate = quickTaskDto.DueDate,
+                    Priority = quickTaskDto.Priority ?? 1,
+                    Status = TaskItemStatus.NotStarted,
+                    IsRecurring = false
+                };
+                
+                createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+            }
+            else
+            {
+                // Handle normal task creation
+                TaskItemDTO? taskDto = JsonSerializer.Deserialize<TaskItemDTO>(
+                    taskData.ToString() ?? "", 
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                );
+                
+                if (taskDto == null)
+                {
+                    return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid task data"));
+                }
+                
+                createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+            }
             
             if (createdTask == null)
             {
@@ -545,71 +607,8 @@ public class TaskItemsController : ControllerBase
         }
     }
 
-    // GET: api/todo/today - Special endpoint for today's tasks
-    [HttpGet("todo/today")]
-    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTodayTasks()
-    {
-        try
-        {
-            int userId = User.GetUserIdAsInt();
-            
-            IEnumerable<TaskItemDTO> tasks = await _taskService.GetDueTodayTasksAsync(userId);
-            
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving today's tasks");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
-        }
-    }
-    
-    // POST: api/todo/quick - Quick add functionality with minimal required fields
-    [HttpPost("todo/quick")]
-    public async Task<ActionResult<TaskItemDTO>> QuickAddTask([FromBody] QuickTaskDTO quickTaskDto)
-    {
-        try
-        {
-            int userId = User.GetUserIdAsInt();
-            
-            // Convert QuickTaskDTO to TaskItemDTO with default values
-            TaskItemDTO taskDto = new TaskItemDTO
-            {
-                Title = quickTaskDto.Title,
-                Description = quickTaskDto.Description,
-                DueDate = quickTaskDto.DueDate,
-                Priority = quickTaskDto.Priority ?? 1,
-                Status = TaskItemStatus.NotStarted,
-                IsRecurring = false
-            };
-            
-            TaskItemDTO? createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
-            
-            if (createdTask == null)
-            {
-                return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Failed to create quick task"));
-            }
-            
-            return CreatedAtAction(
-                nameof(GetTaskItem), 
-                new { id = createdTask.Id }, 
-                Utils.ApiResponse<TaskItemDTO>.SuccessResponse(createdTask)
-            );
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning(ex, "User tried to create a quick task with a category they don't own");
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating quick task");
-            return StatusCode(500, Utils.ApiResponse<TaskItemDTO>.ServerErrorResponse());
-        }
-    }
-    
-    // GET: api/todo/checklist/{taskId} - Get checklist items for a task
-    [HttpGet("todo/checklist/{taskId}")]
+    // GET: api/tasks/{taskId}/checklist - Get checklist items for a task
+    [HttpGet("{taskId}/checklist")]
     public async Task<ActionResult<IEnumerable<ChecklistItemDTO>>> GetChecklistItems(int taskId)
     {
         try
@@ -634,8 +633,8 @@ public class TaskItemsController : ControllerBase
         }
     }
     
-    // POST: api/todo/checklist/{taskId} - Add checklist item to a task
-    [HttpPost("todo/checklist/{taskId}")]
+    // POST: api/tasks/{taskId}/checklist - Add checklist item to a task
+    [HttpPost("{taskId}/checklist")]
     public async Task<ActionResult<ChecklistItemDTO>> AddChecklistItem(int taskId, [FromBody] ChecklistItemDTO checklistItemDto)
     {
         try
@@ -670,8 +669,8 @@ public class TaskItemsController : ControllerBase
         }
     }
     
-    // PUT: api/todo/checklist/{taskId}/{itemId} - Update checklist item
-    [HttpPut("todo/checklist/{taskId}/{itemId}")]
+    // PUT: api/tasks/{taskId}/checklist/{itemId} - Update checklist item
+    [HttpPut("{taskId}/checklist/{itemId}")]
     public async Task<IActionResult> UpdateChecklistItem(int taskId, int itemId, [FromBody] ChecklistItemDTO checklistItemDto)
     {
         try
@@ -704,8 +703,8 @@ public class TaskItemsController : ControllerBase
         }
     }
     
-    // DELETE: api/todo/checklist/{taskId}/{itemId} - Delete checklist item
-    [HttpDelete("todo/checklist/{taskId}/{itemId}")]
+    // DELETE: api/tasks/{taskId}/checklist/{itemId} - Delete checklist item
+    [HttpDelete("{taskId}/checklist/{itemId}")]
     public async Task<IActionResult> DeleteChecklistItem(int taskId, int itemId)
     {
         try
@@ -732,6 +731,192 @@ public class TaskItemsController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting checklist item {ItemId} from task {TaskId}", itemId, taskId);
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // POST: api/tasks/{taskId}/checklist/batch/complete - Complete multiple checklist items
+    [HttpPost("{taskId}/checklist/batch/complete")]
+    public async Task<IActionResult> BatchCompleteChecklistItems(int taskId, [FromBody] List<int> itemIds)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+            }
+            
+            if (itemIds == null || !itemIds.Any())
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
+            }
+            
+            Dictionary<int, bool> result = new Dictionary<int, bool>();
+            
+            foreach (int itemId in itemIds)
+            {
+                // Create a completed checklist item DTO
+                ChecklistItemDTO checklistItemDto = new ChecklistItemDTO
+                {
+                    Id = itemId,
+                    TaskId = taskId,
+                    IsCompleted = true,
+                    CompletedAt = DateTime.UtcNow
+                };
+                
+                bool updated = await _taskService.UpdateChecklistItemAsync(userId, checklistItemDto);
+                result.Add(itemId, updated);
+            }
+            
+            return Ok(Utils.ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items updated"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error batch completing checklist items for task {TaskId}", taskId);
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+    
+    // POST: api/tasks/{taskId}/checklist/batch/delete - Delete multiple checklist items
+    [HttpPost("{taskId}/checklist/batch/delete")]
+    public async Task<IActionResult> BatchDeleteChecklistItems(int taskId, [FromBody] List<int> itemIds)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Verify task ownership
+            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+            if (!isTaskOwned)
+            {
+                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+            }
+            
+            if (itemIds == null || !itemIds.Any())
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
+            }
+            
+            Dictionary<int, bool> result = new Dictionary<int, bool>();
+            
+            foreach (int itemId in itemIds)
+            {
+                bool deleted = await _taskService.DeleteChecklistItemAsync(userId, taskId, itemId);
+                result.Add(itemId, deleted);
+            }
+            
+            return Ok(Utils.ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items deleted"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error batch deleting checklist items for task {TaskId}", taskId);
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+    
+    // GET: api/tasks/search - Search tasks by text in title and description
+    [HttpGet("search")]
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> SearchTasks([FromQuery] string query)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Search query is required"));
+            }
+
+            int userId = User.GetUserIdAsInt();
+            
+            // Get all tasks for the user
+            IEnumerable<TaskItemDTO> allTasks = await _taskService.GetAllTasksAsync(userId);
+            
+            // Perform search on the client side for now
+            // In a real application, this should be implemented in the service/repository layer
+            IEnumerable<TaskItemDTO> searchResults = allTasks.Where(t => 
+                t.Title.Contains(query, StringComparison.OrdinalIgnoreCase) || 
+                (t.Description != null && t.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
+            );
+            
+            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(searchResults));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching tasks with query: {Query}", query);
+            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+        }
+    }
+
+    // GET: api/tasks/sorted - Get sorted tasks by various criteria
+    [HttpGet("sorted")]
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetSortedTasks(
+        [FromQuery] string sortBy = "priority",
+        [FromQuery] bool ascending = false)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Get all tasks for the user
+            IEnumerable<TaskItemDTO> allTasks = await _taskService.GetAllTasksAsync(userId);
+            
+            // Apply sorting based on provided criteria
+            IEnumerable<TaskItemDTO> sortedTasks;
+            
+            switch (sortBy.ToLower())
+            {
+                case "priority":
+                    sortedTasks = ascending 
+                        ? allTasks.OrderBy(t => t.Priority)
+                        : allTasks.OrderByDescending(t => t.Priority);
+                    break;
+                    
+                case "duedate":
+                case "due":
+                    sortedTasks = ascending
+                        ? allTasks.OrderBy(t => t.DueDate ?? DateTime.MaxValue)
+                        : allTasks.OrderByDescending(t => t.DueDate ?? DateTime.MinValue);
+                    break;
+                    
+                case "title":
+                    sortedTasks = ascending
+                        ? allTasks.OrderBy(t => t.Title)
+                        : allTasks.OrderByDescending(t => t.Title);
+                    break;
+                    
+                case "created":
+                case "createdat":
+                    sortedTasks = ascending
+                        ? allTasks.OrderBy(t => t.CreatedAt)
+                        : allTasks.OrderByDescending(t => t.CreatedAt);
+                    break;
+                    
+                case "status":
+                    sortedTasks = ascending
+                        ? allTasks.OrderBy(t => t.Status)
+                        : allTasks.OrderByDescending(t => t.Status);
+                    break;
+
+                case "estimatedtime":
+                case "estimated":
+                    sortedTasks = ascending
+                        ? allTasks.OrderBy(t => t.EstimatedMinutes ?? int.MaxValue)
+                        : allTasks.OrderByDescending(t => t.EstimatedMinutes ?? 0);
+                    break;
+                    
+                default:
+                    sortedTasks = allTasks;
+                    break;
+            }
+            
+            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(sortedTasks));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving sorted tasks");
+            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
 } 

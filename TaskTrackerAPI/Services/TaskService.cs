@@ -105,7 +105,7 @@ namespace TaskTrackerAPI.Services
             TaskItem? result = await _taskRepository.GetTaskByIdAsync(taskItem.Id, userId);
             if (result != null)
             {
-                var resultDto = _mapper.Map<TaskItemDTO>(result);
+                TaskItemDTO resultDto = _mapper.Map<TaskItemDTO>(result);
                 
                 // Notify via SignalR
                 await _taskSyncService.NotifyTaskCreatedAsync(userId, resultDto);
@@ -137,13 +137,13 @@ namespace TaskTrackerAPI.Services
                 return null;
                 
             // Store previous state for SignalR notification
-            var previousState = _mapper.Map<TaskItemDTO>(existingTask);
+            TaskItemDTO previousState = _mapper.Map<TaskItemDTO>(existingTask);
                 
             // Check version for optimistic concurrency
             if (taskDto.Version > 0 && taskDto.Version != existingTask.Version)
             {
                 // Version mismatch - handle conflict
-                var conflict = new TaskConflictDTO
+                TaskConflictDTO conflict = new TaskConflictDTO
                 {
                     TaskId = taskId,
                     ClientVersion = taskDto.Version,
@@ -188,7 +188,7 @@ namespace TaskTrackerAPI.Services
             TaskItem? result = await _taskRepository.GetTaskByIdAsync(taskId, userId);
             if (result != null)
             {
-                var resultDto = _mapper.Map<TaskItemDTO>(result);
+                TaskItemDTO resultDto = _mapper.Map<TaskItemDTO>(result);
                 
                 // Notify via SignalR
                 await _taskSyncService.NotifyTaskUpdatedAsync(userId, resultDto, previousState);
@@ -433,7 +433,7 @@ namespace TaskTrackerAPI.Services
             }
 
             // Create the assignment entity
-            var assignment = new TaskAssignment
+            TaskAssignment assignment = new TaskAssignment
             {
                 TaskId = assignmentDto.TaskId,
                 AssignedToUserId = assignmentDto.AssignedToUserId,
@@ -520,7 +520,7 @@ namespace TaskTrackerAPI.Services
                     }
 
                     // Record the previous status
-                    var previousStatus = task.Status;
+                    TaskItemStatus previousStatus = task.Status;
 
                     // Update the task status
                     task.Status = newStatus;
@@ -542,7 +542,7 @@ namespace TaskTrackerAPI.Services
 
                     await _taskRepository.UpdateTaskAsync(task);
 
-                    var response = new TaskStatusUpdateResponseDTO
+                    TaskStatusUpdateResponseDTO response = new TaskStatusUpdateResponseDTO
                     {
                         TaskId = taskId,
                         PreviousStatus = previousStatus,

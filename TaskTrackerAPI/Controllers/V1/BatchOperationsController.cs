@@ -142,7 +142,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 List<TaskItemDTO> tasks = new();
 
                 // Process tasks individually but in parallel for efficiency
-                var taskFetches = taskIds.Select(async id =>
+                IEnumerable<Task<TaskItemDTO?>> taskFetches = taskIds.Select(async id =>
                 {
                     bool isOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
                     if (isOwned)
@@ -152,7 +152,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     return null;
                 });
 
-                var results = await Task.WhenAll(taskFetches);
+                TaskItemDTO?[] results = await Task.WhenAll(taskFetches);
                 tasks.AddRange(results.Where(t => t != null)!);
 
                 return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));

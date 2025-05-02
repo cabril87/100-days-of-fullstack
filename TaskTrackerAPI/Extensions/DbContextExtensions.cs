@@ -61,11 +61,11 @@ namespace TaskTrackerAPI.Extensions
             ILogger? logger = null)
         {
             // Store original timeout
-            var originalTimeout = dbContext.Database.GetCommandTimeout();
+            int? originalTimeout = dbContext.Database.GetCommandTimeout();
             
             try
             {
-                var stopwatch = Stopwatch.StartNew();
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 
                 // Set command timeout if provided
                 if (commandTimeout.HasValue)
@@ -74,7 +74,7 @@ namespace TaskTrackerAPI.Extensions
                 }
                 
                 // Execute the query
-                var result = await queryAction(dbContext);
+                T result = await queryAction(dbContext);
                 
                 stopwatch.Stop();
                 

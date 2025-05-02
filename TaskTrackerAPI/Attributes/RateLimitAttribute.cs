@@ -33,8 +33,8 @@ public class RateLimitAttribute : ActionFilterAttribute
 
     public override async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var memoryCache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
-        var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<RateLimitAttribute>>();
+        IMemoryCache memoryCache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
+        ILogger<RateLimitAttribute> logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<RateLimitAttribute>>();
 
         // Get the client's identity (IP or user ID)
         string clientKey = GetClientKey(context);
@@ -90,7 +90,7 @@ public class RateLimitAttribute : ActionFilterAttribute
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
                 context.HttpContext.Response.Headers.Append("Retry-After", _timeWindowInSeconds.ToString());
                 
-                var response = ApiResponse<object>.ErrorResponse(
+                ApiResponse<object> response = ApiResponse<object>.ErrorResponse(
                     "Too many requests. Please try again later.", 
                     (int)HttpStatusCode.TooManyRequests);
                 

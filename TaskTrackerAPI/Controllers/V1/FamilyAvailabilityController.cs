@@ -46,7 +46,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var availabilities = await _calendarService.GetFamilyAvailabilityAsync(familyId, userId);
+                IEnumerable<FamilyMemberAvailabilityDTO> availabilities = await _calendarService.GetFamilyAvailabilityAsync(familyId, userId);
                 return Ok(ApiResponse<IEnumerable<FamilyMemberAvailabilityDTO>>.SuccessResponse(availabilities));
             }
             catch (Exception ex)
@@ -66,7 +66,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var availabilities = await _calendarService.GetAvailabilityInRangeAsync(familyId, userId, startDate, endDate);
+                IEnumerable<FamilyMemberAvailabilityDTO> availabilities = await _calendarService.GetAvailabilityInRangeAsync(familyId, userId, startDate, endDate);
                 return Ok(ApiResponse<IEnumerable<FamilyMemberAvailabilityDTO>>.SuccessResponse(availabilities));
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var availabilities = await _calendarService.GetMemberAvailabilityAsync(memberId, userId);
+                IEnumerable<FamilyMemberAvailabilityDTO> availabilities = await _calendarService.GetMemberAvailabilityAsync(memberId, userId);
                 return Ok(ApiResponse<IEnumerable<FamilyMemberAvailabilityDTO>>.SuccessResponse(availabilities));
             }
             catch (Exception ex)
@@ -100,7 +100,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var availability = await _calendarService.GetAvailabilityByIdAsync(availabilityId, userId);
+                FamilyMemberAvailabilityDTO? availability = await _calendarService.GetAvailabilityByIdAsync(availabilityId, userId);
                 
                 if (availability == null)
                 {
@@ -123,7 +123,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var createdAvailability = await _calendarService.CreateAvailabilityAsync(availabilityDto, userId);
+                FamilyMemberAvailabilityDTO? createdAvailability = await _calendarService.CreateAvailabilityAsync(availabilityDto, userId);
                 
                 if (createdAvailability == null)
                 {
@@ -150,7 +150,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var updatedAvailability = await _calendarService.UpdateAvailabilityAsync(availabilityId, availabilityDto, userId);
+                FamilyMemberAvailabilityDTO? updatedAvailability = await _calendarService.UpdateAvailabilityAsync(availabilityId, availabilityDto, userId);
                 
                 if (updatedAvailability == null)
                 {

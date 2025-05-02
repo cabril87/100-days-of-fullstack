@@ -40,32 +40,32 @@ public class UserDeviceService : IUserDeviceService
 
     public async Task<IEnumerable<UserDeviceDTO>> GetAllAsync()
     {
-        var devices = await _deviceRepository.GetAllAsync();
+        IEnumerable<UserDevice> devices = await _deviceRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<UserDeviceDTO>>(devices);
     }
 
     public async Task<UserDeviceDTO?> GetByIdAsync(int id)
     {
-        var device = await _deviceRepository.GetByIdAsync(id);
+        UserDevice? device = await _deviceRepository.GetByIdAsync(id);
         return device != null ? _mapper.Map<UserDeviceDTO>(device) : null;
     }
 
     public async Task<IEnumerable<UserDeviceDTO>> GetByUserIdAsync(int userId)
     {
-        var devices = await _deviceRepository.GetByUserIdAsync(userId);
+        IEnumerable<UserDevice> devices = await _deviceRepository.GetByUserIdAsync(userId);
         return _mapper.Map<IEnumerable<UserDeviceDTO>>(devices);
     }
 
     public async Task<UserDeviceDTO?> GetByDeviceIdAsync(string deviceId)
     {
-        var device = await _deviceRepository.GetByDeviceIdAsync(deviceId);
+        UserDevice? device = await _deviceRepository.GetByDeviceIdAsync(deviceId);
         return device != null ? _mapper.Map<UserDeviceDTO>(device) : null;
     }
 
     public async Task<UserDeviceDTO> RegisterDeviceAsync(UserDeviceRegisterDTO deviceDto, int userId)
     {
         // Check if device already exists for this user
-        var existingDevice = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceDto.DeviceId);
+        UserDevice? existingDevice = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceDto.DeviceId);
         if (existingDevice != null)
         {
             // Update device token and last active timestamp
@@ -73,23 +73,23 @@ public class UserDeviceService : IUserDeviceService
             existingDevice.DeviceName = deviceDto.DeviceName;
             existingDevice.LastActiveAt = DateTime.UtcNow;
             
-            var updatedDevice = await _deviceRepository.UpdateAsync(existingDevice);
+            UserDevice? updatedDevice = await _deviceRepository.UpdateAsync(existingDevice);
             return _mapper.Map<UserDeviceDTO>(updatedDevice);
         }
 
         // Create new device
-        var device = _mapper.Map<UserDevice>(deviceDto);
+        UserDevice device = _mapper.Map<UserDevice>(deviceDto);
         device.UserId = userId;
         device.IsVerified = false; // New devices need verification
         device.VerificationCode = await GenerateVerificationCodeAsync();
 
-        var createdDevice = await _deviceRepository.CreateAsync(device);
+        UserDevice? createdDevice = await _deviceRepository.CreateAsync(device);
         return _mapper.Map<UserDeviceDTO>(createdDevice);
     }
 
     public async Task<bool> VerifyDeviceAsync(string deviceId, string verificationCode, int userId)
     {
-        var device = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceId);
+        UserDevice? device = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceId);
         if (device == null)
         {
             _logger.LogWarning("Attempted to verify non-existent device {DeviceId} for user {UserId}", deviceId, userId);
@@ -113,7 +113,7 @@ public class UserDeviceService : IUserDeviceService
 
     public async Task<UserDeviceDTO?> UpdateAsync(int id, UserDeviceUpdateDTO deviceDto, int userId)
     {
-        var device = await _deviceRepository.GetByIdAsync(id);
+        UserDevice? device = await _deviceRepository.GetByIdAsync(id);
         if (device == null || device.UserId != userId)
         {
             if (device == null)
@@ -127,13 +127,13 @@ public class UserDeviceService : IUserDeviceService
         _mapper.Map(deviceDto, device);
         device.LastActiveAt = DateTime.UtcNow;
 
-        var updatedDevice = await _deviceRepository.UpdateAsync(device);
-        return _mapper.Map<UserDeviceDTO>(updatedDevice);
+        UserDevice? updatedDevice = await _deviceRepository.UpdateAsync(device);
+        return updatedDevice != null ? _mapper.Map<UserDeviceDTO>(updatedDevice) : null;
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
-        var device = await _deviceRepository.GetByIdAsync(id);
+        UserDevice? device = await _deviceRepository.GetByIdAsync(id);
         if (device == null || device.UserId != userId)
         {
             if (device == null)
@@ -149,18 +149,18 @@ public class UserDeviceService : IUserDeviceService
 
     public async Task<bool> IsDeviceVerifiedAsync(int userId, string deviceId)
     {
-        var device = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceId);
+        UserDevice? device = await _deviceRepository.GetByUserIdAndDeviceIdAsync(userId, deviceId);
         return device?.IsVerified ?? false;
     }
 
     public async Task<string> GenerateVerificationCodeAsync()
     {
         return await Task.Run(() => {
-        var randomNumber = new byte[4];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(randomNumber);
-        }
+            byte[] randomNumber = new byte[4];
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomNumber);
+            }
             return Math.Abs(BitConverter.ToInt32(randomNumber, 0) % 1000000).ToString("D6");
         });
     }

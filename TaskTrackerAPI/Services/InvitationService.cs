@@ -51,17 +51,17 @@ public class InvitationService : IInvitationService
 
     public async Task<IEnumerable<InvitationDTO>> GetAllAsync()
     {
-        var invitations = await _invitationRepository.GetAllAsync();
+        IEnumerable<Invitation> invitations = await _invitationRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
     }
 
     public async Task<InvitationDTO?> GetByIdAsync(int id)
     {
-        var invitation = await _invitationRepository.GetByIdAsync(id);
+        Invitation? invitation = await _invitationRepository.GetByIdAsync(id);
         if (invitation == null)
             return null;
 
-        var invitationDto = _mapper.Map<InvitationDTO>(invitation);
+        InvitationDTO invitationDto = _mapper.Map<InvitationDTO>(invitation);
         invitationDto.QRCodeData = await GenerateInvitationQRCodeAsync(invitation.Token);
         return invitationDto;
     }
@@ -74,11 +74,11 @@ public class InvitationService : IInvitationService
             return new List<InvitationDTO>();
         }
 
-        var invitations = await _invitationRepository.GetByFamilyIdAsync(familyId);
-        var invitationDtos = _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
+        IEnumerable<Invitation> invitations = await _invitationRepository.GetByFamilyIdAsync(familyId);
+        IEnumerable<InvitationDTO> invitationDtos = _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
 
         // Generate QR codes for each invitation
-        foreach (var invitationDto in invitationDtos)
+        foreach (InvitationDTO invitationDto in invitationDtos)
         {
             invitationDto.QRCodeData = await GenerateInvitationQRCodeAsync(invitationDto.Token);
         }
@@ -88,11 +88,11 @@ public class InvitationService : IInvitationService
 
     public async Task<IEnumerable<InvitationDTO>> GetByEmailAsync(string email)
     {
-        var invitations = await _invitationRepository.GetByEmailAsync(email);
-        var invitationDtos = _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
+        IEnumerable<Invitation> invitations = await _invitationRepository.GetByEmailAsync(email);
+        IEnumerable<InvitationDTO> invitationDtos = _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
 
         // Generate QR codes for each invitation
-        foreach (var invitationDto in invitationDtos)
+        foreach (InvitationDTO invitationDto in invitationDtos)
         {
             invitationDto.QRCodeData = await GenerateInvitationQRCodeAsync(invitationDto.Token);
         }
@@ -130,12 +130,12 @@ public class InvitationService : IInvitationService
             throw new InvalidOperationException("An active invitation already exists for this email");
         }
 
-        var invitation = _mapper.Map<Invitation>(invitationDto);
+        Invitation invitation = _mapper.Map<Invitation>(invitationDto);
         invitation.Token = await GenerateInvitationTokenAsync();
         invitation.CreatedById = userId;
 
-        var createdInvitation = await _invitationRepository.CreateAsync(invitation);
-        var resultDto = _mapper.Map<InvitationDTO>(createdInvitation);
+        Invitation createdInvitation = await _invitationRepository.CreateAsync(invitation);
+        InvitationDTO resultDto = _mapper.Map<InvitationDTO>(createdInvitation);
         resultDto.QRCodeData = await GenerateInvitationQRCodeAsync(createdInvitation.Token);
 
         return resultDto;
@@ -143,7 +143,7 @@ public class InvitationService : IInvitationService
 
     public async Task<bool> DeleteAsync(int id, int userId)
     {
-        var invitation = await _invitationRepository.GetByIdAsync(id);
+        Invitation? invitation = await _invitationRepository.GetByIdAsync(id);
         if (invitation == null)
             return false;
 
@@ -159,7 +159,7 @@ public class InvitationService : IInvitationService
 
     public async Task<InvitationResponseDTO> GetByTokenAsync(string token)
     {
-        var invitation = await _invitationRepository.GetByTokenAsync(token);
+        Invitation? invitation = await _invitationRepository.GetByTokenAsync(token);
         if (invitation == null)
         {
             throw new InvalidOperationException("Invitation not found or has expired");
@@ -177,7 +177,7 @@ public class InvitationService : IInvitationService
 
     public async Task<bool> AcceptInvitationAsync(string token, int userId)
     {
-        var invitation = await _invitationRepository.GetByTokenAsync(token);
+        Invitation? invitation = await _invitationRepository.GetByTokenAsync(token);
         if (invitation == null)
         {
             _logger.LogWarning("Attempted to accept non-existent or expired invitation with token {Token}", token);
@@ -185,7 +185,7 @@ public class InvitationService : IInvitationService
         }
 
         // Add user to family with the specified role
-        var result = await _familyRepository.AddMemberAsync(invitation.FamilyId, userId, invitation.RoleId);
+        bool result = await _familyRepository.AddMemberAsync(invitation.FamilyId, userId, invitation.RoleId);
         if (!result)
         {
             _logger.LogError("Failed to add user {UserId} to family {FamilyId}", userId, invitation.FamilyId);
@@ -201,10 +201,10 @@ public class InvitationService : IInvitationService
 
     public async Task<string> GenerateInvitationTokenAsync()
     {
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace("/", "_").Replace("+", "-").Replace("=", "");
+        string token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).Replace("/", "_").Replace("+", "-").Replace("=", "");
         
         // Check if token already exists
-        var existingInvitation = await _invitationRepository.GetByTokenAsync(token);
+        Invitation? existingInvitation = await _invitationRepository.GetByTokenAsync(token);
         if (existingInvitation != null)
         {
             // Try again with a new token
@@ -223,7 +223,7 @@ public class InvitationService : IInvitationService
 
     public async Task<bool> ResendInvitationAsync(int id, int userId)
     {
-        var invitation = await _invitationRepository.GetByIdAsync(id);
+        Invitation? invitation = await _invitationRepository.GetByIdAsync(id);
         if (invitation == null)
             return false;
 

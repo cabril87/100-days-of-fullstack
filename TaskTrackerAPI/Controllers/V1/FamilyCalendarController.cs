@@ -46,7 +46,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var events = await _calendarService.GetAllEventsAsync(familyId, userId);
+                IEnumerable<FamilyCalendarEventDTO> events = await _calendarService.GetAllEventsAsync(familyId, userId);
                 return Ok(ApiResponse<IEnumerable<FamilyCalendarEventDTO>>.SuccessResponse(events));
             }
             catch (Exception ex)
@@ -66,7 +66,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var events = await _calendarService.GetEventsInRangeAsync(familyId, userId, startDate, endDate);
+                IEnumerable<FamilyCalendarEventDTO> events = await _calendarService.GetEventsInRangeAsync(familyId, userId, startDate, endDate);
                 return Ok(ApiResponse<IEnumerable<FamilyCalendarEventDTO>>.SuccessResponse(events));
             }
             catch (Exception ex)
@@ -83,7 +83,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var calendarEvent = await _calendarService.GetEventByIdAsync(eventId, userId);
+                FamilyCalendarEventDTO? calendarEvent = await _calendarService.GetEventByIdAsync(eventId, userId);
                 
                 if (calendarEvent == null)
                 {
@@ -112,7 +112,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
                 
                 int userId = User.GetUserIdAsInt();
-                var createdEvent = await _calendarService.CreateEventAsync(eventDto, userId);
+                FamilyCalendarEventDTO? createdEvent = await _calendarService.CreateEventAsync(eventDto, userId);
                 
                 if (createdEvent == null)
                 {
@@ -136,7 +136,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var updatedEvent = await _calendarService.UpdateEventAsync(eventId, eventDto, userId);
+                FamilyCalendarEventDTO? updatedEvent = await _calendarService.UpdateEventAsync(eventId, eventDto, userId);
                 
                 if (updatedEvent == null)
                 {
@@ -182,7 +182,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var attendees = await _calendarService.GetEventAttendeesAsync(eventId, userId);
+                IEnumerable<EventAttendeeDTO> attendees = await _calendarService.GetEventAttendeesAsync(eventId, userId);
                 return Ok(ApiResponse<IEnumerable<EventAttendeeDTO>>.SuccessResponse(attendees));
             }
             catch (Exception ex)
@@ -199,7 +199,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var updatedAttendee = await _calendarService.UpdateAttendeeResponseAsync(responseDto, userId);
+                EventAttendeeDTO? updatedAttendee = await _calendarService.UpdateAttendeeResponseAsync(responseDto, userId);
                 
                 if (updatedAttendee == null)
                 {
@@ -245,7 +245,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var events = await _calendarService.GetEventsDueTodayAsync(familyId, userId);
+                IEnumerable<FamilyCalendarEventDTO> events = await _calendarService.GetEventsDueTodayAsync(familyId, userId);
                 return Ok(ApiResponse<IEnumerable<FamilyCalendarEventDTO>>.SuccessResponse(events));
             }
             catch (Exception ex)

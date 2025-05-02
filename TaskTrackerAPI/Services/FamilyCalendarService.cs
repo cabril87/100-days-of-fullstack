@@ -52,7 +52,7 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<FamilyCalendarEventDTO>();
         }
 
-        var events = await _calendarRepository.GetAllEventsAsync(familyId);
+        IEnumerable<FamilyCalendarEvent> events = await _calendarRepository.GetAllEventsAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyCalendarEventDTO>>(events);
     }
 
@@ -65,13 +65,13 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<FamilyCalendarEventDTO>();
         }
 
-        var events = await _calendarRepository.GetEventsInRangeAsync(familyId, startDate, endDate);
+        IEnumerable<FamilyCalendarEvent> events = await _calendarRepository.GetEventsInRangeAsync(familyId, startDate, endDate);
         return _mapper.Map<IEnumerable<FamilyCalendarEventDTO>>(events);
     }
 
     public async Task<FamilyCalendarEventDTO?> GetEventByIdAsync(int eventId, int userId)
     {
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
         if (eventEntity == null)
         {
             return null;
@@ -100,26 +100,26 @@ public class FamilyCalendarService : IFamilyCalendarService
         }
 
         // Map DTO to entity
-        var eventEntity = _mapper.Map<FamilyCalendarEvent>(eventDto);
+        FamilyCalendarEvent eventEntity = _mapper.Map<FamilyCalendarEvent>(eventDto);
         eventEntity.CreatedById = creatorId;
         eventEntity.CreatedAt = DateTime.UtcNow;
 
         // Create the event
-        var createdEvent = await _calendarRepository.CreateEventAsync(eventEntity);
+        FamilyCalendarEvent createdEvent = await _calendarRepository.CreateEventAsync(eventEntity);
 
         // Add attendees if specified
         if (eventDto.AttendeeIds.Any())
         {
-            foreach (var memberId in eventDto.AttendeeIds)
+            foreach (int memberId in eventDto.AttendeeIds)
             {
                 // Verify member belongs to this family
-                var familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
+                FamilyMember? familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
                 if (familyMember == null || familyMember.FamilyId != eventDto.FamilyId)
                 {
                     continue;
                 }
 
-                var attendee = new FamilyEventAttendee
+                FamilyEventAttendee attendee = new FamilyEventAttendee
                 {
                     EventId = createdEvent.Id,
                     FamilyMemberId = memberId,
@@ -132,9 +132,9 @@ public class FamilyCalendarService : IFamilyCalendarService
         // Add reminders if specified
         if (eventDto.Reminders.Any())
         {
-            foreach (var reminderDto in eventDto.Reminders)
+            foreach (EventReminderCreateDTO reminderDto in eventDto.Reminders)
             {
-                var reminder = new FamilyEventReminder
+                FamilyEventReminder reminder = new FamilyEventReminder
                 {
                     EventId = createdEvent.Id,
                     TimeBeforeInMinutes = reminderDto.TimeBeforeInMinutes,
@@ -146,13 +146,13 @@ public class FamilyCalendarService : IFamilyCalendarService
         }
 
         // Get the full event with related data
-        var completeEvent = await _calendarRepository.GetEventByIdAsync(createdEvent.Id);
+        FamilyCalendarEvent? completeEvent = await _calendarRepository.GetEventByIdAsync(createdEvent.Id);
         return _mapper.Map<FamilyCalendarEventDTO>(completeEvent);
     }
 
     public async Task<FamilyCalendarEventDTO?> UpdateEventAsync(int eventId, UpdateFamilyCalendarEventDTO eventDto, int userId)
     {
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
         if (eventEntity == null)
         {
             return null;
@@ -200,7 +200,7 @@ public class FamilyCalendarService : IFamilyCalendarService
             eventEntity.EventType = eventDto.EventType.Value;
 
         // Update the event
-        var updatedEvent = await _calendarRepository.UpdateEventAsync(eventEntity);
+        FamilyCalendarEvent? updatedEvent = await _calendarRepository.UpdateEventAsync(eventEntity);
         if (updatedEvent == null)
         {
             return null;
@@ -210,11 +210,11 @@ public class FamilyCalendarService : IFamilyCalendarService
         if (eventDto.AttendeeIds != null)
         {
             // Get current attendees
-            var currentAttendees = await _calendarRepository.GetEventAttendeesAsync(eventId);
-            var currentAttendeeIds = currentAttendees.Select(a => a.FamilyMemberId).ToList();
+            IEnumerable<FamilyEventAttendee> currentAttendees = await _calendarRepository.GetEventAttendeesAsync(eventId);
+            List<int> currentAttendeeIds = currentAttendees.Select(a => a.FamilyMemberId).ToList();
             
             // Remove attendees that are no longer in the list
-            foreach (var attendee in currentAttendees)
+            foreach (FamilyEventAttendee attendee in currentAttendees)
             {
                 if (!eventDto.AttendeeIds.Contains(attendee.FamilyMemberId))
                 {
@@ -223,18 +223,18 @@ public class FamilyCalendarService : IFamilyCalendarService
             }
             
             // Add new attendees
-            foreach (var memberId in eventDto.AttendeeIds)
+            foreach (int memberId in eventDto.AttendeeIds)
             {
                 if (!currentAttendeeIds.Contains(memberId))
                 {
                     // Verify member belongs to this family
-                    var familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
+                    FamilyMember? familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
                     if (familyMember == null || familyMember.FamilyId != eventEntity.FamilyId)
                     {
                         continue;
                     }
 
-                    var attendee = new FamilyEventAttendee
+                    FamilyEventAttendee attendee = new FamilyEventAttendee
                     {
                         EventId = eventId,
                         FamilyMemberId = memberId,
@@ -249,16 +249,16 @@ public class FamilyCalendarService : IFamilyCalendarService
         if (eventDto.Reminders != null)
         {
             // Remove existing reminders
-            var currentReminders = await _calendarRepository.GetEventRemindersAsync(eventId);
-            foreach (var reminder in currentReminders)
+            IEnumerable<FamilyEventReminder> currentReminders = await _calendarRepository.GetEventRemindersAsync(eventId);
+            foreach (FamilyEventReminder reminder in currentReminders)
             {
                 await _calendarRepository.DeleteReminderAsync(reminder.Id);
             }
             
             // Add new reminders
-            foreach (var reminderDto in eventDto.Reminders)
+            foreach (EventReminderCreateDTO reminderDto in eventDto.Reminders)
             {
-                var reminder = new FamilyEventReminder
+                FamilyEventReminder reminder = new FamilyEventReminder
                 {
                     EventId = eventId,
                     TimeBeforeInMinutes = reminderDto.TimeBeforeInMinutes,
@@ -270,13 +270,13 @@ public class FamilyCalendarService : IFamilyCalendarService
         }
 
         // Get the full updated event with related data
-        var completeEvent = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? completeEvent = await _calendarRepository.GetEventByIdAsync(eventId);
         return _mapper.Map<FamilyCalendarEventDTO>(completeEvent);
     }
 
     public async Task<bool> DeleteEventAsync(int eventId, int userId)
     {
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
         if (eventEntity == null)
         {
             return false;
@@ -297,7 +297,7 @@ public class FamilyCalendarService : IFamilyCalendarService
 
     public async Task<IEnumerable<EventAttendeeDTO>> GetEventAttendeesAsync(int eventId, int userId)
     {
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
         if (eventEntity == null)
         {
             return new List<EventAttendeeDTO>();
@@ -311,21 +311,21 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<EventAttendeeDTO>();
         }
 
-        var attendees = await _calendarRepository.GetEventAttendeesAsync(eventId);
+        IEnumerable<FamilyEventAttendee> attendees = await _calendarRepository.GetEventAttendeesAsync(eventId);
         return _mapper.Map<IEnumerable<EventAttendeeDTO>>(attendees);
     }
 
     public async Task<EventAttendeeDTO?> UpdateAttendeeResponseAsync(UpdateAttendeeResponseDTO responseDto, int userId)
     {
         // Get the event
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(responseDto.EventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(responseDto.EventId);
         if (eventEntity == null)
         {
             return null;
         }
 
         // Check if user is a member of the family
-        var familyMember = await _familyRepository.GetMemberByUserIdAsync(userId, eventEntity.FamilyId);
+        FamilyMember? familyMember = await _familyRepository.GetMemberByUserIdAsync(userId, eventEntity.FamilyId);
         if (familyMember == null)
         {
             _logger.LogWarning("User {UserId} attempted to update attendee response for event {EventId} without being a member of family {FamilyId}", 
@@ -334,7 +334,7 @@ public class FamilyCalendarService : IFamilyCalendarService
         }
 
         // Get the attendee
-        var attendee = await _calendarRepository.GetAttendeeByEventAndMemberAsync(responseDto.EventId, responseDto.FamilyMemberId);
+        FamilyEventAttendee? attendee = await _calendarRepository.GetAttendeeByEventAndMemberAsync(responseDto.EventId, responseDto.FamilyMemberId);
         if (attendee == null)
         {
             return null;
@@ -356,13 +356,13 @@ public class FamilyCalendarService : IFamilyCalendarService
         attendee.Note = responseDto.Note;
         attendee.UpdatedAt = DateTime.UtcNow;
 
-        var updatedAttendee = await _calendarRepository.UpdateAttendeeAsync(attendee);
+        FamilyEventAttendee? updatedAttendee = await _calendarRepository.UpdateAttendeeAsync(attendee);
         return updatedAttendee != null ? _mapper.Map<EventAttendeeDTO>(updatedAttendee) : null;
     }
 
     public async Task<bool> RemoveAttendeeAsync(int eventId, int attendeeId, int userId)
     {
-        var eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
+        FamilyCalendarEvent? eventEntity = await _calendarRepository.GetEventByIdAsync(eventId);
         if (eventEntity == null)
         {
             return false;
@@ -385,7 +385,7 @@ public class FamilyCalendarService : IFamilyCalendarService
     public async Task<IEnumerable<FamilyMemberAvailabilityDTO>> GetMemberAvailabilityAsync(int memberId, int userId)
     {
         // Get the family member
-        var member = await _familyRepository.GetMemberByIdAsync(memberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(memberId);
         if (member == null)
         {
             return new List<FamilyMemberAvailabilityDTO>();
@@ -399,7 +399,7 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<FamilyMemberAvailabilityDTO>();
         }
 
-        var availabilities = await _calendarRepository.GetMemberAvailabilityAsync(memberId);
+        IEnumerable<FamilyMemberAvailability> availabilities = await _calendarRepository.GetMemberAvailabilityAsync(memberId);
         return _mapper.Map<IEnumerable<FamilyMemberAvailabilityDTO>>(availabilities);
     }
 
@@ -413,7 +413,7 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<FamilyMemberAvailabilityDTO>();
         }
 
-        var availabilities = await _calendarRepository.GetFamilyAvailabilityAsync(familyId);
+        IEnumerable<FamilyMemberAvailability> availabilities = await _calendarRepository.GetFamilyAvailabilityAsync(familyId);
         return _mapper.Map<IEnumerable<FamilyMemberAvailabilityDTO>>(availabilities);
     }
 
@@ -427,13 +427,13 @@ public class FamilyCalendarService : IFamilyCalendarService
             return new List<FamilyMemberAvailabilityDTO>();
         }
 
-        var availabilities = await _calendarRepository.GetAvailabilityInRangeAsync(familyId, startDate, endDate);
+        IEnumerable<FamilyMemberAvailability> availabilities = await _calendarRepository.GetAvailabilityInRangeAsync(familyId, startDate, endDate);
         return _mapper.Map<IEnumerable<FamilyMemberAvailabilityDTO>>(availabilities);
     }
 
     public async Task<FamilyMemberAvailabilityDTO?> GetAvailabilityByIdAsync(int availabilityId, int userId)
     {
-        var availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
+        FamilyMemberAvailability? availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
         if (availability == null || availability.FamilyMember == null)
         {
             return null;
@@ -453,14 +453,14 @@ public class FamilyCalendarService : IFamilyCalendarService
     public async Task<FamilyMemberAvailabilityDTO?> CreateAvailabilityAsync(CreateFamilyMemberAvailabilityDTO availabilityDto, int userId)
     {
         // Get the family member
-        var member = await _familyRepository.GetMemberByIdAsync(availabilityDto.FamilyMemberId);
+        FamilyMember? member = await _familyRepository.GetMemberByIdAsync(availabilityDto.FamilyMemberId);
         if (member == null)
         {
             return null;
         }
 
         // Check if user is the member or has permission to manage availability
-        var userMember = await _familyRepository.GetMemberByUserIdAsync(userId, member.FamilyId);
+        FamilyMember? userMember = await _familyRepository.GetMemberByUserIdAsync(userId, member.FamilyId);
         if (userMember == null)
         {
             _logger.LogWarning("User {UserId} attempted to create availability for member {MemberId} without being in the same family", 
@@ -479,27 +479,27 @@ public class FamilyCalendarService : IFamilyCalendarService
         }
 
         // Map DTO to entity
-        var availability = _mapper.Map<FamilyMemberAvailability>(availabilityDto);
+        FamilyMemberAvailability availability = _mapper.Map<FamilyMemberAvailability>(availabilityDto);
         availability.CreatedAt = DateTime.UtcNow;
 
         // Create the availability
-        var createdAvailability = await _calendarRepository.CreateAvailabilityAsync(availability);
+        FamilyMemberAvailability createdAvailability = await _calendarRepository.CreateAvailabilityAsync(availability);
         
         // Get the full availability with related data
-        var completeAvailability = await _calendarRepository.GetAvailabilityByIdAsync(createdAvailability.Id);
+        FamilyMemberAvailability? completeAvailability = await _calendarRepository.GetAvailabilityByIdAsync(createdAvailability.Id);
         return _mapper.Map<FamilyMemberAvailabilityDTO>(completeAvailability);
     }
 
     public async Task<FamilyMemberAvailabilityDTO?> UpdateAvailabilityAsync(int availabilityId, UpdateFamilyMemberAvailabilityDTO availabilityDto, int userId)
     {
-        var availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
+        FamilyMemberAvailability? availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
         if (availability == null || availability.FamilyMember == null)
         {
             return null;
         }
 
         // Check if user is the member or has permission to manage availability
-        var userMember = await _familyRepository.GetMemberByUserIdAsync(userId, availability.FamilyMember.FamilyId);
+        FamilyMember? userMember = await _familyRepository.GetMemberByUserIdAsync(userId, availability.FamilyMember.FamilyId);
         if (userMember == null)
         {
             _logger.LogWarning("User {UserId} attempted to update availability {AvailabilityId} without being in the same family", 
@@ -540,20 +540,20 @@ public class FamilyCalendarService : IFamilyCalendarService
             availability.DayOfWeek = availabilityDto.DayOfWeek;
 
         // Update the availability
-        var updatedAvailability = await _calendarRepository.UpdateAvailabilityAsync(availability);
+        FamilyMemberAvailability? updatedAvailability = await _calendarRepository.UpdateAvailabilityAsync(availability);
         return updatedAvailability != null ? _mapper.Map<FamilyMemberAvailabilityDTO>(updatedAvailability) : null;
     }
 
     public async Task<bool> DeleteAvailabilityAsync(int availabilityId, int userId)
     {
-        var availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
+        FamilyMemberAvailability? availability = await _calendarRepository.GetAvailabilityByIdAsync(availabilityId);
         if (availability == null || availability.FamilyMember == null)
         {
             return false;
         }
 
         // Check if user is the member or has permission to manage availability
-        var userMember = await _familyRepository.GetMemberByUserIdAsync(userId, availability.FamilyMember.FamilyId);
+        FamilyMember? userMember = await _familyRepository.GetMemberByUserIdAsync(userId, availability.FamilyMember.FamilyId);
         if (userMember == null)
         {
             _logger.LogWarning("User {UserId} attempted to delete availability {AvailabilityId} without being in the same family", 
@@ -589,7 +589,7 @@ public class FamilyCalendarService : IFamilyCalendarService
         DateTime tomorrow = today.AddDays(1);
         
         // Use the existing method to get events in the range of today
-        var events = await _calendarRepository.GetEventsInRangeAsync(familyId, today, tomorrow);
+        IEnumerable<FamilyCalendarEvent> events = await _calendarRepository.GetEventsInRangeAsync(familyId, today, tomorrow);
         
         return _mapper.Map<IEnumerable<FamilyCalendarEventDTO>>(events);
     }

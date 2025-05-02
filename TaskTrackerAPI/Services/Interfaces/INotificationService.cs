@@ -26,4 +26,8 @@ public interface INotificationService
     Task<NotificationCountDTO> GetNotificationCountsAsync(int userId);
     Task<int> GetUnreadNotificationCountAsync(int userId);
     Task<bool> IsNotificationOwnedByUserAsync(int notificationId, int userId);
+    
+    // Task deadline notification methods
+    Task<NotificationDTO?> CreateTaskDeadlineNotificationAsync(int userId, int taskId, string message);
+    Task<IEnumerable<NotificationDTO>> GenerateUpcomingDeadlineNotificationsAsync(int hoursThreshold = 24);
 } 

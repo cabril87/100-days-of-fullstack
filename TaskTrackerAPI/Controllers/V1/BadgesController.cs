@@ -259,7 +259,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                 {
                     return BadRequest(ApiResponse<IEnumerable<UserBadgeDTO>>.BadRequestResponse("User identity not found"));
@@ -354,7 +354,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                 {
                     return BadRequest(ApiResponse<object>.BadRequestResponse("User identity not found"));
@@ -393,7 +393,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                string? userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userIdClaim == null)
                 {
                     return BadRequest(ApiResponse<object>.BadRequestResponse("User identity not found"));

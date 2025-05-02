@@ -48,6 +48,9 @@ public class TaskTemplate
     // Navigation properties
     public virtual User? User { get; set; }
     
+    // Collection of checklist template items
+    public virtual ICollection<ChecklistTemplateItem>? ChecklistItems { get; set; }
+    
     // Helper methods to work with template data
     public T? GetTemplateData<T>() where T : class
     {

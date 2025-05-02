@@ -53,7 +53,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // First check if the user has permission to assign tasks
-                var familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
+                FamilyMember? familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
                 if (familyMember == null)
                 {
                     _logger.LogWarning("Family member with ID {FamilyMemberId} not found", familyMemberId);
@@ -71,7 +71,7 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Check if the assigned user is a minor
-                var memberUser = await _userRepository.GetByIdAsync(familyMember.UserId);
+                User? memberUser = await _userRepository.GetByIdAsync(familyMember.UserId);
                 if (memberUser == null)
                 {
                     _logger.LogWarning("User associated with family member {FamilyMemberId} not found", familyMemberId);
@@ -79,11 +79,11 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Check if the task exists and if the user has permission to assign it
-                var task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
+                TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
                 if (task == null)
                 {
                     // Try to get a shared task
-                    var sharedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                    TaskItem? sharedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                     if (sharedTask == null || sharedTask?.FamilyId != familyId)
                     {
                         _logger.LogWarning("Task {TaskId} not found or not part of family {FamilyId}", taskId, familyId);
@@ -102,7 +102,7 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Get the updated task
-                var updatedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                TaskItem? updatedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                 return _mapper.Map<FamilyTaskItemDTO>(updatedTask);
             }
             catch (Exception ex)
@@ -117,7 +117,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Get the task
-                var task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                TaskItem? task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                 if (task == null || task.AssignedToFamilyMemberId == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found or not assigned to any family member", taskId);
@@ -156,7 +156,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Check if the user has permission to view the tasks
-                var familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
+                FamilyMember? familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
                 if (familyMember == null)
                 {
                     _logger.LogWarning("Family member with ID {FamilyMemberId} not found", familyMemberId);
@@ -173,7 +173,7 @@ namespace TaskTrackerAPI.Services
                     throw new UnauthorizedAccessException("You don't have permission to view these tasks");
                 }
 
-                var tasks = await _taskRepository.GetTasksAssignedToFamilyMemberAsync(familyMemberId);
+                IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksAssignedToFamilyMemberAsync(familyMemberId);
                 return _mapper.Map<IEnumerable<FamilyTaskItemDTO>>(tasks);
             }
             catch (Exception ex)
@@ -195,7 +195,7 @@ namespace TaskTrackerAPI.Services
                     throw new UnauthorizedAccessException("You are not a member of this family");
                 }
 
-                var tasks = await _taskRepository.GetFamilyTasksAsync(familyId);
+                IEnumerable<TaskItem> tasks = await _taskRepository.GetFamilyTasksAsync(familyId);
                 return _mapper.Map<IEnumerable<FamilyTaskItemDTO>>(tasks);
             }
             catch (Exception ex)
@@ -210,7 +210,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Get the task
-                var task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                TaskItem? task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                 if (task == null || !task.RequiresApproval)
                 {
                     _logger.LogWarning("Task {TaskId} not found or doesn't require approval", taskId);
@@ -249,7 +249,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Get the task
-                var task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                TaskItem? task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                 if (task == null)
                 {
                     _logger.LogWarning("Family task {TaskId} not found", taskId);

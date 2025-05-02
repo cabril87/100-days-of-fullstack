@@ -40,19 +40,19 @@ public class FamilyRoleService : IFamilyRoleService
 
     public async Task<IEnumerable<FamilyRoleDTO>> GetAllAsync()
     {
-        var roles = await _roleRepository.GetAllAsync();
+        IEnumerable<FamilyRole> roles = await _roleRepository.GetAllAsync();
         return _mapper.Map<IEnumerable<FamilyRoleDTO>>(roles);
     }
 
     public async Task<FamilyRoleDTO?> GetByIdAsync(int id)
     {
-        var role = await _roleRepository.GetByIdAsync(id);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(id);
         return role != null ? _mapper.Map<FamilyRoleDTO>(role) : null;
     }
 
     public async Task<FamilyRoleDTO?> GetByNameAsync(string name)
     {
-        var role = await _roleRepository.GetByNameAsync(name);
+        FamilyRole? role = await _roleRepository.GetByNameAsync(name);
         return role != null ? _mapper.Map<FamilyRoleDTO>(role) : null;
     }
 
@@ -64,7 +64,7 @@ public class FamilyRoleService : IFamilyRoleService
             throw new InvalidOperationException($"Role with name '{roleDto.Name}' already exists");
         }
 
-        var role = _mapper.Map<FamilyRole>(roleDto);
+        FamilyRole role = _mapper.Map<FamilyRole>(roleDto);
         role.CreatedAt = DateTime.UtcNow;
 
         // Create permissions
@@ -74,13 +74,19 @@ public class FamilyRoleService : IFamilyRoleService
             CreatedAt = DateTime.UtcNow
         }).ToList();
 
-        var createdRole = await _roleRepository.CreateAsync(role);
+        FamilyRole? createdRole = await _roleRepository.CreateAsync(role);
+        if (createdRole == null)
+        {
+            _logger.LogError("Failed to create family role: {Name}", roleDto.Name);
+            throw new InvalidOperationException("Failed to create family role");
+        }
+        
         return _mapper.Map<FamilyRoleDTO>(createdRole);
     }
 
     public async Task<FamilyRoleDTO?> UpdateAsync(int id, FamilyRoleUpdateDTO roleDto)
     {
-        var role = await _roleRepository.GetByIdAsync(id);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(id);
         if (role == null)
             return null;
 
@@ -102,7 +108,7 @@ public class FamilyRoleService : IFamilyRoleService
             role.Permissions.Clear();
             
             // Add new permissions
-            foreach (var permission in roleDto.Permissions)
+            foreach (string permission in roleDto.Permissions)
             {
                 role.Permissions.Add(new FamilyRolePermission
                 {
@@ -113,13 +119,13 @@ public class FamilyRoleService : IFamilyRoleService
             }
         }
 
-        var updatedRole = await _roleRepository.UpdateAsync(role);
+        FamilyRole? updatedRole = await _roleRepository.UpdateAsync(role);
         return updatedRole != null ? _mapper.Map<FamilyRoleDTO>(updatedRole) : null;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var role = await _roleRepository.GetByIdAsync(id);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(id);
         if (role == null)
             return false;
 
@@ -134,7 +140,7 @@ public class FamilyRoleService : IFamilyRoleService
 
     public async Task<bool> AddPermissionAsync(int roleId, string permission)
     {
-        var role = await _roleRepository.GetByIdAsync(roleId);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(roleId);
         if (role == null)
             return false;
 
@@ -154,11 +160,11 @@ public class FamilyRoleService : IFamilyRoleService
 
     public async Task<bool> RemovePermissionAsync(int roleId, string permission)
     {
-        var role = await _roleRepository.GetByIdAsync(roleId);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(roleId);
         if (role == null)
             return false;
 
-        var permissionToRemove = role.Permissions.FirstOrDefault(p => p.Name == permission);
+        FamilyRolePermission? permissionToRemove = role.Permissions.FirstOrDefault(p => p.Name == permission);
         if (permissionToRemove == null)
             return true; // Permission doesn't exist, so it's already "removed"
 
@@ -169,7 +175,7 @@ public class FamilyRoleService : IFamilyRoleService
 
     public async Task<IEnumerable<string>> GetPermissionsAsync(int roleId)
     {
-        var role = await _roleRepository.GetByIdAsync(roleId);
+        FamilyRole? role = await _roleRepository.GetByIdAsync(roleId);
         if (role == null)
             return new List<string>();
 

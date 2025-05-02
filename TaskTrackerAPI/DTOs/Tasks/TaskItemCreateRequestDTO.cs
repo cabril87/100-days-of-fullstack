@@ -36,7 +36,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
         
         /// Current status of the task
         
-        public TaskItemStatus Status { get; set; } = TaskItemStatus.ToDo;
+        public TaskItemStatus Status { get; set; } = TaskItemStatus.NotStarted;
 
         
         /// Priority level of the task

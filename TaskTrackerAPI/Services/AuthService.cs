@@ -65,9 +65,9 @@ public class AuthService : IAuthService
         if (userDto.DateOfBirth.HasValue)
         {
             // Calculate age
-            var today = DateTime.Today;
-            var birthDate = userDto.DateOfBirth.Value;
-            var age = today.Year - birthDate.Year;
+            DateTime today = DateTime.Today;
+            DateTime birthDate = userDto.DateOfBirth.Value;
+            int age = today.Year - birthDate.Year;
             
             // Adjust age if birthday hasn't occurred yet this year
             if (birthDate.Date > today.AddYears(-age)) 
