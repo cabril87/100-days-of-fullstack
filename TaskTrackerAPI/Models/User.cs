@@ -11,6 +11,7 @@
 // Models/User.cs
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Models;
 
@@ -24,7 +25,8 @@ public class User
 
     [Required]
     [EmailAddress]
-    [StringLength(100)]
+    [StringLength(500)]
+    [Encrypt(purpose: "PII")]
     public required string Email { get; set; }
 
     [Required]
@@ -33,8 +35,12 @@ public class User
     [Required]
     public required string Salt { get; set; }
 
+    [StringLength(250)]
+    [Encrypt(purpose: "PII")]
     public string? FirstName { get; set; }
 
+    [StringLength(250)]
+    [Encrypt(purpose: "PII")]
     public string? LastName { get; set; }
 
     [Required]
@@ -63,8 +69,6 @@ public class User
     public virtual ICollection<UserDevice> Devices { get; set; } = new List<UserDevice>();
 
     public FamilyMemberAgeGroup AgeGroup { get; set; } = FamilyMemberAgeGroup.Adult;
-
-    
 }
 
 public enum FamilyMemberAgeGroup

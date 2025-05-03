@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TaskTrackerAPI CORS Test (Enhanced)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: #2196F3;
+        }
+        button.secondary:hover {
+            background-color: #0b7dda;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 5px 0;
+        }
+        #result, .cors-info, .api-status {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 30px;
+            margin-top: 10px;
+            background-color: #f9f9f9;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success {
+            color: green;
+            border-left: 4px solid green;
+            padding-left: 10px;
+        }
+        .error {
+            color: #d32f2f;
+            border-left: 4px solid #d32f2f;
+            padding-left: 10px;
+        }
+        .warning {
+            color: #ff9800;
+            border-left: 4px solid #ff9800;
+            padding-left: 10px;
+        }
+        .info {
+            color: #2196F3;
+            border-left: 4px solid #2196F3;
+            padding-left: 10px;
+        }
+        .highlight {
+            background-color: #fff9c4;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TaskTrackerAPI CORS Test (Enhanced)</h1>
+    
+    <div class="cors-info">
+        <h2>Origin Information</h2>
+        <p>Your current origin is: <span id="currentOrigin" class="highlight"></span></p>
+        <p id="originWarning"></p>
+    </div>
+
+    <div class="api-status">
+        <h2>API Status Check</h2>
+        <button id="pingBtn">Ping API</button>
+        <div id="pingResult">Click to check if API is running...</div>
+    </div>
+    
+    <div class="container">
+        <h2>CORS Test</h2>
+        <p>This page tests if your API properly handles cross-origin requests.</p>
+        
+        <div>
+            <label for="apiUrl">API URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:5000/api/v1/health">
+        </div>
+        
+        <button id="testBtn">Test API</button>
+        <button id="clearBtn" class="secondary">Clear Results</button>
+        
+        <div id="result">
+            <p>Results will appear here...</p>
+        </div>
+    </div>
+
+    <script>
+        // Display current origin
+        const currentOrigin = window.location.origin || "file://";
+        document.getElementById('currentOrigin').textContent = currentOrigin;
+        
+        // Show warning for file:// protocol
+        const originWarning = document.getElementById('originWarning');
+        if (currentOrigin === "file://" || currentOrigin.startsWith("file://")) {
+            originWarning.innerHTML = `
+                <span class="warning">
+                    ⚠️ You're using the <strong>file://</strong> protocol, which requires special CORS handling.
+                    Your API must be configured to accept requests from the file:// protocol.
+                </span>`;
+        }
+        
+        // Ping the API to see if it's running
+        document.getElementById('pingBtn').addEventListener('click', async () => {
+            const pingResult = document.getElementById('pingResult');
+            const apiUrl = document.getElementById('apiUrl').value;
+            
+            pingResult.innerHTML = `<p class="info">Checking if API is running at ${apiUrl}...</p>`;
+            
+            try {
+                // Use a no-cors request just to see if the server responds
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(apiUrl, { 
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                pingResult.innerHTML = `
+                    <p class="success">✅ Server is responding! (This does not guarantee CORS is working)</p>
+                    <p>The API appears to be running, but this test bypasses CORS. Try the CORS test below to check if cross-origin requests work.</p>
+                `;
+            } catch (error) {
+                pingResult.innerHTML = `
+                    <p class="error">❌ Server not responding: ${error.message}</p>
+                    <p>Possible reasons:</p>
+                    <ul>
+                        <li>API is not running at the specified URL</li>
+                        <li>API has network connectivity issues</li>
+                        <li>URL is incorrect</li>
+                    </ul>
+                    <p>Please start your API or check the URL before testing CORS.</p>
+                `;
+            }
+        });
+        
+        // Test API button
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            const apiUrl = document.getElementById('apiUrl').value;
+            
+            resultDiv.innerHTML = '<p class="info">Testing CORS connection to: ' + apiUrl + '</p>';
+            
+            try {
+                const startTime = performance.now();
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                const endTime = performance.now();
+                
+                const data = await response.json();
+                
+                let output = `
+                <div class="success">
+                    <h3>✅ Success! CORS is working properly</h3>
+                    <p>Request time: ${(endTime - startTime).toFixed(2)}ms</p>
+                    <p>Status: ${response.status} ${response.statusText}</p>
+                    <h4>Response:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                </div>`;
+                
+                resultDiv.innerHTML = output;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                <div class="error">
+                    <h3>❌ Error: CORS issue detected</h3>
+                    <p>${error.message}</p>
+                    <h4>Common solutions:</h4>
+                    <ul>
+                        <li>Make sure your API is running (use the Ping test above)</li>
+                        <li>Check if the URL is correct</li>
+                        <li>Verify that your API allows requests from this origin (${window.location.origin})</li>
+                        <li>If using <strong>file://</strong> protocol, your API must be configured to explicitly allow it</li>
+                        <li>Check that your API sets the following headers:
+                            <ul>
+                                <li>Access-Control-Allow-Origin: ${window.location.origin === 'file://' ? '*' : window.location.origin}</li>
+                                <li>Access-Control-Allow-Methods: GET, POST, etc.</li>
+                                <li>Access-Control-Allow-Headers: Content-Type, Accept, etc.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p>Check browser console (F12) for more details.</p>
+                </div>`;
+            }
+        });
+        
+        // Clear results button
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('result').innerHTML = '<p>Results will appear here...</p>';
+        });
+    </script>
+</body>
+</html> 

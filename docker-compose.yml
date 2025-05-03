@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # SQL Server Database
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: tasktracker-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=TaskTracker_StrongP@ssw0rd!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    networks:
+      - tasktracker-network
+    restart: unless-stopped
+  
+  # TaskTrackerAPI
+  tasktracker-api:
+    build: 
+      context: ./TaskTrackerAPI
+      dockerfile: Dockerfile
+    container_name: tasktracker-api
+    ports:
+      - "5000:8080"
+      - "5001:443"
+    depends_on:
+      - sqlserver
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOCKER_ENVIRONMENT=true
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=TaskTrackerDB;User Id=sa;Password=TaskTracker_StrongP@ssw0rd!;TrustServerCertificate=True;
+      - AppSettings__TokenKey=your_development_token_key_here_replace_in_production
+      - AppSettings__PasswordKey=your_development_password_key_here_replace_in_production
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+      - api-keys:/app/Keys
+    networks:
+      - tasktracker-network
+    restart: unless-stopped
+  
+  # Next.js Frontend (will be added when ready)
+  # tasktracker-fe:
+  #   build:
+  #     context: ./tasktracker-fe
+  #     dockerfile: Dockerfile
+  #   container_name: tasktracker-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - tasktracker-api
+  #   networks:
+  #     - tasktracker-network
+  #   restart: unless-stopped
+
+volumes:
+  sqlserver-data:
+    name: tasktracker-sqlserver-data
+  api-keys:
+    name: tasktracker-api-keys
+
+networks:
+  tasktracker-network:
+    name: tasktracker-network 
