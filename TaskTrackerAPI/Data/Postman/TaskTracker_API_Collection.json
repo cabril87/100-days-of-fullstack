@@ -644,6 +644,143 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Security",
+			"item": [
+				{
+					"name": "Test Security Headers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Content-Security-Policy header exists\", function () {",
+									"    pm.response.to.have.header(\"Content-Security-Policy\");",
+									"});",
+									"",
+									"pm.test(\"X-Content-Type-Options header exists\", function () {",
+									"    pm.response.to.have.header(\"X-Content-Type-Options\");",
+									"});",
+									"",
+									"pm.test(\"X-Frame-Options header exists\", function () {",
+									"    pm.response.to.have.header(\"X-Frame-Options\");",
+									"});",
+									"",
+									"pm.test(\"Referrer-Policy header exists\", function () {",
+									"    pm.response.to.have.header(\"Referrer-Policy\");",
+									"});",
+									"",
+									"pm.test(\"Permissions-Policy header exists\", function () {",
+									"    pm.response.to.have.header(\"Permissions-Policy\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Resource Ownership",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403 Forbidden\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/tasks/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"tasks",
+								"999999"
+							]
+						},
+						"description": "This should return a 403 Forbidden if security is working correctly, since the user doesn't own task with ID 999999"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Rate Limiting",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check for rate limit headers",
+									"pm.test(\"Rate limit headers exist\", function () {",
+									"    pm.response.to.have.header(\"X-RateLimit-Limit\");",
+									"    pm.response.to.have.header(\"X-RateLimit-Remaining\");",
+									"    pm.response.to.have.header(\"X-RateLimit-Reset\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for the new security features implemented in Day 32"
 		}
 	],
 	"event": [

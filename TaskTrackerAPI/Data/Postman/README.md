@@ -37,6 +37,7 @@ The collection is organized into folders:
 - **Categories**: Category management 
 - **Tags**: Tag management
 - **Health & Monitoring**: System health checks and performance metrics (admin only)
+- **Security**: Tests for security features implemented in Day 32, including security headers, resource ownership validation, and rate limiting
 
 ## Environment Variables
 
