@@ -37,7 +37,11 @@ The collection is organized into folders:
 - **Categories**: Category management 
 - **Tags**: Tag management
 - **Health & Monitoring**: System health checks and performance metrics (admin only)
-- **Security**: Tests for security features implemented in Day 32, including security headers, resource ownership validation, and rate limiting
+- **Security**: Tests for security features implemented in Day 32, including security headers, resource ownership validation, rate limiting, role restrictions, and admin-only access controls
+- **DataProtection**: Endpoints for encrypting/decrypting data and managing encryption keys (admin only)
+- **Family Tasks**: Endpoints for family task assignments and approvals
+- **Focus**: Endpoints for managing focus sessions and distractions
+- **Task Priority**: Endpoints for automatic task prioritization
 
 ## Environment Variables
 
@@ -50,6 +54,8 @@ The collection is organized into folders:
 | testTaskId | Task ID for testing specific task operations |
 | testCategoryId | Category ID for testing specific category operations |
 | testTagId | Tag ID for testing specific tag operations |
+| childAccessToken | JWT access token for a child user account (for testing role restrictions) |
+| familyId | Family ID for testing family-related operations |
 
 ## Tips for Using the Collection
 

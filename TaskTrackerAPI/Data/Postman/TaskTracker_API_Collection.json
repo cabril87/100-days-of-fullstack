@@ -778,9 +778,702 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Test Child Role Restrictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// After logging in as a child user, this test should return 403 Forbidden",
+									"pm.test(\"Child users cannot access restricted endpoints\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{childAccessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/create",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								"create"
+							]
+						},
+						"description": "This should return a 403 Forbidden when using a child account"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Admin Only Endpoints",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// When using a non-admin account, this should return 403 Forbidden",
+									"pm.test(\"Non-admin users cannot access admin endpoints\", function () {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dataprotection/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"dataprotection",
+								"info"
+							]
+						},
+						"description": "This should return a 403 Forbidden when using a non-admin account"
+					},
+					"response": []
 				}
 			],
 			"description": "Tests for the new security features implemented in Day 32"
+		},
+		{
+			"name": "DataProtection",
+			"item": [
+				{
+					"name": "Encrypt Data",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": \"Sensitive information to encrypt\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dataprotection/encrypt",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"dataprotection",
+								"encrypt"
+							]
+						},
+						"description": "Encrypt sensitive data (admin only)"
+					}
+				},
+				{
+					"name": "Decrypt Data",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"encryptedData\": \"Base64EncodedEncryptedData\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dataprotection/decrypt",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"dataprotection",
+								"decrypt"
+							]
+						},
+						"description": "Decrypt encrypted data (admin only)"
+					}
+				},
+				{
+					"name": "Rotate Keys",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"version\": \"v2\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dataprotection/rotate-keys",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"dataprotection",
+								"rotate-keys"
+							]
+						},
+						"description": "Rotate encryption keys (admin only)"
+					}
+				},
+				{
+					"name": "Get DataProtection Info",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/dataprotection/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"dataprotection",
+								"info"
+							]
+						},
+						"description": "Get information about data protection configuration (admin only)"
+					}
+				}
+			],
+			"description": "Endpoints for managing data protection and encryption"
+		},
+		{
+			"name": "Family Tasks",
+			"item": [
+				{
+					"name": "Get Family Tasks",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/family/{{familyId}}/tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"family",
+								"{{familyId}}",
+								"tasks"
+							]
+						},
+						"description": "Get all tasks for a family"
+					}
+				},
+				{
+					"name": "Get Family Task by ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/family/{{familyId}}/tasks/{{taskId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"family",
+								"{{familyId}}",
+								"tasks",
+								"{{taskId}}"
+							]
+						},
+						"description": "Get a specific family task by ID"
+					}
+				},
+				{
+					"name": "Assign Task to Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"taskId\": 1,\n    \"assignToUserId\": 2,\n    \"requiresApproval\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/family/{{familyId}}/tasks/assign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"family",
+								"{{familyId}}",
+								"tasks",
+								"assign"
+							]
+						},
+						"description": "Assign a task to a family member"
+					}
+				},
+				{
+					"name": "Unassign Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/family/{{familyId}}/tasks/{{taskId}}/unassign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"family",
+								"{{familyId}}",
+								"tasks",
+								"{{taskId}}",
+								"unassign"
+							]
+						},
+						"description": "Unassign a task from a family member"
+					}
+				},
+				{
+					"name": "Approve Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"taskId\": {{taskId}},\n    \"approved\": true,\n    \"comment\": \"Well done!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/family/{{familyId}}/tasks/{{taskId}}/approve",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"family",
+								"{{familyId}}",
+								"tasks",
+								"{{taskId}}",
+								"approve"
+							]
+						},
+						"description": "Approve a completed task (for tasks that require approval)"
+					}
+				}
+			],
+			"description": "Endpoints for managing tasks within a family"
+		},
+		{
+			"name": "Focus",
+			"item": [
+				{
+					"name": "Get Current Focus Item",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v2/focus/current",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"focus",
+								"current"
+							]
+						},
+						"description": "Get the current task the user should focus on"
+					}
+				},
+				{
+					"name": "Set Focus Item",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"taskId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v2/focus/current",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"focus",
+								"current"
+							]
+						},
+						"description": "Set the current focus task"
+					}
+				},
+				{
+					"name": "End Focus Session",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v2/focus/end",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"focus",
+								"end"
+							]
+						},
+						"description": "End the current focus session"
+					}
+				},
+				{
+					"name": "Log Distraction",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"description\": \"Social media notification\",\n    \"category\": \"Technology\",\n    \"severity\": 2\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v2/focus/distraction",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"focus",
+								"distraction"
+							]
+						},
+						"description": "Log a distraction during a focus session"
+					}
+				},
+				{
+					"name": "Get Focus Statistics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v2/focus/statistics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v2",
+								"focus",
+								"statistics"
+							]
+						},
+						"description": "Get focus statistics for the user"
+					}
+				}
+			],
+			"description": "Endpoints for managing focus sessions"
+		},
+		{
+			"name": "Task Priority",
+			"item": [
+				{
+					"name": "Auto-Adjust Task Priorities",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskpriority/auto-adjust",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskpriority",
+								"auto-adjust"
+							]
+						},
+						"description": "Automatically adjust task priorities based on due dates and other factors"
+					}
+				},
+				{
+					"name": "Get Priority Adjustment History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskpriority/history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskpriority",
+								"history"
+							]
+						},
+						"description": "Get history of priority adjustments"
+					}
+				},
+				{
+					"name": "Get Priority Suggestions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskpriority/suggestions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskpriority",
+								"suggestions"
+							]
+						},
+						"description": "Get suggestions for task priority adjustments"
+					}
+				}
+			],
+			"description": "Endpoints for managing task priorities"
 		}
 	],
 	"event": [
