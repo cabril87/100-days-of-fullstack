@@ -355,6 +355,42 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("ChecklistItems");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.ChecklistTemplateItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskTemplateId");
+
+                    b.ToTable("ChecklistTemplateItems");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Distraction", b =>
                 {
                     b.Property<int>("Id")
@@ -1568,7 +1604,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 4, 30, 14, 54, 37, 510, DateTimeKind.Utc).AddTicks(6928),
+                            UpdatedAt = new DateTime(2025, 5, 3, 15, 48, 52, 813, DateTimeKind.Utc).AddTicks(4705),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1585,7 +1621,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 4, 30, 14, 54, 37, 510, DateTimeKind.Utc).AddTicks(8766),
+                            UpdatedAt = new DateTime(2025, 5, 3, 15, 48, 52, 813, DateTimeKind.Utc).AddTicks(6233),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1675,17 +1711,22 @@ namespace TaskTrackerAPI.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasComment("Encrypted field - PII");
 
                     b.Property<string>("FirstName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasComment("Encrypted field - PII");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("LastName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)")
+                        .HasComment("Encrypted field - PII");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -1724,10 +1765,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "admin@tasktracker.com",
-                            FirstName = "Admin",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46c4iwEDy-ZyQNwBtb2nIMB64kjIZ4E2Kxto3hB1zrRv2cE1HjyxETB3nMnW8rz2dZQKUs1Cp6el0bQKtQYMRyaNl8IKvo7KA-ybxSuve9qYT74Y8pEdhV9iYhLQ1Qk2kHo",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46dWaeXEXF-eC3T8ZRfjIR-Ol3QrGlF7JptxX2BTVzyzHD_NWMSeKqlXodX7HjciZoWISkVPS7BIX0HUIXDoG-14NRmZ55Qxwm15B6IXWhJCtA",
                             IsActive = true,
-                            LastName = "User",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46eZcbJ3tBhPGIm8__Ec5lvy1wLWi7VgavUaaVkbolyx_DJiAFuWgY_zW0_pY2Zx26wx2qqPQwu6D5TBqjFv1F895qNmPIAWsWlcUFYNuB7d_w",
                             PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
                             Role = "Admin",
                             Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
@@ -1851,7 +1892,8 @@ namespace TaskTrackerAPI.Migrations
 
                     b.Property<string>("DeviceToken")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(1024)")
+                        .HasComment("Encrypted field (highly sensitive) - DeviceToken");
 
                     b.Property<string>("DeviceType")
                         .IsRequired()
@@ -1867,7 +1909,8 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("VerificationCode")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(1024)")
+                        .HasComment("Encrypted field - Security");
 
                     b.HasKey("Id");
 
@@ -1995,6 +2038,17 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ChecklistTemplateItem", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "TaskTemplate")
+                        .WithMany("ChecklistItems")
+                        .HasForeignKey("TaskTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TaskTemplate");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Distraction", b =>
@@ -2570,6 +2624,11 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskItem", b =>
+                {
+                    b.Navigation("ChecklistItems");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TaskTemplate", b =>
                 {
                     b.Navigation("ChecklistItems");
                 });

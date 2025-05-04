@@ -36,6 +36,7 @@ using TaskTrackerAPI.Hubs;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using TaskTrackerAPI.DTOs.Auth;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace TaskTrackerAPI;
 
@@ -92,33 +93,53 @@ public class Program
         
         builder.Services.AddCors(options =>
         {
+            // Development CORS policy - permissive for local testing
             options.AddPolicy("DevCors", (corsBuilder) =>
             {
+                corsBuilder.AllowAnyOrigin() // Permissive for file:// protocol and local testing
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
+            });
+            
+            // Docker development CORS policy - for when testing with Docker
+            options.AddPolicy("DockerDevCors", (corsBuilder) =>
+            {
                 corsBuilder.WithOrigins(
-                       "http://localhost:4200",
-                       "http://localhost:3000",
-                       "http://localhost:8000",
-                       "http://localhost:5173",
-                       "http://localhost:8080",
-                       "http://localhost:5211",
-                       "http://127.0.0.1:5173",
-                       "http://127.0.0.1:3000",
-                       "http://127.0.0.1:5211",
-                       "http://localhost",
-                       "http://10.0.2.2:5211",  // Add this for Android emulator
-                       "http://10.0.2.2:8081"   // Add this for React Native dev server
+                       "http://localhost:3000",    // Next.js frontend
+                       "http://localhost:5173",    // Vite frontend
+                       "http://localhost:8080",    // Webpack common port
+                       "http://localhost",         // Generic localhost
+                       "http://host.docker.internal:3000",  // Docker host Next.js
+                       "http://host.docker.internal:5173"   // Docker host Vite
                     )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials()
                     .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
+            
+            // Staging CORS policy - more restricted but allows test domains
+            options.AddPolicy("StagingCors", (corsBuilder) =>
+            {
+                corsBuilder.WithOrigins(
+                       "https://staging.yourdomain.com",
+                       "https://api-staging.yourdomain.com",
+                       "https://test.yourdomain.com"
+                    )
+                    .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                    .WithHeaders("Authorization", "Content-Type", "Accept", "X-XSRF-TOKEN", "X-CSRF-TOKEN")
+                    .AllowCredentials()
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
+            });
+            
+            // Production CORS policy - strict and secure
             options.AddPolicy("ProdCors", (corsBuilder) =>
             {
                 corsBuilder.WithOrigins(
-                       "https://myProductionSite.com",
-                       "https://api.myProductionSite.com",
-                       "https://admin.myProductionSite.com"
+                       "https://yourdomain.com",
+                       "https://api.yourdomain.com",
+                       "https://app.yourdomain.com"
                     )
                     .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                     .WithHeaders("Authorization", "Content-Type", "Accept", "X-XSRF-TOKEN", "X-CSRF-TOKEN")
@@ -237,6 +258,9 @@ public class Program
             ILogger<Utils.RateLimitBackoffHelper> logger = sp.GetRequiredService<ILogger<Utils.RateLimitBackoffHelper>>();
             return new Utils.RateLimitBackoffHelper(httpClient, logger);
         });
+
+        // Register SecurityService
+        builder.Services.AddScoped<ISecurityService, SecurityService>();
 
         // Add response compression
         builder.Services.AddResponseCompression(options =>
@@ -372,6 +396,30 @@ public class Program
                 };
             });
 
+        // Add Data Protection API with key storage
+        string keyDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Keys");
+        
+        // Ensure the directory exists
+        if (!Directory.Exists(keyDirectory))
+        {
+            Directory.CreateDirectory(keyDirectory);
+        }
+        
+        // Configure Data Protection with appropriate settings
+        IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
+            .SetApplicationName("TaskTrackerAPI")
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
+            .SetDefaultKeyLifetime(TimeSpan.FromDays(90)); // Set keys to expire after 90 days
+            
+        // Only use DPAPI on Windows platforms
+        if (OperatingSystem.IsWindows())
+        {
+            dataProtectionBuilder.ProtectKeysWithDpapi();
+        }
+
+        // Register DataProtectionService
+        builder.Services.AddScoped<TaskTrackerAPI.Services.Interfaces.IDataProtectionService, TaskTrackerAPI.Services.DataProtectionService>();
+
         WebApplication app = builder.Build();
 
         // Get API version description provider
@@ -380,17 +428,44 @@ public class Program
         // Enable response compression
         app.UseResponseCompression();
 
-        // Configure the HTTP request pipeline.
+        // Configure the HTTP request pipeline based on environment
         if (app.Environment.IsDevelopment())
         {
-            app.UseCors("DevCors");
+            // Check if running in Docker (environment variable set in docker-compose.yml)
+            bool isRunningInDocker = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
             
-            // Don't force HTTPS in dev, but still add middleware
+            if (isRunningInDocker)
+            {
+                // Use Docker-specific CORS policy
+                app.UseCors("DockerDevCors");
+                Console.WriteLine("Using Docker development CORS policy");
+            }
+            else
+            {
+                // Use permissive CORS policy for local development
+                app.UseCors("DevCors");
+                Console.WriteLine("Using permissive development CORS policy");
+            }
+            
+            // Remove HTTPS redirection for local development to avoid the warning
+            // app.UseHttpsRedirection();
+        }
+        else if (app.Environment.IsStaging())
+        {
+            // Use staging CORS policy
+            app.UseCors("StagingCors");
+            
+            // Enable HTTP Strict Transport Security (HSTS)
+            app.UseHsts();
+            
+            // Force HTTPS
             app.UseHttpsRedirection();
+            
+            Console.WriteLine("Using staging environment configuration");
         }
         else
         {
-            // In production, use the production CORS policy
+            // Production environment
             app.UseCors("ProdCors");
             
             // Enable HTTP Strict Transport Security (HSTS)
@@ -398,13 +473,21 @@ public class Program
             
             // Force HTTPS
             app.UseHttpsRedirection();
+            
+            Console.WriteLine("Using production environment configuration");
         }
 
         // Add global exception handling middleware
         app.UseGlobalExceptionHandling();
 
-        // Add rate limiting middleware BEFORE CSRF protection
+        // Add security audit middleware first to capture all requests
+        app.UseSecurityAudit();
+
+        // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
+
+        // Add security headers middleware
+        app.UseSecurityHeaders();
 
         // Add CSRF protection middleware
         app.UseMiddleware<CsrfProtectionMiddleware>();
@@ -414,36 +497,9 @@ public class Program
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // Security headers middleware - add in production only
-        if (!app.Environment.IsDevelopment())
-        {
-            app.Use(async (context, next) =>
-            {
-                // Add security headers
-                context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-                context.Response.Headers.Append("X-Frame-Options", "DENY");
-                context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
-                context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-                
-                // Content Security Policy - very strict for API
-                context.Response.Headers.Append(
-                    "Content-Security-Policy",
-                    "default-src 'none'; frame-ancestors 'none'"
-                );
-                
-                // Permissions Policy (formerly Feature-Policy)
-                context.Response.Headers.Append(
-                    "Permissions-Policy", 
-                    "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
-                );
-                
-                await next();
-            });
-        }
-        
         // Add response caching middleware
         app.UseCustomResponseCaching();
-        
+
         // Add query batching middleware
         app.UseMiddleware<QueryBatchingMiddleware>();
 

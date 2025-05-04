@@ -15,12 +15,15 @@ using TaskTrackerAPI.Models.Gamification;
 using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore.Metadata;
+using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Data;
 
 public class ApplicationDbContext : DbContext
 {
     private readonly IConfiguration? _configuration;
+    private readonly IDataProtectionService? _dataProtectionService;
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -31,6 +34,16 @@ public class ApplicationDbContext : DbContext
         : base(options)
     {
         _configuration = configuration;
+    }
+    
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options, 
+        IConfiguration configuration,
+        IDataProtectionService dataProtectionService)
+        : base(options)
+    {
+        _configuration = configuration;
+        _dataProtectionService = dataProtectionService;
     }
 
     public DbSet<User> Users { get; set; } = null!;
@@ -117,6 +130,12 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Apply encryption to properties marked with [Encrypt] attribute
+        if (_dataProtectionService != null)
+        {
+            modelBuilder.ApplyEncryption(_dataProtectionService);
+        }
+        
         // Configure entity properties with value generators to use hardcoded values for snapshot generation
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {

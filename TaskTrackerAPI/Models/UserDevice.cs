@@ -10,6 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Models;
 
@@ -24,6 +25,7 @@ public class UserDevice
     public string DeviceId { get; set; } = string.Empty;
     
     [Required]
+    [Encrypt(purpose: "DeviceToken", isHighlySensitive: true)]
     public string DeviceToken { get; set; } = string.Empty;
     
     [Required]
@@ -33,6 +35,7 @@ public class UserDevice
     
     public bool IsVerified { get; set; }
     
+    [Encrypt(purpose: "Security")]
     public string? VerificationCode { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -86,20 +86,15 @@ public class TaskItemsController : ControllerBase
 
     // GET: api/TaskItems/5
     [HttpGet("{id}")]
+    [SecurityRequirements(
+        requirementLevel: SecurityRequirementLevel.Authenticated,
+        resourceType: ResourceType.Task,
+        requireOwnership: true)]
     public async Task<ActionResult<TaskItemDTO>> GetTaskItem(int id)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
-            
-            // First check if the task exists and belongs to the user
-            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
-            
-            if (!isTaskOwned)
-            {
-                return NotFound(Utils.ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
-            }
-            
             TaskItemDTO? task = await _taskService.GetTaskByIdAsync(userId, id);
             
             if (task == null)
@@ -108,11 +103,6 @@ public class TaskItemsController : ControllerBase
             }
             
             return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(task));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning(ex, "Unauthorized access attempt for task {TaskId}", id);
-            return Forbid();
         }
         catch (Exception ex)
         {
@@ -227,26 +217,22 @@ public class TaskItemsController : ControllerBase
 
     // DELETE: api/TaskItems/5
     [HttpDelete("{id}")]
+    [SecurityRequirements(
+        requirementLevel: SecurityRequirementLevel.Authenticated,
+        resourceType: ResourceType.Task,
+        requireOwnership: true,
+        allowChildAccess: false)]
     public async Task<IActionResult> DeleteTaskItem(int id)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
-            
-            // Check if task exists and belongs to user
-            bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
-            if (!isTaskOwned)
-            {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
-            }
-            
             await _taskService.DeleteTaskAsync(userId, id);
-            
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting task with ID {TaskId}", id);
+            _logger.LogError(ex, "Error deleting task {TaskId}", id);
             return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
         }
     }
