@@ -8,6 +8,8 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Repositories.Interfaces;
@@ -26,4 +28,11 @@ public interface ITagRepository
     Task<IEnumerable<Tag>> SearchTagsAsync(int userId, string searchTerm);
     
     Task<IEnumerable<TaskItem>> GetTasksByTagAsync(int tagId, int userId);
+
+    /// <summary>
+    /// Checks if a tag with the specified ID exists
+    /// </summary>
+    /// <param name="id">The tag ID to check</param>
+    /// <returns>True if the tag exists, otherwise false</returns>
+    Task<bool> ExistsAsync(int id);
 }

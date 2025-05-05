@@ -65,8 +65,8 @@ namespace TaskTrackerAPI.Middleware
         public async Task InvokeAsync(HttpContext context)
         {
             // Create a scope to resolve scoped services
-            using var scope = _serviceProvider.CreateScope();
-            var dataProtectionService = scope.ServiceProvider.GetRequiredService<IDataProtectionService>();
+            using IServiceScope scope = _serviceProvider.CreateScope();
+            IDataProtectionService dataProtectionService = scope.ServiceProvider.GetRequiredService<IDataProtectionService>();
             
             // Create a copy of the request body so we can read it for auditing
             context.Request.EnableBuffering();
@@ -82,11 +82,11 @@ namespace TaskTrackerAPI.Middleware
             await LogRequestInfoAsync(context, requestBody, potentialThreat);
             
             // Create response tracking
-            var originalBodyStream = context.Response.Body;
-            using var responseBodyStream = new MemoryStream();
+            Stream originalBodyStream = context.Response.Body;
+            using MemoryStream responseBodyStream = new MemoryStream();
             context.Response.Body = responseBodyStream;
             
-            var stopwatch = Stopwatch.StartNew();
+            Stopwatch stopwatch = Stopwatch.StartNew();
             
             try
             {
@@ -122,7 +122,7 @@ namespace TaskTrackerAPI.Middleware
                     return null;
                 }
                 
-                using var reader = new StreamReader(
+                using StreamReader reader = new StreamReader(
                     request.Body,
                     encoding: Encoding.UTF8,
                     detectEncodingFromByteOrderMarks: false,
@@ -283,7 +283,7 @@ namespace TaskTrackerAPI.Middleware
             }
             
             // Redact sensitive key-value pairs
-            foreach (var paramName in SensitiveParameters)
+            foreach (string paramName in SensitiveParameters)
             {
                 // Match JSON format: "paramName": "value"
                 content = Regex.Replace(

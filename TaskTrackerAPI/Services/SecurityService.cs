@@ -15,6 +15,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Attributes;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
@@ -36,9 +37,9 @@ namespace TaskTrackerAPI.Services
             IHttpContextAccessor httpContextAccessor,
             ILogger<SecurityService> logger)
         {
-            _dbContext = dbContext;
-            _httpContextAccessor = httpContextAccessor;
-            _logger = logger;
+            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+            _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -83,17 +84,17 @@ namespace TaskTrackerAPI.Services
                     
                     case ResourceType.FamilyMember:
                         // Check if this is the user's own family member entry
-                        var member = await _dbContext.FamilyMembers
+                        FamilyMember? memberEntry = await _dbContext.FamilyMembers
                             .FirstOrDefaultAsync(fm => fm.Id == resourceId);
-                        return member != null && member.UserId == userId;
+                        return memberEntry != null && memberEntry.UserId == userId;
                     
                     case ResourceType.Invitation:
                         // Check if the user created the invitation
-                        var invitation = await _dbContext.Invitations
+                        Invitation? invitationEntity = await _dbContext.Invitations
                             .FirstOrDefaultAsync(i => i.Id == resourceId);
-                        return invitation != null && 
+                        return invitationEntity != null && 
                                await _dbContext.FamilyMembers
-                                   .AnyAsync(fm => fm.FamilyId == invitation.FamilyId && 
+                                   .AnyAsync(fm => fm.FamilyId == invitationEntity.FamilyId && 
                                                  fm.UserId == userId && 
                                                  string.Equals(fm.Role.Name, "Admin", StringComparison.OrdinalIgnoreCase));
                     
@@ -150,21 +151,28 @@ namespace TaskTrackerAPI.Services
             }
 
             // Get user claims
-            var claims = _httpContextAccessor.HttpContext?.User?.Claims;
-            if (claims == null)
+            ClaimsPrincipal? userPrincipal = _httpContextAccessor.HttpContext?.User;
+            if (userPrincipal == null)
             {
                 return false;
             }
 
             // Get permissions from claims
-            var permissionClaims = claims
+            List<string> permissionClaims = userPrincipal.Claims
                 .Where(c => c.Type == "permission")
                 .Select(c => c.Value)
                 .ToList();
 
             // Check if the user has all required permissions
-            return requiredPermissions.All(requiredPermission => 
-                permissionClaims.Contains(requiredPermission));
+            foreach (string requiredPermission in requiredPermissions)
+            {
+                if (!permissionClaims.Contains(requiredPermission))
+                {
+                    return false;
+                }
+            }
+            
+            return true;
         }
 
         /// <summary>
@@ -182,10 +190,11 @@ namespace TaskTrackerAPI.Services
 
             try
             {
-                var member = await _dbContext.FamilyMembers
+                FamilyMember? member = await _dbContext.FamilyMembers
+                    .Include(fm => fm.Role)
                     .FirstOrDefaultAsync(fm => fm.FamilyId == familyId && fm.UserId == userId);
 
-                if (member == null)
+                if (member == null || member.Role == null)
                 {
                     return false;
                 }

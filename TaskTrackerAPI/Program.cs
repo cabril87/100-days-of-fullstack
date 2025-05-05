@@ -37,6 +37,8 @@ using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using TaskTrackerAPI.DTOs.Auth;
 using Microsoft.AspNetCore.DataProtection;
+using TaskTrackerAPI.ModelBinders;
+using TaskTrackerAPI.Filters;
 
 namespace TaskTrackerAPI;
 
@@ -47,7 +49,14 @@ public class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers()
+        builder.Services.AddControllers(options =>
+            {
+                // Add our custom model binder provider
+                options.ModelBinderProviders.Insert(0, new SanitizedStringModelBinderProvider());
+                
+                // Add our model state validation filter
+                options.Filters.Add<ValidateModelStateFilter>();
+            })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -59,6 +68,9 @@ public class Program
         {
             options.HeaderName = "X-XSRF-TOKEN";
         });
+
+        // Add validation pipeline services
+        builder.Services.AddValidationPipeline();
 
         // Configure HTTP Security Headers
         builder.Services.AddHsts(options =>
@@ -487,7 +499,10 @@ public class Program
         app.UseRateLimiting();
 
         // Add security headers middleware
-        app.UseSecurityHeaders();
+        app.UseMiddleware<SecurityHeadersMiddleware>();
+
+        // Add validation middleware after CORS but before other middleware
+        app.UseValidationPipeline();
 
         // Add CSRF protection middleware
         app.UseMiddleware<CsrfProtectionMiddleware>();

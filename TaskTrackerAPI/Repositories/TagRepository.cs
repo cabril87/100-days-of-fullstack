@@ -109,4 +109,9 @@ public class TagRepository : ITagRepository
             .Where(t => taskIds.Contains(t.Id) && t.UserId == userId)
             .ToListAsync();
     }
+    
+    public async Task<bool> ExistsAsync(int id)
+    {
+        return await _context.Tags.AnyAsync(t => t.Id == id);
+    }
 }

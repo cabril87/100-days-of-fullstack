@@ -363,20 +363,32 @@ public class FocusRepository : IFocusRepository
             if (endDate.HasValue)
                 query = query.Where(d => d.Timestamp <= endDate.Value);
 
-            // Using var is appropriate here because we're dealing with an anonymous type
-            // that doesn't have a directly expressible concrete type
-            var categoryGroups = await query
+            // Using explicit type definitions for the GroupBy result
+            List<CategoryCount> categoryGroups = await query
                 .GroupBy(d => d.Category)
-                .Select(g => new { Category = g.Key, Count = g.Count() })
+                .Select(g => new CategoryCount { Category = g.Key, Count = g.Count() })
                 .ToListAsync();
                 
-            return categoryGroups.ToDictionary(x => x.Category, x => x.Count);
+            Dictionary<string, int> result = new Dictionary<string, int>();
+            foreach (CategoryCount item in categoryGroups)
+            {
+                result.Add(item.Category, item.Count);
+            }
+            
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting distractions by category for user {UserId}", userId);
             throw;
         }
+    }
+
+    // Helper class for the GroupBy result
+    private class CategoryCount
+    {
+        public string Category { get; set; } = string.Empty;
+        public int Count { get; set; }
     }
 
     public async Task<Dictionary<string, int>> GetDailyFocusMinutesAsync(int userId, int numberOfDays = 7)

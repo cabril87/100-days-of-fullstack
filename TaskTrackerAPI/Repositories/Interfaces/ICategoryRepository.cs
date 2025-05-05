@@ -28,4 +28,11 @@ public interface ICategoryRepository
     Task<bool> HasTasksAsync(int categoryId);
     Task<int> GetCategoryTaskCountAsync(int categoryId);
     Task<IEnumerable<Category>> SearchCategoriesAsync(int userId, string searchTerm);
+
+    /// <summary>
+    /// Checks if a category with the specified ID exists
+    /// </summary>
+    /// <param name="id">The category ID to check</param>
+    /// <returns>True if the category exists, otherwise false</returns>
+    Task<bool> ExistsAsync(int id);
 }

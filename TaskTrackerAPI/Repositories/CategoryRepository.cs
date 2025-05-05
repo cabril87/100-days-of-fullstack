@@ -118,4 +118,9 @@ public class CategoryRepository : ICategoryRepository
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
+    
+    public async Task<bool> ExistsAsync(int id)
+    {
+        return await _context.Categories.AnyAsync(c => c.Id == id);
+    }
 }
