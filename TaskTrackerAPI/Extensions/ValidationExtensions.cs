@@ -17,6 +17,7 @@ using TaskTrackerAPI.Middleware;
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Reflection;
+using Microsoft.AspNetCore.Http;
 
 namespace TaskTrackerAPI.Extensions
 {
@@ -54,8 +55,25 @@ namespace TaskTrackerAPI.Extensions
         /// <returns>The application builder for chaining</returns>
         public static IApplicationBuilder UseValidationPipeline(this IApplicationBuilder app)
         {
-            // Add the validation middleware
-            app.UseMiddleware<ValidationMiddleware>();
+            // Use middleware factory approach to properly handle scoped services
+            app.Use(async (context, next) =>
+            {
+                // Create a scope for the request
+                using (var scope = app.ApplicationServices.CreateScope())
+                {
+                    // Get the validation service from the scope
+                    var validationService = scope.ServiceProvider.GetRequiredService<IValidationService>();
+                    var logger = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ValidationMiddleware>>();
+                    
+                    // Create and invoke the middleware with the scoped service
+                    var middleware = new ValidationMiddleware(
+                        async (HttpContext ctx) => await next(ctx),
+                        logger,
+                        validationService);
+                    
+                    await middleware.InvokeAsync(context);
+                }
+            });
             
             return app;
         }

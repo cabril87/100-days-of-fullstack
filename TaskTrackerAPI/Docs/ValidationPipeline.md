@@ -138,11 +138,11 @@ When writing tests for validation, you can directly instantiate validators:
 public async Task Should_Validate_Title()
 {
     // Arrange
-    var validator = new TaskItemCreateRequestValidator(mockValidationService, mockCategoryRepo, mockTagRepo);
-    var dto = new TaskItemCreateRequestDTO { Title = ""; };
+    validator = new TaskItemCreateRequestValidator(mockValidationService, mockCategoryRepo, mockTagRepo);
+    TaskItemCreateRequestDTO dto = new TaskItemCreateRequestDTO { Title = ""; };
     
     // Act
-    var result = await validator.ValidateAsync(dto);
+    ValidationResult result = await validator.ValidateAsync(dto);
     
     // Assert
     Assert.False(result.IsValid);

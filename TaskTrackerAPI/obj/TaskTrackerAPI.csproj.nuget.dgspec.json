@@ -58,6 +58,14 @@
               "target": "Package",
               "version": "[2.1.66, )"
             },
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[11.9.0, )"
+            },
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
             "Konscious.Security.Cryptography.Argon2": {
               "target": "Package",
               "version": "[1.3.1, )"

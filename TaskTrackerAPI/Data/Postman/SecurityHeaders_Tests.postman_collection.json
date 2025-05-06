@@ -1,0 +1,347 @@
+{
+	"info": {
+		"_postman_id": "c6e3b5f0-1e9d-4c87-b8e1-7b92af0e5d2a",
+		"name": "TaskTracker Security Headers Tests",
+		"description": "Tests for TaskTracker API security headers implementation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Test Security Headers",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Test basic security headers presence",
+							"pm.test(\"X-Content-Type-Options header exists and is set to nosniff\", function () {",
+							"    pm.response.to.have.header(\"X-Content-Type-Options\");",
+							"    pm.expect(pm.response.headers.get(\"X-Content-Type-Options\")).to.eql(\"nosniff\");",
+							"});",
+							"",
+							"pm.test(\"X-Frame-Options header exists and is set to DENY\", function () {",
+							"    pm.response.to.have.header(\"X-Frame-Options\");",
+							"    pm.expect(pm.response.headers.get(\"X-Frame-Options\")).to.eql(\"DENY\");",
+							"});",
+							"",
+							"pm.test(\"Referrer-Policy header exists and is set correctly\", function () {",
+							"    pm.response.to.have.header(\"Referrer-Policy\");",
+							"    pm.expect(pm.response.headers.get(\"Referrer-Policy\")).to.eql(\"strict-origin-when-cross-origin\");",
+							"});",
+							"",
+							"// Test Content Security Policy header",
+							"pm.test(\"Content-Security-Policy header exists\", function () {",
+							"    pm.response.to.have.header(\"Content-Security-Policy\");",
+							"    const csp = pm.response.headers.get(\"Content-Security-Policy\");",
+							"    ",
+							"    // Check for key CSP directives",
+							"    pm.expect(csp).to.include(\"default-src\");",
+							"    pm.expect(csp).to.include(\"frame-ancestors\");",
+							"});",
+							"",
+							"// Test Permissions Policy header",
+							"pm.test(\"Permissions-Policy header exists and restricts key features\", function () {",
+							"    pm.response.to.have.header(\"Permissions-Policy\");",
+							"    const permissionsPolicy = pm.response.headers.get(\"Permissions-Policy\");",
+							"    ",
+							"    // Check for key restricted features",
+							"    pm.expect(permissionsPolicy).to.include(\"camera=()\");",
+							"    pm.expect(permissionsPolicy).to.include(\"microphone=()\");",
+							"    pm.expect(permissionsPolicy).to.include(\"geolocation=()\");",
+							"});",
+							"",
+							"// Test Cache-Control header",
+							"pm.test(\"Cache-Control header exists\", function () {",
+							"    pm.response.to.have.header(\"Cache-Control\");",
+							"});",
+							"",
+							"// Test Cross-Origin headers",
+							"pm.test(\"Cross-Origin-Resource-Policy header exists\", function () {",
+							"    pm.response.to.have.header(\"Cross-Origin-Resource-Policy\");",
+							"});",
+							"",
+							"pm.test(\"Cross-Origin-Opener-Policy header exists\", function () {",
+							"    pm.response.to.have.header(\"Cross-Origin-Opener-Policy\");",
+							"});",
+							"",
+							"pm.test(\"Cross-Origin-Embedder-Policy header exists\", function () {",
+							"    pm.response.to.have.header(\"Cross-Origin-Embedder-Policy\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/security/test-headers",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"security",
+						"test-headers"
+					]
+				},
+				"description": "Tests security headers on a test endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Sensitive Endpoint Cache Headers",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Test that sensitive endpoint has strict cache control",
+							"pm.test(\"Cache-Control header should prevent caching for sensitive endpoints\", function () {",
+							"    pm.response.to.have.header(\"Cache-Control\");",
+							"    const cacheControl = pm.response.headers.get(\"Cache-Control\");",
+							"    ",
+							"    pm.expect(cacheControl).to.include(\"no-store\");",
+							"    pm.expect(cacheControl).to.include(\"no-cache\");",
+							"    pm.expect(cacheControl).to.include(\"must-revalidate\");",
+							"});",
+							"",
+							"pm.test(\"Pragma header should be set to no-cache\", function () {",
+							"    pm.response.to.have.header(\"Pragma\");",
+							"    pm.expect(pm.response.headers.get(\"Pragma\")).to.eql(\"no-cache\");",
+							"});",
+							"",
+							"pm.test(\"Expires header should be set to 0\", function () {",
+							"    pm.response.to.have.header(\"Expires\");",
+							"    pm.expect(pm.response.headers.get(\"Expires\")).to.eql(\"0\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/validate",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"validate"
+					]
+				},
+				"description": "Tests cache control headers on sensitive endpoints"
+			},
+			"response": []
+		},
+		{
+			"name": "Test CSP Report Endpoint",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/csp-report",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"csp-report\": {\r\n    \"document-uri\": \"https://example.com/test.html\",\r\n    \"referrer\": \"\",\r\n    \"violated-directive\": \"script-src\",\r\n    \"effective-directive\": \"script-src\",\r\n    \"original-policy\": \"default-src 'self'; script-src 'self' example.com; report-uri /api/security/cspreport\",\r\n    \"disposition\": \"enforce\",\r\n    \"blocked-uri\": \"https://malicious-site.example/evil.js\",\r\n    \"line-number\": 42,\r\n    \"column-number\": 8,\r\n    \"source-file\": \"https://example.com/test.html\",\r\n    \"status-code\": 0\r\n  }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/security/cspreport",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"security",
+						"cspreport"
+					]
+				},
+				"description": "Tests the CSP reporting endpoint"
+			},
+			"response": []
+		},
+		{
+			"name": "Test Logout Clear-Site-Data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Clear-Site-Data header is set on logout\", function () {",
+							"    pm.response.to.have.header(\"Clear-Site-Data\");",
+							"    const clearSiteData = pm.response.headers.get(\"Clear-Site-Data\");",
+							"    ",
+							"    // Check that it clears needed data types",
+							"    pm.expect(clearSiteData).to.include(\"cache\");",
+							"    pm.expect(clearSiteData).to.include(\"cookies\");",
+							"    pm.expect(clearSiteData).to.include(\"storage\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{accessToken}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/auth/logout",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"logout"
+					]
+				},
+				"description": "Tests that the Clear-Site-Data header is set on logout"
+			},
+			"response": []
+		},
+		{
+			"name": "Test HSTS Header",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Only run this test if using HTTPS",
+							"if (pm.request.url.toString().startsWith(\"https\")) {",
+							"    pm.test(\"Strict-Transport-Security header exists with required settings\", function () {",
+							"        pm.response.to.have.header(\"Strict-Transport-Security\");",
+							"        const hsts = pm.response.headers.get(\"Strict-Transport-Security\");",
+							"        ",
+							"        // Check for max-age, includeSubDomains, and preload",
+							"        pm.expect(hsts).to.include(\"max-age=\");",
+							"        pm.expect(hsts).to.include(\"includeSubDomains\");",
+							"        pm.expect(hsts).to.include(\"preload\");",
+							"        ",
+							"        // Extract max-age value and check it's at least 180 days (15552000 seconds)",
+							"        const maxAgeMatch = hsts.match(/max-age=(\\d+)/);",
+							"        if (maxAgeMatch && maxAgeMatch[1]) {",
+							"            const maxAge = parseInt(maxAgeMatch[1], 10);",
+							"            pm.expect(maxAge).to.be.at.least(15552000, \"HSTS max-age should be at least 180 days\");",
+							"        }",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/security/test-headers",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"security",
+						"test-headers"
+					]
+				},
+				"description": "Tests the HSTS header for HTTPS connections"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 
