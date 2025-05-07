@@ -1,0 +1,114 @@
+name: OWASP ZAP API Security Scan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan on Sunday at midnight
+
+jobs:
+  zap-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./TaskTrackerAPI
+        
+      - name: Build
+        run: dotnet build --no-restore
+        working-directory: ./TaskTrackerAPI
+        
+      - name: Start API for testing
+        run: |
+          dotnet run --project ./TaskTrackerAPI/TaskTrackerAPI.csproj --no-build &
+          sleep 15  # Wait for the API to start
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://localhost:5000
+          
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.9.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'http://localhost:5000'
+          rules_file_name: '.github/security/zap-rules.tsv'
+          cmd_options: '-a -j'
+          
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: zap-scan-report
+          path: |
+            report.html
+            report.json
+            
+      - name: Summarize findings
+        run: |
+          echo "## ZAP Scan Results" >> $GITHUB_STEP_SUMMARY
+          cat report.md >> $GITHUB_STEP_SUMMARY
+        
+  dependency-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'TaskTrackerAPI'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          args: >
+            --enableExperimental
+            --exclude "node_modules"
+            
+      - name: Upload dependency report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: reports
+          
+  security-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore
+        
+      - name: Run security tests
+        run: dotnet test --filter Category=Security
+        
+      - name: Check security test results
+        run: |
+          if [ $? -ne 0 ]; then
+            echo "Security tests failed. Check the test results for details."
+            exit 1
+          fi 
