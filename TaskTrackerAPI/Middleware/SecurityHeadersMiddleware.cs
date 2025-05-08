@@ -320,7 +320,7 @@ namespace TaskTrackerAPI.Middleware
             {
                 return typeNonce;
             }
-            
+                
             return string.Empty;
         }
     }

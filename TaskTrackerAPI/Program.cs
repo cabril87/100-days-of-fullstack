@@ -39,13 +39,14 @@ using TaskTrackerAPI.DTOs.Auth;
 using Microsoft.AspNetCore.DataProtection;
 using TaskTrackerAPI.ModelBinders;
 using TaskTrackerAPI.Filters;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace TaskTrackerAPI;
 
 // Making Program class public so it can be used for integration testing
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -262,6 +263,9 @@ public class Program
         // Register QRCode Generator as singleton
         builder.Services.AddSingleton<QRCodeGenerator>();
         builder.Services.AddSingleton<QRCodeHelper>();
+
+        // Register UserSubscriptionService
+        builder.Services.AddScoped<IUserSubscriptionService, UserSubscriptionService>();
 
         // Register RateLimitBackoffHelper as singleton
         builder.Services.AddHttpClient();
@@ -497,6 +501,20 @@ public class Program
 
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
+        // Use a factory pattern to create the AdaptiveRateLimitingMiddleware with scoped services
+        app.Use(async (context, next) =>
+        {
+            using var scope = app.Services.CreateScope();
+            var userSubscriptionService = scope.ServiceProvider.GetRequiredService<IUserSubscriptionService>();
+            var middleware = new AdaptiveRateLimitingMiddleware(
+                next,
+                scope.ServiceProvider.GetRequiredService<ILogger<AdaptiveRateLimitingMiddleware>>(),
+                scope.ServiceProvider.GetRequiredService<IMemoryCache>(),
+                scope.ServiceProvider.GetRequiredService<IConfiguration>(),
+                userSubscriptionService);
+            
+            await middleware.InvokeAsync(context);
+        });
 
         // Add security headers middleware
         app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -526,134 +544,27 @@ public class Program
         // Seed the database if needed
         using (IServiceScope scope = app.Services.CreateScope())
         {
-            IServiceProvider services = scope.ServiceProvider;
-            ApplicationDbContext dbContext = services.GetRequiredService<ApplicationDbContext>();
-
-            if (app.Environment.IsDevelopment())
+            var services = scope.ServiceProvider;
+            try
             {
-                dbContext.Database.EnsureCreated();
-
-                // Seed initial data if needed
-                if (!dbContext.Users.Any())
+                var context = services.GetRequiredService<ApplicationDbContext>();
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                var authHelper = services.GetRequiredService<AuthHelper>();
+                
+                if (app.Environment.IsDevelopment())
                 {
-                    // Get the auth helper service
-                    AuthHelper authHelper = services.GetRequiredService<AuthHelper>();
-
-                    // Create a proper password hash for a very simple password
-                    authHelper.CreatePasswordHash("password", out string passwordHash, out string salt);
-
-                    // Add default admin user for testing
-                    User user = new User
-                    {
-                        Username = "admin",
-                        Email = "admin@tasktracker.com",
-                        PasswordHash = passwordHash,
-                        Salt = salt,
-                        Role = "Admin",
-                        FirstName = "Admin",
-                        LastName = "User",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true,
-                        AgeGroup = FamilyMemberAgeGroup.Adult
-                    };
-                    dbContext.Users.Add(user);
-                    dbContext.SaveChanges();
-
-                    Console.WriteLine("Admin user created with email: admin@tasktracker.com and password: password");
+                    context.Database.EnsureCreated();
                 }
+                
+                var seeder = new Data.SeedData.DataSeeder();
+                await seeder.SeedAsync(context, logger, authHelper);
+                
+                Console.WriteLine("Database seeding completed.");
             }
-
-            if (!dbContext.FamilyRoles.Any())
+            catch (Exception ex)
             {
-                Console.WriteLine("Creating family roles...");
-
-                // Create Admin role
-                FamilyRole adminRole = new FamilyRole
-                {
-                    Name = "Admin",
-                    Description = "Full control over the family",
-                    IsDefault = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-                dbContext.FamilyRoles.Add(adminRole);
-
-                // Create Member role
-                FamilyRole memberRole = new FamilyRole
-                {
-                    Name = "Member",
-                    Description = "Regular family member",
-                    IsDefault = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-                dbContext.FamilyRoles.Add(memberRole);
-                dbContext.SaveChanges();
-
-                // Add permissions for Admin role
-                // Add permissions for Admin role
-                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
-                {
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "assign_tasks", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_tasks", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "create_tasks", CreatedAt = DateTime.UtcNow }
-                });
-
-                // Add permissions for Member role
-                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
-                {
-                    new FamilyRolePermission { RoleId = memberRole.Id, Name = "view_members", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = memberRole.Id, Name = "manage_own_tasks", CreatedAt = DateTime.UtcNow }
-                });
-
-                dbContext.SaveChanges();
-                Console.WriteLine("Family roles created successfully!");
-            }
-
-            // Add Child and Adult roles for family task management
-            if (!dbContext.FamilyRoles.Any(r => r.Name == "Child" || r.Name == "Adult"))
-            {
-                Console.WriteLine("Creating Child and Adult family roles...");
-
-                // Create Adult role
-                FamilyRole adultRole = new FamilyRole
-                {
-                    Name = "Adult",
-                    Description = "Adult family member with task management permissions",
-                    IsDefault = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-                dbContext.FamilyRoles.Add(adultRole);
-
-                // Create Child role
-                FamilyRole childRole = new FamilyRole
-                {
-                    Name = "Child",
-                    Description = "Child family member with limited permissions",
-                    IsDefault = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-                dbContext.FamilyRoles.Add(childRole);
-                dbContext.SaveChanges();
-
-                // Add permissions for Adult role
-                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
-                {
-                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "assign_tasks", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow },
-                    new FamilyRolePermission { RoleId = adultRole.Id, Name = "create_tasks", CreatedAt = DateTime.UtcNow }
-                });
-
-                // Add permissions for Child role (limited)
-                dbContext.FamilyRolePermissions.AddRange(new List<FamilyRolePermission>
-                {
-                    new FamilyRolePermission { RoleId = childRole.Id, Name = "view_tasks", CreatedAt = DateTime.UtcNow }
-                });
-
-                dbContext.SaveChanges();
-                Console.WriteLine("Child and Adult family roles created successfully!");
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while seeding the database.");
             }
         }
 

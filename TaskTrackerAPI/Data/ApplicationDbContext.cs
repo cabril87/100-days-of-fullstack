@@ -111,6 +111,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChecklistItem> ChecklistItems { get; set; } = null!;
     public DbSet<ChecklistTemplateItem> ChecklistTemplateItems { get; set; } = null!;
 
+    // Add these DbSet properties after the existing ones
+    public DbSet<SubscriptionTier> SubscriptionTiers { get; set; } = null!;
+    public DbSet<UserApiQuota> UserApiQuotas { get; set; } = null!;
+    public DbSet<RateLimitTierConfig> RateLimitTierConfigs { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured && _configuration != null)
@@ -129,6 +134,11 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure decimal precision for SubscriptionTier.MonthlyCost
+        modelBuilder.Entity<SubscriptionTier>()
+            .Property(s => s.MonthlyCost)
+            .HasColumnType("decimal(18,2)");
 
         // Apply encryption to properties marked with [Encrypt] attribute
         if (_dataProtectionService != null)

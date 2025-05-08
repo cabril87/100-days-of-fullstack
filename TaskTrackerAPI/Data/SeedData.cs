@@ -19,7 +19,7 @@ using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Data;
 
-public static class SeedData
+public static class DatabaseSeeder
 {
     public static async Task InitializeAsync(IServiceProvider serviceProvider)
     {

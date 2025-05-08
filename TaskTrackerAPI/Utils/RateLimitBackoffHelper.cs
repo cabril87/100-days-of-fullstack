@@ -21,186 +21,281 @@ using Microsoft.Extensions.Logging;
 namespace TaskTrackerAPI.Utils
 {
     /// <summary>
-    /// Helper class for implementing rate limit backoff strategies in client applications
+    /// Helper class for handling rate-limited API responses with exponential backoff
     /// </summary>
     public class RateLimitBackoffHelper
     {
-        private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
-        private readonly ConcurrentDictionary<string, int> _retryCounters = new();
-        private readonly int _maxRetries;
-        private readonly int _baseDelay;
-        private readonly bool _useJitter;
-        private readonly Random _random = new();
-
+        private readonly ILogger<RateLimitBackoffHelper> _logger;
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions 
+        {
+            PropertyNameCaseInsensitive = true
+        };
+        
+        // Backoff settings - these can be loaded from configuration
+        private readonly int _maxRetryCount;
+        private readonly int _baseBackoffDelaySeconds;
+        private readonly Random _jitterSource = new();
+        
         /// <summary>
-        /// Initializes a new instance of the RateLimitBackoffHelper class
+        /// Constructor with default settings
         /// </summary>
-        /// <param name="httpClient">The HttpClient to use for requests</param>
-        /// <param name="logger">Logger for recording retry attempts</param>
-        /// <param name="maxRetries">Maximum number of retries (default: 5)</param>
-        /// <param name="baseDelay">Base delay in milliseconds (default: 1000)</param>
-        /// <param name="useJitter">Whether to add randomness to delays (default: true)</param>
+        /// <param name="httpClient">HTTP client for making requests</param>
+        /// <param name="logger">Logger</param>
+        /// <param name="maxRetryCount">Maximum number of retries (default: 3)</param>
+        /// <param name="baseBackoffDelaySeconds">Base delay in seconds for exponential backoff (default: 2)</param>
         public RateLimitBackoffHelper(
             HttpClient httpClient,
-            ILogger logger,
-            int maxRetries = 5,
-            int baseDelay = 1000,
-            bool useJitter = true)
+            ILogger<RateLimitBackoffHelper> logger,
+            int maxRetryCount = 3,
+            int baseBackoffDelaySeconds = 2)
         {
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _maxRetries = maxRetries;
-            _baseDelay = baseDelay;
-            _useJitter = useJitter;
+            _httpClient = httpClient;
+            _logger = logger;
+            _maxRetryCount = maxRetryCount;
+            _baseBackoffDelaySeconds = baseBackoffDelaySeconds;
         }
-
+        
         /// <summary>
-        /// Executes an HTTP request with exponential backoff retry logic for rate limiting
+        /// Makes an HTTP request with automatic retry and exponential backoff for rate-limited responses
         /// </summary>
-        /// <typeparam name="T">Type to deserialize the response to</typeparam>
-        /// <param name="requestUri">The request URI</param>
-        /// <param name="method">The HTTP method</param>
-        /// <param name="content">The request content (optional)</param>
+        /// <typeparam name="T">The expected response type</typeparam>
+        /// <param name="requestFunc">Function that creates and sends the HTTP request</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The deserialized response, or default if all retries fail</returns>
+        /// <returns>Deserialized response or default value if all retries fail</returns>
         public async Task<T?> ExecuteWithBackoffAsync<T>(
-            string requestUri,
-            HttpMethod method,
-            HttpContent? content = null,
+            Func<CancellationToken, Task<HttpResponseMessage>> requestFunc,
             CancellationToken cancellationToken = default)
         {
-            int currentRetry = 0;
-            int maxRetryAttempts = _maxRetries;
-
-            // Reset counter for this endpoint
-            _retryCounters.TryRemove(requestUri, out _);
-
-            while (currentRetry <= maxRetryAttempts)
+            int retryCount = 0;
+            bool shouldRetry;
+            bool wasRateLimited = false;
+            int? retryAfterSeconds = null;
+            
+            do
             {
-                using HttpRequestMessage request = new(method, requestUri);
-                if (content != null)
-                {
-                    request.Content = content;
-                }
-
+                shouldRetry = false;
+                
                 try
                 {
-                    using HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
-
-                    // If not rate limited, return the result
-                    if (response.StatusCode != HttpStatusCode.TooManyRequests)
+                    // Add jitter to avoid thundering herd problem
+                    if (wasRateLimited && retryCount > 0)
                     {
-                        if (response.IsSuccessStatusCode)
-                        {
-                            string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                            return JsonSerializer.Deserialize<T>(responseBody, new JsonSerializerOptions
-                            {
-                                PropertyNameCaseInsensitive = true
-                            });
-                        }
-
-                        // Handle other error codes as needed
-                        _logger.LogWarning("API request failed with status code {StatusCode}", response.StatusCode);
-                        return default;
+                        // Calculate delay with exponential backoff and jitter
+                        double exponentialFactor = Math.Pow(2, retryCount - 1);
+                        double baseDelay = retryAfterSeconds ?? (_baseBackoffDelaySeconds * exponentialFactor);
+                        double jitter = _jitterSource.NextDouble() * baseDelay * 0.3; // 30% jitter max
+                        int delayMs = (int)((baseDelay + jitter) * 1000);
+                        
+                        _logger.LogInformation(
+                            "Rate limit reached. Retry {RetryCount}/{MaxRetries} after {DelayMs}ms (exponential backoff)",
+                            retryCount, _maxRetryCount, delayMs);
+                            
+                        await Task.Delay(delayMs, cancellationToken);
                     }
-
-                    // Handle rate limiting (429 Too Many Requests)
-                    _retryCounters.TryGetValue(requestUri, out int retryCount);
-                    retryCount++;
-                    _retryCounters[requestUri] = retryCount;
-
-                    // Get retry information from headers if available
-                    int retryAfterSeconds = GetRetryAfterSeconds(response, retryCount);
-
-                    // Override max retries if server specifies it
-                    if (response.Headers.TryGetValues("X-Max-Retry", out IEnumerable<string>? maxRetryValues) &&
-                        int.TryParse(maxRetryValues.FirstOrDefault(), out int serverMaxRetry))
-                    {
-                        maxRetryAttempts = serverMaxRetry;
-                    }
-
-                    // Check if we should abort retrying
-                    if (currentRetry >= maxRetryAttempts)
-                    {
-                        _logger.LogWarning("Max retry attempts ({MaxRetries}) reached for {RequestUri}", 
-                            maxRetryAttempts, requestUri);
-                        return default;
-                    }
-
-                    // Apply exponential backoff with optional jitter
-                    int delayMs = CalculateBackoffDelay(retryCount, retryAfterSeconds * 1000);
                     
-                    _logger.LogInformation(
-                        "Rate limit hit for {RequestUri}. Retrying in {DelayMs}ms (attempt {RetryCount}/{MaxRetries})",
-                        requestUri, delayMs, currentRetry + 1, maxRetryAttempts);
-
-                    await Task.Delay(delayMs, cancellationToken);
-                    currentRetry++;
+                    // Make the request
+                    using HttpResponseMessage response = await requestFunc(cancellationToken);
+                    
+                    // Handle rate limiting responses (status code 429)
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                    {
+                        wasRateLimited = true;
+                        retryCount++;
+                        
+                        // Check if we should retry
+                        shouldRetry = retryCount <= _maxRetryCount;
+                        
+                        // Parse Retry-After header if present
+                        if (response.Headers.TryGetValues("Retry-After", out IEnumerable<string>? values) && 
+                            values.FirstOrDefault() is string retryAfterValue &&
+                            int.TryParse(retryAfterValue, out int parsedSeconds))
+                        {
+                            retryAfterSeconds = parsedSeconds;
+                            _logger.LogDebug("Server specified Retry-After: {RetryAfterSeconds} seconds", retryAfterSeconds);
+                        }
+                        
+                        // Extract rate limit headers for logging
+                        string limitHeader = GetHeaderValueOrDefault(response.Headers, "X-RateLimit-Limit");
+                        string remainingHeader = GetHeaderValueOrDefault(response.Headers, "X-RateLimit-Remaining");
+                        string resetHeader = GetHeaderValueOrDefault(response.Headers, "X-RateLimit-Reset");
+                        
+                        _logger.LogWarning(
+                            "Rate limit exceeded. Limit: {Limit}, Remaining: {Remaining}, Reset: {Reset}. Retry {RetryCount}/{MaxRetries}",
+                            limitHeader, remainingHeader, resetHeader, retryCount, _maxRetryCount);
+                            
+                        continue;
+                    }
+                    
+                    // For successful responses, deserialize and return
+                    if (response.IsSuccessStatusCode)
+                    {
+                        if (response.Content.Headers.ContentLength == 0)
+                        {
+                            // Handle empty responses (e.g., for void methods)
+                            return default;
+                        }
+                        
+                        string json = await response.Content.ReadAsStringAsync(cancellationToken);
+                        return JsonSerializer.Deserialize<T>(json, _jsonOptions);
+                    }
+                    
+                    // Handle other error responses
+                    _logger.LogError(
+                        "API request failed with status code {StatusCode}: {ReasonPhrase}",
+                        (int)response.StatusCode, response.ReasonPhrase);
+                        
+                    return default;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("Request cancelled for {RequestUri}", requestUri);
+                    // Propagate cancellation
+                    _logger.LogInformation("Request was cancelled");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error during request to {RequestUri}", requestUri);
-                    return default;
+                    _logger.LogError(ex, "Error executing request with backoff (attempt {RetryCount}/{MaxRetries})", 
+                        retryCount, _maxRetryCount);
+                        
+                    // Retry on transient errors
+                    if (IsTransientError(ex) && retryCount < _maxRetryCount)
+                    {
+                        shouldRetry = true;
+                        retryCount++;
+                        
+                        // Use base backoff delay for transient errors
+                        double exponentialFactor = Math.Pow(2, retryCount - 1);
+                        int delayMs = (int)(_baseBackoffDelaySeconds * exponentialFactor * 1000);
+                        
+                        _logger.LogInformation(
+                            "Transient error detected. Retry {RetryCount}/{MaxRetries} after {DelayMs}ms",
+                            retryCount, _maxRetryCount, delayMs);
+                            
+                        await Task.Delay(delayMs, cancellationToken);
+                    }
+                    else
+                    {
+                        return default;
+                    }
                 }
-            }
-
+            } while (shouldRetry);
+            
             return default;
         }
-
+        
         /// <summary>
-        /// Gets retry delay in seconds from response headers or calculates a default
+        /// Determines if an exception represents a transient error that should be retried
         /// </summary>
-        private int GetRetryAfterSeconds(HttpResponseMessage response, int retryCount)
+        private bool IsTransientError(Exception ex)
         {
-            // Try to get Retry-After header (in seconds)
-            if (response.Headers.TryGetValues("Retry-After", out IEnumerable<string>? retryAfterValues) &&
-                int.TryParse(retryAfterValues.FirstOrDefault(), out int retryAfter))
-            {
-                return retryAfter;
-            }
-
-            // Fall back to reset time if provided
-            if (response.Headers.TryGetValues("X-RateLimit-Reset", out IEnumerable<string>? resetValues) &&
-                long.TryParse(resetValues.FirstOrDefault(), out long resetTimestamp))
-            {
-                DateTimeOffset resetTime = DateTimeOffset.FromUnixTimeSeconds(resetTimestamp);
-                TimeSpan timeUntilReset = resetTime - DateTimeOffset.UtcNow;
-                
-                if (timeUntilReset.TotalSeconds > 0)
-                {
-                    return (int)timeUntilReset.TotalSeconds;
-                }
-            }
-
-            // Use exponential backoff with the retry count if no header is present
-            return (int)Math.Min(Math.Pow(2, retryCount), 60);  // Cap at 60 seconds
+            return ex is HttpRequestException ||
+                   ex is TimeoutException ||
+                   ex is TaskCanceledException ||
+                   (ex is JsonException && ex.Message.Contains("invalid"));
         }
-
+        
         /// <summary>
-        /// Calculates the backoff delay using exponential backoff formula with optional jitter
+        /// Gets a header value with a fallback
         /// </summary>
-        private int CalculateBackoffDelay(int retryCount, int retryAfterMs = 0)
+        private string GetHeaderValueOrDefault(HttpResponseHeaders headers, string headerName, string defaultValue = "unknown")
         {
-            // If the server suggests a delay, use that as a base
-            int baseDelayMs = retryAfterMs > 0 ? retryAfterMs : _baseDelay;
-            
-            // Calculate exponential backoff: baseDelay * (2^retryAttempt)
-            double delayMs = baseDelayMs * Math.Pow(2, Math.Min(retryCount - 1, 5));  // Prevent overflow
-            
-            // Add jitter to prevent thundering herd
-            if (_useJitter)
+            return headers.TryGetValues(headerName, out IEnumerable<string>? values) ? 
+                values.FirstOrDefault() ?? defaultValue : defaultValue;
+        }
+        
+        /// <summary>
+        /// Executes an HTTP GET request with retry and backoff
+        /// </summary>
+        /// <typeparam name="T">Expected response type</typeparam>
+        /// <param name="url">URL to request</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Response or default value if failed</returns>
+        public Task<T?> GetWithBackoffAsync<T>(string url, CancellationToken cancellationToken = default)
+        {
+            return ExecuteWithBackoffAsync<T>(token => _httpClient.GetAsync(url, token), cancellationToken);
+        }
+        
+        /// <summary>
+        /// Executes an HTTP POST request with retry and backoff
+        /// </summary>
+        /// <typeparam name="TRequest">Request type</typeparam>
+        /// <typeparam name="TResponse">Response type</typeparam>
+        /// <param name="url">URL to request</param>
+        /// <param name="data">Data to send</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Response or default value if failed</returns>
+        public Task<TResponse?> PostWithBackoffAsync<TRequest, TResponse>(
+            string url, 
+            TRequest data, 
+            CancellationToken cancellationToken = default)
+        {
+            return ExecuteWithBackoffAsync<TResponse>(async token =>
             {
-                delayMs += _random.Next(0, 1000);  // Add 0-1000ms random jitter
-            }
-            
-            // Cap the delay at 60 seconds to prevent excessive waits
-            return (int)Math.Min(delayMs, 60000);
+                string json = JsonSerializer.Serialize(data, _jsonOptions);
+                StringContent content = new(json, System.Text.Encoding.UTF8, "application/json");
+                return await _httpClient.PostAsync(url, content, token);
+            }, cancellationToken);
+        }
+        
+        /// <summary>
+        /// Executes an HTTP PUT request with retry and backoff
+        /// </summary>
+        /// <typeparam name="TRequest">Request type</typeparam>
+        /// <typeparam name="TResponse">Response type</typeparam>
+        /// <param name="url">URL to request</param>
+        /// <param name="data">Data to send</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Response or default value if failed</returns>
+        public Task<TResponse?> PutWithBackoffAsync<TRequest, TResponse>(
+            string url, 
+            TRequest data, 
+            CancellationToken cancellationToken = default)
+        {
+            return ExecuteWithBackoffAsync<TResponse>(async token =>
+            {
+                string json = JsonSerializer.Serialize(data, _jsonOptions);
+                StringContent content = new(json, System.Text.Encoding.UTF8, "application/json");
+                return await _httpClient.PutAsync(url, content, token);
+            }, cancellationToken);
+        }
+        
+        /// <summary>
+        /// Executes an HTTP DELETE request with retry and backoff
+        /// </summary>
+        /// <typeparam name="T">Expected response type</typeparam>
+        /// <param name="url">URL to request</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Response or default value if failed</returns>
+        public Task<T?> DeleteWithBackoffAsync<T>(string url, CancellationToken cancellationToken = default)
+        {
+            return ExecuteWithBackoffAsync<T>(token => _httpClient.DeleteAsync(url, token), cancellationToken);
+        }
+        
+        /// <summary>
+        /// Executes an HTTP request with retry and backoff using the specified method and content
+        /// </summary>
+        /// <typeparam name="T">Expected response type</typeparam>
+        /// <param name="url">URL to request</param>
+        /// <param name="method">HTTP method to use</param>
+        /// <param name="content">Optional content to send</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Response or default value if failed</returns>
+        public Task<T?> ExecuteRequestWithBackoffAsync<T>(
+            string url, 
+            HttpMethod method, 
+            HttpContent? content = null, 
+            CancellationToken cancellationToken = default)
+        {
+            return ExecuteWithBackoffAsync<T>(async token =>
+            {
+                HttpRequestMessage request = new(method, url);
+                if (content != null)
+                {
+                    request.Content = content;
+                }
+                return await _httpClient.SendAsync(request, token);
+            }, cancellationToken);
         }
     }
 
@@ -217,15 +312,19 @@ namespace TaskTrackerAPI.Utils
             HttpRequestMessage request,
             ILogger logger,
             int maxRetries = 5,
-            int baseDelay = 1000,
-            bool useJitter = true,
+            int baseDelay = 1,
             CancellationToken cancellationToken = default)
         {
-            RateLimitBackoffHelper helper = new RateLimitBackoffHelper(client, logger, maxRetries, baseDelay, useJitter);
+            // Create a helper with the specified parameters
+            var helper = new RateLimitBackoffHelper(
+                client, 
+                (ILogger<RateLimitBackoffHelper>)logger, 
+                maxRetries, 
+                baseDelay);
+                
+            // Use the helper to execute the request with backoff
             return await helper.ExecuteWithBackoffAsync<T>(
-                request.RequestUri!.ToString(),
-                request.Method,
-                request.Content,
+                token => client.SendAsync(request, token),
                 cancellationToken);
         }
     }

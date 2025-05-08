@@ -1268,6 +1268,65 @@ namespace TaskTrackerAPI.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.RateLimitTierConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("EndpointPattern")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("ExemptSystemAccounts")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("HighLoadReductionPercent")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HttpMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<bool>("IsAdaptive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCriticalEndpoint")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MatchPriority")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RateLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubscriptionTierId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TimeWindowSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionTierId");
+
+                    b.ToTable("RateLimitTierConfigs");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -1441,6 +1500,62 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("Rewards");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.SubscriptionTier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("BypassStandardRateLimits")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("DailyApiQuota")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DefaultRateLimit")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DefaultTimeWindowSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsSystemTier")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MaxConcurrentConnections")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MonthlyCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubscriptionTiers");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -1604,7 +1719,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 3, 15, 48, 52, 813, DateTimeKind.Utc).AddTicks(4705),
+                            UpdatedAt = new DateTime(2025, 5, 8, 13, 32, 46, 440, DateTimeKind.Utc).AddTicks(2220),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1621,7 +1736,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 3, 15, 48, 52, 813, DateTimeKind.Utc).AddTicks(6233),
+                            UpdatedAt = new DateTime(2025, 5, 8, 13, 32, 46, 440, DateTimeKind.Utc).AddTicks(3823),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1765,10 +1880,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46c4iwEDy-ZyQNwBtb2nIMB64kjIZ4E2Kxto3hB1zrRv2cE1HjyxETB3nMnW8rz2dZQKUs1Cp6el0bQKtQYMRyaNl8IKvo7KA-ybxSuve9qYT74Y8pEdhV9iYhLQ1Qk2kHo",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46dWaeXEXF-eC3T8ZRfjIR-Ol3QrGlF7JptxX2BTVzyzHD_NWMSeKqlXodX7HjciZoWISkVPS7BIX0HUIXDoG-14NRmZ55Qxwm15B6IXWhJCtA",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46djrH_6Wak3swBSxyxby6bOcgmB-EebUbG_YrWBB1tOcjwi0XnWnNnH25qeCFvYdI12e6VX2LwCkI2JUvtS6aEwrdAUGE5ZweonNkazv8dOC0oxLZfUYbfLUBhoW6nzNc0",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46dE39MaB-cb7pzPUrdZAq-pw8_3gCPiDwgx15wnkD5mtF0p9ndhgh7ggtYG0QE5dL91n_BvN-d0mvCaf4GWRWEgR2-aqTZY4Oun3ncg0EVQ4g",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46eZcbJ3tBhPGIm8__Ec5lvy1wLWi7VgavUaaVkbolyx_DJiAFuWgY_zW0_pY2Zx26wx2qqPQwu6D5TBqjFv1F895qNmPIAWsWlcUFYNuB7d_w",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46fpxKm9PbMqaB0oH4e2-AhwipCzcqy1i73-fICvROUvkOqg-5xfava4_q3qrJ3RaNHdeEUP-i1FsY1w7Fk3mVgnlG9BLM6_fLirO_TrJ_cFxg",
                             PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
                             Role = "Admin",
                             Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
@@ -1800,6 +1915,54 @@ namespace TaskTrackerAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserAchievements");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserApiQuota", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApiCallsUsedToday")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("HasReceivedQuotaWarning")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsExemptFromQuota")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastResetTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<DateTime>("LastUpdatedTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("MaxDailyApiCalls")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuotaWarningThresholdPercent")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SubscriptionTierId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionTierId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserApiQuotas");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.UserBadge", b =>
@@ -2311,6 +2474,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.RateLimitTierConfig", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.SubscriptionTier", "SubscriptionTier")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionTierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SubscriptionTier");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.RefreshToken", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.User", "User")
@@ -2464,6 +2638,25 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Achievement");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserApiQuota", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.SubscriptionTier", "SubscriptionTier")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionTierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SubscriptionTier");
 
                     b.Navigation("User");
                 });
