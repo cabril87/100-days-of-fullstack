@@ -59,6 +59,8 @@ public class AuthController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Login request received: {@UserLoginDto}", new { Email = userLoginDto.EmailOrUsername });
+            
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             TokensResponseDTO response = await _authService.LoginAsync(userLoginDto, ipAddress);
             _logger.LogInformation("User logged in successfully: {Email}", userLoginDto.EmailOrUsername);
@@ -66,11 +68,13 @@ public class AuthController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
+            _logger.LogWarning("Unauthorized access: {Message}", ex.Message);
             return Unauthorized(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during login");
+            _logger.LogError(ex, "Error during login for {Email}: {ErrorMessage}", 
+                userLoginDto.EmailOrUsername, ex.Message);
             return StatusCode(500, new { message = "An error occurred during login. Please try again later." });
         }
     }
@@ -100,11 +104,23 @@ public class AuthController : ControllerBase
     /// </summary>
     /// <returns>Success response with token in cookie</returns>
     [HttpGet("csrf")]
-    [Authorize]
+    [AllowAnonymous]
     public ActionResult GetCsrfToken()
     {
         // CSRF token is automatically set in a cookie by the middleware for GET requests
         return Ok(new { message = "CSRF token has been set" });
+    }
+
+    /// <summary>
+    /// Provides a CSRF token for unauthenticated requests (specifically for login/register)
+    /// </summary>
+    /// <returns>Success response with token in cookie</returns>
+    [HttpGet("public-csrf")]
+    [AllowAnonymous]
+    public ActionResult GetPublicCsrfToken()
+    {
+        // CSRF token is automatically set in a cookie by the middleware for GET requests
+        return Ok(new { message = "Public CSRF token has been set" });
     }
 
     [Authorize]
@@ -246,6 +262,36 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting user");
             return StatusCode(500, "An error occurred while deleting the user.");
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("users/change-password")]
+    public async Task<IActionResult> AdminChangePassword(AdminPasswordChangeDTO changePasswordDto)
+    {
+        try
+        {
+            int adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            await _authService.AdminChangePasswordAsync(changePasswordDto, adminId, ipAddress);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during admin password change for user {UserId}", changePasswordDto.UserId);
+            return StatusCode(500, "An error occurred while changing the user's password.");
         }
     }
 } 

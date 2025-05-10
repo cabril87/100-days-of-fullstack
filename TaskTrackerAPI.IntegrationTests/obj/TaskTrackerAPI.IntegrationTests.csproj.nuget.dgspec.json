@@ -183,6 +183,14 @@
               "target": "Package",
               "version": "[2.1.66, )"
             },
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[11.9.0, )"
+            },
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
             "Konscious.Security.Cryptography.Argon2": {
               "target": "Package",
               "version": "[1.3.1, )"
@@ -190,6 +198,14 @@
             "Microsoft.AspNetCore.Authentication.JwtBearer": {
               "target": "Package",
               "version": "[9.0.0, )"
+            },
+            "Microsoft.AspNetCore.DataProtection": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
+            "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.4, )"
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
               "target": "Package",
@@ -202,6 +218,10 @@
             "Microsoft.AspNetCore.Mvc.Versioning.ApiExplorer": {
               "target": "Package",
               "version": "[5.1.0, )"
+            },
+            "Microsoft.AspNetCore.SignalR": {
+              "target": "Package",
+              "version": "[1.2.0, )"
             },
             "Microsoft.Data.SqlClient": {
               "target": "Package",
@@ -249,9 +269,17 @@
               "target": "Package",
               "version": "[8.0.2, )"
             },
+            "System.Diagnostics.PerformanceCounter": {
+              "target": "Package",
+              "version": "[9.0.4, )"
+            },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
               "version": "[8.8.0, )"
+            },
+            "System.Threading.RateLimiting": {
+              "target": "Package",
+              "version": "[9.0.4, )"
             }
           },
           "imports": [

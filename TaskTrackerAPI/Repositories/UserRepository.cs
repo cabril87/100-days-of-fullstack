@@ -36,26 +36,50 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetUserByEmailAsync(string email)
     {
+        if (string.IsNullOrEmpty(email))
+            return null;
+            
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+            .AsNoTracking()
+            .ToListAsync()
+            .ContinueWith(t => t.Result.FirstOrDefault(u => 
+                string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<User?> GetUserByUsernameAsync(string username)
     {
+        if (string.IsNullOrEmpty(username))
+            return null;
+            
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+            .AsNoTracking()
+            .ToListAsync()
+            .ContinueWith(t => t.Result.FirstOrDefault(u => 
+                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<bool> UserExistsByEmailAsync(string email)
     {
+        if (string.IsNullOrEmpty(email))
+            return false;
+            
         return await _context.Users
-            .AnyAsync(u => u.Email.ToLower() == email.ToLower());
+            .AsNoTracking()
+            .ToListAsync()
+            .ContinueWith(t => t.Result.Any(u => 
+                string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<bool> UserExistsByUsernameAsync(string username)
     {
+        if (string.IsNullOrEmpty(username))
+            return false;
+            
         return await _context.Users
-            .AnyAsync(u => u.Username.ToLower() == username.ToLower());
+            .AsNoTracking()
+            .ToListAsync()
+            .ContinueWith(t => t.Result.Any(u => 
+                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<IEnumerable<User>> GetAllUsersAsync()

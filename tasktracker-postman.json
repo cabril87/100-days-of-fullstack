@@ -1,0 +1,3442 @@
+{
+	"info": {
+		"_postman_id": "28e4c5ae-3f5b-4d1e-8d6b-a20bc75e4f9d",
+		"name": "TaskTracker API",
+		"description": "Collection for testing the TaskTracker API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth Controller",
+			"item": [
+				{
+					"name": "Get CSRF Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract CSRF token from cookie and decode it",
+									"if (pm.cookies.has('XSRF-TOKEN')) {",
+									"    const encodedToken = pm.cookies.get('XSRF-TOKEN');",
+									"    // Decode the token but leave it URL encoded for headers",
+									"    pm.variables.set('csrfToken', encodedToken);",
+									"    // Also store the raw decoded version for inspection",
+									"    const decodedToken = decodeURIComponent(encodedToken);",
+									"    pm.variables.set('csrfTokenDecoded', decodedToken);",
+									"    console.log('CSRF token set (URL encoded for header): ' + encodedToken);",
+									"    console.log('CSRF token decoded (for inspection): ' + decodedToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/csrf",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"csrf"
+							]
+						},
+						"description": "Get a CSRF token before any POST requests"
+					},
+					"response": []
+				},
+				{
+					"name": "Login - Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract tokens from login response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.accessToken) {",
+									"        pm.variables.set('authToken', responseJson.accessToken);",
+									"        console.log('Access token set');",
+									"    }",
+									"    if (responseJson.refreshToken) {",
+									"        pm.variables.set('refreshToken', responseJson.refreshToken);",
+									"        console.log('Refresh token set');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with admin credentials"
+					},
+					"response": []
+				},
+				{
+					"name": "Login - Regular User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract tokens from login response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.accessToken) {",
+									"        pm.variables.set('authToken', responseJson.accessToken);",
+									"        console.log('Access token set');",
+									"    }",
+									"    if (responseJson.refreshToken) {",
+									"        pm.variables.set('refreshToken', responseJson.refreshToken);",
+									"        console.log('Refresh token set');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"user@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with regular user credentials"
+					},
+					"response": []
+				},
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"newaccount\",\n    \"email\": \"newaccount@example.com\",\n    \"password\": \"password\",\n    \"confirmPassword\": \"password\",\n    \"firstName\": \"New\",\n    \"lastName\": \"Account\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Get the current user's profile (requires authentication)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Updated\",\n    \"lastName\": \"Name\",\n    \"email\": \"updated@example.com\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"profile"
+							]
+						},
+						"description": "Update the current user's profile"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/refresh-token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh-token"
+							]
+						},
+						"description": "Refresh the access token using a refresh token"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"password\",\n    \"newPassword\": \"newpassword\",\n    \"confirmPassword\": \"newpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"change-password"
+							]
+						},
+						"description": "Change the current user's password"
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Logout and invalidate the current session"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication and user management endpoints"
+		},
+		{
+			"name": "Admin Password Change Test",
+			"item": [
+				{
+					"name": "Step 1: Get CSRF Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract CSRF token from cookie and decode it",
+									"if (pm.cookies.has('XSRF-TOKEN')) {",
+									"    const encodedToken = pm.cookies.get('XSRF-TOKEN');",
+									"    // Decode the token but leave it URL encoded for headers",
+									"    pm.variables.set('csrfToken', encodedToken);",
+									"    // Also store the raw decoded version for inspection",
+									"    const decodedToken = decodeURIComponent(encodedToken);",
+									"    pm.variables.set('csrfTokenDecoded', decodedToken);",
+									"    console.log('CSRF token set (URL encoded for header): ' + encodedToken);",
+									"    console.log('CSRF token decoded (for inspection): ' + decodedToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/csrf",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"csrf"
+							]
+						},
+						"description": "Get a CSRF token before any POST requests"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2: Login as Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract tokens from login response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.accessToken) {",
+									"        pm.variables.set('authToken', responseJson.accessToken);",
+									"        console.log('Access token set');",
+									"    }",
+									"    if (responseJson.refreshToken) {",
+									"        pm.variables.set('refreshToken', responseJson.refreshToken);",
+									"        console.log('Refresh token set');",
+									"    }",
+									"    if (responseJson.user && responseJson.user.id) {",
+									"        pm.variables.set('adminUserId', responseJson.user.id);",
+									"        console.log('Admin user ID set: ' + responseJson.user.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login with admin credentials to get the token"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 3: Get All Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract user ID for a non-admin user we can test with",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Find a user that's not the admin we're logged in as",
+									"    const adminId = pm.variables.get('adminUserId');",
+									"    const targetUser = responseJson.find(user => user.id != adminId);",
+									"    ",
+									"    if (targetUser) {",
+									"        pm.variables.set('targetUserId', targetUser.id);",
+									"        console.log('Target user ID set: ' + targetUser.id);",
+									"        console.log('Target user: ' + targetUser.username);",
+									"    } else {",
+									"        console.log('Could not find a non-admin user to test with');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users"
+							]
+						},
+						"description": "Get all users to identify a target user for password change"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 4: Change User Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Verify the response status code is 204 No Content for successful password change",
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"// Log information about the operation",
+									"if (pm.response.code === 204) {",
+									"    console.log('Password successfully changed for user ID ' + pm.variables.get('targetUserId'));",
+									"    // Set a flag for the collection runner to know the test was successful",
+									"    pm.collectionVariables.set('passwordChangeSuccessful', true);",
+									"}",
+									"else {",
+									"    console.log('Password change failed with status: ' + pm.response.code);",
+									"    console.log('Response: ' + pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// If targetUserId is not set, default to user ID 2",
+									"if (!pm.variables.get('targetUserId')) {",
+									"    pm.variables.set('targetUserId', 2);",
+									"    console.log('Using default target user ID: 2');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": {{targetUserId}},\n    \"newPassword\": \"newpassword123\",\n    \"confirmNewPassword\": \"newpassword123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users",
+								"change-password"
+							]
+						},
+						"description": "Change the password for the target user"
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5: Verify with New Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Verify the login is successful with new password",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that we get a token back",
+									"pm.test(\"Login successful with new password\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.accessToken).to.exist;",
+									"    ",
+									"    if (responseJson.accessToken) {",
+									"        console.log('Successfully logged in with new password');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Get the username of the target user whose password was changed",
+									"pm.sendRequest({",
+									"    url: pm.variables.get('baseUrl') + '/api/v1/auth/users',",
+									"    method: 'GET',",
+									"    header: {",
+									"        'Authorization': 'Bearer ' + pm.variables.get('authToken')",
+									"    }",
+									"}, function (err, res) {",
+									"    if (!err && res.code === 200) {",
+									"        const users = res.json();",
+									"        const targetUserId = pm.variables.get('targetUserId');",
+									"        const targetUser = users.find(user => user.id == targetUserId);",
+									"        ",
+									"        if (targetUser) {",
+									"            pm.variables.set('targetUserEmail', targetUser.email);",
+									"            console.log('Found target user email: ' + targetUser.email);",
+									"        } else {",
+									"            console.log('Could not find target user in users list');",
+									"            pm.variables.set('targetUserEmail', 'user@tasktracker.com'); // Fallback",
+									"        }",
+									"    } else {",
+									"        console.log('Error getting users: ' + (err ? err.message : res.status));",
+									"        pm.variables.set('targetUserEmail', 'user@tasktracker.com'); // Fallback",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"{{targetUserEmail}}\",\n    \"password\": \"newpassword123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Verify that we can log in with the new password"
+					},
+					"response": []
+				}
+			],
+			"description": "Complete workflow to test admin password change functionality"
+		},
+		{
+			"name": "Debug Controller",
+			"item": [
+				{
+					"name": "Debug - Test CSRF Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract CSRF token information from the response",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    console.log('Debug CSRF info:');",
+									"    console.log('- Header present: ' + responseJson.HasCSRFHeader);",
+									"    console.log('- Header value: ' + responseJson.CSRFHeaderValue);",
+									"    console.log('- Cookie present: ' + responseJson.HasCSRFCookie);",
+									"    console.log('- Cookie value: ' + responseJson.CSRFCookieValue);",
+									"    console.log('- Cookie decoded: ' + responseJson.CSRFCookieDecoded);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/csrf-test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"csrf-test"
+							]
+						},
+						"description": "Test CSRF token handling"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Test Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/test-login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"test-login"
+							]
+						},
+						"description": "Test login without CSRF validation"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Generate Password",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/generate-password?password=password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"generate-password"
+							],
+							"query": [
+								{
+									"key": "password",
+									"value": "password",
+									"description": "Password to hash (default is 'password')"
+								}
+							]
+						},
+						"description": "Generate password hash and salt for debugging"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Get Hash for Seed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Debug-Key",
+								"value": "DEVELOPMENT_DEBUG_ONLY_7865421",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/hash-for-seed",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"hash-for-seed"
+							]
+						},
+						"description": "Get hash and salt for database seeding"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Check Users",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/check-users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"check-users"
+							]
+						},
+						"description": "Check all users in the database"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Cleanup Users",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/cleanup-users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"cleanup-users"
+							]
+						},
+						"description": "Remove duplicate users from the database"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Fix Admin",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/fix-admin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"fix-admin"
+							]
+						},
+						"description": "Reset admin users and create a fresh admin with known credentials"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Test Auth Service",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/test-auth-service",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"test-auth-service"
+							]
+						},
+						"description": "Test login directly with the auth service"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Test Password Verification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/test-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"test-password"
+							]
+						},
+						"description": "Test password verification logic directly"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - User Detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/user-detail",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"user-detail"
+							]
+						},
+						"description": "Get detailed information about a user"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Verify Password By User ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": 1,\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/verify-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"verify-password"
+							]
+						},
+						"description": "Verify password for a specific user ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Debug - Test Repository Query",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emailOrUsername\": \"admin@tasktracker.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/debug/test-repo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"debug",
+								"test-repo"
+							]
+						},
+						"description": "Test the repository query directly"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"health"
+							]
+						},
+						"description": "Check API health status"
+					},
+					"response": []
+				}
+			],
+			"description": "Debug endpoints for testing and troubleshooting"
+		},
+		{
+			"name": "TaskItems Controller",
+			"item": [
+				{
+					"name": "Get All Tasks",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems"
+							]
+						},
+						"description": "Get all tasks for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Task By Id",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the task to retrieve"
+								}
+							]
+						},
+						"description": "Get a specific task by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"New Task\",\n    \"description\": \"This is a new task\",\n    \"dueDate\": \"2023-12-31T23:59:59\",\n    \"categoryId\": 1,\n    \"priority\": \"Medium\",\n    \"status\": \"NotStarted\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems"
+							]
+						},
+						"description": "Create a new task"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Task\",\n    \"description\": \"This task has been updated\",\n    \"dueDate\": \"2023-12-31T23:59:59\",\n    \"categoryId\": 1,\n    \"priority\": \"High\",\n    \"status\": \"InProgress\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the task to update"
+								}
+							]
+						},
+						"description": "Update an existing task"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the task to delete"
+								}
+							]
+						},
+						"description": "Delete a task"
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/:id/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								":id",
+								"complete"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the task to complete"
+								}
+							]
+						},
+						"description": "Mark a task as completed"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Task Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"InProgress\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/:id/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								":id",
+								"status"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the task to update status"
+								}
+							]
+						},
+						"description": "Update the status of a task"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tasks By Filter",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/taskitems/filter?status=InProgress&priority=High&categoryId=1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"taskitems",
+								"filter"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "InProgress",
+									"description": "Filter by status"
+								},
+								{
+									"key": "priority",
+									"value": "High",
+									"description": "Filter by priority"
+								},
+								{
+									"key": "categoryId",
+									"value": "1",
+									"description": "Filter by category ID"
+								}
+							]
+						},
+						"description": "Get tasks with filtering options"
+					},
+					"response": []
+				}
+			],
+			"description": "Task management endpoints"
+		},
+		{
+			"name": "Categories Controller",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"categories"
+							]
+						},
+						"description": "Get all categories"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Category By Id",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the category to retrieve"
+								}
+							]
+						},
+						"description": "Get a specific category by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Category\",\n    \"color\": \"#FF5733\",\n    \"icon\": \"folder\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"categories"
+							]
+						},
+						"description": "Create a new category"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Category\",\n    \"color\": \"#33FF57\",\n    \"icon\": \"star\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the category to update"
+								}
+							]
+						},
+						"description": "Update an existing category"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Category",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/categories/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"categories",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID of the category to delete"
+								}
+							]
+						},
+						"description": "Delete a category"
+					},
+					"response": []
+				}
+			],
+			"description": "Category management endpoints"
+		},
+		{
+			"name": "Family Controller",
+			"item": [
+				{
+					"name": "Get All Families",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family"
+							]
+						},
+						"description": "Get all families for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Family",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"My Family\",\n    \"description\": \"Family group for task management\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/createFamily",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								"createFamily"
+							]
+						},
+						"description": "Create a new family (you become the admin)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Family By ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Get a family by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Family",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Family Name\",\n    \"description\": \"Updated family description\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Update family details (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Family",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Delete a family (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Family Members",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:id/members",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":id",
+								"members"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Get all members of a family"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"member@example.com\",\n    \"roleId\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:id/members",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":id",
+								"members"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Add a new member to the family (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/members/:memberId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"members",
+								":memberId"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								},
+								{
+									"key": "memberId",
+									"value": "2",
+									"description": "Member ID"
+								}
+							]
+						},
+						"description": "Remove a member from the family (admin only)"
+					},
+					"response": []
+				}
+			],
+			"description": "Family and family member management endpoints"
+		},
+		{
+			"name": "FamilyMembers Controller",
+			"item": [
+				{
+					"name": "Get All Family Members",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers"
+							]
+						},
+						"description": "Get all family members across all families"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Family Member By ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family Member ID"
+								}
+							]
+						},
+						"description": "Get a specific family member by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Family Member Details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers/:id/details",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers",
+								":id",
+								"details"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family Member ID"
+								}
+							]
+						},
+						"description": "Get detailed information about a family member"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"familyId\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"relationship\": \"Parent\",\n    \"roleId\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers"
+							]
+						},
+						"description": "Create a new family member"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Name\",\n    \"email\": \"updated@example.com\",\n    \"relationship\": \"Sibling\",\n    \"roleId\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family Member ID"
+								}
+							]
+						},
+						"description": "Update a family member's information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Family Member",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/familymembers/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"familymembers",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Family Member ID"
+								}
+							]
+						},
+						"description": "Delete a family member"
+					},
+					"response": []
+				}
+			],
+			"description": "Family member management endpoints"
+		},
+		{
+			"name": "Family Tasks Controller",
+			"item": [
+				{
+					"name": "Get Family Tasks",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Get all tasks for a specific family"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Family Task By ID",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks/:taskId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks",
+								":taskId"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								},
+								{
+									"key": "taskId",
+									"value": "1",
+									"description": "Task ID"
+								}
+							]
+						},
+						"description": "Get a specific family task by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Family Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Family Task\",\n    \"description\": \"Task for the whole family\",\n    \"dueDate\": \"2023-12-31T23:59:59\",\n    \"assignedToMemberId\": 1,\n    \"points\": 10,\n    \"priority\": \"High\",\n    \"status\": \"NotStarted\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								}
+							]
+						},
+						"description": "Create a new family task"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Family Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Family Task\",\n    \"description\": \"Updated task description\",\n    \"dueDate\": \"2023-12-31T23:59:59\",\n    \"assignedToMemberId\": 2,\n    \"points\": 20,\n    \"priority\": \"Medium\",\n    \"status\": \"InProgress\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks/:taskId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks",
+								":taskId"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								},
+								{
+									"key": "taskId",
+									"value": "1",
+									"description": "Task ID"
+								}
+							]
+						},
+						"description": "Update a family task"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Family Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks/:taskId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks",
+								":taskId"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								},
+								{
+									"key": "taskId",
+									"value": "1",
+									"description": "Task ID"
+								}
+							]
+						},
+						"description": "Delete a family task"
+					},
+					"response": []
+				},
+				{
+					"name": "Complete Family Task",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/family/:familyId/tasks/:taskId/complete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"family",
+								":familyId",
+								"tasks",
+								":taskId",
+								"complete"
+							],
+							"variable": [
+								{
+									"key": "familyId",
+									"value": "1",
+									"description": "Family ID"
+								},
+								{
+									"key": "taskId",
+									"value": "1",
+									"description": "Task ID"
+								}
+							]
+						},
+						"description": "Mark a family task as completed"
+					},
+					"response": []
+				}
+			],
+			"description": "Family task management endpoints"
+		},
+		{
+			"name": "Notifications Controller",
+			"item": [
+				{
+					"name": "Get All Notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications"
+							]
+						},
+						"description": "Get all notifications for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Unread Notifications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/unread",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"unread"
+							]
+						},
+						"description": "Get all unread notifications for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/:id/read",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								":id",
+								"read"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Notification ID"
+								}
+							]
+						},
+						"description": "Mark a notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/read-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								"read-all"
+							]
+						},
+						"description": "Mark all notifications as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/notifications/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"notifications",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "Notification ID"
+								}
+							]
+						},
+						"description": "Delete a notification"
+					},
+					"response": []
+				}
+			],
+			"description": "Notification management endpoints"
+		},
+		{
+			"name": "Security Controller",
+			"item": [
+				{
+					"name": "Get Account Security Settings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/account",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"account"
+							]
+						},
+						"description": "Get account security settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Enable Two-Factor Authentication",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/2fa/enable",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"2fa",
+								"enable"
+							]
+						},
+						"description": "Enable two-factor authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Disable Two-Factor Authentication",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/2fa/disable",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"2fa",
+								"disable"
+							]
+						},
+						"description": "Disable two-factor authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Active Sessions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/sessions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"sessions"
+							]
+						},
+						"description": "Get all active sessions for the current user"
+					},
+					"response": []
+				},
+				{
+					"name": "Terminate Session",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/sessions/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"sessions",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "session-id",
+									"description": "Session ID"
+								}
+							]
+						},
+						"description": "Terminate a specific session"
+					},
+					"response": []
+				},
+				{
+					"name": "Terminate All Other Sessions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/security/sessions/terminate-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"security",
+								"sessions",
+								"terminate-all"
+							]
+						},
+						"description": "Terminate all sessions except the current one"
+					},
+					"response": []
+				}
+			],
+			"description": "Security and account protection endpoints"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Get All Users",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users"
+							]
+						},
+						"description": "Get all users (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Role",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "\"Admin\"",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users/:id/role",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users",
+								":id",
+								"role"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "2",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Update a user's role (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "User ID"
+								}
+							]
+						},
+						"description": "Delete a user (admin only)"
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Change User Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Verify the response status code is 204 No Content for successful password change",
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"// Log information about the operation",
+									"if (pm.response.code === 204) {",
+									"    console.log('Password successfully changed for user ID ' + JSON.parse(pm.request.body.raw).userId);",
+									"}",
+									"else {",
+									"    console.log('Password change failed with status: ' + pm.response.code);",
+									"    console.log('Response: ' + pm.response.text());",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userId\": 2,\n    \"newPassword\": \"newpassword\",\n    \"confirmNewPassword\": \"newpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/users/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"users",
+								"change-password"
+							]
+						},
+						"description": "Change a user's password (admin only)"
+					},
+					"response": []
+				}
+			],
+			"description": "User administration endpoints (admin only)"
+		},
+		{
+			"name": "Settings Controller",
+			"item": [
+				{
+					"name": "Get User Settings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings"
+							]
+						},
+						"description": "Get current user's settings"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Settings",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-CSRF-TOKEN",
+								"value": "{{csrfToken}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"theme\": \"dark\",\n    \"emailNotifications\": true,\n    \"defaultView\": \"list\",\n    \"language\": \"en-US\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/settings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"settings"
+							]
+						},
+						"description": "Update user's settings"
+					},
+					"response": []
+				}
+			],
+			"description": "User settings management endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// This script will run after every request",
+					"// Update CSRF token if present in the response",
+					"if (pm.cookies.has('XSRF-TOKEN')) {",
+					"    const encodedToken = pm.cookies.get('XSRF-TOKEN');",
+					"    // Keep it encoded for headers",
+					"    pm.variables.set('csrfToken', encodedToken);",
+					"    // Store decoded version for inspection",
+					"    const decodedToken = decodeURIComponent(encodedToken);",
+					"    pm.variables.set('csrfTokenDecoded', decodedToken);",
+					"    console.log('CSRF token updated (URL encoded for header): ' + encodedToken);",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "csrfToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "csrfTokenDecoded",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+} 

@@ -84,7 +84,7 @@ namespace TaskTrackerAPI.DTOs.Auth
         [Required]
         public string EmailOrUsername { get; set; } = string.Empty;
 
-        /// Email address
+        /// Email address - Will use EmailOrUsername value for backward compatibility
         [EmailAddress]
         public string Email => EmailOrUsername;
         
@@ -302,6 +302,32 @@ namespace TaskTrackerAPI.DTOs.Auth
         public string NewPassword { get; set; } = string.Empty;
         
         /// Confirm new password
+        [Required]
+        [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
+        public string ConfirmNewPassword { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO for admin to update a user's password
+    /// </summary>
+    public class AdminPasswordChangeDTO
+    {
+        /// <summary>
+        /// ID of the user whose password will be changed
+        /// </summary>
+        [Required]
+        public int UserId { get; set; }
+        
+        /// <summary>
+        /// New password
+        /// </summary>
+        [Required]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 100 characters")]
+        public string NewPassword { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Confirm new password
+        /// </summary>
         [Required]
         [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
         public string ConfirmNewPassword { get; set; } = string.Empty;

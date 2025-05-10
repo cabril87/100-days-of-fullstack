@@ -55,25 +55,11 @@ public static class DatabaseSeeder
     {
         if (await context.Users.AnyAsync(u => u.Role == "Admin"))
         {
-            return; // Roles already seeded
+            return; // Admin user already exists, no need to seed
         }
 
-        // Create default admin user
-        User adminUser = new User
-        {
-            Username = "admin",
-            Email = "admin@tasktracker.com",
-            PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==",
-            Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
-            FirstName = "Admin",
-            LastName = "User",
-            Role = "Admin",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        await context.Users.AddAsync(adminUser);
-        await context.SaveChangesAsync();
+        // We'll let the DatabaseSeeder or ApplicationDbContext handle admin user creation
+        // to avoid duplicates
     }
 
     private static async Task SeedDefaultUserAsync(ApplicationDbContext context)

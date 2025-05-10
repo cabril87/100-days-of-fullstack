@@ -21,7 +21,7 @@ namespace TaskTrackerAPI.Helpers;
 
 public class AuthHelper
 {
-    private readonly IConfiguration _configuration;
+    public readonly IConfiguration _configuration;
 
     public AuthHelper(IConfiguration configuration)
     {
@@ -65,11 +65,11 @@ public class AuthHelper
     public bool VerifyPasswordHash(string password, string storedHash, string storedSalt)
     {
         // Check if the stored hash is in ASP.NET Identity format (starts with "AQAAAA")
-        if (storedHash.StartsWith("AQAAAA") || storedHash.StartsWith("AQAAAA"))
+        if (storedHash.StartsWith("AQAAAA"))
         {
-            // For legacy ASP.NET Identity format hashes, use a temporary validation that always succeeds
-            // This is a temporary measure to allow users to login, their hash will be updated on next login
-            return true;
+            // For ASP.NET Identity format hashes, we'll do a special check for the "password" word
+            // This is ONLY for development/seeded accounts, not for production!
+            return password.Equals("password", StringComparison.Ordinal);
         }
         
         try

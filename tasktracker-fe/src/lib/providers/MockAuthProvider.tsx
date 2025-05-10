@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { authService, User } from '@/services/auth-service';
+import { User } from '@/lib/types/auth';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -19,7 +19,16 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-// Create the context with a default value
+const mockUser: User = {
+  id: '1',
+  username: 'mockuser',
+  email: 'user@example.com',
+  firstName: 'Demo',
+  lastName: 'User',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
@@ -29,42 +38,28 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+export function MockAuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(mockUser); 
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  // Check for existing authentication on mount
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const response = await authService.getCurrentUser();
-        if (response.data) {
-          setUser(response.data);
-        }
-      } catch (error) {
-        console.error('Failed to load user:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    const checkAuth = async () => {
+      setIsLoading(true);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setIsLoading(false);
     };
 
-    loadUser();
+    checkAuth();
   }, []);
 
   const login = async (emailOrUsername: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await authService.login({
-        emailOrUsername,
-        password,
-      });
-
-      if (response.data) {
-        setUser(response.data);
-        return true;
-      }
-      return false;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setUser(mockUser);
+      return true;
     } catch (error) {
       console.error('Login failed:', error);
       return false;
@@ -82,13 +77,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await authService.register(userData);
-
-      if (response.data) {
-        setUser(response.data);
-        return true;
-      }
-      return false;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const newUser: User = {
+        id: '2',
+        username: userData.username,
+        email: userData.email,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      setUser(newUser);
+      return true;
     } catch (error) {
       console.error('Registration failed:', error);
       return false;
@@ -100,9 +102,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await authService.logout();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       setUser(null);
-      router.push('/login');
+      router.push('/auth/login');
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -126,7 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Custom hook to use the auth context
 export function useAuth() {
   return useContext(AuthContext);
 } 

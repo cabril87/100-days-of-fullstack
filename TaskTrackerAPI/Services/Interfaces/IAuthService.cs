@@ -34,6 +34,7 @@ public interface IAuthService
     // Admin operations
     Task<IEnumerable<UserDTO>> GetAllUsersAsync();
     Task UpdateUserRoleAsync(int userId, string role, int adminId);
+    Task AdminChangePasswordAsync(AdminPasswordChangeDTO changePasswordDto, int adminId, string ipAddress);
 
     // Token generation
     string GenerateAccessToken(User user);

@@ -1,60 +1,37 @@
-/**
- * Authentication Service
- * 
- * Handles user authentication, registration, and session management.
- * Uses secure practices including proper token handling and CSRF protection.
- */
 
-import { apiService, ApiResponse } from './api';
+import { apiService } from './apiService';
+import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/lib/types/user';
+import { ApiResponse } from '@/lib/types/api';
 
-// User types
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  displayName: string;
-  role: string;
-  createdAt: string;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-interface LoginRequest {
-  emailOrUsername: string;
-  password: string;
-}
+const getCsrfToken = (): string => {
+  const cookies = document.cookie.split(';');
+  const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
+  
+  if (csrfCookie) {
+    const encodedToken = csrfCookie.split('=')[1];
+    try {
+      return decodeURIComponent(encodedToken);
+    } catch (e) {
+      console.error('Error decoding CSRF token:', e);
+      return encodedToken;
+    }
+  }
+  
+  return '';
+};
 
-interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
-}
-
-/**
- * Authentication service for managing user auth state
- */
 class AuthService {
   private currentUser: User | null = null;
-  
-  /**
-   * Initialize auth service and try to restore session
-   */
+
   constructor() {
-    // Check for stored user data on client side
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('user');
       if (userData) {
         try {
           this.currentUser = JSON.parse(userData);
-        } catch (e) {
+        } catch (_e) {
           console.error('Failed to parse stored user data');
           localStorage.removeItem('user');
         }
@@ -62,14 +39,23 @@ class AuthService {
     }
   }
   
-  /**
-   * Log in a user with credentials
-   */
+
   async login(credentials: LoginRequest): Promise<ApiResponse<User>> {
-    const response = await apiService.post<AuthResponse>('/v1/auth/login', credentials, false);
+    const csrfToken = await this.fetchCsrfToken();
+    
+    const loginData = {
+      emailOrUsername: credentials.email, 
+      password: credentials.password,
+      csrfToken 
+    };
+
+    const response = await apiService.post<AuthResponse>('/v1/auth/login', loginData, false);
     
     if (response.data) {
+      localStorage.setItem('token', response.data.accessToken || '');
+      
       this.setCurrentUser(response.data.user);
+      
       return {
         data: response.data.user,
         status: response.status
@@ -82,14 +68,23 @@ class AuthService {
     };
   }
   
-  /**
-   * Register a new user
-   */
+
   async register(userData: RegisterRequest): Promise<ApiResponse<User>> {
-    const response = await apiService.post<AuthResponse>('/v1/auth/register', userData, false);
+    const csrfToken = await this.fetchCsrfToken();
+    
+    const registerData = {
+      ...userData,
+      confirmPassword: userData.password,
+      csrfToken 
+    };
+
+    const response = await apiService.post<AuthResponse>('/v1/auth/register', registerData, false);
     
     if (response.data) {
+      localStorage.setItem('token', response.data.accessToken || '');
+      
       this.setCurrentUser(response.data.user);
+      
       return {
         data: response.data.user,
         status: response.status
@@ -101,24 +96,43 @@ class AuthService {
       status: response.status
     };
   }
+
+  private async fetchCsrfToken(): Promise<string> {
+    try {
+      const response = await fetch(`${API_URL}/v1/auth/csrf`, {
+        method: 'GET',
+        credentials: 'include', 
+      });
+      
+      const data = await response.json();
+      let token = '';
+      
+      if (data && data.csrfToken) {
+        token = data.csrfToken;
+      } else {
+        token = getCsrfToken();
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      return token;
+    } catch (_error) {
+      console.error('Error fetching CSRF token:', _error);
+      return getCsrfToken();
+    }
+  }
   
-  /**
-   * Log out the current user
-   */
+
   async logout(): Promise<boolean> {
     const response = await apiService.post<void>('/v1/auth/logout', {});
     
-    // Clear user data regardless of API response
     this.clearCurrentUser();
     
     return response.status === 200 || response.status === 204;
   }
   
-  /**
-   * Get the current authenticated user
-   */
+
   async getCurrentUser(): Promise<ApiResponse<User>> {
-    // If we already have the user data and we're in a browser, return it
     if (this.currentUser && typeof window !== 'undefined') {
       return {
         data: this.currentUser,
@@ -126,36 +140,28 @@ class AuthService {
       };
     }
     
-    // Otherwise fetch from API
-    const response = await apiService.get<User>('/v1/auth/me');
+    const response = await apiService.get<User>('/v1/auth/profile');
     
     if (response.data) {
       this.setCurrentUser(response.data);
     } else if (response.status === 401) {
-      // Clear invalid user data
       this.clearCurrentUser();
     }
     
     return response;
   }
   
-  /**
-   * Check if the user is authenticated
-   */
+  
   isAuthenticated(): boolean {
     return !!this.currentUser;
   }
   
-  /**
-   * Get user's role for authorization
-   */
+ 
   getUserRole(): string | null {
     return this.currentUser?.role || null;
   }
   
-  /**
-   * Store user data
-   */
+ 
   private setCurrentUser(user: User): void {
     this.currentUser = user;
     if (typeof window !== 'undefined') {
@@ -163,16 +169,14 @@ class AuthService {
     }
   }
   
-  /**
-   * Clear user data
-   */
+ 
   private clearCurrentUser(): void {
     this.currentUser = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
   }
 }
 
-// Export a singleton instance
 export const authService = new AuthService(); 

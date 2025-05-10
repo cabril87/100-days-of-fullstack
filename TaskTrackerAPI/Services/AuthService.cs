@@ -116,31 +116,47 @@ public class AuthService : IAuthService
     {
         try
         {
-            // Find user by email
-            User? user = await _userRepository.GetUserByEmailAsync(loginDto.Email);
+            // Log the login attempt with detailed info
+            _logger.LogInformation("Login attempt details - EmailOrUsername: '{EmailOrUsername}', Email property: '{Email}'", 
+                loginDto.EmailOrUsername, loginDto.Email);
+            
+            // Try to find user by email first
+            User? user = await _userRepository.GetUserByEmailAsync(loginDto.EmailOrUsername);
+            
+            // If not found by email, try by username
+            if (user == null)
+            {
+                user = await _userRepository.GetUserByUsernameAsync(loginDto.EmailOrUsername);
+                _logger.LogInformation("Email lookup failed, tried username lookup: {Result}", user != null);
+            }
 
-            _logger.LogInformation("Login attempt for {Email}, user found: {UserFound}", loginDto.Email, user != null);
+            _logger.LogInformation("Login attempt for {EmailOrUsername}, user found: {UserFound}", 
+                loginDto.EmailOrUsername, user != null);
 
             if (user == null || !user.IsActive)
             {
-                _logger.LogWarning("Invalid login: user not found or not active for {Email}", loginDto.Email);
+                _logger.LogWarning("Invalid login: user not found or not active for {EmailOrUsername}", 
+                    loginDto.EmailOrUsername);
                 throw new UnauthorizedAccessException("Invalid email or password");
             }
 
             // Verify password
             bool isPasswordValid = await _userRepository.CheckPasswordAsync(user, loginDto.Password);
-            _logger.LogInformation("Password validation result for {Email}: {Result}", loginDto.Email, isPasswordValid);
+            _logger.LogInformation("Password validation result for {EmailOrUsername}: {Result}", 
+                loginDto.EmailOrUsername, isPasswordValid);
 
             if (!isPasswordValid)
             {
-                _logger.LogWarning("Failed login attempt for user: {Email} - Invalid password", loginDto.Email);
+                _logger.LogWarning("Failed login attempt for user: {EmailOrUsername} - Invalid password", 
+                    loginDto.EmailOrUsername);
                 throw new UnauthorizedAccessException("Invalid email or password");
             }
 
             // Check if the hash is in the old ASP.NET Identity format and rehash it
             if (user.PasswordHash.StartsWith("AQAAAA"))
             {
-                _logger.LogInformation("Upgrading password hash to Argon2id for user: {Email}", loginDto.Email);
+                _logger.LogInformation("Upgrading password hash to Argon2id for user: {EmailOrUsername}", 
+                    loginDto.EmailOrUsername);
                 
                 // Create a new Argon2id hash
                 _authHelper.CreatePasswordHash(loginDto.Password, out string newPasswordHash, out string newSalt);
@@ -152,7 +168,8 @@ public class AuthService : IAuthService
                 // Save the updated user
                 await _userRepository.UpdateUserAsync(user);
                 
-                _logger.LogInformation("Password hash upgraded successfully for user: {Email}", loginDto.Email);
+                _logger.LogInformation("Password hash upgraded successfully for user: {EmailOrUsername}", 
+                    loginDto.EmailOrUsername);
             }
 
             // Generate JWT token
@@ -210,7 +227,8 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             // Log the detailed exception for debugging
-            _logger.LogError(ex, "Unexpected error during login for {Email}: {ErrorMessage}", loginDto.Email, ex.Message);
+            _logger.LogError(ex, "Unexpected error during login for {EmailOrUsername}: {ErrorMessage}", 
+                loginDto.EmailOrUsername, ex.Message);
             throw;
         }
     }
@@ -470,6 +488,45 @@ public class AuthService : IAuthService
         user.UpdatedAt = DateTime.UtcNow;
         
         await _userRepository.UpdateUserAsync(user);
+    }
+    
+    public async Task AdminChangePasswordAsync(AdminPasswordChangeDTO changePasswordDto, int adminId, string ipAddress)
+    {
+        // Verify admin permissions
+        User? adminUser = await _userRepository.GetUserByIdAsync(adminId);
+        
+        if (adminUser == null)
+        {
+            throw new KeyNotFoundException("Admin user not found");
+        }
+        
+        // Check if the user performing the update is an admin
+        if (adminUser.Role != "Admin")
+        {
+            throw new UnauthorizedAccessException("Only administrators can update user passwords");
+        }
+        
+        // Get the target user
+        User? user = await _userRepository.GetUserByIdAsync(changePasswordDto.UserId);
+        
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+        
+        // Verify passwords match
+        if (changePasswordDto.NewPassword != changePasswordDto.ConfirmNewPassword)
+        {
+            throw new ArgumentException("New passwords do not match");
+        }
+        
+        // Update password
+        await _userRepository.ChangePasswordAsync(user, changePasswordDto.NewPassword);
+        
+        // Revoke all refresh tokens for this user for security
+        await _userRepository.RevokeAllUserRefreshTokensAsync(changePasswordDto.UserId, ipAddress);
+        
+        _logger.LogInformation("Admin {AdminId} changed password for user {UserId}", adminId, changePasswordDto.UserId);
     }
     
     public string GenerateAccessToken(User user)

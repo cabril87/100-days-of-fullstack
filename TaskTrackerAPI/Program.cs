@@ -109,9 +109,10 @@ public class Program
             // Development CORS policy - permissive for local testing
             options.AddPolicy("DevCors", (corsBuilder) =>
             {
-                corsBuilder.AllowAnyOrigin() // Permissive for file:// protocol and local testing
+                corsBuilder.SetIsOriginAllowed(_ => true) // Allow any origin including null (file://)
                     .AllowAnyMethod()
                     .AllowAnyHeader()
+                    .AllowCredentials() // Enable credentials for testing
                     .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
             
@@ -444,6 +445,13 @@ public class Program
         // Enable response compression
         app.UseResponseCompression();
 
+        // Add diagnostic middleware to log requests
+        app.Use(async (context, next) => {
+            Console.WriteLine($"Request path: {context.Request.Path}, Method: {context.Request.Method}");
+            await next();
+            Console.WriteLine($"Response status: {context.Response.StatusCode} for {context.Request.Path}");
+        });
+
         // Configure the HTTP request pipeline based on environment
         if (app.Environment.IsDevelopment())
         {
@@ -550,7 +558,7 @@ public class Program
                 var context = services.GetRequiredService<ApplicationDbContext>();
                 var logger = services.GetRequiredService<ILogger<Program>>();
                 var authHelper = services.GetRequiredService<AuthHelper>();
-                
+
                 if (app.Environment.IsDevelopment())
                 {
                     context.Database.EnsureCreated();

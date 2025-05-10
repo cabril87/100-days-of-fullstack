@@ -393,8 +393,8 @@ public class ApplicationDbContext : DbContext
                 Id = 1,
                 Username = "admin",
                 Email = "admin@tasktracker.com",
-                PasswordHash = "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==", // This is a placeholder - use proper password hashing in real code
-                Salt = "RVENTsNrIeUkGxDiQQcAKQ==",
+                PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", // This is a placeholder - use proper password hashing in real code
+                Salt = "AAECAwQFBgcICQoLDA0ODw==",
                 FirstName = "Admin",
                 LastName = "User",
                 Role = "Admin",

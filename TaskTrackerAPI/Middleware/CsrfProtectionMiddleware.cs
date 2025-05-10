@@ -62,7 +62,14 @@ public class CsrfProtectionMiddleware
                     "/hubs/",  // Exclude all hub paths including negotiation
                     "/hubs/tasks",
                     "/hubs/tasks/negotiate",
-                    "/api/auth/csrf"
+                    "/api/auth/csrf",
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/csrf",
+                    "/api/v1/auth/public-csrf",
+                    "/api/v1/debug/", // Exclude all debug endpoints for testing
+                    "/api/v1/debug/csrf-test",
+                    "/api/v1/debug/test-login"
                 },
             StringComparer.OrdinalIgnoreCase);
         
@@ -135,8 +142,20 @@ public class CsrfProtectionMiddleware
     
     private bool ValidateToken(string headerToken, string cookieToken)
     {
-        // Simple validation - tokens should match
-        return headerToken.Equals(cookieToken, StringComparison.Ordinal);
+        try
+        {
+            // URL decode both tokens before comparison
+            string decodedHeaderToken = WebUtility.UrlDecode(headerToken);
+            string decodedCookieToken = WebUtility.UrlDecode(cookieToken);
+            
+            // Compare the decoded tokens
+            return decodedHeaderToken.Equals(decodedCookieToken, StringComparison.Ordinal);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating CSRF token");
+            return false;
+        }
     }
     
     private string GenerateToken()

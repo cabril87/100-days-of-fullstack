@@ -1,0 +1,153 @@
+{
+  "health": {
+    "endpoint": "/v1/health",
+    "method": "GET",
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "api-supported-versions": "1.0",
+      "content-encoding": "gzip",
+      "content-type": "application/json; charset=utf-8",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "set-cookie": "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D; expires=Sat, 10 May 2025 15:55:34 GMT; path=/; samesite=lax",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885394"
+    },
+    "data": {
+      "status": "Healthy",
+      "environment": "Development",
+      "timestamp": "2025-05-10T13:55:34.9761977Z",
+      "version": "1.0.0"
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  },
+  "csrfToken": {
+    "endpoint": "/v1/auth/csrf",
+    "method": "GET",
+    "status": 401,
+    "statusText": "Unauthorized",
+    "headers": {
+      "content-length": "0",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "www-authenticate": "Bearer",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885394"
+    },
+    "data": {
+      "rawText": ""
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  },
+  "register": {
+    "endpoint": "/v1/auth/register",
+    "method": "POST",
+    "status": 403,
+    "statusText": "Forbidden",
+    "headers": {
+      "content-encoding": "gzip",
+      "content-type": "application/json; charset=utf-8",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885394"
+    },
+    "data": {
+      "status": 403,
+      "message": "Invalid CSRF token"
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  },
+  "login": {
+    "endpoint": "/v1/auth/login",
+    "method": "POST",
+    "status": 403,
+    "statusText": "Forbidden",
+    "headers": {
+      "content-encoding": "gzip",
+      "content-type": "application/json; charset=utf-8",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885394"
+    },
+    "data": {
+      "status": 403,
+      "message": "Invalid CSRF token"
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  },
+  "profile": {
+    "endpoint": "/v1/auth/profile",
+    "method": "GET",
+    "status": 401,
+    "statusText": "Unauthorized",
+    "headers": {
+      "content-length": "0",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "www-authenticate": "Bearer",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885394"
+    },
+    "data": {
+      "rawText": ""
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  },
+  "tasks": {
+    "endpoint": "/v1/taskitems",
+    "method": "GET",
+    "status": 401,
+    "statusText": "Unauthorized",
+    "headers": {
+      "content-length": "0",
+      "date": "Sat, 10 May 2025 13:55:34 GMT",
+      "server": "Kestrel",
+      "www-authenticate": "Bearer",
+      "x-ratelimit-limit": "100",
+      "x-ratelimit-remaining": "99",
+      "x-ratelimit-reset": "1746885395"
+    },
+    "data": {
+      "rawText": ""
+    },
+    "cookies": [
+      "XSRF-TOKEN=vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D",
+      "10 May 2025 15:55:34 GMT"
+    ],
+    "csrfToken": "vptUzSdGhvIVqRk8b4RSsGD8cjY2dpGj2IbwGLL%2FhQg%3D"
+  }
+}
