@@ -2,17 +2,37 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthProvider';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  const toggleProfileMenu = () => {
+    setIsProfileMenuOpen(!isProfileMenuOpen);
+  };
+
+  // Close profile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <nav className="bg-white shadow-sm">
@@ -47,14 +67,53 @@ export function Navbar() {
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-700">Welcome, {displayName}</span>
-                <button
-                  onClick={logout}
-                  className="text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Logout
-                </button>
+              <div className="flex items-center space-x-4 relative">
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    onClick={toggleProfileMenu}
+                    className="flex items-center text-sm text-gray-700 hover:text-gray-900 focus:outline-none"
+                  >
+                    <span className="mr-2">Welcome, {displayName}</span>
+                    <svg
+                      className={`h-5 w-5 transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                  
+                  {isProfileMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                      <div className="py-1" role="menu" aria-orientation="vertical">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          Your Profile
+                        </Link>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center space-x-4">
@@ -153,6 +212,13 @@ export function Navbar() {
                 <div className="px-4 py-2">
                   <p className="text-sm font-medium text-gray-700">Welcome, {displayName}</p>
                 </div>
+                <Link
+                  href="/profile"
+                  className="block w-full text-left px-4 py-2 text-gray-500 hover:bg-gray-50 text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Your Profile
+                </Link>
                 <button
                   onClick={() => {
                     logout();

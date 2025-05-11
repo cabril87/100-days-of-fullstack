@@ -31,4 +31,17 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
+}
+
+export interface ProfileUpdateRequest {
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
 } 

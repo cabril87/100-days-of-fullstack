@@ -27,6 +27,16 @@ namespace TaskTrackerAPI.Services
         private readonly ILogger<ValidationService> _logger;
         private readonly IServiceProvider _serviceProvider;
 
+        // List of route method names that are safe and should not trigger SQL injection detection
+        private static readonly HashSet<string> SafeRouteNames = new HashSet<string>
+        {
+            "CreateTaskItem",
+            "UpdateTaskItem",
+            "DeleteTaskItem",
+            "CreateQuickTask",
+            "CompleteTaskItem"
+        };
+
         // Regex patterns for detecting security threats
         private static readonly string[] SqlInjectionPatterns = new[]
         {
@@ -116,6 +126,13 @@ namespace TaskTrackerAPI.Services
         {
             if (string.IsNullOrEmpty(input))
                 return false;
+            
+            // Skip checks if input is one of our safe route names
+            if (SafeRouteNames.Contains(input))
+            {
+                _logger.LogInformation("Safe route name detected, skipping SQL injection check: {Input}", input);
+                return false;
+            }
 
             // Check against SQL injection patterns
             foreach (string pattern in SqlInjectionPatterns)

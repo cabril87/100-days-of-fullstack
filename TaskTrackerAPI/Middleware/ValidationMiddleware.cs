@@ -28,6 +28,7 @@ namespace TaskTrackerAPI.Middleware
         private readonly ILogger<ValidationMiddleware> _logger;
         private readonly IValidationService _validationService;
         private readonly HashSet<string> _ignoredPaths;
+        private readonly HashSet<string> _reducedValidationPaths;
 
         public ValidationMiddleware(
             RequestDelegate next,
@@ -48,6 +49,16 @@ namespace TaskTrackerAPI.Middleware
                 "/js",
                 "/images"
             };
+            
+            // Endpoints to apply reduced validation (task-related endpoints)
+            _reducedValidationPaths = new HashSet<string>
+            {
+                "/api/v1/taskitems",
+                "/api/v1/tasks",
+                "/api/v1/categories",
+                "/api/v1/lists",
+                "/api/v1/quicktasks"
+            };
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -60,9 +71,12 @@ namespace TaskTrackerAPI.Middleware
 
             // Enable buffering so we can read the request multiple times
             context.Request.EnableBuffering();
+            
+            // Check if we should use reduced validation (for task-related endpoints)
+            bool useReducedValidation = ShouldUseReducedValidation(context);
 
             // Preemptively check route parameters and query strings
-            if (!ValidateRouteAndQueryParameters(context))
+            if (!ValidateRouteAndQueryParameters(context, useReducedValidation))
             {
                 context.Response.StatusCode = StatusCodes.Status400BadRequest;
                 await context.Response.WriteAsync("Request contains potentially malicious input");
@@ -72,7 +86,7 @@ namespace TaskTrackerAPI.Middleware
             // Check request body for API methods that typically include one
             if (IsMethodWithRequestBody(context.Request.Method))
             {
-                bool isValid = await ValidateRequestBodyAsync(context);
+                bool isValid = await ValidateRequestBodyAsync(context, useReducedValidation);
                 if (!isValid)
                 {
                     context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -111,15 +125,57 @@ namespace TaskTrackerAPI.Middleware
             return false;
         }
 
-        private bool ValidateRouteAndQueryParameters(HttpContext context)
+        // Check if the current request should use reduced validation
+        private bool ShouldUseReducedValidation(HttpContext context)
+        {
+            string path = context.Request.Path.Value?.ToLower() ?? "";
+            
+            // Check path-based reduced validation
+            foreach (string reducedValidationPath in _reducedValidationPaths)
+            {
+                if (path.StartsWith(reducedValidationPath))
+                {
+                    // Apply reduced validation for task-related endpoints
+                    _logger.LogInformation("Using reduced validation for path: {Path}", path);
+                    return true;
+                }
+            }
+            
+            // Check controller-based reduced validation by examining the RouteData
+            if (context.Request.RouteValues.TryGetValue("controller", out object? controllerObj) && 
+                controllerObj is string controllerName)
+            {
+                // Check if controller name contains any task-related keywords
+                if (controllerName.Contains("task", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("category", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("list", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("reminder", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("Using reduced validation for controller: {Controller}", controllerName);
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        private bool ValidateRouteAndQueryParameters(HttpContext context, bool useReducedValidation)
         {
             // Check route parameters
             foreach (object? routeValue in context.Request.RouteValues.Values)
             {
-                if (routeValue != null && CheckIfPotentiallyMalicious(routeValue.ToString() ?? string.Empty))
+                if (routeValue != null)
                 {
-                    _logger.LogWarning("Potentially malicious route parameter detected: {Value}", routeValue);
-                    return false;
+                    string valueStr = routeValue.ToString() ?? string.Empty;
+                    
+                    if (!string.IsNullOrEmpty(valueStr))
+                    {
+                        if (CheckIfPotentiallyMalicious(valueStr, useReducedValidation))
+                        {
+                            _logger.LogWarning("Potentially malicious route parameter detected: {Value}", routeValue);
+                            return false;
+                        }
+                    }
                 }
             }
 
@@ -129,11 +185,14 @@ namespace TaskTrackerAPI.Middleware
                 // Validate each value in multi-value query parameters
                 foreach (string? value in queryParam.Value)
                 {
-                    if (!string.IsNullOrEmpty(value) && CheckIfPotentiallyMalicious(value))
+                    if (!string.IsNullOrEmpty(value))
                     {
-                        _logger.LogWarning("Potentially malicious query parameter detected: {QueryParam}={Value}", 
-                            queryParam.Key, value);
-                        return false;
+                        if (CheckIfPotentiallyMalicious(value, useReducedValidation))
+                        {
+                            _logger.LogWarning("Potentially malicious query parameter detected: {QueryParam}={Value}", 
+                                queryParam.Key, value);
+                            return false;
+                        }
                     }
                 }
             }
@@ -141,7 +200,7 @@ namespace TaskTrackerAPI.Middleware
             return true;
         }
 
-        private async Task<bool> ValidateRequestBodyAsync(HttpContext context)
+        private async Task<bool> ValidateRequestBodyAsync(HttpContext context, bool useReducedValidation)
         {
             try
             {
@@ -150,21 +209,21 @@ namespace TaskTrackerAPI.Middleware
                 
                 if (contentType.Contains("application/json"))
                 {
-                    return await ValidateJsonBodyAsync(context);
+                    return await ValidateJsonBodyAsync(context, useReducedValidation);
                 }
                 else if (contentType.Contains("application/x-www-form-urlencoded"))
                 {
-                    return ValidateFormBody(context);
+                    return ValidateFormBody(context, useReducedValidation);
                 }
                 else if (contentType.Contains("multipart/form-data"))
                 {
                     // For file uploads and multipart forms, we'll just check form fields
                     // File content scanning would be handled separately
-                    return ValidateFormBody(context);
+                    return ValidateFormBody(context, useReducedValidation);
                 }
                 
                 // For other content types, perform a basic check on the raw body
-                return await ValidateRawBodyAsync(context);
+                return await ValidateRawBodyAsync(context, useReducedValidation);
             }
             catch (Exception ex)
             {
@@ -173,7 +232,7 @@ namespace TaskTrackerAPI.Middleware
             }
         }
 
-        private async Task<bool> ValidateJsonBodyAsync(HttpContext context)
+        private async Task<bool> ValidateJsonBodyAsync(HttpContext context, bool useReducedValidation)
         {
             string body;
             using (StreamReader reader = new StreamReader(
@@ -196,7 +255,7 @@ namespace TaskTrackerAPI.Middleware
                 JToken jsonObj = JToken.Parse(body);
                 
                 // Recursively check all string values in the JSON
-                return ValidateJsonToken(jsonObj);
+                return ValidateJsonToken(jsonObj, useReducedValidation);
             }
             catch (JsonReaderException)
             {
@@ -205,14 +264,14 @@ namespace TaskTrackerAPI.Middleware
             }
         }
 
-        private bool ValidateJsonToken(JToken token)
+        private bool ValidateJsonToken(JToken token, bool useReducedValidation)
         {
             switch (token.Type)
             {
                 case JTokenType.Object:
                     foreach (KeyValuePair<string, JToken> prop in (JObject)token)
                     {
-                        if (!ValidateJsonToken(prop.Value))
+                        if (!ValidateJsonToken(prop.Value, useReducedValidation))
                         {
                             return false;
                         }
@@ -222,7 +281,7 @@ namespace TaskTrackerAPI.Middleware
                 case JTokenType.Array:
                     foreach (JToken item in (JArray)token)
                     {
-                        if (!ValidateJsonToken(item))
+                        if (!ValidateJsonToken(item, useReducedValidation))
                         {
                             return false;
                         }
@@ -231,7 +290,12 @@ namespace TaskTrackerAPI.Middleware
 
                 case JTokenType.String:
                     string value = token.Value<string>();
-                    if (!string.IsNullOrEmpty(value) && CheckIfPotentiallyMalicious(value))
+                    if (string.IsNullOrEmpty(value))
+                    {
+                        break;
+                    }
+                    
+                    if (CheckIfPotentiallyMalicious(value, useReducedValidation))
                     {
                         _logger.LogWarning("Potentially malicious value in JSON body: {Value}", value);
                         return false;
@@ -242,17 +306,20 @@ namespace TaskTrackerAPI.Middleware
             return true;
         }
 
-        private bool ValidateFormBody(HttpContext context)
+        private bool ValidateFormBody(HttpContext context, bool useReducedValidation)
         {
             foreach (KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues> formValue in context.Request.Form)
             {
                 foreach (string? value in formValue.Value)
                 {
-                    if (!string.IsNullOrEmpty(value) && CheckIfPotentiallyMalicious(value))
+                    if (!string.IsNullOrEmpty(value))
                     {
-                        _logger.LogWarning("Potentially malicious form value detected: {Key}={Value}", 
-                            formValue.Key, value);
-                        return false;
+                        if (CheckIfPotentiallyMalicious(value, useReducedValidation))
+                        {
+                            _logger.LogWarning("Potentially malicious form value detected: {Key}={Value}", 
+                                formValue.Key, value);
+                            return false;
+                        }
                     }
                 }
             }
@@ -260,7 +327,7 @@ namespace TaskTrackerAPI.Middleware
             return true;
         }
 
-        private async Task<bool> ValidateRawBodyAsync(HttpContext context)
+        private async Task<bool> ValidateRawBodyAsync(HttpContext context, bool useReducedValidation)
         {
             string body;
             using (StreamReader reader = new StreamReader(
@@ -277,7 +344,7 @@ namespace TaskTrackerAPI.Middleware
                 return true;
             }
 
-            if (CheckIfPotentiallyMalicious(body))
+            if (CheckIfPotentiallyMalicious(body, useReducedValidation))
             {
                 _logger.LogWarning("Potentially malicious content in request body");
                 return false;
@@ -286,10 +353,10 @@ namespace TaskTrackerAPI.Middleware
             return true;
         }
         
-        private bool CheckIfPotentiallyMalicious(string input)
+        private bool CheckIfPotentiallyMalicious(string input, bool skipSqlInjectionCheck = false)
         {
-            // Check for SQL Injection
-            if (_validationService.ContainsSqlInjection(input))
+            // Check for SQL Injection (conditionally)
+            if (!skipSqlInjectionCheck && _validationService.ContainsSqlInjection(input))
             {
                 _logger.LogWarning("SQL injection attempt detected: {Input}", input);
                 return true;

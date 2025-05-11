@@ -21,39 +21,13 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const fetchCsrfToken = async () => {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    const response = await fetch(`${apiUrl}/v1/auth/csrf`, {
-      method: 'GET',
-      credentials: 'include', 
-    });
-    
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    console.log('Cookies after CSRF fetch:', document.cookie);
-    
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      const trimmed = cookie.trim();
-      if (trimmed.startsWith('XSRF-TOKEN=')) {
-        const token = trimmed.substring('XSRF-TOKEN='.length);
-        console.log('CSRF token extracted:', token);
-        return;
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching CSRF token:', error);
-  }
-};
-
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/dashboard';
+  const redirect = searchParams?.get('redirect') || '/dashboard';
   const { login, user, isLoading } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
-  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const {
     register,
@@ -67,105 +41,51 @@ export default function Login() {
     },
   });
 
+  // Redirect if already logged in
   useEffect(() => {
-    fetchCsrfToken();
-    
-    if (user) {
-      router.push(redirect);
+    if (user && !isLoading && !isRedirecting) {
+      console.log('User already logged in, redirecting to:', redirect);
+      setIsRedirecting(true);
+      // Use setTimeout to ensure the redirect happens after the state update
+      setTimeout(() => {
+        router.push(redirect);
+      }, 100);
     }
-  }, [user, router, redirect]);
-
-  useEffect(() => {
-    if (loginSuccess) {
-      router.push(redirect);
-    }
-  }, [loginSuccess, router, redirect]);
+  }, [user, isLoading, router, redirect, isRedirecting]);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
       setAuthError(null);
+      console.log('Attempting login with redirect to:', redirect);
       
-      await fetchCsrfToken();
+      const success = await login(data.email, data.password);
       
-      const csrfToken = getCsrfTokenFromCookies();
-      console.log('Using CSRF token for login:', csrfToken);
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      
-      const requestData = {
-        emailOrUsername: data.email,
-        password: data.password,
-        csrfToken: csrfToken 
-      };
-      
-      console.log('Sending login request with token in body and X-CSRF-TOKEN header');
-        
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken || '' 
-      };
-      
-      try {
-        const response = await fetch(`${apiUrl}/v1/auth/login`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(requestData),
-          credentials: 'include'
-        });
-        
-        const result = await response.json();
-        console.log('Login result:', { status: response.status, data: result });
-        
-        if (response.ok) {
-          if (result.accessToken) {
-            localStorage.setItem('token', result.accessToken);
-          }
-          
-          if (result.user) {
-            localStorage.setItem('user', JSON.stringify(result.user));
-          }
-          
-          setLoginSuccess(true);
-          return;
-        } else {
-          setAuthError(result.message || 'Login failed. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error with login attempt:', error);
-        setAuthError('Login failed. Please try again.');
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.message.includes('CSRF')) {
-          setAuthError('Security token is missing or invalid. Please refresh the page and try again.');
-        } else {
-          setAuthError('Invalid email or password. Please try again.');
-        }
+      if (success) {
+        console.log('Login successful, redirecting to:', redirect);
+        setIsRedirecting(true);
+        // Use setTimeout to ensure the redirect happens after the state update
+        setTimeout(() => {
+          router.push(redirect);
+        }, 100);
       } else {
         setAuthError('Invalid email or password. Please try again.');
       }
+    } catch (error) {
       console.error('Login error:', error);
+      setAuthError('An error occurred during login. Please try again.');
     }
-  };
-  
-  const getCsrfTokenFromCookies = (): string | null => {
-    const cookies = document.cookie.split(';');
-    for (const cookie of cookies) {
-      const trimmed = cookie.trim();
-      if (trimmed.startsWith('XSRF-TOKEN=')) {
-        const encodedToken = trimmed.substring('XSRF-TOKEN='.length);
-        try {
-          return decodeURIComponent(encodedToken);
-        } catch (e) {
-          console.error('Error decoding CSRF token:', e);
-          return encodedToken;
-        }
-      }
-    }
-    return null;
   };
 
-  if (isLoading) {
+  if (isLoading || isRedirecting) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // If user is already logged in, show loading spinner (will redirect)
+  if (user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>

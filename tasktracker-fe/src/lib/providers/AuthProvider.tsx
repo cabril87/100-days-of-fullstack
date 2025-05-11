@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   register: (userData: RegisterRequest) => Promise<boolean>;
   logout: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => false,
   register: async () => false,
   logout: async () => {},
+  refreshToken: async () => false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -26,11 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Load user data on initial mount
   useEffect(() => {
     const loadUserData = async () => {
       try {
+        setIsLoading(true);
         const response = await authService.getCurrentUser();
-        setUser(response.data || null);
+        if (response.data) {
+          console.log('User data loaded from auth service:', response.data);
+          setUser(response.data);
+        } else {
+          console.log('No user data found or unauthorized');
+          setUser(null);
+        }
       } catch (error) {
         console.error('Failed to load user data:', error);
         setUser(null);
@@ -45,10 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      console.log('Login attempt with email:', email);
       const loginData: LoginRequest = { email, password };
       const response = await authService.login(loginData);
       
       if (response.data) {
+        console.log('Login successful, user data:', response.data);
         setUser(response.data);
         return true;
       } else {
@@ -82,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
+
   const logout = async (): Promise<void> => {
     try {
       await authService.logout();
@@ -89,6 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      console.log('Attempting to refresh auth token');
+      const response = await authService.refreshToken();
+      
+      if (response.data) {
+        console.log('Token refresh successful');
+        // Update user data if available in response
+        if (response.data.user) {
+          setUser(response.data.user);
+        }
+        return true;
+      } else {
+        console.error('Token refresh failed:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      return false;
     }
   };
 
@@ -100,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        refreshToken,
       }}
     >
       {children}

@@ -14,6 +14,19 @@ export enum TaskPriority {
   High = 'high'
 }
 
+// Backend API uses different numeric values for priority
+export enum ApiTaskPriority {
+  Low = 0,
+  Medium = 1,
+  High = 2
+}
+
+export enum ApiTaskStatus {
+  NotStarted = 0,
+  InProgress = 1,
+  Completed = 2
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -34,6 +47,7 @@ export interface TaskFormData {
   priority?: 'low' | 'medium' | 'high';
 }
 
+// For frontend use
 export interface CreateTaskRequest {
   title: string;
   description?: string;
@@ -42,6 +56,26 @@ export interface CreateTaskRequest {
   dueDate?: string;
   categoryId?: number;
   boardId?: number;
+}
+
+// For API use - matches the API's expected capitalization and types
+export interface ApiCreateTaskRequest {
+  Title: string;
+  Description?: string | null;
+  Status: number;
+  Priority: number;
+  DueDate?: string | null;
+  IsRecurring?: boolean;
+  CategoryId?: number;
+  BoardId?: number;
+}
+
+// Quick task DTO for the API, with minimal fields
+export interface QuickTaskDTO {
+  Title: string;
+  Description?: string | null;
+  DueDate?: string | null;
+  Priority?: number;
 }
 
 export interface UpdateTaskRequest {

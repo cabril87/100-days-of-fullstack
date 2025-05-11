@@ -72,7 +72,10 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
             </svg>
           </button>
           <button 
-            onClick={() => onDelete(String(task.id))}
+            onClick={() => {
+              console.log('Task component: Delete button clicked for task ID:', task.id);
+              onDelete(String(task.id));
+            }}
             className="text-red-500 hover:text-red-700"
             aria-label="Delete task"
           >
