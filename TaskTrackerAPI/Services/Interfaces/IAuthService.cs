@@ -24,6 +24,7 @@ public interface IAuthService
     Task<UserDTO> RegisterUserAsync(UserCreateDTO userDto);
     Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress);
     Task<TokensResponseDTO> RefreshTokenAsync(string refreshToken, string ipAddress);
+    Task LogoutAsync(int userId, string refreshToken, string ipAddress);
 
     // User profile methods
     Task<UserDTO> GetUserProfileAsync(int userId);

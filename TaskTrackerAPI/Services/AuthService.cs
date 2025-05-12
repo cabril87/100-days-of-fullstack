@@ -543,4 +543,41 @@ public class AuthService : IAuthService
     {
         return _authHelper.GetPrincipalFromExpiredToken(token);
     }
+
+    public async Task LogoutAsync(int userId, string refreshToken, string ipAddress)
+    {
+        try
+        {
+            _logger.LogInformation("Logging out user ID {UserId} from IP {IpAddress}", userId, ipAddress);
+
+            User? user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("Logout attempt for non-existent user {UserId}", userId);
+                throw new KeyNotFoundException("User not found");
+            }
+
+            // Find and invalidate the refresh token using the repository
+            RefreshToken? token = await _userRepository.GetRefreshTokenAsync(refreshToken);
+            if (token != null && token.UserId == userId)
+            {
+                await _userRepository.RevokeRefreshTokenAsync(token, ipAddress);
+                _logger.LogInformation("Invalidated refresh token for user {UserId}", userId);
+            }
+            else
+            {
+                _logger.LogWarning("No matching refresh token found for user {UserId} during logout", userId);
+            }
+
+            // Also revoke all other tokens for this user for complete logout
+            await _userRepository.RevokeAllUserRefreshTokensAsync(userId, ipAddress);
+
+            _logger.LogInformation("User {UserId} logged out successfully", userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during logout for user {UserId}", userId);
+            throw;
+        }
+    }
 }

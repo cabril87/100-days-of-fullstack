@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 import { authService } from '@/lib/services/authService';
 
 // Schema for profile update
@@ -153,7 +153,11 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (

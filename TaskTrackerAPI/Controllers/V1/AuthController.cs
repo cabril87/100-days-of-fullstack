@@ -294,4 +294,33 @@ public class AuthController : ControllerBase
             return StatusCode(500, "An error occurred while changing the user's password.");
         }
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequestDTO logoutRequest)
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            // Get IP address for logging purposes
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            
+            await _authService.LogoutAsync(userId, logoutRequest.RefreshToken, ipAddress);
+            
+            // Clear cookies
+            Response.Headers.Append("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"");
+            
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound("User not found");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during logout");
+            return StatusCode(500, "An error occurred during logout");
+        }
+    }
 } 

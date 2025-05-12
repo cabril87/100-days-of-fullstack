@@ -121,7 +121,7 @@ public class CircuitBreaker
             RecordSuccess();
             return true;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             RecordFailure();
             throw;
@@ -335,7 +335,7 @@ public class CircuitBreaker
     /// </summary>
     private class NullLogger<T> : ILogger<T>
     {
-        public IDisposable BeginScope<TState>(TState state) => NullDisposable.Instance;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullDisposable.Instance;
         public bool IsEnabled(LogLevel logLevel) => false;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
         

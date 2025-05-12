@@ -74,6 +74,11 @@ class AuthService {
     if (response.data) {
       localStorage.setItem('token', response.data.accessToken || '');
       
+      // Store refresh token
+      if (response.data.refreshToken) {
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+      }
+      
       this.setCurrentUser(response.data.user);
       
       return {
@@ -207,16 +212,46 @@ class AuthService {
   async refreshToken(): Promise<ApiResponse<AuthResponse>> {
     console.log('AuthService: Refreshing token');
     try {
+      // Check if we're on an auth page already
+      if (typeof window !== 'undefined' && 
+          (window.location.pathname.includes('/auth/login') || 
+           window.location.pathname.includes('/auth/register'))) {
+        console.log('Already on auth page, skipping token refresh');
+        return {
+          error: 'Already on auth page',
+          status: 0
+        };
+      }
+      
       // First try to get a fresh CSRF token
       const csrfToken = await this.fetchCsrfToken();
       
+      // Get the refresh token from storage
+      const refreshToken = localStorage.getItem('refreshToken') || '';
+      if (!refreshToken) {
+        console.error('No refresh token available');
+        this.clearCurrentUser();
+        return {
+          error: 'No refresh token available',
+          status: 401
+        };
+      }
+      
       // Call the refresh token endpoint
-      const response = await apiService.post<AuthResponse>('/v1/auth/refresh', { csrfToken }, false);
+      const response = await apiService.post<AuthResponse>(
+        '/v1/auth/refresh-token', 
+        { refreshToken, csrfToken }, 
+        false
+      );
       
       if (response.data && response.data.accessToken) {
         console.log('AuthService: Token refresh successful');
-        // Store the new token
+        // Store the new tokens
         localStorage.setItem('token', response.data.accessToken);
+        
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
         
         // Update user data if available
         if (response.data.user) {
@@ -226,10 +261,14 @@ class AuthService {
         return response;
       } else {
         console.error('AuthService: Token refresh failed', response.error);
+        // Clear all auth data on refresh failure
+        this.clearCurrentUser();
         return response;
       }
     } catch (error) {
       console.error('AuthService: Error refreshing token', error);
+      // Clear all auth data on refresh failure
+      this.clearCurrentUser();
       return {
         error: 'Failed to refresh authentication token',
         status: 0
@@ -279,10 +318,11 @@ class AuthService {
   
  
   private clearCurrentUser(): void {
-    this.currentUser = null;
     if (typeof window !== 'undefined') {
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      this.currentUser = null;
     }
   }
 }

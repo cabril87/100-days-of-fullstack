@@ -50,7 +50,7 @@ public class DebugController : ControllerBase
         
         // Get the CSRF token from the cookie
         bool hasCSRFCookie = HttpContext.Request.Cookies.TryGetValue("XSRF-TOKEN", out var csrfCookie);
-        string csrfCookieValue = hasCSRFCookie ? csrfCookie : "Not present";
+        string csrfCookieString = hasCSRFCookie ? csrfCookie ?? "Not present" : "Not present";
 
         var result = new
         {
@@ -58,10 +58,10 @@ public class DebugController : ControllerBase
             HasCSRFHeader = hasCSRFHeader,
             CSRFHeaderValue = csrfHeaderValue,
             HasCSRFCookie = hasCSRFCookie,
-            CSRFCookieValue = csrfCookieValue,
+            CSRFCookieValue = csrfCookieString,
             CSRFCookieDecoded = hasCSRFCookie ? System.Net.WebUtility.UrlDecode(csrfCookie) : "N/A",
             TokensMatch = hasCSRFHeader && hasCSRFCookie ? 
-                System.Net.WebUtility.UrlDecode(csrfHeaderValue) == System.Net.WebUtility.UrlDecode(csrfCookieValue) : 
+                System.Net.WebUtility.UrlDecode(csrfHeaderValue) == System.Net.WebUtility.UrlDecode(csrfCookie) : 
                 false,
             AllRequestHeaders = HttpContext.Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString())
         };
@@ -77,7 +77,7 @@ public class DebugController : ControllerBase
             return NotFound();
         }
 
-        string debugKey = _configuration["AppSettings:DebugKey"];
+        string? debugKey = _configuration["AppSettings:DebugKey"];
         if (string.IsNullOrEmpty(debugKey) || debugKey != "DEVELOPMENT_DEBUG_ONLY_7865421")
         {
             return Unauthorized("Debug key is missing or invalid");
@@ -121,7 +121,7 @@ public class DebugController : ControllerBase
             return NotFound();
         }
 
-        string debugKey = _configuration["AppSettings:DebugKey"];
+        string? debugKey = _configuration["AppSettings:DebugKey"];
         if (string.IsNullOrEmpty(debugKey) || debugKey != "DEVELOPMENT_DEBUG_ONLY_7865421")
         {
             return Unauthorized("Debug key is missing or invalid");
@@ -346,7 +346,7 @@ modelBuilder.Entity<User>().HasData(
             
             // Try to verify the password
             bool passwordVerified = false;
-            string errorMessage = null;
+            string? errorMessage = null;
             
             try {
                 passwordVerified = authHelper.VerifyPasswordHash(model.Password, user.PasswordHash, user.Salt);
@@ -635,7 +635,7 @@ modelBuilder.Entity<User>().HasData(
             
             // Try to verify the password
             bool passwordVerified = false;
-            string errorMessage = null;
+            string? errorMessage = null;
             
             try {
                 passwordVerified = authHelper.VerifyPasswordHash(model.Password, user.PasswordHash, user.Salt);
