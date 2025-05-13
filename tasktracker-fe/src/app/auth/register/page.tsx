@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 
 const registerSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters'),

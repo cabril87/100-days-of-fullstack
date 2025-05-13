@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/lib/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks/useToast';
 import { useTasks } from '@/lib/providers/TaskProvider';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { tasks: allTasks, loading: tasksLoading, error, fetchTasks } = useTasks();
   const router = useRouter();
@@ -55,6 +59,114 @@ export default function Dashboard() {
     return dueDate >= today && dueDate <= sevenDaysLater && task.status !== 'done';
   });
 
+  // Get tasks due in the next 3 days
+  const getTasksDueSoon = (tasks: Task[]) => {
+    const now = new Date();
+    const threeDaysFromNow = new Date();
+    threeDaysFromNow.setDate(now.getDate() + 3);
+    
+    return tasks.filter(task => {
+      if (!task.dueDate) return false;
+      const dueDate = new Date(task.dueDate);
+      return dueDate > now && dueDate <= threeDaysFromNow && task.status !== 'done';
+    });
+  };
+
+  // Get overdue tasks
+  const getOverdueTasks = (tasks: Task[]) => {
+    const now = new Date();
+    
+    return tasks.filter(task => {
+      if (!task.dueDate) return false;
+      const dueDate = new Date(task.dueDate);
+      return dueDate < now && task.status !== 'done';
+    });
+  };
+
+  // Calculate task statistics
+  const [isLoading, setIsLoading] = useState(true);
+  const [taskStats, setTaskStats] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    todo: 0,
+    completionRate: 0,
+    highPriority: 0,
+    mediumPriority: 0,
+    lowPriority: 0,
+    dueSoon: 0,
+    overdue: 0
+  });
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        await fetchTasks();
+      } catch (error) {
+        console.error('Error fetching tasks for dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [fetchTasks]);
+
+  useEffect(() => {
+    if (tasks && tasks.length > 0) {
+      const completed = tasks.filter(task => task.status === 'done').length;
+      const inProgress = tasks.filter(task => task.status === 'in-progress').length;
+      const todo = tasks.filter(task => task.status === 'todo').length;
+      const total = tasks.length;
+      
+      const highPriority = tasks.filter(task => task.priority === 'high').length;
+      const mediumPriority = tasks.filter(task => task.priority === 'medium').length;
+      const lowPriority = tasks.filter(task => task.priority === 'low').length;
+      
+      const dueSoon = getTasksDueSoon(tasks).length;
+      const overdue = getOverdueTasks(tasks).length;
+      
+      setTaskStats({
+        total,
+        completed,
+        inProgress,
+        todo,
+        completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        highPriority,
+        mediumPriority,
+        lowPriority,
+        dueSoon,
+        overdue
+      });
+    }
+  }, [tasks]);
+
+  // Data for status chart
+  const statusData = [
+    { name: 'To Do', value: taskStats.todo, color: '#3E5879' },
+    { name: 'In Progress', value: taskStats.inProgress, color: '#D8C4B6' },
+    { name: 'Completed', value: taskStats.completed, color: '#213555' }
+  ];
+
+  // Data for priority chart
+  const priorityData = [
+    { name: 'Low', value: taskStats.lowPriority, color: '#3E5879' },
+    { name: 'Medium', value: taskStats.mediumPriority, color: '#D8C4B6' },
+    { name: 'High', value: taskStats.highPriority, color: '#213555' }
+  ];
+
+  // Data for weekly completion chart (mock data - would be replaced with real data)
+  const weeklyData = [
+    { name: 'Mon', completed: 5, total: 8 },
+    { name: 'Tue', completed: 7, total: 10 },
+    { name: 'Wed', completed: 4, total: 6 },
+    { name: 'Thu', completed: 3, total: 7 },
+    { name: 'Fri', completed: 8, total: 12 },
+    { name: 'Sat', completed: 2, total: 5 },
+    { name: 'Sun', completed: 1, total: 3 }
+  ];
+
   if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -68,88 +180,301 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex space-x-4">
-          <Link
-            href="/tasks"
-            className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
-          >
-            View All Tasks
-          </Link>
-          <Link
-            href="/tasks/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-          >
-            Add New Task
-          </Link>
-        </div>
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="mb-10">
+        <h1 className="text-4xl font-bold text-brand-navy-dark mb-2">Dashboard</h1>
+        <p className="text-gray-600 text-xl">
+          Welcome back, {user?.displayName || user?.username || 'User'}
+        </p>
       </div>
 
-      {tasksLoading ? (
-        <div className="flex justify-center items-center p-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Task Status Summary */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Task Summary</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-100 p-4 rounded-md">
-                <p className="text-sm text-gray-600">Total Tasks</p>
-                <p className="text-2xl font-bold">{totalTasks}</p>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="mb-8 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-gray-200">
+          <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Overview</TabsTrigger>
+          <TabsTrigger value="statistics" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Detailed Statistics</TabsTrigger>
+          <TabsTrigger value="upcoming" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Upcoming Tasks</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview" className="space-y-8">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="apple-card">
+              <div className="mb-4">
+                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Task Completion</h3>
+                <p className="text-gray-600 text-sm">Overall progress</p>
               </div>
-              <div className="bg-blue-100 p-4 rounded-md">
-                <p className="text-sm text-gray-600">To Do</p>
-                <p className="text-2xl font-bold">{todoTasks}</p>
+              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.completionRate}%</div>
+              <Progress value={taskStats.completionRate} className="h-2 mb-2 bg-gray-100" />
+              <div className="text-sm text-gray-600">
+                {taskStats.completed} of {taskStats.total} tasks completed
               </div>
-              <div className="bg-yellow-100 p-4 rounded-md">
-                <p className="text-sm text-gray-600">In Progress</p>
-                <p className="text-2xl font-bold">{inProgressTasks}</p>
+            </div>
+            
+            <div className="apple-card">
+              <div className="mb-4">
+                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Due Soon</h3>
+                <p className="text-gray-600 text-sm">Tasks due in the next 3 days</p>
               </div>
-              <div className="bg-green-100 p-4 rounded-md">
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold">{completedTasks}</p>
+              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.dueSoon}</div>
+              <div className="text-sm text-gray-600 mb-4">
+                {taskStats.dueSoon > 0 ? 
+                  <span className="text-brand-beige font-medium">Requires attention</span> : 
+                  <span className="text-green-600 font-medium">No urgent tasks</span>
+                }
+              </div>
+              <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
+                View all tasks
+              </Link>
+            </div>
+            
+            <div className="apple-card">
+              <div className="mb-4">
+                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Overdue</h3>
+                <p className="text-gray-600 text-sm">Tasks past their due date</p>
+              </div>
+              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.overdue}</div>
+              <div className="text-sm text-gray-600 mb-4">
+                {taskStats.overdue > 0 ? 
+                  <span className="text-brand-navy-dark font-medium">Action needed!</span> : 
+                  <span className="text-green-600 font-medium">All caught up</span>
+                }
+              </div>
+              <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
+                View all tasks
+              </Link>
+            </div>
+          </div>
+          
+          {/* Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="apple-card">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Task Status</h3>
+                <p className="text-gray-600 text-sm">Distribution by current status</p>
+              </div>
+              <div className="flex justify-center">
+                <div className="w-full h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {statusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+            
+            <div className="apple-card">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Task Priority</h3>
+                <p className="text-gray-600 text-sm">Distribution by priority level</p>
+              </div>
+              <div className="flex justify-center">
+                <div className="w-full h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={priorityData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {priorityData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           </div>
           
-          {/* Tasks Due Soon */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Tasks Due Soon</h2>
-            {dueSoonTasks.length > 0 ? (
-              <div className="space-y-3">
-                {dueSoonTasks.slice(0, 5).map((task) => (
-                  <Link href={`/tasks/${task.id}`} key={task.id} className="block">
-                    <div className="border p-3 rounded-md hover:bg-gray-50">
-                      <p className="font-medium">{task.title}</p>
-                      <div className="flex justify-between items-center mt-2 text-sm">
-                        <span className={`px-2 py-1 rounded-full ${
+          {/* Weekly Completion Chart */}
+          <div className="apple-card">
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Weekly Task Completion</h3>
+              <p className="text-gray-600 text-sm">Tasks completed vs. total tasks</p>
+            </div>
+            <div className="w-full h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={weeklyData}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 5,
+                  }}
+                >
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="total" name="Total Tasks" fill="#D8C4B6" />
+                  <Bar dataKey="completed" name="Completed" fill="#3E5879" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="statistics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Detailed Task Statistics</CardTitle>
+              <CardDescription>Comprehensive view of your task metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Status Breakdown</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>To Do</span>
+                      <span className="font-medium">{taskStats.todo}</span>
+                    </div>
+                    <Progress value={(taskStats.todo / taskStats.total) * 100} className="h-2 bg-blue-100" />
+                    
+                    <div className="flex justify-between items-center mt-4">
+                      <span>In Progress</span>
+                      <span className="font-medium">{taskStats.inProgress}</span>
+                    </div>
+                    <Progress value={(taskStats.inProgress / taskStats.total) * 100} className="h-2 bg-amber-100" />
+                    
+                    <div className="flex justify-between items-center mt-4">
+                      <span>Completed</span>
+                      <span className="font-medium">{taskStats.completed}</span>
+                    </div>
+                    <Progress value={(taskStats.completed / taskStats.total) * 100} className="h-2 bg-green-100" />
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Priority Breakdown</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span>High Priority</span>
+                      <span className="font-medium">{taskStats.highPriority}</span>
+                    </div>
+                    <Progress value={(taskStats.highPriority / taskStats.total) * 100} className="h-2 bg-red-100" />
+                    
+                    <div className="flex justify-between items-center mt-4">
+                      <span>Medium Priority</span>
+                      <span className="font-medium">{taskStats.mediumPriority}</span>
+                    </div>
+                    <Progress value={(taskStats.mediumPriority / taskStats.total) * 100} className="h-2 bg-amber-100" />
+                    
+                    <div className="flex justify-between items-center mt-4">
+                      <span>Low Priority</span>
+                      <span className="font-medium">{taskStats.lowPriority}</span>
+                    </div>
+                    <Progress value={(taskStats.lowPriority / taskStats.total) * 100} className="h-2 bg-green-100" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="upcoming" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upcoming Tasks</CardTitle>
+              <CardDescription>Tasks due in the next 3 days</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {getTasksDueSoon(tasks).length > 0 ? (
+                <div className="space-y-4">
+                  {getTasksDueSoon(tasks).map(task => (
+                    <div key={task.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{task.title}</h3>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
                           task.priority === 'high' ? 'bg-red-100 text-red-800' : 
-                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 
+                          task.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 
                           'bg-green-100 text-green-800'
                         }`}>
-                          {task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 'Normal'}
+                          {task.priority ? 
+                            task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 
+                            'Medium'
+                          }
                         </span>
-                        <span className="text-gray-500">Due: {new Date(task.dueDate as string).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{task.description}</p>
+                      <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
+                        <span>Due: {new Date(task.dueDate!).toLocaleDateString()}</span>
+                        <Link href={`/tasks/${task.id}`} className="text-blue-600 hover:underline">
+                          View Task
+                        </Link>
                       </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No tasks due in the next 3 days</p>
+                  <Link href="/tasks/new" className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Create New Task
                   </Link>
-                ))}
-                {dueSoonTasks.length > 5 && (
-                  <Link href="/tasks" className="text-blue-600 hover:underline block text-center mt-2">
-                    View all {dueSoonTasks.length} tasks due soon
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <p className="text-gray-500">No tasks due in the next 7 days</p>
-            )}
-          </div>
-        </div>
-      )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Overdue Tasks</CardTitle>
+              <CardDescription>Tasks past their due date</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {getOverdueTasks(tasks).length > 0 ? (
+                <div className="space-y-4">
+                  {getOverdueTasks(tasks).map(task => (
+                    <div key={task.id} className="p-4 border rounded-lg border-red-200 bg-red-50">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{task.title}</h3>
+                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                          Overdue
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">{task.description}</p>
+                      <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
+                        <span>Due: {new Date(task.dueDate!).toLocaleDateString()}</span>
+                        <Link href={`/tasks/${task.id}`} className="text-blue-600 hover:underline">
+                          View Task
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-green-600">No overdue tasks!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 

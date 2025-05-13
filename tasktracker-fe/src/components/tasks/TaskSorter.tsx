@@ -28,8 +28,8 @@ export function TaskSorter({ onSort }: TaskSorterProps) {
   };
 
   return (
-    <div className="flex items-center mt-2 space-x-1 text-sm">
-      <span className="text-gray-500">Sort by:</span>
+    <div className="flex flex-wrap items-center gap-2 text-sm bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-gray-200">
+      <span className="text-gray-600 font-medium">Sort by:</span>
       {[
         { id: 'title', label: 'Title' },
         { id: 'dueDate', label: 'Due Date' },
@@ -40,8 +40,10 @@ export function TaskSorter({ onSort }: TaskSorterProps) {
         <button
           key={option.id}
           onClick={() => handleSortChange(option.id as SortOption)}
-          className={`px-2 py-1 rounded hover:bg-gray-100 ${
-            sortField === option.id ? 'font-semibold bg-gray-100' : ''
+          className={`px-3 py-1.5 rounded-full transition-all ${
+            sortField === option.id 
+              ? 'font-medium bg-brand-navy/10 text-brand-navy-dark border border-brand-navy/20' 
+              : 'hover:bg-gray-100 border border-transparent'
           }`}
         >
           {option.label}

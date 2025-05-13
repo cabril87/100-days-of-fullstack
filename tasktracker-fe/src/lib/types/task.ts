@@ -33,6 +33,7 @@ export interface Task {
   description: string;
   status: 'todo' | 'in-progress' | 'done';
   dueDate?: string;
+  dueTime?: string;
   priority?: 'low' | 'medium' | 'high';
   createdAt: string;
   updatedAt: string;
@@ -44,6 +45,7 @@ export interface TaskFormData {
   description?: string | null;
   status: 'todo' | 'in-progress' | 'done';
   dueDate?: string | null;
+  dueTime?: string | null;
   priority?: 'low' | 'medium' | 'high';
 }
 
@@ -65,6 +67,7 @@ export interface ApiCreateTaskRequest {
   Status: number;
   Priority: number;
   DueDate?: string | null;
+  DueTime?: string | null;
   IsRecurring?: boolean;
   CategoryId?: number;
   BoardId?: number;
@@ -79,6 +82,7 @@ export interface QuickTaskDTO {
 }
 
 export interface UpdateTaskRequest {
+  // camelCase properties (for frontend)
   title?: string;
   description?: string;
   status?: TaskStatus;
@@ -86,6 +90,15 @@ export interface UpdateTaskRequest {
   dueDate?: string;
   categoryId?: number;
   boardId?: number;
+  
+  // PascalCase properties (for C# backend)
+  Title?: string;
+  Description?: string | null;
+  Status?: TaskStatus | number;
+  Priority?: TaskPriority | number;
+  DueDate?: string | null;
+  CategoryId?: number;
+  BoardId?: number;
 }
 
 export interface TaskQueryParams {

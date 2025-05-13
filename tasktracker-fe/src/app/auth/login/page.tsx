@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 
 const loginSchema = z.object({
   email: z
@@ -25,6 +25,7 @@ export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '/dashboard';
+  const expired = searchParams?.get('expired') === 'true';
   const { login, user, isLoading } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -40,6 +41,13 @@ export default function Login() {
       password: '',
     },
   });
+
+  // Set expired token message if redirected from expired token
+  useEffect(() => {
+    if (expired) {
+      setAuthError('Your session has expired. Please log in again.');
+    }
+  }, [expired]);
 
   // Redirect if already logged in
   useEffect(() => {

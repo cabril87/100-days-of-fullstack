@@ -16,8 +16,7 @@ export const taskSchema = z.object({
     .default('todo'),
   priority: z
     .enum(['low', 'medium', 'high'])
-    .default('medium')
-    .optional(),
+    .default('medium'),
   dueDate: z
     .string()
     .optional()
@@ -27,6 +26,15 @@ export const taskSchema = z.object({
       const date = new Date(val);
       return !isNaN(date.getTime());
     }, 'Invalid date format'),
+  dueTime: z
+    .string()
+    .optional()
+    .nullable()
+    .refine(val => {
+      if (!val) return true;
+      // Basic time format validation (HH:MM)
+      return /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val);
+    }, 'Invalid time format (use HH:MM)'),
 });
 
 export type TaskSchemaType = z.infer<typeof taskSchema>; 

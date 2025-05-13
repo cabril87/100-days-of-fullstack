@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 import Header from './Header';
 import Footer from './Footer';
 

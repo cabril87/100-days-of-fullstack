@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -20,7 +20,7 @@ export default function Header() {
             <div className="flex-shrink-0 flex items-center">
               <Link 
                 href="/" 
-                className="text-xl font-bold text-blue-600"
+                className="text-xl font-bold text-navy"
               >
                 TaskTracker
               </Link>

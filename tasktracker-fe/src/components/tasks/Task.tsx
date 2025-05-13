@@ -12,43 +12,45 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const statusColors = {
-    'todo': 'bg-gray-200',
-    'in-progress': 'bg-blue-200',
-    'done': 'bg-green-200',
+    'todo': 'bg-brand-navy bg-opacity-20 text-brand-navy-dark',
+    'in-progress': 'bg-brand-beige bg-opacity-30 text-brand-navy-dark',
+    'done': 'bg-brand-navy-dark bg-opacity-20 text-brand-navy-dark',
   };
 
   const priorityColors = {
-    'low': 'bg-green-100 text-green-800',
-    'medium': 'bg-yellow-100 text-yellow-800',
-    'high': 'bg-red-100 text-red-800',
+    'low': 'bg-brand-cream text-brand-navy-dark',
+    'medium': 'bg-brand-beige bg-opacity-70 text-brand-navy-dark',
+    'high': 'bg-brand-navy-dark bg-opacity-20 text-brand-navy-dark',
   };
 
   const statusColor = statusColors[task.status as keyof typeof statusColors] || 'bg-gray-200';
   const priorityColor = task.priority ? (priorityColors[task.priority as keyof typeof priorityColors] || '') : '';
 
   return (
-    <div className="border rounded-lg shadow-sm p-4 mb-3 hover:shadow-md transition-shadow">
+    <div className="task-item p-5 mb-4 backdrop-blur-sm">
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <h3 className="font-medium text-lg">{task.title}</h3>
-          <div className="flex flex-wrap mt-1 gap-2">
-            <div className={`text-xs inline-block px-2 py-1 rounded ${statusColor} font-medium`}>
-              {task.status}
+          <div className="flex flex-wrap mt-2 gap-2">
+            <div className={`status-badge ${statusColor}`}>
+              {task.status === 'todo' ? 'To Do' : 
+               task.status === 'in-progress' ? 'In Progress' : 
+               'Done'}
             </div>
             {task.priority && (
-              <div className={`text-xs inline-block px-2 py-1 rounded ${priorityColor} font-medium`}>
-                {task.priority}
+              <div className={`priority-badge ${priorityColor}`}>
+                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
               </div>
             )}
           </div>
           {isExpanded && (
-            <p className="mt-2 text-gray-600 text-sm">{task.description}</p>
+            <p className="mt-4 text-gray-700 text-sm leading-relaxed">{task.description}</p>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-600 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
             aria-label={isExpanded ? "Collapse task" : "Expand task"}
           >
             {isExpanded ? (
@@ -63,7 +65,7 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
           </button>
           <button 
             onClick={() => onEdit(task)}
-            className="text-blue-500 hover:text-blue-700"
+            className="text-brand-navy hover:text-brand-navy-dark p-2 rounded-full hover:bg-brand-navy/10 transition-colors"
             aria-label="Edit task"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -76,7 +78,7 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
               console.log('Task component: Delete button clicked for task ID:', task.id);
               onDelete(String(task.id));
             }}
-            className="text-red-500 hover:text-red-700"
+            className="text-brand-navy-dark hover:text-brand-navy p-2 rounded-full hover:bg-brand-navy-dark/10 transition-colors"
             aria-label="Delete task"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,14 +89,20 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
         </div>
       </div>
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t flex justify-between items-center">
+        <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
           <div>
-            <span className="text-xs text-gray-500">Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</span>
+            <span className="text-sm text-gray-700">
+              {task.dueDate ? (
+                <>Due: <span className="font-medium">{new Date(task.dueDate).toLocaleDateString()}</span></>
+              ) : (
+                'No due date'
+              )}
+            </span>
           </div>
           <select
             value={task.status}
             onChange={(e) => onStatusChange(String(task.id), e.target.value)}
-            className="text-sm border rounded p-1"
+            className="text-sm border rounded-full py-1 px-3 bg-white focus:ring-brand-navy focus:border-brand-navy"
           >
             <option value="todo">To Do</option>
             <option value="in-progress">In Progress</option>

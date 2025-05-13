@@ -1,16 +1,17 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/lib/providers/AuthProvider";
+import './globals.css';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { AuthProvider } from '@/lib/providers/AuthContext';
 import { TaskProvider } from "@/lib/providers/TaskProvider";
 import { ToastProvider } from "@/lib/providers/ToastProvider";
 import { Navbar } from "@/components/layout/Navbar";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "TaskTracker - Secure Task Management",
-  description: "A secure, feature-rich task management application",
+  title: 'Task Tracker',
+  description: 'A comprehensive task management application',
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   other: {
     "Content-Security-Policy": 
@@ -25,22 +26,29 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <AuthProvider>
-          <TaskProvider>
-            <ToastProvider>
-              <Navbar />
-              <main className="container mx-auto px-4 py-6">
-                {children}
-              </main>
-            </ToastProvider>
-          </TaskProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <TaskProvider>
+              <ToastProvider>
+                <Navbar />
+                <main className="container mx-auto px-4 py-6">
+                  {children}
+                </main>
+              </ToastProvider>
+            </TaskProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Task, TaskFormData, TaskQueryParams } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './AuthContext';
 
 interface TaskContextType {
   tasks: Task[];
@@ -162,27 +162,157 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Helper function to normalize task data
+  const normalizeTaskData = (task: Task): Task => {
+    // Normalize status values
+    let normalizedStatus = task.status;
+    if (task.status === 'NotStarted' as any) normalizedStatus = 'todo';
+    else if (task.status === 'InProgress' as any) normalizedStatus = 'in-progress';
+    else if (task.status === 'Completed' as any) normalizedStatus = 'done';
+    
+    // Normalize priority values
+    let normalizedPriority = task.priority;
+    if (typeof task.priority === 'number') {
+      normalizedPriority = task.priority === 0 ? 'low' : 
+                          task.priority === 1 ? 'medium' : 
+                          task.priority === 2 ? 'high' : 'medium';
+    }
+    
+    return {
+      ...task,
+      status: normalizedStatus as any,
+      priority: normalizedPriority as any
+    };
+  };
+
   // Update an existing task
   const updateTask = useCallback(async (id: string, task: Partial<TaskFormData>): Promise<Task | null> => {
+    console.log('TaskProvider: --------- UPDATE TASK START ---------');
+    console.log('TaskProvider: Updating task with ID:', id);
+    console.log('TaskProvider: Update data received:', JSON.stringify(task, null, 2));
+    
     setLoading(true);
     setError(null);
     
     try {
-      const response = await taskService.updateTask(Number(id), task as any);
-      if (response.data) {
-        setTasks(prev => prev.map(t => String(t.id) === id ? response.data! : t));
-        return response.data;
-      } else if (response.error) {
-        setError(response.error);
+      // Get the existing task from our state to make sure we have complete data
+      const existingTask = tasks.find(t => String(t.id) === id);
+      if (!existingTask) {
+        console.warn('TaskProvider: Task to update not found in current state:', id);
+      } else {
+        console.log('TaskProvider: Existing task in state:', JSON.stringify(existingTask, null, 2));
       }
-      return null;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update task');
-      return null;
-    } finally {
+      
+      // Check that we have a valid auth token
+      const hasToken = !!localStorage.getItem('token');
+      if (!hasToken) {
+        console.error('TaskProvider: No authentication token found!');
+        setError('Authentication required - please log in again');
+        setLoading(false);
+        return null;
+      }
+      
+      // Only log once we're about to make the API call
+      console.log('TaskProvider: Sending update to API...');
+      const response = await taskService.updateTask(Number(id), task as any);
+      
+      // Log results after receiving the response
+      console.log('TaskProvider: Update task response status:', response.status);
+      if (response.data) {
+        console.log('TaskProvider: Update successful, received data:', JSON.stringify(response.data, null, 2));
+      }
+      if (response.error) {
+        console.log('TaskProvider: Update failed with error:', response.error);
+        if (response.details) {
+          console.log('TaskProvider: Error details:', response.details);
+        }
+        
+        // Handle version conflict errors (optimistic concurrency)
+        if (response.status === 409 || response.status === 412) {
+          if (response.details?.type === 'VersionConflict') {
+            setError(`Version conflict: ${response.details.message}. The task has been refreshed with the latest data.`);
+            
+            // If we got refreshed data back, update our local state
+            if (response.data) {
+              // Update the task in the tasks list
+              setTasks(prev => 
+                prev.map(t => t.id === Number(id) ? response.data! : t)
+              );
+            } else {
+              // Re-fetch all tasks to get the latest state
+              await fetchTasks();
+            }
+            
+            setLoading(false);
+            return null;
+          }
+        }
+      }
+      
+      if (response.data) {
+        // Update was successful, update local state
+        const updatedTask = response.data;
+        
+        // Update the tasks list with the updated task
+        setTasks(prev => 
+          prev.map(t => t.id === Number(id) ? updatedTask : t)
+        );
+        
+        setLoading(false);
+        return updatedTask;
+      } else if (response.status === 200 || response.status === 204) {
+        // Success but no data returned, refresh the task
+        console.log('TaskProvider: Success response with no data, refreshing task');
+        
+        // Optimistic update: merge changes into the existing task 
+        if (existingTask) {
+          const optimisticUpdate: Task = {
+            ...existingTask,
+            ...(task.title !== undefined && { title: task.title }),
+            ...(task.description !== undefined && { 
+              description: task.description === null ? '' : task.description 
+            }),
+            ...(task.status !== undefined && { status: task.status }),
+            ...(task.priority !== undefined && { priority: task.priority }),
+            ...(task.dueDate !== undefined && { 
+              dueDate: task.dueDate === null ? undefined : task.dueDate 
+            }),
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Update the tasks list with our optimistic update
+          setTasks(prev => 
+            prev.map(t => t.id === Number(id) ? optimisticUpdate : t)
+          );
+          
+          // Also refresh the task list
+          fetchTasks().catch(err => console.error('Error refreshing tasks after update:', err));
+          
+          setLoading(false);
+          return optimisticUpdate;
+        }
+        
+        // If we didn't have the existing task, refresh the entire list
+        await fetchTasks();
+        const refreshedTask = tasks.find(t => String(t.id) === id) || null;
+        setLoading(false);
+        return refreshedTask;
+      }
+      
+      // Handle error cases
+      const errorMessage = response.error || 'Failed to update task';
+      console.error('TaskProvider: Update failed:', errorMessage);
+      setError(errorMessage);
       setLoading(false);
+      return null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error updating task';
+      console.error('TaskProvider: Error in updateTask:', errorMessage);
+      setError(errorMessage);
+      setLoading(false);
+      return null;
     }
-  }, []);
+  }, [tasks, setTasks, fetchTasks]);
 
   // Delete a task
   const deleteTask = useCallback(async (id: string): Promise<boolean> => {
@@ -203,18 +333,32 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       if (response.status === 200 || response.status === 204) {
         console.log('TaskProvider: Task deleted successfully');
         
-        // Remove the task from local state first for immediate UI update
+        // Update state immediately to reflect the deletion
         setTasks(prev => prev.filter(t => String(t.id) !== id));
         
-        // Force a refresh from the API to ensure our data is in sync
-        setTimeout(() => {
-          console.log('TaskProvider: Refreshing task list after deletion');
-          taskService.getTasks().then(response => {
-            if (response.data && Array.isArray(response.data)) {
-              setTasks(response.data);
-            }
-          });
-        }, 300);
+        // Clear task verification caches
+        try {
+          // Add task ID to the failed tasks cache (known non-existent tasks)
+          const failedTaskIdsStr = localStorage.getItem('failedTaskIds');
+          const failedTaskIds = failedTaskIdsStr ? JSON.parse(failedTaskIdsStr) : [];
+          
+          if (!failedTaskIds.includes(id)) {
+            failedTaskIds.push(id);
+            localStorage.setItem('failedTaskIds', JSON.stringify(failedTaskIds));
+          }
+          
+          // Remove from verified tasks if present
+          const verifiedTaskIdsStr = localStorage.getItem('verifiedTaskIds');
+          if (verifiedTaskIdsStr) {
+            const verifiedTaskIds = JSON.parse(verifiedTaskIdsStr);
+            const updatedVerifiedIds = verifiedTaskIds.filter((taskId: string) => taskId !== id);
+            localStorage.setItem('verifiedTaskIds', JSON.stringify(updatedVerifiedIds));
+          }
+          
+          console.log('TaskProvider: Updated task verification caches after deletion');
+        } catch (err) {
+          console.error('TaskProvider: Error updating task verification caches:', err);
+        }
         
         return true;
       } 
@@ -226,7 +370,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      // Other error handling
+      // If we get here, the deletion might have failed
       if (response.error) {
         console.error('TaskProvider: Error deleting task:', response.error);
         setError(response.error);
@@ -234,15 +378,33 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         console.error('TaskProvider: Unknown error deleting task. Status:', response.status);
         setError('Failed to delete task. Please try again.');
       }
+      
+      // Try to refresh the task list to ensure state consistency
+      console.log('TaskProvider: Refreshing tasks list after failed deletion');
+      setTimeout(() => {
+        fetchTasks().catch(err => 
+          console.error('TaskProvider: Error refreshing tasks after deletion failure:', err)
+        );
+      }, 500);
+      
       return false;
     } catch (e) {
       console.error('TaskProvider: Exception deleting task:', e);
       setError(e instanceof Error ? e.message : 'Failed to delete task');
+      
+      // Try to refresh the task list to ensure state consistency
+      console.log('TaskProvider: Refreshing tasks list after deletion exception');
+      setTimeout(() => {
+        fetchTasks().catch(err => 
+          console.error('TaskProvider: Error refreshing tasks after deletion exception:', err)
+        );
+      }, 500);
+      
       return false;
     } finally {
       setLoading(false);
     }
-  }, [refreshToken]);
+  }, [refreshToken, fetchTasks]);
 
   // Update task status
   const updateTaskStatus = useCallback(async (id: string, status: string): Promise<Task | null> => {

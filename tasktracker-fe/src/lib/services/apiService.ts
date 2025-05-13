@@ -157,6 +157,82 @@ const isTokenExpiredOrExpiringSoon = (): boolean => {
   }
 };
 
+// Create a variable to track if a token refresh is in progress
+let isRefreshingToken = false;
+// Queue of pending requests that are waiting for token refresh
+let refreshQueue: Array<() => void> = [];
+
+// Process all requests in the queue with the new token
+const processRefreshQueue = () => {
+  refreshQueue.forEach(callback => callback());
+  refreshQueue = [];
+};
+
+// Centralized token refresh function
+const refreshAuthToken = async (): Promise<boolean> => {
+  // Return immediately if already refreshing to prevent multiple refresh calls
+  if (isRefreshingToken) {
+    return new Promise((resolve) => {
+      refreshQueue.push(() => resolve(true));
+    });
+  }
+  
+  try {
+    console.log('API Service: Refreshing auth token');
+    isRefreshingToken = true;
+    
+    // Get a CSRF token first
+    await fetchCsrfToken();
+    
+    // Call the refresh token endpoint
+    const response = await fetch(`${API_URL}/v1/auth/refresh-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': getCsrfToken()
+      },
+      body: JSON.stringify({
+        refreshToken: localStorage.getItem('refreshToken') || ''
+      }),
+      credentials: 'include'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.accessToken) {
+        // Store the new tokens
+        localStorage.setItem('token', data.accessToken);
+        if (data.refreshToken) {
+          localStorage.setItem('refreshToken', data.refreshToken);
+        }
+        
+        console.log('API Service: Token refresh successful');
+        processRefreshQueue();
+        return true;
+      }
+    }
+    
+    // If we get here, refresh failed
+    console.error('API Service: Token refresh failed');
+    // Clear auth data on refresh failure
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    
+    // Force the user to log in again - but check if already on login page to prevent loops
+    if (typeof window !== 'undefined' && 
+        !window.location.pathname.includes('/auth/login')) {
+      window.location.href = '/auth/login?expired=true';
+    }
+    return false;
+  } catch (error) {
+    console.error('API Service: Error refreshing token', error);
+    return false;
+  } finally {
+    isRefreshingToken = false;
+  }
+};
+
 export const apiService = {
 
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
@@ -176,11 +252,34 @@ export const apiService = {
         }
       }
       
+      // Check if token is expired before making the request
+      if (isTokenExpiredOrExpiringSoon()) {
+        console.log('Token expired or expiring soon, refreshing before GET request');
+        await refreshAuthToken();
+      }
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: getHeaders(),
         credentials: 'include'
       });
+      
+      // If unauthorized, try to refresh token and retry once
+      if (response.status === 401) {
+        console.log('Unauthorized response on GET request, attempting token refresh');
+        const refreshSuccess = await refreshAuthToken();
+        
+        if (refreshSuccess) {
+          console.log('Token refreshed, retrying GET request');
+          const retryResponse = await fetch(url, {
+            method: 'GET',
+            headers: getHeaders(),
+            credentials: 'include'
+          });
+          
+          return processResponse<T>(retryResponse);
+        }
+      }
       
       return processResponse<T>(response);
     } catch (_error) {
@@ -197,30 +296,16 @@ export const apiService = {
       // First try to get a fresh CSRF token
       await fetchCsrfToken();
       
+      // Check if token is expired before making the request
+      if (requiresAuth && isTokenExpiredOrExpiringSoon()) {
+        console.log('Token expired or expiring soon, refreshing before POST request');
+        await refreshAuthToken();
+      }
+      
       // Get auth token from storage (if available)
       let authToken = '';
       if (typeof window !== 'undefined') {
         authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-        
-        // Validate token by checking expiration
-        if (authToken) {
-          try {
-            const parts = authToken.replace('Bearer ', '').split('.');
-            if (parts.length === 3) {
-              const payload = JSON.parse(atob(parts[1]));
-              const expiry = payload.exp ? new Date(payload.exp * 1000) : null;
-              
-              if (expiry && expiry < new Date()) {
-                console.log("Token expired, clearing from storage");
-                localStorage.removeItem('token');
-                sessionStorage.removeItem('token');
-                authToken = '';
-              }
-            }
-          } catch (e) {
-            console.error("Error validating token:", e);
-          }
-        }
       }
       
       // Basic headers
@@ -236,21 +321,21 @@ export const apiService = {
           : `Bearer ${authToken}`;
       }
       
-      // Add CSRF token
+      // Add CSRF token to both header formats
       const csrfToken = getCsrfToken();
       if (csrfToken) {
         headers['X-CSRF-TOKEN'] = csrfToken;
+        headers['X-XSRF-TOKEN'] = csrfToken;
       }
       
       // Prepare payload - ensure we're sending clean data
       const payload = JSON.stringify(data);
       
-      console.log('API Request:', {
-        url: `${API_URL}${endpoint}`,
-        method: 'POST',
+      console.log(`API POST request to ${API_URL}${endpoint}`, {
         headers: { 
           ...headers, 
-          Authorization: headers.Authorization ? '[REDACTED]' : undefined 
+          Authorization: headers.Authorization ? '[REDACTED]' : undefined,
+          'X-CSRF-TOKEN': csrfToken ? '[PRESENT]' : '[MISSING]'
         },
         data
       });
@@ -263,120 +348,156 @@ export const apiService = {
         credentials: 'include'
       });
       
-      console.log(`API Response status: ${response.status}`);
-      
-      // Try to read response body for better debugging
-      const clonedResponse = response.clone();
-      let responseBody = '';
-      try {
-        responseBody = await clonedResponse.text();
-        console.log('Response body:', responseBody);
-      } catch (e) {
-        console.error('Error reading response body:', e);
-      }
-      
-      // Handle common error cases
-      if (response.status === 400) {
-        return {
-          error: responseBody || 'Bad request',
-          status: 400
-        };
-      }
-      
-      if (response.status === 401) {
-        // Clear invalid token on authentication failure
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
-        
-        return {
-          error: 'Authentication failed. Please log in again.',
-          status: 401
-        };
-      }
-      
-      // Try to parse success responses
-      if (response.status >= 200 && response.status < 300 && responseBody) {
-        try {
-          const parsedData = JSON.parse(responseBody);
-          
-          // Handle TaskTrackerAPI's specific response format
-          if (parsedData.success && parsedData.data) {
-            console.log('Detected TaskTrackerAPI response format with data property');
-            return {
-              data: parsedData.data,
-              status: response.status
-            };
-          }
-          
-          // Handle case where data is directly in the response without nesting
-          return {
-            data: parsedData.data || parsedData,
-            status: response.status
-          };
-        } catch (e) {
-          console.error('Error parsing success response:', e);
-        }
-      }
+      console.log(`POST response status: ${response.status}`);
       
       return processResponse<T>(response);
     } catch (error) {
-      console.error('Network error in post:', error);
+      console.error(`API Service Error (POST ${endpoint}):`, error);
       return {
-        error: error instanceof Error ? error.message : 'Network error or service unavailable',
-        status: 0
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 500
       };
     }
   },
 
-  async put<T>(endpoint: string, data: any, requiresAuth = true): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: any, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
+      // Try to get a fresh CSRF token before making the request
       await fetchCsrfToken();
       
+      // Refresh auth token if needed
+      if (requiresAuth && isTokenExpiredOrExpiringSoon()) {
+        console.log('Token expired or expiring soon, refreshing before PUT request');
+        await refreshAuthToken();
+      }
+      
+      // Get auth token from storage
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      }
+      
+      // Get CSRF token
       const csrfToken = getCsrfToken();
-      const dataWithToken = {
-        ...data,
-        csrfToken
+      
+      // Basic headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       };
       
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = authToken.startsWith('Bearer ') 
+          ? authToken 
+          : `Bearer ${authToken}`;
+      }
+      
+      // Add CSRF token to both header formats
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+        headers['X-XSRF-TOKEN'] = csrfToken;
+      }
+      
+      // Prepare the payload - if no data provided, send empty object
+      const payload = data === undefined ? '{}' : JSON.stringify(data);
+      
+      console.log(`API PUT request to ${API_URL}${endpoint}`, {
+        headers: { 
+          ...headers, 
+          Authorization: headers.Authorization ? '[REDACTED]' : undefined,
+          'X-CSRF-TOKEN': csrfToken ? '[PRESENT]' : '[MISSING]'
+        },
+        data: data || '{}'
+      });
+      
+      // Make the request
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'PUT',
-        headers: getHeaders(requiresAuth),
-        body: JSON.stringify(dataWithToken),
+        headers,
+        body: payload,
         credentials: 'include'
       });
       
+      console.log(`PUT response status: ${response.status}`);
+      
       return processResponse<T>(response);
-    } catch (_error) {
+    } catch (error) {
+      console.error(`API Service Error (PUT ${endpoint}):`, error);
       return {
-        error: 'Network error or service unavailable',
-        status: 0
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 500
       };
     }
   },
-  
 
   async patch<T>(endpoint: string, data: any, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
+      // Try to get a fresh CSRF token before making the request
       await fetchCsrfToken();
       
+      // Refresh auth token if needed
+      if (requiresAuth && isTokenExpiredOrExpiringSoon()) {
+        console.log('Token expired or expiring soon, refreshing before PATCH request');
+        await refreshAuthToken();
+      }
+      
+      // Get auth token from storage
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      }
+      
+      // Get CSRF token
       const csrfToken = getCsrfToken();
-      const dataWithToken = {
-        ...data,
-        csrfToken
+      
+      // Basic headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       };
       
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = authToken.startsWith('Bearer ') 
+          ? authToken 
+          : `Bearer ${authToken}`;
+      }
+      
+      // Add CSRF token to both header formats
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+        headers['X-XSRF-TOKEN'] = csrfToken;
+      }
+      
+      // Prepare the payload
+      const payload = JSON.stringify(data);
+      
+      console.log(`API PATCH request to ${API_URL}${endpoint}`, {
+        headers: { 
+          ...headers, 
+          Authorization: headers.Authorization ? '[REDACTED]' : undefined,
+          'X-CSRF-TOKEN': csrfToken ? '[PRESENT]' : '[MISSING]'
+        },
+        data
+      });
+      
+      // Make the request
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'PATCH',
-        headers: getHeaders(requiresAuth),
-        body: JSON.stringify(dataWithToken),
+        headers,
+        body: payload,
         credentials: 'include'
       });
       
+      console.log(`PATCH response status: ${response.status}`);
+      
       return processResponse<T>(response);
-    } catch (_error) {
+    } catch (error) {
+      console.error(`API Service Error (PATCH ${endpoint}):`, error);
       return {
-        error: 'Network error or service unavailable',
-        status: 0
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 500
       };
     }
   },
@@ -384,31 +505,185 @@ export const apiService = {
  
   async delete<T>(endpoint: string, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
+      // Try to get a fresh CSRF token before making the request
       await fetchCsrfToken();
       
-      // Check if token is expired (don't interrupt request if not required)
+      // Refresh auth token if needed
       if (requiresAuth && isTokenExpiredOrExpiringSoon()) {
-        console.log('Auth token expired or expiring soon before DELETE request');
-        return {
-          error: 'Authentication token expired. Please refresh the page and try again.',
-          status: 401
-        };
+        console.log('Token expired or expiring soon, refreshing before DELETE request');
+        await refreshAuthToken();
       }
       
-      const csrfToken = getCsrfToken();
-      const body = { csrfToken };
+      // Get auth token from storage
+      let authToken = '';
+      if (typeof window !== 'undefined') {
+        authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      }
       
+      // Get CSRF token
+      const csrfToken = getCsrfToken();
+      
+      // Basic headers
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = authToken.startsWith('Bearer ') 
+          ? authToken 
+          : `Bearer ${authToken}`;
+      }
+      
+      // Add CSRF token to both header formats
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+        headers['X-XSRF-TOKEN'] = csrfToken;
+      }
+      
+      console.log(`API Delete request to ${API_URL}${endpoint}`, { 
+        headers: { 
+          ...headers, 
+          Authorization: headers.Authorization ? '[REDACTED]' : undefined,
+          'X-CSRF-TOKEN': csrfToken ? '[PRESENT]' : '[MISSING]'
+        } 
+      });
+      
+      // Send the request
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: 'DELETE',
-        headers: getHeaders(requiresAuth),
-        body: JSON.stringify(body),
+        headers,
         credentials: 'include'
       });
       
       return processResponse<T>(response);
-    } catch (_error) {
+    } catch (error) {
+      console.error(`API Service Error (DELETE ${endpoint}):`, error);
       return {
-        error: 'Network error or service unavailable',
+        error: error instanceof Error ? error.message : 'Network error',
+        status: 500
+      };
+    }
+  },
+
+  /**
+   * Special method to directly update a task - this is a workaround for issues with PUT requests
+   * @param id Task ID to update
+   * @param data Task data to update
+   * @returns API response with the updated task
+   */
+  async directTaskUpdate<T>(id: number, data: any): Promise<ApiResponse<T>> {
+    try {
+      // First, refresh the auth token to ensure we're authenticated
+      const refreshResponse = await fetch(`${API_URL}/v1/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          refreshToken: localStorage.getItem('refreshToken')
+        })
+      });
+      
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        if (refreshData.accessToken) {
+          localStorage.setItem('token', refreshData.accessToken);
+          console.log('DirectTaskUpdate: Auth token refreshed');
+        }
+      }
+      
+      // Now make the update request
+      const url = `${API_URL}/v1/taskitems/${id}`;
+      
+      // Create the data in PascalCase format
+      const updateData: Record<string, any> = {};
+      
+      // Convert from camelCase to PascalCase and handle special cases
+      Object.entries(data).forEach(([key, value]) => {
+        if (value === undefined || value === null) return;
+        
+        // Convert status from string to number
+        if (key === 'status') {
+          switch(value) {
+            case 'todo': updateData.Status = 0; break;
+            case 'in-progress': updateData.Status = 1; break;
+            case 'done': updateData.Status = 2; break;
+          }
+        } 
+        // Convert priority from string to number
+        else if (key === 'priority') {
+          switch(value) {
+            case 'low': updateData.Priority = 0; break;
+            case 'medium': updateData.Priority = 1; break;
+            case 'high': updateData.Priority = 2; break;
+          }
+        }
+        // Direct conversion for title and other fields
+        else {
+          const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
+          updateData[pascalKey] = value;
+        }
+      });
+      
+      console.log('DirectTaskUpdate: Sending data:', updateData);
+      
+      // Create FormData (as a fallback in case JSON doesn't work)
+      const formData = new FormData();
+      Object.entries(updateData).forEach(([key, value]) => {
+        if (value !== undefined) {
+          formData.append(key, value.toString());
+        }
+      });
+      
+      // Get auth token
+      const token = localStorage.getItem('token');
+      
+      // Try POST with _method=PUT first (most compatible)
+      const response = await fetch(`${url}?_method=PUT`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'X-HTTP-Method-Override': 'PUT'
+        },
+        body: JSON.stringify(updateData),
+        credentials: 'include'
+      });
+      
+      console.log('DirectTaskUpdate: Response status:', response.status);
+      
+      // If JSON POST fails, try FormData
+      if (response.status !== 200 && response.status !== 204) {
+        console.log('DirectTaskUpdate: JSON POST failed, trying FormData');
+        
+        const formDataResponse = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : ''
+          },
+          body: formData,
+          credentials: 'include'
+        });
+        
+        console.log('DirectTaskUpdate: FormData response status:', formDataResponse.status);
+        
+        if (formDataResponse.ok) {
+          return { status: formDataResponse.status };
+        }
+      } else if (response.ok) {
+        return { status: response.status };
+      }
+      
+      return {
+        error: 'Failed to update task',
+        status: response.status
+      };
+    } catch (error) {
+      console.error('Error in directTaskUpdate:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Network error',
         status: 0
       };
     }

@@ -1,8 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* New color palette */
+  --navy-dark: #213555;
+  --navy: #3E5879;
+  --beige: #D8C4B6;
+  --cream: #F5EFE7;
+  
+  /* Main theme colors */
+  --background: var(--cream);
+  --foreground: #333333;
+  --heading-color: var(--navy-dark);
+  --card-background: #ffffff;
+  --primary-color: var(--navy);
+  --primary-hover: var(--navy-dark);
+  --secondary-color: var(--beige);
+  --accent-color: var(--beige);
+}
+
+.dark {
+  --background: var(--navy-dark);
+  --foreground: var(--cream);
+  --heading-color: var(--cream);
+  --card-background: var(--navy);
+  --primary-color: var(--beige);
+  --primary-hover: #c9b5a7;
+  --secondary-color: var(--navy);
+  --accent-color: var(--beige);
 }
 
 @theme inline {
@@ -12,15 +36,260 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "San Francisco", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  letter-spacing: -0.015em;
 }
+
+/* Global heading and form styles */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--heading-color) !important;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 2.5rem;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 2rem;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+/* Improved contrast for paragraphs in dark mode */
+.dark p {
+  color: var(--cream);
+  opacity: 0.95;
+}
+
+/* Improved contrast for welcome message in navbar */
+.navbar-welcome {
+  color: var(--navy-dark);
+  font-weight: 500;
+}
+
+.dark .navbar-welcome {
+  color: var(--cream);
+  font-weight: 500;
+}
+
+/* Improved contrast for tagline text */
+.tagline {
+  color: var(--navy-dark);
+  opacity: 0.9;
+}
+
+.dark .tagline {
+  color: var(--cream);
+  opacity: 0.95;
+}
+
+label {
+  color: var(--heading-color) !important;
+  font-weight: 500;
+}
+
+/* Card backgrounds */
+.bg-white {
+  background-color: var(--card-background) !important;
+}
+
+/* Form elements */
+input, select, textarea {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.dark input, .dark select, .dark textarea {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--cream);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--navy);
+  border-color: var(--navy);
+}
+
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  box-shadow: 0 0 0 2px var(--beige);
+  border-color: var(--beige);
+}
+
+/* Improve contrast for task items */
+.task-item {
+  background-color: var(--card-background);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.dark .task-item {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.task-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.dark .task-item:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: var(--navy-dark);
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.dark .btn-secondary {
+  color: var(--cream);
+}
+
+.btn-secondary:hover {
+  background-color: #c9b5a7;
+  transform: translateY(-1px);
+}
+
+.dark .btn-secondary:hover {
+  background-color: var(--navy-dark);
+}
+
+/* Apple-like card styling */
+.apple-card {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.dark .apple-card {
+  background-color: rgba(62, 88, 121, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.apple-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dark .apple-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom color classes */
+.bg-brand-navy-dark {
+  background-color: var(--navy-dark);
+}
+
+.bg-brand-navy {
+  background-color: var(--navy);
+}
+
+.bg-brand-beige {
+  background-color: var(--beige);
+}
+
+.bg-brand-cream {
+  background-color: var(--cream);
+}
+
+.text-brand-navy-dark {
+  color: var(--navy-dark);
+}
+
+.text-brand-navy {
+  color: var(--navy);
+}
+
+.text-brand-beige {
+  color: var(--beige);
+}
+
+.text-brand-cream {
+  color: var(--cream);
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+/* Priority badges */
+.priority-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  font-weight: 700;
+}
+
+.dark .gradient-text {
+  background: linear-gradient(135deg, var(--cream) 0%, var(--beige) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+/* Progress bar */
+[role="progressbar"] > div {
+  background-color: var(--primary-color) !important;
+}
+
+/* Add any other global styles below */

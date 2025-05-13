@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuth } from '@/lib/providers/AuthContext';
 import { useTasks } from '@/lib/providers/TaskProvider';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskFormData } from '@/lib/types/task';
@@ -31,10 +31,11 @@ export default function NewTaskPage() {
   }, [taskProviderError]);
 
   // Redirect to login if not authenticated
+  useEffect(() => {
   if (!authLoading && !user) {
     router.push('/auth/login?redirect=/tasks/new');
-    return null;
   }
+  }, [authLoading, user, router]);
 
   // If successfully created, show feedback and then redirect
   useEffect(() => {
@@ -48,6 +49,14 @@ export default function NewTaskPage() {
   }, [success, router]);
 
   if (authLoading || isSubmitting) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
