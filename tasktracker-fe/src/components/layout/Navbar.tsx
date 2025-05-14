@@ -70,40 +70,40 @@ export function Navbar() {
             <div className="flex items-center space-x-4">
               <ThemeToggle />
               
-              {user ? (
-                <div className="flex items-center space-x-4 relative">
-                  <div ref={profileMenuRef} className="relative">
-                    <button
-                      onClick={toggleProfileMenu}
+            {user ? (
+              <div className="flex items-center space-x-4 relative">
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    onClick={toggleProfileMenu}
                       className="flex items-center text-sm navbar-welcome focus:outline-none"
+                  >
+                    <span className="mr-2">Welcome, {displayName}</span>
+                    <svg
+                      className={`h-5 w-5 transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
                     >
-                      <span className="mr-2">Welcome, {displayName}</span>
-                      <svg
-                        className={`h-5 w-5 transform ${isProfileMenuOpen ? 'rotate-180' : ''}`}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                    
-                    {isProfileMenuOpen && (
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                  
+                  {isProfileMenuOpen && (
                       <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-navy ring-1 ring-black ring-opacity-5 z-10">
-                        <div className="py-1" role="menu" aria-orientation="vertical">
-                          <Link
-                            href="/profile"
+                      <div className="py-1" role="menu" aria-orientation="vertical">
+                        <Link
+                          href="/profile"
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
-                            role="menuitem"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                          >
-                            Your Profile
-                          </Link>
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          Your Profile
+                        </Link>
                           <Link
                             href="/dashboard"
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
@@ -112,37 +112,37 @@ export function Navbar() {
                           >
                             Dashboard
                           </Link>
-                          <button
-                            onClick={() => {
-                              logout();
-                              setIsProfileMenuOpen(false);
-                            }}
+                        <button
+                          onClick={() => {
+                            logout();
+                            setIsProfileMenuOpen(false);
+                          }}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
-                            role="menuitem"
-                          >
-                            Logout
-                          </button>
-                        </div>
+                          role="menuitem"
+                        >
+                          Logout
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center space-x-4">
-                  <Link
-                    href="/auth/login"
+              </div>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <Link
+                  href="/auth/login"
                     className="text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/auth/register"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/auth/register"
                     className="bg-brand-navy text-white hover:bg-opacity-90 px-3 py-2 rounded-md text-sm font-medium"
-                  >
-                    Sign up
-                  </Link>
-                </div>
-              )}
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
             </div>
           </div>
           <div className="-mr-2 flex items-center sm:hidden">

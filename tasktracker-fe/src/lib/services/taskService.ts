@@ -636,13 +636,13 @@ class TaskService {
           case 'done': directUpdateData.Status = 2; break;
         }
       } else if (!directUpdateData.Status && currentTask.status) {
-        // Convert status string to numeric value
-        switch(currentTask.status) {
-          case 'todo': directUpdateData.Status = 0; break;
-          case 'in-progress': directUpdateData.Status = 1; break;
-          case 'done': directUpdateData.Status = 2; break;
+          // Convert status string to numeric value
+          switch(currentTask.status) {
+            case 'todo': directUpdateData.Status = 0; break;
+            case 'in-progress': directUpdateData.Status = 1; break;
+            case 'done': directUpdateData.Status = 2; break;
+          }
         }
-      }
       if (taskData.priority !== undefined) {
         switch(taskData.priority) {
           case 'low': directUpdateData.Priority = 0; break;
@@ -650,23 +650,23 @@ class TaskService {
           case 'high': directUpdateData.Priority = 2; break;
         }
       } else if (!directUpdateData.Priority && currentTask.priority) {
-        // Convert priority string to numeric value
-        switch(currentTask.priority) {
-          case 'low': directUpdateData.Priority = 0; break;
-          case 'medium': directUpdateData.Priority = 1; break;
-          case 'high': directUpdateData.Priority = 2; break;
+          // Convert priority string to numeric value
+          switch(currentTask.priority) {
+            case 'low': directUpdateData.Priority = 0; break;
+            case 'medium': directUpdateData.Priority = 1; break;
+            case 'high': directUpdateData.Priority = 2; break;
+          }
         }
-      }
       
       // Handle due date format
       if (taskData.dueDate !== undefined) {
         directUpdateData.DueDate = taskData.dueDate;
       }
-      
-      console.log('TaskService: DIRECT UPDATE - Using data:', directUpdateData);
-      
-      // Get fresh token
-      const token = localStorage.getItem('token');
+        
+        console.log('TaskService: DIRECT UPDATE - Using data:', directUpdateData);
+        
+        // Get fresh token
+        const token = localStorage.getItem('token');
       
       // Get CSRF token from cookies
       const csrfToken = this.getCsrfTokenFromCookies();
@@ -674,23 +674,23 @@ class TaskService {
       
       const url = `${API_URL}/v1/taskitems/${id}`;
       console.log('TaskService: DIRECT UPDATE - URL:', url);
-      
-      // Try PUT first
-      const directResponse = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+        
+        // Try PUT first
+        const directResponse = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
           'X-CSRF-TOKEN': csrfToken || '', // Add CSRF token to headers
           'X-XSRF-TOKEN': csrfToken || ''  // Add alternative CSRF header format
-        },
-        body: JSON.stringify(directUpdateData),
-        credentials: 'include'
-      });
-      
-      console.log('TaskService: DIRECT UPDATE PUT - Response status:', directResponse.status);
-      
+          },
+          body: JSON.stringify(directUpdateData),
+          credentials: 'include'
+        });
+        
+        console.log('TaskService: DIRECT UPDATE PUT - Response status:', directResponse.status);
+        
       // Handle version conflict (412 Precondition Failed or 409 Conflict)
       if (directResponse.status === 412 || directResponse.status === 409) {
         console.warn('TaskService: Version conflict detected, refreshing task data');
@@ -726,21 +726,21 @@ class TaskService {
             error: 'Version conflict - please refresh and try again',
             status: directResponse.status
           };
+          }
         }
-      }
-      
-      if (directResponse.ok) {
+        
+        if (directResponse.ok) {
         try {
           // Try to parse JSON response
           const taskData = await directResponse.json();
           console.log('TaskService: Update successful, received data:', taskData);
-          return {
+        return {
             data: taskData,
             status: directResponse.status
-          };
+        };
         } catch (jsonError) {
           console.log('TaskService: Response is not JSON, assuming success and refreshing');
-          
+      
           // If we can't parse JSON but request was successful, refresh the task
           const refreshedTask = await this.refreshTask(id);
           return refreshedTask;
@@ -749,13 +749,13 @@ class TaskService {
         try {
           // Try to get error details from response
           const errorData = await directResponse.json();
-          return {
+      return {
             error: errorData.message || `Error: ${directResponse.status} ${directResponse.statusText}`,
             details: errorData,
             status: directResponse.status
-          };
-        } catch (e) {
-          return {
+      };
+    } catch (e) {
+      return { 
             error: `Error: ${directResponse.status} ${directResponse.statusText}`,
             status: directResponse.status
           };

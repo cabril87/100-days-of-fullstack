@@ -413,12 +413,12 @@ export const apiService = {
       
       // Make the request
       const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'PUT',
-        headers,
+          method: 'PUT',
+          headers,
         body: payload,
-        credentials: 'include'
-      });
-      
+          credentials: 'include'
+        });
+        
       console.log(`PUT response status: ${response.status}`);
       
       return processResponse<T>(response);

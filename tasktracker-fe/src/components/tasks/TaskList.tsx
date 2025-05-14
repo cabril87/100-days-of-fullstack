@@ -46,6 +46,15 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
   const [sortField, setSortField] = useState<SortOption>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [verifiedTasks, setVerifiedTasks] = useState<TaskType[]>(tasks);
+  const [animateIn, setAnimateIn] = useState(false);
+  
+  // Animation effect on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimateIn(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
   
   // Verify tasks exist on server
   useEffect(() => {
@@ -166,16 +175,43 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
     setSortDirection(direction);
   };
 
+  // Get stats
+  const todoCount = sortedTasks.filter(task => normalizeStatus(task.status) === 'todo').length;
+  const inProgressCount = sortedTasks.filter(task => normalizeStatus(task.status) === 'in-progress').length;
+  const doneCount = sortedTasks.filter(task => normalizeStatus(task.status) === 'done').length;
+  
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h2 className="text-2xl font-semibold text-gray-900">Your Tasks</h2>
+    <div 
+      className={`space-y-8 transition-opacity duration-500 ${animateIn ? 'opacity-100' : 'opacity-0'}`}
+      style={{ 
+        transition: 'all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1)'
+      }}
+    >
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 card-section pb-6">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Your Tasks</h2>
+          <div className="flex gap-3 items-center">
+            <div className="flex items-center">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full bg-brand-navy mr-1.5`}></span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{todoCount} To Do</span>
+            </div>
+            <div className="flex items-center">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full bg-brand-beige mr-1.5`}></span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{inProgressCount} In Progress</span>
+            </div>
+            <div className="flex items-center">
+              <span className={`inline-block h-2.5 w-2.5 rounded-full bg-green-500 mr-1.5`}></span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">{doneCount} Done</span>
+            </div>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-3">
           <select 
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-200 rounded-full px-4 py-1.5 text-sm bg-white/80 backdrop-blur-sm focus:ring-brand-teal focus:border-brand-teal"
+            className="border border-gray-200 rounded-full px-4 py-2 text-sm bg-white/80 backdrop-blur-sm focus:ring-brand-navy focus:border-brand-navy dark:border-gray-700 dark:bg-white/10 shadow-sm"
             aria-label="Filter by status"
+            style={{ transition: 'all 0.2s ease' }}
           >
             <option value="all">All Statuses</option>
             <option value="todo">To Do</option>
@@ -186,8 +222,9 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
           <select 
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="border border-gray-200 rounded-full px-4 py-1.5 text-sm bg-white/80 backdrop-blur-sm focus:ring-brand-teal focus:border-brand-teal"
+            className="border border-gray-200 rounded-full px-4 py-2 text-sm bg-white/80 backdrop-blur-sm focus:ring-brand-navy focus:border-brand-navy dark:border-gray-700 dark:bg-white/10 shadow-sm"
             aria-label="Filter by priority"
+            style={{ transition: 'all 0.2s ease' }}
           >
             <option value="all">All Priorities</option>
             <option value="low">Low</option>
@@ -197,42 +234,89 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
         </div>
       </div>
       
-      <TaskSorter onSort={handleSort} />
+      <div className="bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm">
+        <TaskSorter onSort={handleSort} />
+      </div>
       
       {sortedTasks.length === 0 ? (
-        <div className="p-8 text-center text-gray-500 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-200">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <p className="text-lg font-medium mb-2">No tasks found</p>
-          <p className="mb-4">No tasks match your current filters.</p>
+        <div 
+          className="p-10 text-center text-gray-500 bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200 dark:bg-white/5 dark:border-gray-700/50 shadow-sm"
+          style={{ 
+            animation: 'fadeIn 0.5s ease-in-out',
+            boxShadow: '0 4px 20px -5px rgba(0, 0, 0, 0.05), 0 0 1px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-transparent to-white/50 dark:to-black/20 rounded-full"></div>
+          </div>
+          <p className="text-xl font-medium mb-3 text-brand-navy-dark dark:text-brand-cream">No tasks found</p>
+          <p className="mb-6 max-w-md mx-auto text-gray-600 dark:text-gray-400">No tasks match your current filters.</p>
           <button 
             onClick={() => {
               setStatusFilter('all');
               setPriorityFilter('all');
             }}
-            className="text-brand-teal hover:text-brand-teal/80 font-medium"
+            className="text-brand-navy hover:text-brand-navy/80 font-medium dark:text-brand-beige dark:hover:text-brand-beige/80 px-4 py-2 bg-brand-navy/5 dark:bg-brand-beige/10 rounded-full hover:bg-brand-navy/10 dark:hover:bg-brand-beige/20 transition-colors"
           >
-            Clear filters
+            Clear Filters
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {sortedTasks && sortedTasks.map(task => (
-            <Task
+        <div className="space-y-6">
+          {sortedTasks && sortedTasks.map((task, index) => (
+            <div 
               key={task.id}
-              task={task}
-              onStatusChange={onStatusChange}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
+              style={{ 
+                animation: `fadeSlideIn 0.4s ease-out forwards`,
+                animationDelay: `${index * 0.05}s`,
+                opacity: 0,
+                transform: 'translateY(10px)'
+              }}
+            >
+              <Task
+                task={task}
+                onStatusChange={onStatusChange}
+                onDelete={onDelete}
+                onEdit={onEdit}
+              />
+            </div>
           ))}
         </div>
       )}
       
-      <div className="text-sm text-gray-600 mt-6 text-center">
-        Showing {sortedTasks.length} of {tasks.length} tasks
-      </div>
+      {sortedTasks.length > 0 && (
+        <div 
+          className="text-sm text-gray-600 dark:text-gray-400 mt-8 text-center bg-gray-50/80 dark:bg-white/5 backdrop-blur-sm py-2 px-4 rounded-full border border-gray-200/50 dark:border-gray-700/30 inline-block mx-auto"
+          style={{ 
+            animation: 'fadeIn 0.5s ease-in-out',
+            boxShadow: '0 2px 10px -5px rgba(0, 0, 0, 0.03)'
+          }}
+        >
+          Showing {sortedTasks.length} of {tasks.length} tasks
+        </div>
+      )}
+      
+      {/* Styles for animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes fadeSlideIn {
+          from { 
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 } 

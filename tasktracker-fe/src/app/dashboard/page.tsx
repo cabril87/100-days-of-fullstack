@@ -224,7 +224,7 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-              </Link>
+          </Link>
             </div>
             
             <div className="apple-card">
@@ -241,10 +241,10 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-              </Link>
-            </div>
-          </div>
-          
+          </Link>
+        </div>
+      </div>
+
           {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="apple-card">
@@ -465,12 +465,12 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
+              </div>
+            ) : (
                 <div className="text-center py-8">
                   <p className="text-green-600">No overdue tasks!</p>
-                </div>
-              )}
+        </div>
+      )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -38,16 +38,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <TaskProvider>
-              <ToastProvider>
-                <Navbar />
-                <main className="container mx-auto px-4 py-6">
-                  {children}
-                </main>
-              </ToastProvider>
-            </TaskProvider>
-          </AuthProvider>
+        <AuthProvider>
+          <TaskProvider>
+            <ToastProvider>
+              <Navbar />
+              <main className="container mx-auto px-4 py-6">
+                {children}
+              </main>
+            </ToastProvider>
+          </TaskProvider>
+        </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

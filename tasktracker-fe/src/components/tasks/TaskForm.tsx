@@ -200,64 +200,64 @@ export function TaskForm({ task, onSubmit, onCancel, onError }: TaskFormProps) {
       }
       
       if (isEditMode && originalValues && task) {
-        // Create an object with only the changed fields when editing
-        const changedData = {} as TaskFormData;
-        
-        // Only include fields that have actually changed
-        if (dirtyFields.title) changedData.title = data.title;
-        if (dirtyFields.description) changedData.description = data.description;
-        if (dirtyFields.status) changedData.status = data.status;
-        if (dirtyFields.priority) changedData.priority = data.priority;
+      // Create an object with only the changed fields when editing
+      const changedData = {} as TaskFormData;
+      
+      // Only include fields that have actually changed
+      if (dirtyFields.title) changedData.title = data.title;
+      if (dirtyFields.description) changedData.description = data.description;
+      if (dirtyFields.status) changedData.status = data.status;
+      if (dirtyFields.priority) changedData.priority = data.priority;
         
         // Handle date and time together
         if (dirtyFields.dueDate || dirtyFields.dueTime) {
           changedData.dueDate = combinedData.dueDate;
         }
-        
-        // Ensure title is always present
-        if (!changedData.title && task) changedData.title = task.title;
-        
-        console.log('TaskForm: Submitting only changed fields:', changedData);
-        
-        // Add debug information with PascalCase properties to suggest to server
-        const debugData: Record<string, any> = {};
-        
-        if (changedData.title !== undefined) debugData.Title = changedData.title;
-        if (changedData.description !== undefined) debugData.Description = changedData.description;
-        
-        // Map status string to numeric value
-        if (changedData.status !== undefined) {
-          let statusValue = 0; // default to NotStarted
-          switch (changedData.status) {
-            case TaskStatus.Todo: statusValue = 0; break;
-            case TaskStatus.InProgress: statusValue = 1; break;
-            case TaskStatus.Done: statusValue = 2; break;
-          }
-          debugData.Status = statusValue;
+      
+      // Ensure title is always present
+      if (!changedData.title && task) changedData.title = task.title;
+      
+      console.log('TaskForm: Submitting only changed fields:', changedData);
+      
+      // Add debug information with PascalCase properties to suggest to server
+      const debugData: Record<string, any> = {};
+      
+      if (changedData.title !== undefined) debugData.Title = changedData.title;
+      if (changedData.description !== undefined) debugData.Description = changedData.description;
+      
+      // Map status string to numeric value
+      if (changedData.status !== undefined) {
+        let statusValue = 0; // default to NotStarted
+        switch (changedData.status) {
+          case TaskStatus.Todo: statusValue = 0; break;
+          case TaskStatus.InProgress: statusValue = 1; break;
+          case TaskStatus.Done: statusValue = 2; break;
         }
-        
-        // Map priority string to numeric value
-        if (changedData.priority !== undefined) {
-          let priorityValue = 1; // default to Medium
-          switch (changedData.priority) {
-            case TaskPriority.Low: priorityValue = 0; break;
-            case TaskPriority.Medium: priorityValue = 1; break;
-            case TaskPriority.High: priorityValue = 2; break;
-          }
-          debugData.Priority = priorityValue;
+        debugData.Status = statusValue;
+      }
+      
+      // Map priority string to numeric value
+      if (changedData.priority !== undefined) {
+        let priorityValue = 1; // default to Medium
+        switch (changedData.priority) {
+          case TaskPriority.Low: priorityValue = 0; break;
+          case TaskPriority.Medium: priorityValue = 1; break;
+          case TaskPriority.High: priorityValue = 2; break;
         }
-        
-        if (changedData.dueDate !== undefined) debugData.DueDate = changedData.dueDate;
-        
-        console.log('TaskForm: DEBUG - PascalCase equivalent:', debugData);
-        console.log('TaskForm: DEBUG - Submitting to onSubmit handler');
-        
+        debugData.Priority = priorityValue;
+      }
+      
+      if (changedData.dueDate !== undefined) debugData.DueDate = changedData.dueDate;
+      
+      console.log('TaskForm: DEBUG - PascalCase equivalent:', debugData);
+      console.log('TaskForm: DEBUG - Submitting to onSubmit handler');
+      
         try {
           // Use the TaskProvider's updateTask method directly if possible
           if (updateTask) {
             const result = await updateTask(String(task.id), changedData);
             if (result) {
-              onSubmit(changedData);
+      onSubmit(changedData);
             } else {
               // Get any error message from the TaskProvider
               const taskError = document.querySelector('[data-error="task-provider"]');
@@ -275,14 +275,14 @@ export function TaskForm({ task, onSubmit, onCancel, onError }: TaskFormProps) {
           console.error('TaskForm: Error updating task:', err);
           setError(err instanceof Error ? err.message : 'Failed to update task');
         }
-      } else {
-        // When creating new task, submit all data
-        console.log('TaskForm: DEBUG - Creating new task with full data');
+    } else {
+      // When creating new task, submit all data
+      console.log('TaskForm: DEBUG - Creating new task with full data');
         onSubmit(combinedData);
-      }
-      
-      if (!isEditMode) {
-        reset();
+    }
+    
+    if (!isEditMode) {
+      reset();
       }
     } catch (err) {
       console.error('TaskForm: Error submitting form:', err);
@@ -337,58 +337,58 @@ export function TaskForm({ task, onSubmit, onCancel, onError }: TaskFormProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Status
           </label>
           <select
             id="status"
             {...register('status')}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
           >
             <option value={TaskStatus.Todo}>To Do</option>
             <option value={TaskStatus.InProgress}>In Progress</option>
             <option value={TaskStatus.Done}>Done</option>
           </select>
           {errors.status && (
-            <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.status.message}</p>
           )}
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Priority
           </label>
           <select
             id="priority"
             {...register('priority')}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
           >
             <option value={TaskPriority.Low}>Low</option>
             <option value={TaskPriority.Medium}>Medium</option>
             <option value={TaskPriority.High}>High</option>
           </select>
           {errors.priority && (
-            <p className="mt-1 text-sm text-red-600">{errors.priority.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.priority.message}</p>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
-          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-900">
+          <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Due Date
           </label>
           <input
             type="date"
             id="dueDate"
             {...register('dueDate')}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
           />
           {errors.dueDate && (
-            <p className="mt-1 text-sm text-red-600">{errors.dueDate.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.dueDate.message}</p>
           )}
           {watchedDueDate && !useTime && (
-            <p className="mt-1 text-xs text-gray-500">Tasks without specific time will default to start of day (12:00 AM)</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Tasks without specific time will default to start of day (12:00 AM)</p>
           )}
         </div>
 
@@ -400,63 +400,51 @@ export function TaskForm({ task, onSubmit, onCancel, onError }: TaskFormProps) {
                 id="useTimeCheckbox"
                 checked={useTime}
                 onChange={() => setUseTime(!useTime)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-brand-navy focus:ring-brand-navy dark:text-brand-beige dark:focus:ring-brand-beige border-gray-300 dark:border-gray-700 rounded"
                 disabled={!watchedDueDate}
               />
             </div>
             <div className="ml-3 text-sm">
-              <label htmlFor="useTimeCheckbox" className="font-medium text-gray-900">
+              <label htmlFor="useTimeCheckbox" className="font-medium text-gray-700 dark:text-gray-300">
                 Set specific time
               </label>
-              <p className="text-gray-500">Check to specify a due time</p>
+              <p className="text-gray-500 dark:text-gray-400">Check to specify a due time</p>
             </div>
           </div>
           
           {useTime && watchedDueDate && (
             <div className="mt-3">
-              <label htmlFor="dueTime" className="block text-sm font-medium text-gray-900">
+              <label htmlFor="dueTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Due Time
               </label>
               <input
                 type="time"
                 id="dueTime"
                 {...register('dueTime')}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
               />
               {errors.dueTime && (
-                <p className="mt-1 text-sm text-red-600">{errors.dueTime.message}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.dueTime.message}</p>
               )}
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2.5 border border-gray-300 bg-white text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy transition-colors dark:bg-white/10 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-white/20"
         >
           Cancel
         </button>
         <button
           type="submit"
-          disabled={isSubmitting || (isEditMode && !isDirty)}
-          className={`px-4 py-2.5 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
-            !isDirty && isEditMode 
-              ? 'bg-gray-400 text-white cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          } disabled:opacity-50`}
+          disabled={isSubmitting}
+          className="px-4 py-2 bg-brand-navy text-white rounded-lg shadow-sm hover:bg-brand-navy-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Processing...
-            </span>
-          ) : isEditMode ? (isDirty ? 'Update Task' : 'No Changes') : 'Create Task'}
+          {isSubmitting ? 'Saving...' : isEditMode ? 'Update Task' : 'Create Task'}
         </button>
       </div>
     </form>
