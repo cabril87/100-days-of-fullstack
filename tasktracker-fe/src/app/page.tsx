@@ -15,8 +15,8 @@ export default function Home() {
             <h1 className="text-6xl font-bold mb-6 gradient-text">TaskTracker</h1>
             <p className="text-2xl tagline max-w-3xl mx-auto font-medium leading-relaxed">
               Beautiful task management for the way you work.
-            </p>
-          </div>
+        </p>
+      </div>
 
           <div className="relative mx-auto max-w-4xl h-[400px] mb-16">
             <div className="apple-card absolute top-0 left-0 w-full h-full overflow-hidden flex items-center justify-center">
@@ -26,21 +26,21 @@ export default function Home() {
                   <h2 className="text-4xl font-semibold mb-6">Organize your life</h2>
                   <p className="text-xl mb-8 text-center max-w-lg tagline">
                     Seamlessly manage tasks, set priorities, and track your progress with our intuitive interface.
-                  </p>
+          </p>
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <Link 
+          <Link 
                       href="/auth/register"
                       className="px-8 py-4 bg-brand-navy text-white rounded-full hover:bg-opacity-90 transition-all font-medium text-lg shadow-md hover:shadow-lg"
-                    >
-                      Get Started
-                    </Link>
-                    <Link 
-                      href="/auth/login"
+          >
+            Get Started
+          </Link>
+          <Link 
+            href="/auth/login"
                       className="px-8 py-4 bg-white bg-opacity-50 backdrop-blur-sm text-gray-800 rounded-full hover:bg-opacity-70 transition-all font-medium text-lg border border-white/30 shadow-sm hover:shadow-md"
-                    >
-                      Sign In
-                    </Link>
-                  </div>
+          >
+            Sign In
+          </Link>
+        </div>
                 </div>
               </div>
             </div>
@@ -82,13 +82,13 @@ export default function Home() {
               <p className="text-gray-700 dark:text-gray-200">
                 Get a complete overview of your tasks with our intuitive dashboard. Track progress and stay motivated.
               </p>
-            </div>
-            
+      </div>
+
             <div className="apple-card flex flex-col items-center text-center hover:scale-105 transition-transform">
               <div className="w-16 h-16 rounded-full bg-brand-navy bg-opacity-20 flex items-center justify-center mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-brand-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
+              </svg>
               </div>
               <h3 className="text-2xl font-semibold mb-3">Secure by Design</h3>
               <p className="text-gray-700 dark:text-gray-200">
@@ -104,7 +104,7 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-br from-white to-brand-cream/20 dark:from-navy-dark/50 dark:to-navy/50 z-0"></div>
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="apple-card bg-gradient-to-br from-brand-cream/90 to-white/90 dark:from-navy/90 dark:to-navy-dark/90">
-            <div className="text-center">
+          <div className="text-center">
               <h2 className="text-3xl font-semibold mb-12">Why people love TaskTracker</h2>
               
               <div className="flex flex-col md:flex-row gap-8 justify-center">

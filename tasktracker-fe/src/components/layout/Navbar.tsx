@@ -21,7 +21,6 @@ export function Navbar() {
     setIsProfileMenuOpen(!isProfileMenuOpen);
   };
 
-  // Close profile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
@@ -46,21 +45,27 @@ export function Navbar() {
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
                 href="/"
-                className="text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
               >
                 Home
               </Link>
+              <Link
+                href="/tasks"
+                className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+              >
+                Tasks
+              </Link>
               {user && (
                 <Link
-                  href="/dashboard"
-                  className="text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                  href="/focus"
+                  className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
                 >
-                  Dashboard
+                  Focus Mode
                 </Link>
               )}
               <Link
                 href="/about"
-                className="text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
               >
                 About
               </Link>
@@ -111,6 +116,14 @@ export function Navbar() {
                             onClick={() => setIsProfileMenuOpen(false)}
                           >
                             Dashboard
+                          </Link>
+                          <Link
+                            href="/focus"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            Focus Mode
                           </Link>
                         <button
                           onClick={() => {
@@ -198,23 +211,39 @@ export function Navbar() {
           <div className="pt-2 pb-3 space-y-1">
             <Link
               href="/"
-              className="text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+              className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
               onClick={() => setIsMenuOpen(false)}
             >
               Home
             </Link>
+            <Link
+              href="/tasks"
+              className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Tasks
+            </Link>
             {user && (
-              <Link
-                href="/dashboard"
-                className="text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Dashboard
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/focus"
+                  className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Focus Mode
+                </Link>
+              </>
             )}
             <Link
               href="/about"
-              className="text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+              className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
               onClick={() => setIsMenuOpen(false)}
             >
               About

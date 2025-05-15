@@ -376,12 +376,12 @@ export function TaskForm({ task, onSubmit, onCancel, onError }: TaskFormProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
           <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Due Date
-          </label>
-          <input
-            type="date"
-            id="dueDate"
-            {...register('dueDate')}
+          Due Date
+        </label>
+        <input
+          type="date"
+          id="dueDate"
+          {...register('dueDate')}
             className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
           />
           {errors.dueDate && (

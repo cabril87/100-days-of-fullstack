@@ -473,6 +473,9 @@ public class Program
             
             // Remove HTTPS redirection for local development to avoid the warning
             // app.UseHttpsRedirection();
+            
+            // Use developer exception page for detailed error information
+            app.UseDeveloperExceptionPage();
         }
         else if (app.Environment.IsStaging())
         {

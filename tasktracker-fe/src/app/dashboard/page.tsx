@@ -8,6 +8,9 @@ import { useAuth } from '@/lib/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks/useToast';
 import { useTasks } from '@/lib/providers/TaskProvider';
+import { FocusMode } from '@/components/focus/FocusMode';
+import { FocusStats } from '@/components/focus/FocusStats';
+import { FocusHistory } from '@/components/focus/FocusHistory';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
@@ -18,37 +21,31 @@ export default function DashboardPage() {
   const router = useRouter();
   const { showToast } = useToast();
   
-  // Ensure tasks is always an array
   const tasks = Array.isArray(allTasks) ? allTasks : [];
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/login?redirect=/dashboard');
     }
   }, [authLoading, user, router]);
 
-  // Load tasks when auth is resolved
   useEffect(() => {
     if (user) {
       fetchTasks();
     }
   }, [user, fetchTasks]);
 
-  // Show error toast if task loading fails
   useEffect(() => {
     if (error) {
       showToast(error, 'error');
     }
   }, [error, showToast]);
 
-  // Get task statistics
   const totalTasks = tasks.length;
   const todoTasks = tasks.filter(task => task.status === 'todo').length;
   const inProgressTasks = tasks.filter(task => task.status === 'in-progress').length;
   const completedTasks = tasks.filter(task => task.status === 'done').length;
   
-  // Get tasks due soon (in the next 7 days)
   const today = new Date();
   const sevenDaysLater = new Date(today);
   sevenDaysLater.setDate(today.getDate() + 7);
@@ -59,7 +56,6 @@ export default function DashboardPage() {
     return dueDate >= today && dueDate <= sevenDaysLater && task.status !== 'done';
   });
 
-  // Get tasks due in the next 3 days
   const getTasksDueSoon = (tasks: Task[]) => {
     const now = new Date();
     const threeDaysFromNow = new Date();
@@ -72,7 +68,6 @@ export default function DashboardPage() {
     });
   };
 
-  // Get overdue tasks
   const getOverdueTasks = (tasks: Task[]) => {
     const now = new Date();
     
@@ -83,7 +78,6 @@ export default function DashboardPage() {
     });
   };
 
-  // Calculate task statistics
   const [isLoading, setIsLoading] = useState(true);
   const [taskStats, setTaskStats] = useState({
     total: 0,
@@ -142,21 +136,18 @@ export default function DashboardPage() {
     }
   }, [tasks]);
 
-  // Data for status chart
   const statusData = [
     { name: 'To Do', value: taskStats.todo, color: '#3E5879' },
     { name: 'In Progress', value: taskStats.inProgress, color: '#D8C4B6' },
     { name: 'Completed', value: taskStats.completed, color: '#213555' }
   ];
 
-  // Data for priority chart
   const priorityData = [
     { name: 'Low', value: taskStats.lowPriority, color: '#3E5879' },
     { name: 'Medium', value: taskStats.mediumPriority, color: '#D8C4B6' },
     { name: 'High', value: taskStats.highPriority, color: '#213555' }
   ];
 
-  // Data for weekly completion chart (mock data - would be replaced with real data)
   const weeklyData = [
     { name: 'Mon', completed: 5, total: 8 },
     { name: 'Tue', completed: 7, total: 10 },
@@ -176,7 +167,7 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null; 
   }
 
   return (
@@ -191,12 +182,13 @@ export default function DashboardPage() {
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-8 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-gray-200">
           <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Overview</TabsTrigger>
-          <TabsTrigger value="statistics" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Detailed Statistics</TabsTrigger>
+          <TabsTrigger value="focus" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus Mode</TabsTrigger>
+          <TabsTrigger value="analytics" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Analytics</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus History</TabsTrigger>
           <TabsTrigger value="upcoming" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Upcoming Tasks</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-8">
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="apple-card">
               <div className="mb-4">
@@ -224,7 +216,7 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-          </Link>
+              </Link>
             </div>
             
             <div className="apple-card">
@@ -241,9 +233,9 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-          </Link>
-        </div>
-      </div>
+              </Link>
+            </div>
+          </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -335,6 +327,18 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </div>
           </div>
+        </TabsContent>
+        
+        <TabsContent value="focus" className="space-y-6">
+          <FocusMode />
+        </TabsContent>
+        
+        <TabsContent value="analytics" className="space-y-6">
+          <FocusStats />
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <FocusHistory />
         </TabsContent>
         
         <TabsContent value="statistics" className="space-y-6">

@@ -184,22 +184,22 @@ export default function TasksPage() {
               )}
             </h1>
             
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  console.log('Manual refresh requested');
-                  fetchTasks();
-                }}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              console.log('Manual refresh requested');
+              fetchTasks();
+            }}
                 className="icon-button text-brand-navy hover:bg-brand-navy/10 dark:text-brand-beige dark:hover:bg-brand-beige/10"
-                aria-label="Refresh tasks"
+            aria-label="Refresh tasks"
                 style={{ transition: 'all 0.2s ease' }}
-              >
+          >
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
-                </svg>
-              </button>
-              <Link 
-                href="/tasks/new" 
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+            </svg>
+          </button>
+        <Link 
+          href="/tasks/new" 
                 className="btn-primary"
                 style={{
                   background: 'linear-gradient(to right, var(--navy-dark), var(--navy))',
@@ -212,12 +212,12 @@ export default function TasksPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
                 </svg>
-                Create New Task
-              </Link>
+          Create New Task
+        </Link>
             </div>
-          </div>
-          
-          {taskError && (
+      </div>
+      
+      {taskError && (
             <div 
               className="card-section bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl mb-6 shadow-sm"
               style={{ 
@@ -229,12 +229,12 @@ export default function TasksPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                {taskError}
+          {taskError}
               </div>
-            </div>
-          )}
-          
-          {deleteError && (
+        </div>
+      )}
+      
+      {deleteError && (
             <div 
               className="card-section bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl mb-6 flex justify-between items-center shadow-sm"
               style={{ 
@@ -246,35 +246,35 @@ export default function TasksPage() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                {deleteError}
-                {!isAuthError && (
-                  <button 
-                    onClick={() => fetchTasks()} 
+            {deleteError}
+            {!isAuthError && (
+              <button 
+                onClick={() => fetchTasks()} 
                     className="ml-3 text-red-700 dark:text-red-400 underline font-medium hover:text-red-800 dark:hover:text-red-300"
-                  >
-                    Refresh now
-                  </button>
-                )}
-              </div>
-              {isAuthError && (
-                <button 
-                  onClick={() => router.push('/auth/login?redirect=/tasks')} 
+              >
+                Refresh now
+              </button>
+            )}
+          </div>
+          {isAuthError && (
+            <button 
+              onClick={() => router.push('/auth/login?redirect=/tasks')} 
                   className="bg-red-600 text-white hover:bg-red-700 px-4 py-1.5 rounded-full hover:shadow-md transition-all"
-                >
-                  Sign in again
-                </button>
-              )}
-            </div>
+            >
+              Sign in again
+            </button>
           )}
-          
-          {taskList.length === 0 ? renderEmptyState() : (
-            <TaskList 
-              tasks={taskList} 
-              onStatusChange={handleStatusChange}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-            />
-          )}
+        </div>
+      )}
+      
+      {taskList.length === 0 ? renderEmptyState() : (
+        <TaskList 
+          tasks={taskList} 
+          onStatusChange={handleStatusChange}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+        />
+      )}
         </div>
       </div>
       

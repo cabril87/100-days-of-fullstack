@@ -69,7 +69,8 @@ public class CsrfProtectionMiddleware
                     "/api/v1/auth/public-csrf",
                     "/api/v1/debug/", // Exclude all debug endpoints for testing
                     "/api/v1/debug/csrf-test",
-                    "/api/v1/debug/test-login"
+                    "/api/v1/debug/test-login",
+                    "/api/v1/focus/test" // Only exclude the public test endpoint
                 },
             StringComparer.OrdinalIgnoreCase);
         
@@ -83,8 +84,12 @@ public class CsrfProtectionMiddleware
         string path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
         
         // Skip CSRF validation for excluded endpoints
-        if (_excludedEndpoints.Any(endpoint => path.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase)))
+        if (_excludedEndpoints.Any(endpoint => 
+            endpoint.EndsWith("/") 
+                ? path.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase) 
+                : path.Equals(endpoint, StringComparison.OrdinalIgnoreCase) || path.StartsWith($"{endpoint}/", StringComparison.OrdinalIgnoreCase)))
         {
+            _logger.LogInformation("Skipping CSRF validation for excluded path: {Path}", path);
             await _next(context);
             return;
         }

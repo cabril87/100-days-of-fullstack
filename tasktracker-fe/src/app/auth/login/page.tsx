@@ -42,19 +42,16 @@ export default function Login() {
     },
   });
 
-  // Set expired token message if redirected from expired token
   useEffect(() => {
     if (expired) {
       setAuthError('Your session has expired. Please log in again.');
     }
   }, [expired]);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && !isLoading && !isRedirecting) {
       console.log('User already logged in, redirecting to:', redirect);
       setIsRedirecting(true);
-      // Use setTimeout to ensure the redirect happens after the state update
       setTimeout(() => {
         router.push(redirect);
       }, 100);
@@ -71,7 +68,6 @@ export default function Login() {
       if (success) {
         console.log('Login successful, redirecting to:', redirect);
         setIsRedirecting(true);
-        // Use setTimeout to ensure the redirect happens after the state update
         setTimeout(() => {
           router.push(redirect);
         }, 100);
@@ -92,7 +88,6 @@ export default function Login() {
     );
   }
 
-  // If user is already logged in, show loading spinner (will redirect)
   if (user) {
     return (
       <div className="flex justify-center items-center min-h-screen">

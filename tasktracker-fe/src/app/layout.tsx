@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/providers/AuthContext';
 import { TaskProvider } from "@/lib/providers/TaskProvider";
 import { ToastProvider } from "@/lib/providers/ToastProvider";
+import { FocusProvider } from "@/lib/providers/FocusContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 
@@ -41,10 +42,12 @@ export default function RootLayout({
         <AuthProvider>
           <TaskProvider>
             <ToastProvider>
-              <Navbar />
-              <main className="container mx-auto px-4 py-6">
-                {children}
-              </main>
+              <FocusProvider>
+                <Navbar />
+                <main className="container mx-auto px-4 py-6">
+                  {children}
+                </main>
+              </FocusProvider>
             </ToastProvider>
           </TaskProvider>
         </AuthProvider>

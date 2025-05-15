@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TaskTrackerAPI.Data;
 
@@ -11,9 +12,11 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250515150648_AddFocusFeatures")]
+    partial class AddFocusFeatures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1880,10 +1883,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46fPCYF-KGo7rmmq_JUSm6Fp1FRPOoh-hPKCFDYls_67mBSYqrH3uHMzj5NBQ6JyJAqpnxEfVZXu6vw9bUXqYsDPTKMPezgjQcyl-RkgzOnRu__xwdguVPUdXDocdVeCyUc",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46cE_IJ7UJLedRF6hrLkZAStNNWZfbUNRdowO8SN4xZorde6vor6esy1UZ79_n5O06BmYzx46C0jpxp6FXHRcrisgLCT71TobE4YTOK8YzuXLg",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46f1zYcpmPOkaPgXobty6aXlzwSYabfsAD8Uv_dkQspC93XBz5FcQd3xbxiZPVe36xG4cs9Tl50vwQNzH71xzwByq2VAUOEhKAWt2zfBUxk3za7mwv8060-J_KeumxBeZqY",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46fe0XsIED9hqh-I0XIR4ptvQTq9aKucntc3KGXOAdzZ-YQF3AkmN_oMFRx1DJcLxNuWFTqiCn9e5_ZT-fwF48URRszZLSkxzLDM8QyYrWseHg",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46dLaszyQfU5SLCJWwnF3Nb7EKwTJDSvcIlg089_r5kJdykTP-Mm3i7KVFDWvbcMGHFYIAOuWee-3c_YyNsqAUPURt5yw_TFLB5KugyKydoEqQ",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46eLFQkgKJvcE24uh8DfkmPIF7kbLCncvxmfkmIqr5ew6SIVj1-2p_MdT3GHizq4z5Csbc515bp8-38p60iwyNYui3RMgLxrTLho4sFY86Gh6Q",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",
