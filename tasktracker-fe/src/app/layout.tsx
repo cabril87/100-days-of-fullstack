@@ -7,6 +7,7 @@ import { ToastProvider } from "@/lib/providers/ToastProvider";
 import { FocusProvider } from "@/lib/providers/FocusContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { FamilyProvider } from '@/lib/providers/FamilyContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -42,12 +43,14 @@ export default function RootLayout({
         <AuthProvider>
           <TaskProvider>
             <ToastProvider>
-              <FocusProvider>
-                <Navbar />
-                <main className="container mx-auto px-4 py-6">
-                  {children}
-                </main>
-              </FocusProvider>
+                <FocusProvider>
+                  <FamilyProvider>
+              <Navbar />
+              <main className="container mx-auto px-4 py-6">
+                {children}
+              </main>
+                  </FamilyProvider>
+                </FocusProvider>
             </ToastProvider>
           </TaskProvider>
         </AuthProvider>

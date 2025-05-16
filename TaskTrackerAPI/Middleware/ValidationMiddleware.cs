@@ -57,7 +57,8 @@ namespace TaskTrackerAPI.Middleware
                 "/api/v1/tasks",
                 "/api/v1/categories",
                 "/api/v1/lists",
-                "/api/v1/quicktasks"
+                "/api/v1/quicktasks",
+                "/api/v1/family"
             };
         }
 
@@ -149,7 +150,8 @@ namespace TaskTrackerAPI.Middleware
                 if (controllerName.Contains("task", StringComparison.OrdinalIgnoreCase) ||
                     controllerName.Contains("category", StringComparison.OrdinalIgnoreCase) ||
                     controllerName.Contains("list", StringComparison.OrdinalIgnoreCase) ||
-                    controllerName.Contains("reminder", StringComparison.OrdinalIgnoreCase))
+                    controllerName.Contains("reminder", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("family", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogInformation("Using reduced validation for controller: {Controller}", controllerName);
                     return true;

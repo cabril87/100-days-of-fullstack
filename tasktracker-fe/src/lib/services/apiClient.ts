@@ -37,7 +37,23 @@ function getCsrfToken(): string {
  */
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('token') || sessionStorage.getItem('token') || null;
+  
+  // Try localStorage first
+  const localToken = localStorage.getItem('token');
+  if (localToken) {
+    console.log('[apiClient] Found token in localStorage');
+    return localToken;
+  }
+  
+  // Then try sessionStorage
+  const sessionToken = sessionStorage.getItem('token');
+  if (sessionToken) {
+    console.log('[apiClient] Found token in sessionStorage');
+    return sessionToken;
+  }
+  
+  console.log('[apiClient] No auth token found in storage');
+  return null;
 }
 
 /**
@@ -54,121 +70,165 @@ async function apiRequest<T = any>(
     useFormData?: boolean
   } = {}
 ): Promise<ApiResponse<T>> {
-  // Set default options
-  const {
-    requiresAuth = true,
-    useMethodOverride = true,
-    usePascalCase = true,
-    useFormData = false
-  } = options;
-  
   try {
-    // Make sure the endpoint starts with a slash
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    
-    // Build full URL
-    let url = `${API_URL}${normalizedEndpoint}`;
-    console.log(`[apiClient] Request to ${method} ${url}`);
-    
+    // Get CSRF token for non-GET requests
+    let csrfToken = '';
+    if (method !== 'GET') {
+      csrfToken = await getCsrfToken();
+      console.log('[apiClient] Got CSRF token from cookies:', csrfToken);
+    }
+
+    // Get auth token - require for all requests except public endpoints
+    const authToken = getAuthToken();
+    if (!authToken) {
+      console.log('[apiClient] No auth token found');
+      // For non-GET requests, return 401 immediately
+      if (method !== 'GET') {
+        return {
+          error: 'Authentication required',
+          status: 401
+        };
+      }
+    }
+
     // Prepare headers
     const headers: Record<string, string> = {
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
     };
-    
-    // Add authorization if needed and available
-    if (requiresAuth) {
-      const token = getAuthToken();
-      if (token) {
-        headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      }
+
+    // Add auth token if available
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+      console.log('[apiClient] Added auth token to headers');
     }
-    
-    // Add CSRF token if available
-    const csrfToken = getCsrfToken();
-    if (csrfToken) {
+
+    // Add CSRF token for non-GET requests
+    if (method !== 'GET' && csrfToken) {
       headers['X-CSRF-TOKEN'] = csrfToken;
+      console.log('[apiClient] Added CSRF token to headers:', csrfToken);
     }
-    
-    // Prepare request body
-    let body: string | FormData | undefined;
-    if (method !== 'GET' && data) {
-      // Process data based on configuration
-      let processedData = data;
-      
-      // Convert to PascalCase for .NET backends if requested
-      if (usePascalCase) {
-        processedData = toPascalCase(data);
-      }
-      
-      // Either use FormData or JSON
-      if (useFormData) {
-        const formData = new FormData();
-        Object.entries(processedData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            formData.append(key, String(value));
-          }
-        });
-        body = formData;
-      } else {
-        headers['Content-Type'] = 'application/json';
-        body = JSON.stringify(processedData);
-      }
-    }
-    
-    // Apply method override if needed (for PUT, PATCH, DELETE)
-    let actualMethod = method;
-    if (useMethodOverride && method !== 'GET' && method !== 'POST') {
-      const override = applyMethodOverride(url, method, headers);
-      url = override.url;
-      Object.assign(headers, override.headers);
-      actualMethod = 'POST'; // Use POST for all non-GET methods with override
-    }
-    
-    // Log request details for debugging
-    console.log(`[apiClient] ${actualMethod} request to ${url}`, {
-      headers: { ...headers, Authorization: headers.Authorization ? '[REDACTED]' : undefined },
-      body: typeof body === 'string' ? JSON.parse(body) : body instanceof FormData ? '[FormData]' : body
-    });
-    
-    // Make the request
-    const response = await fetch(url, {
-      method: actualMethod,
+
+    // Prepare request options
+    const requestOptions: RequestInit = {
+      method,
       headers,
-      body,
       credentials: 'include'
+    };
+
+    // Add body for non-GET requests
+    if (method !== 'GET' && data) {
+      if (options.useFormData) {
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          formData.append(key, value as string);
+        });
+        requestOptions.body = formData;
+        // Remove Content-Type header for FormData
+        const { 'Content-Type': _, ...restHeaders } = headers;
+        requestOptions.headers = restHeaders;
+      } else {
+        requestOptions.body = JSON.stringify(data);
+      }
+    }
+
+    // Log the request
+    console.log(`[apiClient] ${method} request to ${API_URL}${endpoint}`, {
+      ...requestOptions,
+      headers: { ...requestOptions.headers, Authorization: authToken ? 'Bearer [REDACTED]' : undefined }
     });
-    
+
+    // Make the request
+    const response = await fetch(`${API_URL}${endpoint}`, requestOptions);
+
     // Log the response status
     console.log(`[apiClient] Response status: ${response.status} ${response.statusText}`);
-    
+
+    // Handle authentication errors
+    if (response.status === 401) {
+      console.log('[apiClient] Received 401 response, clearing tokens');
+      // Clear invalid token
+      localStorage.removeItem('token');
+      sessionStorage.removeItem('token');
+      // Clear cookies
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.trim().split('=');
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      });
+      return {
+        error: 'Authentication required. Please log in again.',
+        status: 401
+      };
+    }
+
+    // Handle rate limiting
+    if (response.status === 429) {
+      return {
+        error: 'Too many requests. Please try again later.',
+        status: 429
+      };
+    }
+
     // Handle non-JSON or no-content responses
     if (response.status === 204) {
+      // Special handling for logout
+      if (endpoint === '/v1/auth/logout') {
+        console.log('[apiClient] Logout detected, clearing all storage');
+        // Clear local storage and session storage
+        localStorage.clear();
+        sessionStorage.clear();
+        // Clear cookies
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.trim().split('=');
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        });
+      }
       return { status: 204 };
     }
-    
+
     // Try to parse the response as JSON
     try {
       const text = await response.text();
-      
+
       // Handle empty responses
       if (!text) {
-        return response.ok 
-          ? { status: response.status } 
-          : { error: `Empty response with status ${response.status}`, status: response.status };
-      }
-      
-      // Parse JSON
-      const json = JSON.parse(text);
-      
-      // Successful response
-      if (response.ok) {
-        return {
-          // Unwrap data if needed (handle both data: {...} and direct response formats)
-          data: json.data || json as T,
+        if (response.ok) {
+          return { status: response.status };
+        }
+        return { 
+          error: `Empty response with status ${response.status}`,
           status: response.status
         };
       }
-      
+
+      // Parse JSON
+      const json = JSON.parse(text);
+
+      // Handle 404 specifically
+      if (response.status === 404) {
+        return {
+          error: json.message || 'Resource not found',
+          status: 404
+        };
+      }
+
+      // Successful response
+      if (response.ok) {
+        // Check if the response is already in ApiResponse format
+        if (json.data !== undefined) {
+          return {
+            data: json.data as T,
+            status: response.status
+          };
+        }
+
+        // Otherwise, wrap the response in ApiResponse format
+        return {
+          data: json as T,
+          status: response.status
+        };
+      }
+
       // Error response
       return {
         error: json.message || json.error || 'Unknown error',
@@ -178,13 +238,15 @@ async function apiRequest<T = any>(
     } catch (parseError) {
       // Handle non-JSON responses
       console.error('[apiClient] Error parsing response:', parseError);
-      
-      return response.ok
-        ? { status: response.status }
-        : { 
-            error: `Error parsing response: ${response.statusText}`,
-            status: response.status
-          };
+
+      if (response.ok) {
+        return { status: response.status };
+      }
+
+      return {
+        error: `Error parsing response: ${response.statusText}`,
+        status: response.status
+      };
     }
   } catch (error) {
     // Handle network errors

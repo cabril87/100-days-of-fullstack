@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthContext';
+import { useFamily } from '@/lib/providers/FamilyContext';
 import { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { currentFamily } = useFamily();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -56,12 +58,20 @@ export function Navbar() {
                 Tasks
               </Link>
               {user && (
+                <>
+                  <Link
+                    href="/focus"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                  >
+                    Focus Mode
+                  </Link>
                 <Link
-                  href="/focus"
-                  className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                    href="/family"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
                 >
-                  Focus Mode
+                    Family {currentFamily && <span className="ml-1 text-xs bg-brand-navy text-white px-2 py-0.5 rounded-full">Active</span>}
                 </Link>
+                </>
               )}
               <Link
                 href="/about"
@@ -125,6 +135,22 @@ export function Navbar() {
                           >
                             Focus Mode
                           </Link>
+                        <Link
+                          href="/family"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          Family
+                        </Link>
+                        <Link
+                          href="/family/create"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
+                          role="menuitem"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                        >
+                          Create Family
+                        </Link>
                         <button
                           onClick={() => {
                             logout();
@@ -225,19 +251,26 @@ export function Navbar() {
             </Link>
             {user && (
               <>
-                <Link
-                  href="/dashboard"
+              <Link
+                href="/dashboard"
                   className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
                 <Link
                   href="/focus"
                   className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Focus Mode
+                </Link>
+                <Link
+                  href="/family"
+                  className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Family
                 </Link>
               </>
             )}

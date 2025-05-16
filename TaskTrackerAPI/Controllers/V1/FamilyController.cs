@@ -10,32 +10,39 @@
  */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.Data;
+
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
-
+using TaskTrackerAPI.Models;
+using System.Linq;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
-    [ApiVersion("1.0")]
     [Authorize]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/family")]
     [ApiController]
-    [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
-    public class FamilyController : ControllerBase
+    public class FamilyController : BaseApiController
     {
         private readonly IFamilyService _familyService;
         private readonly IInvitationService _invitationService;
         private readonly ILogger<FamilyController> _logger;
+        private readonly ApplicationDbContext _context;
+
 
         public FamilyController(
+            ApplicationDbContext context,
             IFamilyService familyService,
             IInvitationService invitationService,
             ILogger<FamilyController> logger)
@@ -43,117 +50,139 @@ namespace TaskTrackerAPI.Controllers.V1
             _familyService = familyService;
             _invitationService = invitationService;
             _logger = logger;
+            _context = context;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<FamilyDTO>>> GetAllFamilies()
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyDTO>>>> GetAllFamilies()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 IEnumerable<FamilyDTO> families = await _familyService.GetByUserIdAsync(userId);
-                return Ok(families);
+                return ApiOk(families);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving families");
-                return StatusCode(500, "An error occurred while retrieving families.");
+                return ApiServerError<IEnumerable<FamilyDTO>>("An error occurred while retrieving families.");
             }
         }
 
-        
-         [HttpPost("createFamily")]
-        public async Task<ActionResult<FamilyDTO>> CreateFamily([FromBody] FamilyCreateDTO familyDto)
+        [HttpGet("current")]
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> GetCurrentFamily()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
-                FamilyDTO family = await _familyService.CreateAsync(familyDto, userId);
-                return Ok(new
+                int userId = GetUserId();
+                var families = await _familyService.GetByUserIdAsync(userId);
+                var currentFamily = families.FirstOrDefault();
+                
+                if (currentFamily == null)
                 {
-                    family = family,
-                    message = "Family created successfully. You are now the leader of this family. Use the invite endpoint to invite members."
-                });
+                    return ApiNotFound<FamilyDTO>("No family found for the current user");
+                }
+                
+                return ApiOk(currentFamily);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving current family");
+                return ApiServerError<FamilyDTO>("An error occurred while retrieving the current family.");
+            }
+        }
+        
+        [HttpPost("createFamily")]
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> CreateFamily([FromBody] FamilyCreateDTO familyDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return ApiBadRequest<FamilyDTO>("Invalid family data", errors);
+            }
+
+            try
+            {
+                int userId = GetUserId();
+                FamilyDTO family = await _familyService.CreateAsync(familyDto, userId);
+                return OkApiResponse(family, "Family created successfully. You are now the leader of this family. Use the invite endpoint to invite members.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error creating family with details: {ex.Message}");
-                // Log inner exception if exists
                 if (ex.InnerException != null)
                 {
                     _logger.LogError(ex.InnerException, $"Inner exception: {ex.InnerException.Message}");
                 }
-                return StatusCode(500, $"An error occurred while creating the family: {ex.Message}");
+                return ApiServerError<FamilyDTO>($"An error occurred while creating the family: {ex.Message}");
             }
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<FamilyDTO>> GetFamily(int id)
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> GetFamily(int id)
         {
             try
             {
                 FamilyDTO? family = await _familyService.GetByIdAsync(id);
                 if (family == null)
                 {
-                    return NotFound();
+                    return ApiNotFound<FamilyDTO>();
                 }
-                return Ok(family);
+                return ApiOk(family);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving family");
-                return StatusCode(500, "An error occurred while retrieving the family.");
+                return ApiServerError<FamilyDTO>("An error occurred while retrieving the family.");
             }
         }
 
         [HttpPost("{familyId}/invitations")]
-        public async Task<ActionResult<InvitationDTO>> CreateInvitation(int familyId, [FromBody] InvitationCreateDTO invitationDto)
+        public async Task<ActionResult<ApiResponse<InvitationDTO>>> CreateInvitation(int familyId, [FromBody] InvitationCreateDTO invitationDto)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
 
-                // Validate familyId matches the one in the DTO
                 if (familyId != invitationDto.FamilyId)
                 {
-                    return BadRequest("Family ID in the URL does not match the Family ID in the request body");
+                    return ApiBadRequest<InvitationDTO>("Family ID in the URL does not match the Family ID in the request body");
                 }
 
                 InvitationDTO invitation = await _invitationService.CreateAsync(invitationDto, userId);
-                return Ok(new
-                {
-                    invitation = invitation,
-                    message = "Invitation created successfully. The recipient can use the provided token to join the family."
-                });
+                return ApiOk(invitation, "Invitation created successfully. The recipient can use the provided token to join the family.");
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return ApiUnauthorized<InvitationDTO>(ex.Message);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return ApiBadRequest<InvitationDTO>(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating invitation: {Message}", ex.Message);
-                return StatusCode(500, "An error occurred while creating the invitation.");
+                return ApiServerError<InvitationDTO>("An error occurred while creating the invitation.");
             }
         }
 
         [HttpGet("{familyId}/invitations")]
-        public async Task<ActionResult<IEnumerable<InvitationDTO>>> GetFamilyInvitations(int familyId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<InvitationDTO>>>> GetFamilyInvitations(int familyId)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 IEnumerable<InvitationDTO> invitations = await _invitationService.GetByFamilyIdAsync(familyId, userId);
-                return Ok(invitations);
+                return ApiOk(invitations);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving family invitations");
-                return StatusCode(500, "An error occurred while retrieving family invitations.");
+                return ApiServerError<IEnumerable<InvitationDTO>>("An error occurred while retrieving family invitations.");
             }
         }
 
@@ -163,7 +192,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 FamilyMemberDTO member = await _familyService.CompleteMemberProfileAsync(memberId, userId, profileDto);
                 return Ok(member);
             }
@@ -204,7 +233,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int adminId = User.GetUserIdAsInt();
+                int adminId = GetUserId();
                 FamilyMemberDTO member = await _familyService.ApproveMemberAsync(memberId, adminId);
                 return Ok(member);
             }
@@ -229,7 +258,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int adminId = User.GetUserIdAsInt();
+                int adminId = GetUserId();
                 await _familyService.RejectMemberAsync(memberId, adminId, rejectDto.Reason);
                 return NoContent();
             }
@@ -254,7 +283,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 _logger.LogInformation("Received request to delete family with ID: {FamilyId}", id);
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 // First check if the family exists
                 FamilyDTO? family = await _familyService.GetByIdAsync(id);

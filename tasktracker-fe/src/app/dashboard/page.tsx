@@ -14,10 +14,13 @@ import { FocusHistory } from '@/components/focus/FocusHistory';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { useFamily } from '@/lib/providers/FamilyContext';
+import { Button } from '@/components/ui/button';
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { tasks: allTasks, loading: tasksLoading, error, fetchTasks } = useTasks();
+  const { currentFamily, isLoading: familyLoading } = useFamily();
   const router = useRouter();
   const { showToast } = useToast();
   
@@ -185,6 +188,7 @@ export default function DashboardPage() {
           <TabsTrigger value="focus" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus Mode</TabsTrigger>
           <TabsTrigger value="analytics" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Analytics</TabsTrigger>
           <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus History</TabsTrigger>
+          <TabsTrigger value="family" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Family</TabsTrigger>
           <TabsTrigger value="upcoming" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Upcoming Tasks</TabsTrigger>
         </TabsList>
         
@@ -216,7 +220,7 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-              </Link>
+          </Link>
             </div>
             
             <div className="apple-card">
@@ -233,9 +237,9 @@ export default function DashboardPage() {
               </div>
               <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
                 View all tasks
-              </Link>
-            </div>
-          </div>
+          </Link>
+        </div>
+      </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -341,62 +345,65 @@ export default function DashboardPage() {
           <FocusHistory />
         </TabsContent>
         
-        <TabsContent value="statistics" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Task Statistics</CardTitle>
-              <CardDescription>Comprehensive view of your task metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Status Breakdown</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>To Do</span>
-                      <span className="font-medium">{taskStats.todo}</span>
+        <TabsContent value="family" className="space-y-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-brand-navy-dark">Family Dashboard</h2>
+            <Button onClick={() => router.push('/family/create')}>
+              Create New Family
+            </Button>
+          </div>
+          {currentFamily ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{currentFamily.name}</CardTitle>
+                <CardDescription>Family Dashboard</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Members</h3>
+                    <div className="grid gap-4">
+                      {currentFamily.members.map((member) => (
+                        <div key={member.id} className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-full bg-brand-navy text-white flex items-center justify-center">
+                            {member.username?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-medium">{member.username}</p>
+                            <p className="text-sm text-gray-500">{member.role}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <Progress value={(taskStats.todo / taskStats.total) * 100} className="h-2 bg-blue-100" />
-                    
-                    <div className="flex justify-between items-center mt-4">
-                      <span>In Progress</span>
-                      <span className="font-medium">{taskStats.inProgress}</span>
-                    </div>
-                    <Progress value={(taskStats.inProgress / taskStats.total) * 100} className="h-2 bg-amber-100" />
-                    
-                    <div className="flex justify-between items-center mt-4">
-                      <span>Completed</span>
-                      <span className="font-medium">{taskStats.completed}</span>
-                    </div>
-                    <Progress value={(taskStats.completed / taskStats.total) * 100} className="h-2 bg-green-100" />
                   </div>
                 </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Priority Breakdown</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span>High Priority</span>
-                      <span className="font-medium">{taskStats.highPriority}</span>
-                    </div>
-                    <Progress value={(taskStats.highPriority / taskStats.total) * 100} className="h-2 bg-red-100" />
-                    
-                    <div className="flex justify-between items-center mt-4">
-                      <span>Medium Priority</span>
-                      <span className="font-medium">{taskStats.mediumPriority}</span>
-                    </div>
-                    <Progress value={(taskStats.mediumPriority / taskStats.total) * 100} className="h-2 bg-amber-100" />
-                    
-                    <div className="flex justify-between items-center mt-4">
-                      <span>Low Priority</span>
-                      <span className="font-medium">{taskStats.lowPriority}</span>
-                    </div>
-                    <Progress value={(taskStats.lowPriority / taskStats.total) * 100} className="h-2 bg-green-100" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => router.push('/family/invite')}>
+                  Invite Members
+                </Button>
+                <Button variant="outline" onClick={() => router.push('/family/settings')}>
+                  Settings
+                </Button>
+              </CardFooter>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>No Family Selected</CardTitle>
+                <CardDescription>Create a new family or select an existing one</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground mb-4">You haven't created or joined any families yet.</p>
+                <Button 
+                  onClick={() => router.push('/family/create')}
+                  className="w-full"
+                >
+                  Create Your First Family
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
         <TabsContent value="upcoming" className="space-y-6">
