@@ -1,27 +1,27 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useFamily } from '@/lib/providers/FamilyContext'; 
+import { useFamily } from '@/lib/providers/FamilyContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
-import { Users } from 'lucide-react';
+import { Users, UserPlus } from 'lucide-react';
 
-export default function CreateFamilyPage() {
-  const [name, setName] = useState('');
+export default function JoinFamilyPage() {
+  const [invitationCode, setInvitationCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { createFamily } = useFamily();
+  const { joinFamily } = useFamily();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
+    if (!invitationCode) return;
 
     setIsSubmitting(true);
     try {
-      await createFamily({ name });
-      // Redirect will be handled by the createFamily function
+      await joinFamily(invitationCode);
+      // Redirect will be handled by the joinFamily function
     } finally {
       setIsSubmitting(false);
     }
@@ -31,32 +31,32 @@ export default function CreateFamilyPage() {
     <div className="container mx-auto py-12 flex flex-col items-center">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="mb-4 inline-flex bg-blue-100 p-3 rounded-full">
-            <Users className="h-8 w-8 text-blue-600" />
+          <div className="mb-4 inline-flex bg-green-100 p-3 rounded-full">
+            <UserPlus className="h-8 w-8 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold">Create Your Family</h1>
+          <h1 className="text-3xl font-bold">Join a Family</h1>
           <p className="text-gray-500 mt-2">
-            Start a new family group to manage tasks and stay connected.
+            Enter an invitation code to join an existing family.
           </p>
         </div>
         
         <Card>
           <form onSubmit={handleSubmit}>
             <CardHeader>
-              <CardTitle>Family Details</CardTitle>
+              <CardTitle>Enter Invitation Code</CardTitle>
               <CardDescription>
-                What would you like to name your family?
+                Paste the invitation code you received from a family admin.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid w-full items-center gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="family-name">Family Name</Label>
+                  <Label htmlFor="invitation-code">Invitation Code</Label>
                   <Input
-                    id="family-name"
-                    placeholder="e.g. The Smiths, Team Awesome"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    id="invitation-code"
+                    placeholder="e.g. FAM-123456-ABCDEF"
+                    value={invitationCode}
+                    onChange={(e) => setInvitationCode(e.target.value)}
                     required
                   />
                 </div>
@@ -64,10 +64,10 @@ export default function CreateFamilyPage() {
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" asChild>
-                <Link href="/family/join">Join Existing Family</Link>
+                <Link href="/family/create">Create New Family</Link>
               </Button>
-              <Button type="submit" disabled={!name || isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Family'}
+              <Button type="submit" disabled={!invitationCode || isSubmitting}>
+                {isSubmitting ? 'Joining...' : 'Join Family'}
               </Button>
             </CardFooter>
           </form>
@@ -75,7 +75,7 @@ export default function CreateFamilyPage() {
         
         <div className="mt-6 text-center text-sm text-gray-500">
           <p>
-            Already have a family? <Link href="/family/join" className="text-blue-600 hover:underline">Join with invitation code</Link>
+            Want to create your own family? <Link href="/family/create" className="text-blue-600 hover:underline">Create a new family</Link>
           </p>
         </div>
       </div>

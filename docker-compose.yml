@@ -35,6 +35,12 @@ services:
       - AppSettings__TokenKey=your_development_token_key_here_replace_in_production
       - AppSettings__PasswordKey=your_development_password_key_here_replace_in_production
       - AppSettings__DebugKey=DEVELOPMENT_DEBUG_ONLY_7865421
+    healthcheck:
+        test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/api/v1/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro

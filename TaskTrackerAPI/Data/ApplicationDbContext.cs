@@ -115,6 +115,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<SubscriptionTier> SubscriptionTiers { get; set; } = null!;
     public DbSet<UserApiQuota> UserApiQuotas { get; set; } = null!;
     public DbSet<RateLimitTierConfig> RateLimitTierConfigs { get; set; } = null!;
+    public DbSet<AuditLog> AuditLogs { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

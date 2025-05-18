@@ -77,6 +77,48 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("Achievements");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Badge", b =>
                 {
                     b.Property<int>("Id")
@@ -1719,7 +1761,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 15, 15, 6, 48, 43, DateTimeKind.Utc).AddTicks(5602),
+                            UpdatedAt = new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(3117),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1736,7 +1778,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 15, 15, 6, 48, 43, DateTimeKind.Utc).AddTicks(7110),
+                            UpdatedAt = new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(4752),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1880,10 +1922,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46fPCYF-KGo7rmmq_JUSm6Fp1FRPOoh-hPKCFDYls_67mBSYqrH3uHMzj5NBQ6JyJAqpnxEfVZXu6vw9bUXqYsDPTKMPezgjQcyl-RkgzOnRu__xwdguVPUdXDocdVeCyUc",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46cE_IJ7UJLedRF6hrLkZAStNNWZfbUNRdowO8SN4xZorde6vor6esy1UZ79_n5O06BmYzx46C0jpxp6FXHRcrisgLCT71TobE4YTOK8YzuXLg",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46dcbW8gI39My-MgPRxNkVD0ISK0m10Aip0wCVeh2EJiRb1FI7i4SU8PGN55UQ38-3id-SwlKWxplnMnqyRne3lTJamIuQxcPpTE-W6mouB7DmxQpao1sJzKPsSuFoV_JVg",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46e_rplKxvP3Z5h4neAM_aSUaibro-HrPELqb9xUFIdp8QaQKOFdc1IrtzmDLzEbSUhe9WGOjAVPpzBWNA7MiTj2ZjBfCEJG4XlRNcvO0h-JaA",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46dLaszyQfU5SLCJWwnF3Nb7EKwTJDSvcIlg089_r5kJdykTP-Mm3i7KVFDWvbcMGHFYIAOuWee-3c_YyNsqAUPURt5yw_TFLB5KugyKydoEqQ",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46dpb7oubfueh_onzxuk7Fcc1KlsK888IcZsNDmwg67QmCHlN0U-_jmpmQRfgeEK6hATjSQc7Gzg0evqufQ0IPJsGAsC5iWvriLgBh-SAr6ZPA",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",

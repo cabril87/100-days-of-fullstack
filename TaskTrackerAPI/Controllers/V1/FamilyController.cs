@@ -69,7 +69,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        [HttpGet("current")]
+        [HttpGet("current-family")]
         public async Task<ActionResult<ApiResponse<FamilyDTO>>> GetCurrentFamily()
         {
             try
@@ -301,7 +301,22 @@ namespace TaskTrackerAPI.Controllers.V1
                     return Forbid();
                 }
                 
-                await _familyService.DeleteAsync(id, userId);
+                bool deleteSuccess = await _familyService.DeleteAsync(id, userId);
+                
+                if (!deleteSuccess)
+                {
+                    _logger.LogError("Failed to delete family with ID {FamilyId}", id);
+                    return StatusCode(500, $"Failed to delete family with ID {id}. The deletion operation was not successful.");
+                }
+                
+                // Double-check that the family was actually deleted
+                FamilyDTO? familyAfterDelete = await _familyService.GetByIdAsync(id);
+                if (familyAfterDelete != null)
+                {
+                    _logger.LogError("Family with ID {FamilyId} was reported as deleted but still exists", id);
+                    return StatusCode(500, $"Deletion inconsistency: Family with ID {id} still exists after deletion.");
+                }
+                
                 _logger.LogInformation("Family with ID {FamilyId} deleted successfully", id);
                 return NoContent();
             }

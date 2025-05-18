@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Task, TaskFormData, TaskStatus, TaskPriority } from '../types/task';
-import { mockTaskService as taskService } from '../services/mockTaskService';
+import { taskService } from '../services/taskService';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);

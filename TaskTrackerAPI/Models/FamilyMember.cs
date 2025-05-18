@@ -11,12 +11,14 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskTrackerAPI.Models;
 
 public class FamilyMember
 {
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
     [Required]
@@ -39,18 +41,21 @@ public class FamilyMember
 
     [Required]
     public int FamilyId { get; set; }
-    
+
     [Required]
     public int RoleId { get; set; }
-    
+
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     public bool IsPending { get; set; } = true;
     public bool ProfileCompleted { get; set; } = false;
     public DateTime? ApprovedAt { get; set; }
 
     // Navigation properties
+    [ForeignKey("UserId")]
     public virtual User User { get; set; } = null!;
+    [ForeignKey("FamilyId")]
     public virtual Family Family { get; set; } = null!;
+    [ForeignKey("RoleId")]
     public virtual FamilyRole Role { get; set; } = null!;
     public virtual ICollection<TaskItem> AssignedTasks { get; set; } = new List<TaskItem>();
 }

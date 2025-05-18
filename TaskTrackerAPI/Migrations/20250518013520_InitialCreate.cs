@@ -36,6 +36,25 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    EntityId = table.Column<int>(type: "int", nullable: false),
+                    Action = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    Details = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AuditLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Badges",
                 columns: table => new
                 {
@@ -156,6 +175,30 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SubscriptionTiers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    DefaultRateLimit = table.Column<int>(type: "int", nullable: false),
+                    DefaultTimeWindowSeconds = table.Column<int>(type: "int", nullable: false),
+                    DailyApiQuota = table.Column<int>(type: "int", nullable: false),
+                    MaxConcurrentConnections = table.Column<int>(type: "int", nullable: false),
+                    BypassStandardRateLimits = table.Column<bool>(type: "bit", nullable: false),
+                    Priority = table.Column<int>(type: "int", nullable: false),
+                    IsSystemTier = table.Column<bool>(type: "bit", nullable: false),
+                    MonthlyCost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SubscriptionTiers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ChallengeProgresses",
                 columns: table => new
                 {
@@ -227,6 +270,36 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RateLimitTierConfigs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SubscriptionTierId = table.Column<int>(type: "int", nullable: false),
+                    EndpointPattern = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    HttpMethod = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    RateLimit = table.Column<int>(type: "int", nullable: false),
+                    TimeWindowSeconds = table.Column<int>(type: "int", nullable: false),
+                    IsCriticalEndpoint = table.Column<bool>(type: "bit", nullable: false),
+                    ExemptSystemAccounts = table.Column<bool>(type: "bit", nullable: false),
+                    MatchPriority = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    IsAdaptive = table.Column<bool>(type: "bit", nullable: false),
+                    HighLoadReductionPercent = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RateLimitTierConfigs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RateLimitTierConfigs_SubscriptionTiers_SubscriptionTierId",
+                        column: x => x.SubscriptionTierId,
+                        principalTable: "SubscriptionTiers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Boards",
                 columns: table => new
                 {
@@ -277,6 +350,23 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ChecklistItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ChecklistTemplateItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Text = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    TaskTemplateId = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ChecklistTemplateItems", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -349,11 +439,11 @@ namespace TaskTrackerAPI.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Username = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false, comment: "Encrypted field - PII"),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Salt = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    LastName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FirstName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true, comment: "Encrypted field - PII"),
+                    LastName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true, comment: "Encrypted field - PII"),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
@@ -628,6 +718,39 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserApiQuotas",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    ApiCallsUsedToday = table.Column<int>(type: "int", nullable: false),
+                    MaxDailyApiCalls = table.Column<int>(type: "int", nullable: false),
+                    LastResetTime = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    LastUpdatedTime = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    SubscriptionTierId = table.Column<int>(type: "int", nullable: false),
+                    IsExemptFromQuota = table.Column<bool>(type: "bit", nullable: false),
+                    HasReceivedQuotaWarning = table.Column<bool>(type: "bit", nullable: false),
+                    QuotaWarningThresholdPercent = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserApiQuotas", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserApiQuotas_SubscriptionTiers_SubscriptionTierId",
+                        column: x => x.SubscriptionTierId,
+                        principalTable: "SubscriptionTiers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserApiQuotas_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UserBadges",
                 columns: table => new
                 {
@@ -694,11 +817,11 @@ namespace TaskTrackerAPI.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     DeviceId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DeviceToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    DeviceToken = table.Column<string>(type: "nvarchar(1024)", nullable: false, comment: "Encrypted field (highly sensitive) - DeviceToken"),
                     DeviceType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DeviceName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsVerified = table.Column<bool>(type: "bit", nullable: false),
-                    VerificationCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    VerificationCode = table.Column<string>(type: "nvarchar(1024)", nullable: true, comment: "Encrypted field - Security"),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
                     LastActiveAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -1136,7 +1259,7 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "AgeGroup", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "PrimaryFamilyId", "Role", "Salt", "Username" },
-                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@tasktracker.com", "Admin", true, "User", "AQAAAAIAAYagAAAAEM+YP5xvgRYmWKYLHcpbxBpGmGRG84u+ejHNiGVmAJkGpzVPWCcxLnvKVwRH89Vf/Q==", null, "Admin", "RVENTsNrIeUkGxDiQQcAKQ==", "admin" });
+                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46evAvlHA5jcC3pv2K_tsclAEEi-SWWYk0PCKzAKT7nOUsByjVQQ1WKxBo7E7J1rtSoIgE_vMRwQWNQ0uJty8alU9VduXcwpq1TGVMptf5xfVw15AakhY-fbdMBHJoP5zfc", "CfDJ8HeiyxunoJNOiKpgMimE46decVNUfAYSxtf5CXd44aIgXEO3R3QwV3kqhDbQDle_lO5Y3Cm0q2Y32nReqJZQI1TZUUYDARI994c17COtm1pLDwQsKk24deSICPn2BKVwPg", true, "CfDJ8HeiyxunoJNOiKpgMimE46fwhF8fJ7CMNTxmJrXurVURVmtJi7AfxPnuipfxJN1OUHprpEXcQj9KwaDaIJBp7bSFpo53U9v_NPel4Bk_spr7bn4AQ2uSIHoT8eUJ4Cwdow", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",
@@ -1152,8 +1275,8 @@ namespace TaskTrackerAPI.Migrations
                 columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
                 values: new object[,]
                 {
-                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 4, 30, 14, 54, 37, 510, DateTimeKind.Utc).AddTicks(6928), 1, 1L },
-                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 4, 30, 14, 54, 37, 510, DateTimeKind.Utc).AddTicks(8766), 1, 1L }
+                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(3117), 1, 1L },
+                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(4752), 1, 1L }
                 });
 
             migrationBuilder.CreateIndex(
@@ -1175,6 +1298,11 @@ namespace TaskTrackerAPI.Migrations
                 name: "IX_ChecklistItems_TaskId",
                 table: "ChecklistItems",
                 column: "TaskId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ChecklistTemplateItems_TaskTemplateId",
+                table: "ChecklistTemplateItems",
+                column: "TaskTemplateId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Distractions_FocusSessionId",
@@ -1312,6 +1440,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RateLimitTierConfigs_SubscriptionTierId",
+                table: "RateLimitTierConfigs",
+                column: "SubscriptionTierId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
                 table: "RefreshTokens",
                 column: "UserId");
@@ -1392,6 +1525,16 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserApiQuotas_SubscriptionTierId",
+                table: "UserApiQuotas",
+                column: "SubscriptionTierId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserApiQuotas_UserId",
+                table: "UserApiQuotas",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserBadges_BadgeId",
                 table: "UserBadges",
                 column: "BadgeId");
@@ -1460,6 +1603,14 @@ namespace TaskTrackerAPI.Migrations
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
+                name: "FK_ChecklistTemplateItems_TaskTemplates_TaskTemplateId",
+                table: "ChecklistTemplateItems",
+                column: "TaskTemplateId",
+                principalTable: "TaskTemplates",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
                 name: "FK_Distractions_FocusSessions_FocusSessionId",
                 table: "Distractions",
                 column: "FocusSessionId",
@@ -1484,10 +1635,16 @@ namespace TaskTrackerAPI.Migrations
                 table: "Families");
 
             migrationBuilder.DropTable(
+                name: "AuditLogs");
+
+            migrationBuilder.DropTable(
                 name: "ChallengeProgresses");
 
             migrationBuilder.DropTable(
                 name: "ChecklistItems");
+
+            migrationBuilder.DropTable(
+                name: "ChecklistTemplateItems");
 
             migrationBuilder.DropTable(
                 name: "Distractions");
@@ -1526,6 +1683,9 @@ namespace TaskTrackerAPI.Migrations
                 name: "PriorityMultipliers");
 
             migrationBuilder.DropTable(
+                name: "RateLimitTierConfigs");
+
+            migrationBuilder.DropTable(
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
@@ -1535,10 +1695,10 @@ namespace TaskTrackerAPI.Migrations
                 name: "TaskTags");
 
             migrationBuilder.DropTable(
-                name: "TaskTemplates");
+                name: "UserAchievements");
 
             migrationBuilder.DropTable(
-                name: "UserAchievements");
+                name: "UserApiQuotas");
 
             migrationBuilder.DropTable(
                 name: "UserBadges");
@@ -1554,6 +1714,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "UserRewards");
+
+            migrationBuilder.DropTable(
+                name: "TaskTemplates");
 
             migrationBuilder.DropTable(
                 name: "FocusSessions");
@@ -1572,6 +1735,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "Achievements");
+
+            migrationBuilder.DropTable(
+                name: "SubscriptionTiers");
 
             migrationBuilder.DropTable(
                 name: "Badges");

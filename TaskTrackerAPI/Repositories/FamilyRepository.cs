@@ -72,53 +72,71 @@ public class FamilyRepository :IFamilyRepository
     }
 
     public async Task<bool> DeleteAsync(int id)
+{
+    try
     {
-        try
+        _logger.LogInformation("Attempting to delete family with ID: {FamilyId}", id);
+        
+        // First verify the family exists
+        Family? family = await _context.Families.FindAsync(id);
+        if (family == null)
         {
-            _logger.LogInformation("Attempting to delete family with ID: {FamilyId}", id);
-            
-            Family? family = await _context.Families.FindAsync(id);
-            if (family == null)
-            {
-                _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);
-                return false;
-            }
-
-            // Delete any associated records first to avoid foreign key constraints
-            IEnumerable<FamilyMember> members = await _context.FamilyMembers
-                .Where(m => m.FamilyId == id)
-                .ToListAsync();
-                
-            if (members.Any())
-            {
-                _logger.LogInformation("Removing {Count} members from family {FamilyId}", members.Count(), id);
-                _context.FamilyMembers.RemoveRange(members);
-            }
-            
-            // Delete any family invitations
-            IEnumerable<Invitation> invitations = await _context.Invitations
-                .Where(i => i.FamilyId == id)
-                .ToListAsync();
-                
-            if (invitations.Any())
-            {
-                _logger.LogInformation("Removing {Count} invitations from family {FamilyId}", invitations.Count(), id);
-                _context.Invitations.RemoveRange(invitations);
-            }
-
-            // Now delete the family
-            _context.Families.Remove(family);
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Successfully deleted family with ID: {FamilyId}", id);
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting family with ID {FamilyId}", id);
+            _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);
             return false;
         }
+
+        // Use the execution strategy to properly handle transactions with retries
+        var strategy = _context.Database.CreateExecutionStrategy();
+        
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try 
+            {
+                // Delete any associated records first to avoid foreign key constraint violations
+                var familyMembers = await _context.FamilyMembers.Where(m => m.FamilyId == id).ToListAsync();
+                if (familyMembers.Any())
+                {
+                    _context.FamilyMembers.RemoveRange(familyMembers);
+                }
+                
+                // Now delete the family
+                _context.Families.Remove(family);
+                
+                // Create audit log entry
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    EntityType = "Family",
+                    EntityId = id,
+                    Action = "Delete",
+                    Timestamp = DateTime.UtcNow,
+                    UserId = family.CreatedById ,
+                    Details = $"Family '{family.Name}' was deleted"
+                });
+                
+                // Save changes
+                await _context.SaveChangesAsync();
+                
+                // Commit transaction
+                await transaction.CommitAsync();
+                
+                _logger.LogInformation("Successfully deleted family with ID: {FamilyId}", id);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during family delete transaction for ID {FamilyId}", id);
+                await transaction.RollbackAsync();
+                return false;
+            }
+        });
     }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Unhandled exception deleting family with ID {FamilyId}", id);
+        return false;
+    }
+}
 
     public async Task<bool> AddMemberAsync(int familyId, int userId, int roleId)
     {

@@ -35,24 +35,30 @@ function getCsrfToken(): string {
 /**
  * Get authentication token from storage
  */
-function getAuthToken(): string | null {
+function getAuthToken(options: { suppressAuthError?: boolean } = {}): string | null {
   if (typeof window === 'undefined') return null;
   
   // Try localStorage first
   const localToken = localStorage.getItem('token');
   if (localToken) {
-    console.log('[apiClient] Found token in localStorage');
+    if (!options.suppressAuthError) {
+      console.log('[apiClient] Found token in localStorage');
+    }
     return localToken;
   }
   
   // Then try sessionStorage
   const sessionToken = sessionStorage.getItem('token');
   if (sessionToken) {
-    console.log('[apiClient] Found token in sessionStorage');
+    if (!options.suppressAuthError) {
+      console.log('[apiClient] Found token in sessionStorage');
+    }
     return sessionToken;
   }
   
-  console.log('[apiClient] No auth token found in storage');
+  if (!options.suppressAuthError) {
+    console.log('[apiClient] No auth token found in storage');
+  }
   return null;
 }
 
@@ -67,7 +73,8 @@ async function apiRequest<T = any>(
     requiresAuth?: boolean,
     useMethodOverride?: boolean,
     usePascalCase?: boolean,
-    useFormData?: boolean
+    useFormData?: boolean,
+    suppressAuthError?: boolean
   } = {}
 ): Promise<ApiResponse<T>> {
   try {
@@ -75,13 +82,17 @@ async function apiRequest<T = any>(
     let csrfToken = '';
     if (method !== 'GET') {
       csrfToken = await getCsrfToken();
-      console.log('[apiClient] Got CSRF token from cookies:', csrfToken);
+      if (!options.suppressAuthError) {
+        console.log('[apiClient] Got CSRF token from cookies:', csrfToken);
+      }
     }
 
     // Get auth token - require for all requests except public endpoints
-    const authToken = getAuthToken();
+    const authToken = getAuthToken(options);
     if (!authToken) {
-      console.log('[apiClient] No auth token found');
+      if (!options.suppressAuthError) {
+        console.log('[apiClient] No auth token found');
+      }
       // For non-GET requests, return 401 immediately
       if (method !== 'GET') {
         return {
@@ -100,13 +111,17 @@ async function apiRequest<T = any>(
     // Add auth token if available
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
-      console.log('[apiClient] Added auth token to headers');
+      if (!options.suppressAuthError) {
+        console.log('[apiClient] Added auth token to headers');
+      }
     }
 
     // Add CSRF token for non-GET requests
     if (method !== 'GET' && csrfToken) {
       headers['X-CSRF-TOKEN'] = csrfToken;
-      console.log('[apiClient] Added CSRF token to headers:', csrfToken);
+      if (!options.suppressAuthError) {
+        console.log('[apiClient] Added CSRF token to headers:', csrfToken);
+      }
     }
 
     // Prepare request options
@@ -133,20 +148,26 @@ async function apiRequest<T = any>(
     }
 
     // Log the request
-    console.log(`[apiClient] ${method} request to ${API_URL}${endpoint}`, {
-      ...requestOptions,
-      headers: { ...requestOptions.headers, Authorization: authToken ? 'Bearer [REDACTED]' : undefined }
-    });
+    if (!options.suppressAuthError) {
+      console.log(`[apiClient] ${method} request to ${API_URL}${endpoint}`, {
+        ...requestOptions,
+        headers: { ...requestOptions.headers, Authorization: authToken ? 'Bearer [REDACTED]' : undefined }
+      });
+    }
 
     // Make the request
     const response = await fetch(`${API_URL}${endpoint}`, requestOptions);
 
     // Log the response status
-    console.log(`[apiClient] Response status: ${response.status} ${response.statusText}`);
+    if (!options.suppressAuthError) {
+      console.log(`[apiClient] Response status: ${response.status} ${response.statusText}`);
+    }
 
     // Handle authentication errors
     if (response.status === 401) {
-      console.log('[apiClient] Received 401 response, clearing tokens');
+      if (!options.suppressAuthError) {
+        console.log('[apiClient] Received 401 response, clearing tokens');
+      }
       // Clear invalid token
       localStorage.removeItem('token');
       sessionStorage.removeItem('token');
@@ -156,7 +177,7 @@ async function apiRequest<T = any>(
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
       });
       return {
-        error: 'Authentication required. Please log in again.',
+        error: options.suppressAuthError ? undefined : 'Authentication required. Please log in again.',
         status: 401
       };
     }
@@ -249,10 +270,9 @@ async function apiRequest<T = any>(
       };
     }
   } catch (error) {
-    // Handle network errors
     console.error('[apiClient] Request failed:', error);
     return {
-      error: error instanceof Error ? error.message : 'Network error',
+      error: error instanceof Error ? error.message : 'Request failed',
       status: 0
     };
   }
@@ -260,20 +280,25 @@ async function apiRequest<T = any>(
 
 // Export specific HTTP method functions
 export const apiClient = {
-  get: <T>(endpoint: string, options = {}) => 
-    apiRequest<T>(endpoint, 'GET', undefined, options),
-    
-  post: <T>(endpoint: string, data?: any, options = {}) => 
-    apiRequest<T>(endpoint, 'POST', data, options),
-    
-  put: <T>(endpoint: string, data?: any, options = {}) => 
-    apiRequest<T>(endpoint, 'PUT', data, options),
-    
-  patch: <T>(endpoint: string, data?: any, options = {}) => 
-    apiRequest<T>(endpoint, 'PATCH', data, options),
-    
-  delete: <T>(endpoint: string, options = {}) => 
-    apiRequest<T>(endpoint, 'DELETE', undefined, options),
+  async get<T = any>(endpoint: string, options: { suppressAuthError?: boolean } = {}): Promise<ApiResponse<T>> {
+    return apiRequest<T>(endpoint, 'GET', undefined, options);
+  },
+
+  async post<T = any>(endpoint: string, data?: any, options: { suppressAuthError?: boolean; usePascalCase?: boolean; useFormData?: boolean } = {}): Promise<ApiResponse<T>> {
+    return apiRequest<T>(endpoint, 'POST', data, options);
+  },
+
+  async put<T = any>(endpoint: string, data?: any, options: { suppressAuthError?: boolean; usePascalCase?: boolean; useFormData?: boolean } = {}): Promise<ApiResponse<T>> {
+    return apiRequest<T>(endpoint, 'PUT', data, options);
+  },
+
+  async patch<T = any>(endpoint: string, data?: any, options: { suppressAuthError?: boolean; usePascalCase?: boolean; useFormData?: boolean } = {}): Promise<ApiResponse<T>> {
+    return apiRequest<T>(endpoint, 'PATCH', data, options);
+  },
+
+  async delete<T = any>(endpoint: string, options: { suppressAuthError?: boolean } = {}): Promise<ApiResponse<T>> {
+    return apiRequest<T>(endpoint, 'DELETE', undefined, options);
+  },
     
   /**
    * Special method just for updating tasks

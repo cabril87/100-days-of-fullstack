@@ -52,6 +52,20 @@ namespace TaskTrackerAPI.Middleware
             "cc", "cardnumber", "cvv", "ssn", "email", "address", "phone", "dob", "birthdate"
         };
 
+        // List of paths to exclude from security auditing (to prevent infinite loops)
+        private static readonly HashSet<string> ExcludedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "/health",
+            "/metrics",
+            "/api/v1/health",
+            "/api/v1/metrics",
+        };
+        
+        // Counter to track consecutive requests to the same path
+        private static readonly Dictionary<string, int> PathRequestCounter = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private static readonly int MaxConsecutiveRequests = 5;
+        private static readonly object LockObject = new object();
+
         public SecurityAuditMiddleware(
             RequestDelegate next,
             ILogger<SecurityAuditMiddleware> logger,
@@ -64,6 +78,46 @@ namespace TaskTrackerAPI.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
+            // Skip processing for excluded paths
+            if (ShouldSkipProcessing(context))
+            {
+                // Skip all processing and directly pass to next middleware
+                await _next(context);
+                return;
+            }
+            
+            // Check for potential infinite loops
+            string requestPath = context.Request.Path.ToString();
+            
+            bool shouldSkipDueToFrequency = false;
+            lock (LockObject)
+            {
+                if (PathRequestCounter.TryGetValue(requestPath, out int count))
+                {
+                    if (count >= MaxConsecutiveRequests)
+                    {
+                        shouldSkipDueToFrequency = true;
+                        // Reset counter after skipping
+                        PathRequestCounter[requestPath] = 0;
+                    }
+                    else
+                    {
+                        PathRequestCounter[requestPath] = count + 1;
+                    }
+                }
+                else
+                {
+                    PathRequestCounter[requestPath] = 1;
+                }
+            }
+            
+            if (shouldSkipDueToFrequency)
+            {
+                _logger.LogWarning("Skipping security audit for path {Path} due to too many consecutive requests", requestPath);
+                await _next(context);
+                return;
+            }
+            
             // Create a scope to resolve scoped services
             using IServiceScope scope = _serviceProvider.CreateScope();
             IDataProtectionService dataProtectionService = scope.ServiceProvider.GetRequiredService<IDataProtectionService>();
@@ -110,7 +164,52 @@ namespace TaskTrackerAPI.Middleware
                 // Copy the response body to the original stream
                 responseBodyStream.Position = 0;
                 await responseBodyStream.CopyToAsync(originalBodyStream);
+                
+                // Reset counter after successful request
+                lock (LockObject)
+                {
+                    if (PathRequestCounter.ContainsKey(requestPath))
+                    {
+                        PathRequestCounter[requestPath] = 0;
+                    }
+                }
             }
+        }
+
+        private bool ShouldSkipProcessing(HttpContext context)
+        {
+            // Get the raw path for comparison
+            string rawPath = context.Request.Path.ToString();
+            
+            // Normalize the path: remove trailing slashes and convert to lowercase
+            string normalizedPath = rawPath.TrimEnd('/').ToLowerInvariant();
+            
+            
+            // Skip health checks and other excluded paths
+            foreach (var excludedPath in ExcludedPaths)
+            {
+                string normalizedExcludedPath = excludedPath.TrimEnd('/').ToLowerInvariant();
+                if (normalizedPath == normalizedExcludedPath || 
+                    normalizedPath.StartsWith(normalizedExcludedPath + "/", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("Skipping security audit for excluded path: {Path}", rawPath);
+                    return true;
+                }
+            }
+            
+            // Always skip OPTIONS requests (CORS preflight)
+            if (context.Request.Method.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            // Skip if there's an X-Internal-Request header
+            if (context.Request.Headers.ContainsKey("X-Internal-Request"))
+            {
+                return true;
+            }
+            
+            return false;
         }
 
         private async Task<string?> ReadRequestBodyAsync(HttpRequest request)

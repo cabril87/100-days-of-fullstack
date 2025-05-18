@@ -40,6 +40,7 @@ using Microsoft.AspNetCore.DataProtection;
 using TaskTrackerAPI.ModelBinders;
 using TaskTrackerAPI.Filters;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.OpenApi.Models;
 
 namespace TaskTrackerAPI;
 
@@ -507,25 +508,24 @@ public class Program
         // Add global exception handling middleware
         app.UseGlobalExceptionHandling();
 
-        // Add security audit middleware first to capture all requests
-        app.UseSecurityAudit();
-
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
-        // Use a factory pattern to create the AdaptiveRateLimitingMiddleware with scoped services
-        app.Use(async (context, next) =>
+        
+
+        // Add security audit middleware AFTER rate limiting but before other middleware
+        // Only enable it if not running in Docker (which is causing the infinite loop)
+        bool disableSecurityAudit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
+
+        if (!disableSecurityAudit)
         {
-            using var scope = app.Services.CreateScope();
-            var userSubscriptionService = scope.ServiceProvider.GetRequiredService<IUserSubscriptionService>();
-            var middleware = new AdaptiveRateLimitingMiddleware(
-                next,
-                scope.ServiceProvider.GetRequiredService<ILogger<AdaptiveRateLimitingMiddleware>>(),
-                scope.ServiceProvider.GetRequiredService<IMemoryCache>(),
-                scope.ServiceProvider.GetRequiredService<IConfiguration>(),
-                userSubscriptionService);
-            
-            await middleware.InvokeAsync(context);
-        });
+            app.UseSecurityAudit();
+            Console.WriteLine("Security Audit Middleware enabled");
+        }
+        else
+        {
+            Console.WriteLine("Security Audit Middleware disabled in Docker environment to prevent infinite loops");
+        }
+      
 
         // Add security headers middleware
         app.UseMiddleware<SecurityHeadersMiddleware>();

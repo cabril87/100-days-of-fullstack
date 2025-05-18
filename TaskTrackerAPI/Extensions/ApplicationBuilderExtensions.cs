@@ -38,15 +38,7 @@ namespace TaskTrackerAPI.Extensions
             return app.UseMiddleware<RateLimitingMiddleware>();
         }
 
-        /// <summary>
-        /// Adds adaptive rate limiting middleware with subscription-based and load-based rate limiting
-        /// </summary>
-        /// <param name="app">The application builder</param>
-        /// <returns>The application builder with adaptive rate limiting configured</returns>
-        public static IApplicationBuilder UseAdaptiveRateLimiting(this IApplicationBuilder app)
-        {
-            return app.UseMiddleware<AdaptiveRateLimitingMiddleware>();
-        }
+       
         
         /// <summary>
         /// Adds response caching middleware to the application pipeline

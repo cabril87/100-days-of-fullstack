@@ -16,11 +16,12 @@ import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useFamily } from '@/lib/providers/FamilyContext';
 import { Button } from '@/components/ui/button';
+import { familyService } from '@/lib/services/familyService';
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { tasks: allTasks, loading: tasksLoading, error, fetchTasks } = useTasks();
-  const { currentFamily, isLoading: familyLoading } = useFamily();
+  const { currentFamily, isLoading: familyLoading, families, handleSwitchFamily } = useFamily();
   const router = useRouter();
   const { showToast } = useToast();
   
@@ -345,66 +346,7 @@ export default function DashboardPage() {
           <FocusHistory />
         </TabsContent>
         
-        <TabsContent value="family" className="space-y-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-brand-navy-dark">Family Dashboard</h2>
-            <Button onClick={() => router.push('/family/create')}>
-              Create New Family
-            </Button>
-          </div>
-          {currentFamily ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{currentFamily.name}</CardTitle>
-                <CardDescription>Family Dashboard</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Members</h3>
-                    <div className="grid gap-4">
-                      {currentFamily.members.map((member) => (
-                        <div key={member.id} className="flex items-center space-x-4">
-                          <div className="w-10 h-10 rounded-full bg-brand-navy text-white flex items-center justify-center">
-                            {member.username?.charAt(0) || 'U'}
-                          </div>
-                          <div>
-                            <p className="font-medium">{member.username}</p>
-                            <p className="text-sm text-gray-500">{member.role}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => router.push('/family/invite')}>
-                  Invite Members
-                </Button>
-                <Button variant="outline" onClick={() => router.push('/family/settings')}>
-                  Settings
-                </Button>
-              </CardFooter>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Family Selected</CardTitle>
-                <CardDescription>Create a new family or select an existing one</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">You haven't created or joined any families yet.</p>
-                <Button 
-                  onClick={() => router.push('/family/create')}
-                  className="w-full"
-                >
-                  Create Your First Family
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+        
         
         <TabsContent value="upcoming" className="space-y-6">
           <Card>
