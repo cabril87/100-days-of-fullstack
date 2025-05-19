@@ -199,6 +199,18 @@ function createSqlSafeTask(): any {
   };
 }
 
+interface TaskAssignmentDTO {
+  taskId: number;
+  assignToUserId: string;
+  requiresApproval: boolean;
+}
+
+interface TaskApprovalDTO {
+  taskId: number;
+  approved: boolean;
+  feedback: string;
+}
+
 class TaskService {
   // Runs the diagnostic before any task operations
   private async runDiagnostic(): Promise<void> {
@@ -272,7 +284,7 @@ class TaskService {
           const searchLower = String(params.search).toLowerCase();
           filteredTasks = filteredTasks.filter(task => 
             task.title.toLowerCase().includes(searchLower) || 
-            task.description.toLowerCase().includes(searchLower)
+            (task.description?.toLowerCase() || '').includes(searchLower)
           );
         }
       }
@@ -324,7 +336,7 @@ class TaskService {
             const searchLower = String(params.search).toLowerCase();
             filteredMockTasks = filteredMockTasks.filter(task => 
               task.title.toLowerCase().includes(searchLower) || 
-              (task.description && task.description.toLowerCase().includes(searchLower))
+              (task.description?.toLowerCase() || '').includes(searchLower)
             );
           }
         }
@@ -525,7 +537,7 @@ class TaskService {
       dueDate: task.dueDate || undefined,
       createdAt: now,
       updatedAt: now,
-      userId: '1'
+      createdBy: '1'
     };
     
     // Optionally store in localStorage for persistence until the API works
@@ -562,6 +574,9 @@ class TaskService {
       mockTasksData[index] = {
         ...mockTasksData[index],
         ...taskData,
+        // Convert null values to undefined to match Task interface
+        description: taskData.description === null ? undefined : taskData.description,
+        dueDate: taskData.dueDate === null ? undefined : taskData.dueDate,
         updatedAt: new Date().toISOString()
       };
       
@@ -585,6 +600,9 @@ class TaskService {
             mockTasks[index] = {
               ...mockTasks[index],
               ...taskData,
+              // Convert null values to undefined to match Task interface
+              description: taskData.description === null ? undefined : taskData.description,
+              dueDate: taskData.dueDate === null ? undefined : taskData.dueDate,
               updatedAt: new Date().toISOString()
             };
             
@@ -976,6 +994,193 @@ class TaskService {
       data: updatedTask,
       status
     };
+  }
+
+  // Family task management methods
+  
+  async getFamilyTasks(familyId: string): Promise<ApiResponse<Task[]>> {
+    try {
+      console.log(`[taskService] Getting tasks for family ${familyId}`);
+      
+      // Check if user is authenticated first
+      const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const isAuthenticated = !!authToken;
+      
+      if (!isAuthenticated) {
+        console.log(`[taskService] User not authenticated, using mock data for family tasks`);
+        return this.generateMockFamilyTasks(familyId);
+      }
+      
+      // Get tasks from the API - no fallback to mock data
+      const response = await apiClient.get<Task[]>(`/v1/family/${familyId}/tasks`);
+      if (response.data) {
+        return response;
+      }
+      
+      // Only if API request fails with an error, return empty array instead of mock data
+      return {
+        data: [],
+        status: 200
+      };
+    } catch (error) {
+      console.error(`[taskService] Error getting family tasks for family ${familyId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to get tasks for family ${familyId}`,
+        status: 500
+      };
+    }
+  }
+  
+  // Helper method to generate mock family tasks
+  private generateMockFamilyTasks(familyId: string): ApiResponse<Task[]> {
+    console.log(`[taskService] Using mock data for family tasks`);
+    
+    // Create better mock data that clearly indicates it's demo data
+    const mockTaskTitles = [
+      "Demo: Complete household chores",
+      "Demo: Homework assignment",
+      "Demo: Take out the trash",
+      "Demo: Walk the dog",
+      "Demo: Prepare dinner" 
+    ];
+    
+    const mockTaskDescriptions = [
+      "This is a demo task. Sign in to see real tasks.",
+      "Example family task - not real data.",
+      "Demo content - log in to create and manage real family tasks.",
+      "",
+      "Sample task for demonstration purposes."
+    ];
+    
+    // Valid priority values as strings
+    const priorities = ['low', 'medium', 'high'];
+    const statuses = ['todo', 'in-progress', 'done'];
+    
+    // Generate 3-5 mock tasks
+    const count = Math.floor(Math.random() * 3) + 3;
+    const mockFamilyTasks: Task[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const index = Math.floor(Math.random() * mockTaskTitles.length);
+      const title = mockTaskTitles[index];
+      const description = mockTaskDescriptions[index];
+      
+      // Create random due date between now and 7 days from now
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + Math.floor(Math.random() * 7) + 1);
+      
+      mockFamilyTasks.push({
+        id: Math.floor(Math.random() * 10000) + 10000, // High IDs for mock tasks
+        title,
+        description: description, 
+        status: statuses[Math.floor(Math.random() * statuses.length)],
+        priority: priorities[Math.floor(Math.random() * priorities.length)],
+        dueDate: dueDate.toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        assignedToName: ['Demo User', 'Family Member', 'Child', 'Parent'][Math.floor(Math.random() * 4)],
+        requiresApproval: Math.random() > 0.5,
+        approvedBy: undefined // Using undefined instead of null to match Task interface
+        // Family ID is stored in the component state, not needed in the task object
+      });
+    }
+    
+    return {
+      data: mockFamilyTasks,
+      status: 200
+    };
+  }
+  
+  async assignTaskToFamilyMember(
+    familyId: string, 
+    assignmentData: TaskAssignmentDTO
+  ): Promise<ApiResponse<Task>> {
+    try {
+      console.log(`[taskService] Assigning task to family member in family ${familyId}:`, assignmentData);
+      
+      // Verify authentication 
+      const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!authToken) {
+        console.error('[taskService] Authentication token not found');
+        return {
+          error: 'You must be logged in to assign tasks',
+          status: 401
+        };
+      }
+      
+      // Make sure userId is properly formatted as a string
+      const safeAssignmentData = {
+        ...assignmentData,
+        assignToUserId: assignmentData.assignToUserId ? assignmentData.assignToUserId.toString() : ''
+      };
+      
+      console.log(`[taskService] Sending assignment data:`, safeAssignmentData);
+      
+      const response = await apiClient.post<Task>(
+        `/v1/family/${familyId}/tasks/assign`, 
+        safeAssignmentData
+      );
+      
+      // Log the response for debugging
+      console.log(`[taskService] Assignment response:`, response);
+      
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error assigning task in family ${familyId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to assign task in family ${familyId}`,
+        status: 500
+      };
+    }
+  }
+  
+  async unassignTask(familyId: string, taskId: number): Promise<ApiResponse<void>> {
+    try {
+      console.log(`[taskService] Unassigning task ${taskId} in family ${familyId}`);
+      const response = await apiClient.delete(`/v1/family/${familyId}/tasks/${taskId}/unassign`);
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error unassigning task ${taskId} in family ${familyId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to unassign task ${taskId}`,
+        status: 500
+      };
+    }
+  }
+  
+  async approveTask(
+    familyId: string, 
+    taskId: number, 
+    approvalData: TaskApprovalDTO
+  ): Promise<ApiResponse<void>> {
+    try {
+      console.log(`[taskService] Approving task ${taskId} in family ${familyId}:`, approvalData);
+      const response = await apiClient.post<void>(
+        `/v1/family/${familyId}/tasks/${taskId}/approve`, 
+        approvalData
+      );
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error approving task ${taskId} in family ${familyId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to approve task ${taskId}`,
+        status: 500
+      };
+    }
+  }
+  
+  async getMemberTasks(familyId: string, familyMemberId: string): Promise<ApiResponse<Task[]>> {
+    try {
+      console.log(`[taskService] Getting tasks for member ${familyMemberId} in family ${familyId}`);
+      const response = await apiClient.get<Task[]>(`/v1/family/${familyId}/tasks/member/${familyMemberId}`);
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error getting tasks for member ${familyMemberId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to get tasks for member ${familyMemberId}`,
+        status: 500
+      };
+    }
   }
 }
 

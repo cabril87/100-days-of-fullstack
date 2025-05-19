@@ -30,14 +30,22 @@ export enum ApiTaskStatus {
 export interface Task {
   id: number;
   title: string;
-  description: string;
-  status: 'todo' | 'in-progress' | 'done';
+  description?: string;
+  status: string; // 'todo', 'in-progress', 'done'
+  priority: string; // 'low', 'medium', 'high'
   dueDate?: string;
-  dueTime?: string;
-  priority?: 'low' | 'medium' | 'high';
   createdAt: string;
-  updatedAt: string;
-  userId: string;
+  updatedAt?: string;
+  createdBy?: string;
+  assignedTo?: string;
+  assignedToName?: string;
+  assignedAt?: string;
+  requiresApproval?: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
+  completedAt?: string;
+  tags?: string[];
+  version?: number; // Version for concurrency control
 }
 
 export interface TaskFormData {
@@ -113,4 +121,31 @@ export interface TaskQueryParams {
   sortDirection?: 'asc' | 'desc';
   due?: 'today' | 'week' | 'overdue';
   tags?: string[];
+}
+
+export interface TaskCreateInput {
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+}
+
+export interface TaskUpdateInput {
+  title?: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+}
+
+export interface TaskHistoryItem {
+  id: number;
+  taskId: number;
+  action: string;
+  timestamp: string;
+  performedBy: string;
+  performedByName?: string;
+  previousValue?: string;
+  newValue?: string;
 } 

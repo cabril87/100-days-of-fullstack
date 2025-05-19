@@ -26,9 +26,13 @@ export default function MembersList({ members, isAdmin, familyId, onMembersChang
   
   // Sort members by role (admin first) and then by join date
   const sortedMembers = [...members].sort((a, b) => {
+    // Add null checks for role property
+    const aRole = a.role || { name: 'Unknown', permissions: [] as string[] };
+    const bRole = b.role || { name: 'Unknown', permissions: [] as string[] };
+    
     // Admin roles first
-    const aIsAdmin = a.role.name.toLowerCase() === 'admin' || a.role.permissions.includes('admin');
-    const bIsAdmin = b.role.name.toLowerCase() === 'admin' || b.role.permissions.includes('admin');
+    const aIsAdmin = aRole.name?.toLowerCase() === 'admin' || aRole.permissions?.includes('admin');
+    const bIsAdmin = bRole.name?.toLowerCase() === 'admin' || bRole.permissions?.includes('admin');
     
     if (aIsAdmin && !bIsAdmin) return -1;
     if (!aIsAdmin && bIsAdmin) return 1;
@@ -40,14 +44,15 @@ export default function MembersList({ members, isAdmin, familyId, onMembersChang
   const handleRemoveMember = async () => {
     if (!memberToRemove) return;
     
-    const success = await removeMember(memberToRemove.id);
+    const success = await removeMember(memberToRemove.id.toString());
     if (success && onMembersChanged) {
       onMembersChanged();
     }
     setMemberToRemove(null);
   };
 
-  const getInitials = (username: string) => {
+  const getInitials = (username: string | undefined) => {
+    if (!username) return 'UN';
     return username.slice(0, 2).toUpperCase();
   };
 
@@ -61,29 +66,29 @@ export default function MembersList({ members, isAdmin, familyId, onMembersChang
         <div className="divide-y">
           {sortedMembers.map((member) => (
             <div key={member.id} className="py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Avatar>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
                   <AvatarImage src={`https://avatar.vercel.sh/${member.username}`} />
                   <AvatarFallback>{getInitials(member.username)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{member.username}</p>
-                    {member.role.name.toLowerCase() === 'admin' && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Shield className="h-3 w-3" />
-                        Admin
-                      </Badge>
+                  <div className="font-medium">{member.username}</div>
+                  <div className="text-sm text-gray-500">{member.email || 'No email available'}</div>
+                  <div className="flex items-center mt-1">
+                    <Badge variant="outline" className="text-xs font-medium">
+                      {member.role?.name || 'Unknown'}
+                    </Badge>
+                    {member.role?.name?.toLowerCase() === 'admin' && (
+                      <Shield className="ml-1 h-3 w-3 text-blue-600" />
                     )}
+                    <span className="text-xs text-gray-400 ml-2">
+                      Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
-                  <p className="text-xs text-gray-400">
-                    Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
-                  </p>
                 </div>
               </div>
               
-              {isAdmin && member.role.name.toLowerCase() !== 'admin' && (
+              {isAdmin && member.role?.name?.toLowerCase() !== 'admin' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">

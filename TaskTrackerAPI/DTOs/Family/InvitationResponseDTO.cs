@@ -14,10 +14,16 @@ namespace TaskTrackerAPI.DTOs.Family;
 
 public class InvitationResponseDTO
 {
+    public int Id { get; set; }
     public string Token { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public int FamilyId { get; set; }
     public string FamilyName { get; set; } = string.Empty;
+    public int RoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;
     public string InvitedBy { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public bool IsAccepted { get; set; }
     public bool IsExpired => DateTime.UtcNow > ExpiresAt;
 } 

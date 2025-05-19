@@ -2,9 +2,26 @@
 
 import * as React from "react"
 import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  
+  // Only render after component is mounted (client-side)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+  
+  // Use a button with just the container styles but no SVG during SSR
+  if (!mounted) {
+    return (
+      <button
+        className="p-2 rounded-full bg-brand-navy/10 backdrop-blur-sm border border-brand-navy/20 hover:bg-brand-navy/20 transition-colors dark:bg-brand-cream/10 dark:border-brand-cream/20 dark:hover:bg-brand-cream/20"
+        aria-label="Toggle theme"
+      />
+    )
+  }
 
   return (
     <button
@@ -23,7 +40,6 @@ export function ThemeToggle() {
           strokeWidth="2" 
           strokeLinecap="round" 
           strokeLinejoin="round"
-          className="text-brand-cream"
         >
           <circle cx="12" cy="12" r="5" />
           <line x1="12" y1="1" x2="12" y2="3" />
@@ -46,7 +62,6 @@ export function ThemeToggle() {
           strokeWidth="2" 
           strokeLinecap="round" 
           strokeLinejoin="round"
-          className="text-brand-navy-dark"
         >
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthContext';
+import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -32,40 +33,52 @@ export default function Header() {
               >
                 Tasks
               </Link>
+              <Link 
+                href="/family"
+                className="border-transparent text-gray-900 hover:border-blue-500 hover:text-blue-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              >
+                Family
+              </Link>
             </nav>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             {user ? (
-              <div className="ml-3 relative">
-                <div>
-                  <button
-                    onClick={toggleMenu}
-                    className="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition duration-150 ease-in-out"
-                  >
-                    <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">
-                      {user.displayName}
-                    </span>
-                  </button>
+              <>
+                {/* Notification Center */}
+                <div className="mr-4">
+                  <NotificationCenter />
                 </div>
-                {isMenuOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg">
-                    <div className="py-1 rounded-md bg-white shadow-xs">
-                      <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Your Profile
-                      </Link>
-                      <button
-                        onClick={() => logout()}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Sign out
-                      </button>
-                    </div>
+                <div className="ml-3 relative">
+                  <div>
+                    <button
+                      onClick={toggleMenu}
+                      className="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition duration-150 ease-in-out"
+                    >
+                      <span className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100">
+                        {user.displayName}
+                      </span>
+                    </button>
                   </div>
-                )}
-              </div>
+                  {isMenuOpen && (
+                    <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg">
+                      <div className="py-1 rounded-md bg-white shadow-xs">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Your Profile
+                        </Link>
+                        <button
+                          onClick={() => logout()}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Sign out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <div className="flex space-x-2">
                 <Link
@@ -126,6 +139,12 @@ export default function Header() {
             >
               Tasks
             </Link>
+            <Link
+              href="/family"
+              className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition duration-150 ease-in-out"
+            >
+              Family
+            </Link>
           </div>
           <div className="pt-4 pb-3 border-t border-gray-200">
             {user ? (
@@ -141,6 +160,9 @@ export default function Header() {
                   </div>
                 </div>
                 <div className="mt-3 space-y-1">
+                  <div className="px-4 py-2">
+                    <NotificationCenter />
+                  </div>
                   <Link
                     href="/profile"
                     className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition duration-150 ease-in-out"

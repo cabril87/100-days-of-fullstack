@@ -18,6 +18,7 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -64,7 +65,12 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in AcceptInvitation");
+                    return Unauthorized("User authentication failed");
+                }
+                
                 bool result = await _invitationService.AcceptInvitationAsync(dto.Token, userId);
                 
                 if (!result)
@@ -78,6 +84,55 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 _logger.LogError(ex, "Error accepting invitation");
                 return StatusCode(500, "An error occurred while accepting the invitation.");
+            }
+        }
+
+        [HttpGet("pending")]
+        public async Task<ActionResult<IEnumerable<InvitationResponseDTO>>> GetPendingInvitations()
+        {
+            try
+            {
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in GetPendingInvitations");
+                    return Unauthorized("User authentication failed");
+                }
+                
+                var invitations = await _invitationService.GetPendingInvitationsForUserAsync(userId);
+                
+                return Ok(invitations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving pending invitations");
+                return StatusCode(500, "An error occurred while retrieving pending invitations.");
+            }
+        }
+
+        [HttpPost("decline")]
+        public async Task<ActionResult> DeclineInvitation([FromBody] InvitationAcceptDTO dto)
+        {
+            try
+            {
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in DeclineInvitation");
+                    return Unauthorized("User authentication failed");
+                }
+                
+                bool result = await _invitationService.DeclineInvitationAsync(dto.Token, userId);
+                
+                if (!result)
+                {
+                    return BadRequest("Failed to decline invitation");
+                }
+
+                return Ok(new { message = "Invitation declined successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error declining invitation");
+                return StatusCode(500, "An error occurred while declining the invitation.");
             }
         }
     }

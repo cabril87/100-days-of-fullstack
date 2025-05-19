@@ -39,7 +39,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     const currentUserId = localStorage.getItem('userId') || '';
     const currentMember = family.members.find(member => member.userId === currentUserId);
     
-    if (!currentMember) return false;
+    if (!currentMember || !currentMember.role) return false;
     
     // Check if the user's role has admin permissions
     return currentMember.role.name.toLowerCase() === 'admin' || 
@@ -73,9 +73,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const refreshFamily = useCallback(async () => {
     if (family) {
       try {
-        const response = await familyService.getFamily(family.id);
+        // Use our improved refreshFamily method with force refresh
+        const response = await familyService.refreshFamily(family.id.toString(), true);
         if (response.data) {
           setFamily(response.data);
+        } else if (response.error && response.error !== 'Family not found') {
+          showToast(response.error, 'error');
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to refresh family data';
@@ -84,7 +87,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     } else {
       await fetchCurrentFamily();
     }
-  }, [family, fetchCurrentFamily, loading, showToast]);
+  }, [family, fetchCurrentFamily, showToast]);
 
   // Create a new family
   const createFamily = async (input: CreateFamilyInput): Promise<boolean> => {
@@ -154,7 +157,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     if (!family) return false;
     
     try {
-      const response = await familyService.inviteMember(family.id, email);
+      const response = await familyService.inviteMember(family.id.toString(), email);
       if (response.status === 200 || response.status === 201) {
         showToast(`Invitation sent to ${email}!`, 'success');
         return true;
@@ -174,7 +177,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     if (!family) return false;
     
     try {
-      const response = await familyService.removeMember(family.id, memberId);
+      const response = await familyService.removeMember(family.id.toString(), memberId);
       if (response.status === 200 || response.status === 204) {
         // Update the local state to remove the member
         setFamily(prev => {
@@ -202,7 +205,7 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     if (!family) return false;
     
     try {
-      const response = await familyService.updateMemberRole(family.id, memberId, roleId);
+      const response = await familyService.updateMemberRole(family.id.toString(), memberId, roleId);
       if (response.status === 200 || response.status === 204) {
         await refreshFamily(); // Refresh to get updated member data
         showToast('Member role updated successfully!', 'success');

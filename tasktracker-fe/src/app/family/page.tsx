@@ -5,7 +5,7 @@ import { useFamily } from '@/lib/providers/FamilyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, PlusCircle, LogIn, CheckCircle, Clock, FileText, BarChart3 } from 'lucide-react';
+import { Users, PlusCircle, LogIn, CheckCircle, Clock, FileText, BarChart3, Settings, UserPlus, Shield, UserCog, UserX, Trash2, PencilLine, Bell, ArrowLeft, ClipboardList, Home, AlertTriangle, RefreshCw, Search } from 'lucide-react';
 import Link from 'next/link';
 import { familyService } from '@/lib/services/familyService';
 import { Family } from '@/lib/types/family';
@@ -241,9 +241,9 @@ export default function FamilyDashboard() {
               </Link>
             </Button>
             <Button variant="outline" className="h-auto py-4 flex flex-col" asChild>
-              <Link href="/reports">
-                <BarChart3 className="h-6 w-6 mb-2" />
-                <span>Reports</span>
+              <Link href="/family/lookup">
+                <Search className="h-6 w-6 mb-2" />
+                <span>User Lookup</span>
               </Link>
             </Button>
           </div>

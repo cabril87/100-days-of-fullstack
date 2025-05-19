@@ -26,9 +26,8 @@ namespace TaskTrackerAPI.Controllers.V1
 {
     [ApiVersion("1.0")]
     [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/tasks")]
-    [Route("api/family/{familyId}/tasks")]
+    [ApiController]
     public class FamilyTasksController : ControllerBase
     {
         private readonly ITaskSharingService _taskSharingService;

@@ -38,6 +38,26 @@ namespace TaskTrackerAPI.Extensions
             
             throw new InvalidOperationException("User ID is not a valid integer");
         }
+
+        /// <summary>
+        /// Tries to get the user ID as an integer without throwing exceptions
+        /// </summary>
+        /// <param name="user">The ClaimsPrincipal to extract the ID from</param>
+        /// <param name="userId">The output user ID if successful</param>
+        /// <returns>True if the user ID was successfully retrieved, false otherwise</returns>
+        public static bool TryGetUserIdAsInt(this ClaimsPrincipal user, out int userId)
+        {
+            userId = 0;
+            string? userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            if (string.IsNullOrEmpty(userIdString))
+            {
+                return false;
+            }
+
+            return int.TryParse(userIdString, out userId);
+        }
+
         /// Checks if the principal has the specified role
         public static bool IsInRole(this ClaimsPrincipal user, string role)
         {

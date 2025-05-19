@@ -5,13 +5,32 @@ export interface Family {
   createdAt: string;
   updatedAt: string;
   members: FamilyMember[];
+  userRole?: {
+    id: number;
+    name: string;
+    permissions: string[];
+  };
 }
 
 export interface FamilyMember {
-  id: string;
-  userId: string;
-  username: string;
-  role: {
+  id: string | number;
+  userId: string | number;
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    displayName: string;
+    avatarUrl: string | null;
+    createdAt: string;
+  };
+  username?: string;
+  name?: string;
+  email?: string | null;
+  avatarUrl?: string | null;
+  joinedAt: string;
+  role?: {
     id: number;
     name: string;
     description: string;
@@ -19,10 +38,14 @@ export interface FamilyMember {
     isDefault: boolean;
     createdAt: string;
   };
-  email?: string;
-  joinedAt: string;
+  relationship?: string;
+  familyId?: string | number;
+  familyName?: string | null;
+  permissions?: any | null;
   completedTasks?: number;
   pendingTasks?: number;
+  lastActivityDate?: string;
+  streak?: number;
   isActive?: boolean;
 }
 

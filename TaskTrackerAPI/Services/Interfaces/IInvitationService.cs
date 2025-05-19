@@ -28,4 +28,6 @@ public interface IInvitationService
     Task<string> GenerateInvitationTokenAsync();
     Task<string> GenerateInvitationQRCodeAsync(string token);
     Task<bool> ResendInvitationAsync(int id, int userId);
+    Task<IEnumerable<InvitationResponseDTO>> GetPendingInvitationsForUserAsync(int userId);
+    Task<bool> DeclineInvitationAsync(string token, int userId);
 } 

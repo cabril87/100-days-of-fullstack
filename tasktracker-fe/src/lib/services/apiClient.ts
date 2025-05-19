@@ -166,18 +166,16 @@ async function apiRequest<T = any>(
     // Handle authentication errors
     if (response.status === 401) {
       if (!options.suppressAuthError) {
-        console.log('[apiClient] Received 401 response, clearing tokens');
+        console.log('[apiClient] Received 401 response');
+        
+        // Don't automatically clear tokens - instead just warn the user
+        // This allows recovering from temporary auth issues without forcing re-login
+        console.warn('[apiClient] Authentication failed but tokens preserved for retry');
       }
-      // Clear invalid token
-      localStorage.removeItem('token');
-      sessionStorage.removeItem('token');
-      // Clear cookies
-      document.cookie.split(';').forEach(cookie => {
-        const [name] = cookie.trim().split('=');
-        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-      });
+      
+      // Return the error but don't clear tokens
       return {
-        error: options.suppressAuthError ? undefined : 'Authentication required. Please log in again.',
+        error: options.suppressAuthError ? undefined : 'Authentication required. Please try again or re-login if the issue persists.',
         status: 401
       };
     }
@@ -188,6 +186,39 @@ async function apiRequest<T = any>(
         error: 'Too many requests. Please try again later.',
         status: 429
       };
+    }
+
+    // Handle 500 server errors with more detailed reporting
+    if (response.status === 500) {
+      console.error(`[apiClient] Server error (500) occurred when calling ${endpoint}`);
+      // Try to extract error details from response if available
+      try {
+        const errorText = await response.text();
+        console.error('[apiClient] Server error details:', errorText);
+        
+        // Try to parse as JSON if possible
+        try {
+          const errorJson = JSON.parse(errorText);
+          return {
+            error: errorJson.message || errorJson.error || 'Server error occurred',
+            details: errorJson.errors || errorJson.details || errorJson.stackTrace || null,
+            status: 500
+          };
+        } catch (jsonError) {
+          // Not JSON, return the text
+          return {
+            error: 'Server error occurred',
+            details: errorText.substring(0, 200) + (errorText.length > 200 ? '...' : ''),
+            status: 500
+          };
+        }
+      } catch (textError) {
+        // Couldn't even get the text
+        return {
+          error: 'Unknown server error',
+          status: 500
+        };
+      }
     }
 
     // Handle non-JSON or no-content responses

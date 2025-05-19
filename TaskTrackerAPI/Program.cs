@@ -122,10 +122,12 @@ public class Program
             {
                 corsBuilder.WithOrigins(
                        "http://localhost:3000",    // Next.js frontend
+                       "http://localhost:3001",    // Next.js frontend
                        "http://localhost:5173",    // Vite frontend
                        "http://localhost:8080",    // Webpack common port
                        "http://localhost",         // Generic localhost
                        "http://host.docker.internal:3000",  // Docker host Next.js
+                       "http://host.docker.internal:3001",  // Docker host Next.js
                        "http://host.docker.internal:5173"   // Docker host Vite
                     )
                     .AllowAnyMethod()
@@ -511,7 +513,8 @@ public class Program
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
         
-
+        // Remove SecurityAudit middleware since it's causing issues
+        /* 
         // Add security audit middleware AFTER rate limiting but before other middleware
         // Only enable it if not running in Docker (which is causing the infinite loop)
         bool disableSecurityAudit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
@@ -525,7 +528,8 @@ public class Program
         {
             Console.WriteLine("Security Audit Middleware disabled in Docker environment to prevent infinite loops");
         }
-      
+        */
+        Console.WriteLine("Security Audit Middleware has been disabled");
 
         // Add security headers middleware
         app.UseMiddleware<SecurityHeadersMiddleware>();

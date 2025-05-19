@@ -5,10 +5,11 @@ import { useAuth } from '@/lib/providers/AuthContext';
 import { useFamily } from '@/lib/providers/FamilyContext';
 import { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import NotificationCenter from './NotificationCenter';
 
 export function Navbar() {
   const { user, logout } = useAuth();
-  const { currentFamily } = useFamily();
+  const { family } = useFamily();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -69,7 +70,7 @@ export function Navbar() {
                     href="/family"
                     className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
                 >
-                    Family {currentFamily && <span className="ml-1 text-xs bg-brand-navy text-white px-2 py-0.5 rounded-full">Active</span>}
+                    Family {family && <span className="ml-1 text-xs bg-brand-navy text-white px-2 py-0.5 rounded-full">Active</span>}
                 </Link>
                 </>
               )}
@@ -87,6 +88,9 @@ export function Navbar() {
               
             {user ? (
               <div className="flex items-center space-x-4 relative">
+                {/* Notification Center */}
+                <NotificationCenter />
+                
                 <div ref={profileMenuRef} className="relative">
                   <button
                     onClick={toggleProfileMenu}
@@ -186,6 +190,11 @@ export function Navbar() {
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
             <ThemeToggle />
+            {user && (
+              <div className="mx-2">
+                <NotificationCenter />
+              </div>
+            )}
             <button
               onClick={toggleMenu}
               type="button"

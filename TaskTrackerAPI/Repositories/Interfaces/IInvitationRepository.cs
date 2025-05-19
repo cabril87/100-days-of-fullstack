@@ -26,4 +26,6 @@ public interface IInvitationRepository
     Task<Invitation?> GetByTokenAsync(string token);
     Task<bool> ExistsActiveInvitationAsync(int familyId, string email);
     Task<bool> MarkAsAcceptedAsync(int id);
+    Task<User?> GetUserByIdAsync(int userId);
+    Task<IEnumerable<Invitation>> GetPendingInvitationsByEmailAsync(string email);
 } 

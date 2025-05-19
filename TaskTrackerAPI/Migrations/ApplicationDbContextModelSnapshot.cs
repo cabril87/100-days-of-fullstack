@@ -17,7 +17,7 @@ namespace TaskTrackerAPI.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -1761,7 +1761,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(3117),
+                            UpdatedAt = new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(3055),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1778,7 +1778,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(4752),
+                            UpdatedAt = new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(4744),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1922,10 +1922,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46dcbW8gI39My-MgPRxNkVD0ISK0m10Aip0wCVeh2EJiRb1FI7i4SU8PGN55UQ38-3id-SwlKWxplnMnqyRne3lTJamIuQxcPpTE-W6mouB7DmxQpao1sJzKPsSuFoV_JVg",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46e_rplKxvP3Z5h4neAM_aSUaibro-HrPELqb9xUFIdp8QaQKOFdc1IrtzmDLzEbSUhe9WGOjAVPpzBWNA7MiTj2ZjBfCEJG4XlRNcvO0h-JaA",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46fXkboR-e2UqK2274eeiJ0SFEjqHIYIE7xWW1-y2ELYbN7dAsLwdZUvStOABSM7iSQsYqT7A3hNYyUHb6tOiRVaGPr9mJuO9rfu_zL2zDGh74OT0q-9i6n0ZvLkvUTEcfM",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46cJ0qkQ3SjRUN0pSkjiklmz_2DOBFW10Pi93EypDY-miYClPiyv5Q0iKWiJlb75_ELraELsSf8Bi8ELHAQE4ktRZdC8ETKYU7lppSgC9bEvVQ",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46dpb7oubfueh_onzxuk7Fcc1KlsK888IcZsNDmwg67QmCHlN0U-_jmpmQRfgeEK6hATjSQc7Gzg0evqufQ0IPJsGAsC5iWvriLgBh-SAr6ZPA",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46fJJrNptcFZ7LsbdLx0LfqYtH2SpBaycX2wFq9Iqj9hf1Qi7G8bHF9GZ0Jx51EbA5k1PzTRJmrw1Pq_ZFBJ55fIpVpyUPcNzfHethxLpMVDdA",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",

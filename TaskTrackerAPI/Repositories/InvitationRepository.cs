@@ -132,4 +132,55 @@ public class InvitationRepository : IInvitationRepository
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<User?> GetUserByIdAsync(int userId)
+    {
+        return await _context.Users.FindAsync(userId);
+    }
+
+    public async Task<IEnumerable<Invitation>> GetPendingInvitationsByEmailAsync(string email)
+    {
+        _logger.LogInformation("Getting pending invitations for email: {Email}", email);
+        
+        try {
+            var invitations = await _context.Invitations
+                .Include(i => i.Family)
+                .Include(i => i.Role)
+                .Include(i => i.CreatedBy)
+                .Where(i => i.Email.ToLower() == email.ToLower() && 
+                       !i.IsAccepted && 
+                       i.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync();
+                
+            _logger.LogInformation("Found {Count} pending invitations for email {Email}", invitations.Count, email);
+            
+            // Verify family and role references are properly loaded
+            foreach (var invitation in invitations)
+            {
+                if (invitation.Family == null)
+                {
+                    _logger.LogWarning("Invitation {Id} has null Family, attempting to load explicitly", invitation.Id);
+                    invitation.Family = await _context.Families.FindAsync(invitation.FamilyId);
+                }
+                
+                if (invitation.Role == null)
+                {
+                    _logger.LogWarning("Invitation {Id} has null Role, attempting to load explicitly", invitation.Id);
+                    invitation.Role = await _context.FamilyRoles.FindAsync(invitation.RoleId);
+                }
+                
+                if (invitation.CreatedBy == null)
+                {
+                    _logger.LogWarning("Invitation {Id} has null CreatedBy, attempting to load explicitly", invitation.Id);
+                    invitation.CreatedBy = await _context.Users.FindAsync(invitation.CreatedById);
+                }
+            }
+            
+            return invitations;
+        }
+        catch (Exception ex) {
+            _logger.LogError(ex, "Error getting pending invitations for email {Email}", email);
+            return new List<Invitation>();
+        }
+    }
 }

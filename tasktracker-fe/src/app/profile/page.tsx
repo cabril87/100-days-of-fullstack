@@ -7,6 +7,10 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { authService } from '@/lib/services/authService';
+import { familyService } from '@/lib/services/familyService';
+import { notificationService } from '@/lib/services/notificationService';
+import { UserPlus, Check, X, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Schema for profile update
 const profileSchema = z.object({
@@ -33,12 +37,16 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading, refreshToken } = useAuth();
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'invitations'>('profile');
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+  const [invitationsError, setInvitationsError] = useState<string | null>(null);
+  const [processingInvitationIds, setProcessingInvitationIds] = useState<string[]>([]);
 
   // Initialize the profile form
   const {
@@ -91,6 +99,84 @@ export default function ProfilePage() {
       router.push('/auth/login?redirect=/profile');
     }
   }, [user, isLoading, router]);
+
+  // Fetch pending invitations
+  useEffect(() => {
+    if (user && activeTab === 'invitations') {
+      loadPendingInvitations();
+    }
+  }, [user, activeTab]);
+
+  const loadPendingInvitations = async () => {
+    if (!user) return;
+    
+    setLoadingInvitations(true);
+    setInvitationsError(null);
+    try {
+      console.log('Fetching pending invitations for current user...');
+      const response = await familyService.getUserPendingInvitations();
+      
+      if (response.data) {
+        console.log(`Received ${response.data.length} pending invitations`);
+        // Filter out any potential invitations with missing data
+        const validInvitations = response.data.filter(inv => 
+          inv && inv.id && inv.token && inv.familyName && inv.invitedBy
+        );
+        
+        if (validInvitations.length !== response.data.length) {
+          console.warn(`Filtered out ${response.data.length - validInvitations.length} invalid invitations`);
+        }
+        
+        setPendingInvitations(validInvitations);
+      } else if (response.error) {
+        console.error('Error fetching invitations:', response.error);
+        setInvitationsError(`Unable to load invitations: ${response.error}`);
+        // Set empty array to avoid UI issues
+        setPendingInvitations([]);
+      } else {
+        console.log('No invitations data returned');
+        setPendingInvitations([]);
+      }
+    } catch (error) {
+      console.error('Error loading pending invitations:', error);
+      setInvitationsError('Failed to load invitations. Please try again later.');
+      // Set empty array for safety
+      setPendingInvitations([]);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string, token: string) => {
+    setProcessingInvitationIds(prev => [...prev, invitationId]);
+    try {
+      const response = await familyService.joinFamily(token);
+      if (response.data) {
+        // Remove the invitation from the list
+        setPendingInvitations(prev => prev.filter(inv => inv.id !== invitationId));
+      }
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+    } finally {
+      setProcessingInvitationIds(prev => prev.filter(id => id !== invitationId));
+    }
+  };
+
+  const handleDeclineInvitation = async (invitationId: string, token: string) => {
+    setProcessingInvitationIds(prev => [...prev, invitationId]);
+    try {
+      const response = await notificationService.declineInvitation(token);
+      
+      if (!response.error) {
+        // Remove the invitation from the list
+        setPendingInvitations(prev => prev.filter(inv => inv.id !== invitationId));
+      }
+    } catch (error) {
+      console.error('Error declining invitation:', error);
+    } finally {
+      setProcessingInvitationIds(prev => prev.filter(id => id !== invitationId));
+    }
+  };
 
   const onProfileSubmit = async (data: ProfileFormData) => {
     try {
@@ -186,6 +272,16 @@ export default function ProfilePage() {
             }`}
           >
             Security
+          </button>
+          <button
+            onClick={() => setActiveTab('invitations')}
+            className={`pb-4 px-1 ${
+              activeTab === 'invitations'
+                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Family Invitations
           </button>
         </nav>
       </div>
@@ -368,6 +464,100 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {activeTab === 'invitations' && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium mb-4">Pending Family Invitations</h2>
+          
+          {loadingInvitations ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+          ) : invitationsError ? (
+            <div className="py-8 text-center">
+              <p className="text-red-500">{invitationsError}</p>
+            </div>
+          ) : pendingInvitations.length === 0 ? (
+            <div className="py-8 text-center">
+              <UserPlus className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+              <p className="text-gray-500">No pending invitations</p>
+              <p className="text-sm text-gray-400 mt-1">
+                When someone invites you to join their family, you'll see the invitation here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingInvitations.map((invitation) => {
+                const isProcessing = processingInvitationIds.includes(invitation.id);
+                return (
+                  <div key={invitation.id} className="border rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-blue-100 p-2 rounded-full">
+                        <UserPlus className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium">{invitation.familyName || 'Family'} Invitation</h3>
+                        <p className="text-sm text-gray-500">
+                          You've been invited to join {invitation.familyName || 'a family'}.
+                        </p>
+                        {invitation.invitedBy && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Invited by: {invitation.invitedBy}
+                          </p>
+                        )}
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeclineInvitation(invitation.id, invitation.token)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <X className="h-4 w-4 mr-1" />
+                            )}
+                            Decline
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAcceptInvitation(invitation.id, invitation.token)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-1" />
+                            )}
+                            Accept
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex justify-center mt-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadPendingInvitations}
+                  disabled={loadingInvitations}
+                >
+                  {loadingInvitations ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    'Refresh Invitations'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

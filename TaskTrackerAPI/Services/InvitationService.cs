@@ -243,4 +243,87 @@ public class InvitationService : IInvitationService
 
         return true;
     }
+
+    public async Task<IEnumerable<InvitationResponseDTO>> GetPendingInvitationsForUserAsync(int userId)
+    {
+        _logger.LogInformation("Getting pending invitations for user {UserId}", userId);
+        
+        var user = await _invitationRepository.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            _logger.LogWarning("Attempted to get pending invitations for non-existent user {UserId}", userId);
+            return new List<InvitationResponseDTO>();
+        }
+
+        // Get invitations for this user's email that are still active
+        _logger.LogInformation("Fetching pending invitations for email {Email}", user.Email);
+        var invitations = await _invitationRepository.GetPendingInvitationsByEmailAsync(user.Email);
+        _logger.LogInformation("Found {Count} pending invitations for user {UserId}", invitations.Count(), userId);
+        
+        var result = new List<InvitationResponseDTO>();
+        foreach (var invitation in invitations)
+        {
+            // Check for null references
+            if (invitation.Family == null)
+            {
+                _logger.LogWarning("Invitation {InvitationId} has null Family reference", invitation.Id);
+                continue;
+            }
+
+            if (invitation.Role == null)
+            {
+                _logger.LogWarning("Invitation {InvitationId} has null Role reference", invitation.Id);
+                continue;
+            }
+
+            if (invitation.CreatedBy == null)
+            {
+                _logger.LogWarning("Invitation {InvitationId} has null CreatedBy reference", invitation.Id);
+                continue;
+            }
+
+            // Map to DTO with all necessary properties
+            var dto = new InvitationResponseDTO
+            {
+                Id = invitation.Id,
+                Token = invitation.Token,
+                Email = invitation.Email,
+                ExpiresAt = invitation.ExpiresAt,
+                IsAccepted = invitation.IsAccepted,
+                CreatedAt = invitation.CreatedAt,
+                FamilyId = invitation.FamilyId,
+                FamilyName = invitation.Family.Name,
+                RoleId = invitation.RoleId,
+                RoleName = invitation.Role.Name,
+                InvitedBy = invitation.CreatedBy.Username
+            };
+            
+            _logger.LogInformation("Adding invitation {InvitationId} to result list", invitation.Id);
+            result.Add(dto);
+        }
+
+        _logger.LogInformation("Returning {Count} valid invitations for user {UserId}", result.Count, userId);
+        return result;
+    }
+    
+    public async Task<bool> DeclineInvitationAsync(string token, int userId)
+    {
+        Invitation? invitation = await _invitationRepository.GetByTokenAsync(token);
+        if (invitation == null)
+        {
+            _logger.LogWarning("Attempted to decline non-existent or expired invitation with token {Token}", token);
+            return false;
+        }
+
+        // Verify the invitation is for this user
+        var user = await _invitationRepository.GetUserByIdAsync(userId);
+        if (user == null || user.Email != invitation.Email)
+        {
+            _logger.LogWarning("User {UserId} attempted to decline invitation not meant for them", userId);
+            return false;
+        }
+
+        // Instead of marking as declined, just delete the invitation
+        return await _invitationRepository.DeleteAsync(invitation.Id);
+    }
 } 

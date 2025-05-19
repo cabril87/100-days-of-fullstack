@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskTrackerAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -1259,7 +1259,7 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "AgeGroup", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "PrimaryFamilyId", "Role", "Salt", "Username" },
-                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46evAvlHA5jcC3pv2K_tsclAEEi-SWWYk0PCKzAKT7nOUsByjVQQ1WKxBo7E7J1rtSoIgE_vMRwQWNQ0uJty8alU9VduXcwpq1TGVMptf5xfVw15AakhY-fbdMBHJoP5zfc", "CfDJ8HeiyxunoJNOiKpgMimE46decVNUfAYSxtf5CXd44aIgXEO3R3QwV3kqhDbQDle_lO5Y3Cm0q2Y32nReqJZQI1TZUUYDARI994c17COtm1pLDwQsKk24deSICPn2BKVwPg", true, "CfDJ8HeiyxunoJNOiKpgMimE46fwhF8fJ7CMNTxmJrXurVURVmtJi7AfxPnuipfxJN1OUHprpEXcQj9KwaDaIJBp7bSFpo53U9v_NPel4Bk_spr7bn4AQ2uSIHoT8eUJ4Cwdow", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
+                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46eEliAD75xJNo0m_Nd1OX_qIxAKIyBGIxocS-_ZH6ovTjMTE2Gs2xhEVX6DylD74dy4w1QlLv8Iz1dbWX1nDFN5gjqXPPtgAGRq944_tytcJbMyfUcQCBaYBQHKtiHv2Po", "CfDJ8HeiyxunoJNOiKpgMimE46ddn-WRzxrAtS1Ahvy-IjhSMATGohmYT0wjt8ypL_Da9gw7TIPT1V_XklzDJTclr53lqF8pAI3lAU2JtncHS2pIrz4RNOwOq4-oYcV5bTU4tw", true, "CfDJ8HeiyxunoJNOiKpgMimE46degzIu2VbKVurGt12EAgEmlwXGOUbQ4_UJw4gbiVg7rkqu-aj_4vudiRWBk53qFcIY3lQTDdqOS0qzdpkDeJAQ3NwZwSh_JGN5HDEq6wv16g", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",
@@ -1275,8 +1275,8 @@ namespace TaskTrackerAPI.Migrations
                 columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
                 values: new object[,]
                 {
-                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(3117), 1, 1L },
-                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 18, 1, 35, 19, 428, DateTimeKind.Utc).AddTicks(4752), 1, 1L }
+                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(3055), 1, 1L },
+                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(4744), 1, 1L }
                 });
 
             migrationBuilder.CreateIndex(

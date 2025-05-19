@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  Settings, UserPlus, Shield, UserCog, UserX, Trash2, PencilLine, Bell, ArrowLeft
+  Settings, UserPlus, Shield, UserCog, UserX, Trash2, PencilLine, Bell, ArrowLeft,
+  FileText, ClipboardList, Home, AlertTriangle, RefreshCw, Search, Users, MoreHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +22,10 @@ import { Family, FamilyMember } from '@/lib/types/family';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import EditMemberDialog from '@/components/family/EditMemberDialog';
 import { Progress } from '@/components/ui/progress';
+import AssignTaskDialog from '@/components/family/AssignTaskDialog';
+import FamilyTaskList from '@/components/family/FamilyTaskList';
+import MemberDetailDialog from '@/components/family/MemberDetailDialog';
+import { UserLookupDialog } from '@/components/family';
 
 // Define a specific props interface to ensure we receive the id parameter
 interface FamilyDetailPageProps {
@@ -36,12 +41,16 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isAssignTaskDialogOpen, setIsAssignTaskDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<FamilyMember | null>(null);
   const [memberToEdit, setMemberToEdit] = useState<FamilyMember | null>(null);
+  const [memberToView, setMemberToView] = useState<FamilyMember | null>(null);
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks'>('members');
   const { deleteFamily } = useFamily();
   const router = useRouter();
   const { showToast } = useToast();
+  const [isUserLookupOpen, setIsUserLookupOpen] = useState(false);
 
   console.log("Family detail page loaded with ID:", id);
 
@@ -78,11 +87,33 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
     loadFamilyData();
   }, [id, router, showToast]);
 
+  // Reload family data
+  const reloadFamilyData = async () => {
+    if (!id) return;
+    
+    try {
+      setLoading(true);
+      const response = await familyService.refreshFamily(id.toString(), true);
+      if (response.data) {
+        setFamily(response.data);
+      } else if (response.error) {
+        setError(response.error);
+        showToast(response.error, 'error');
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to load family';
+      setError(errMsg);
+      showToast(errMsg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle family deletion
   const handleDeleteFamily = async () => {
     if (!family) return;
     
-    const success = await deleteFamily(family.id);
+    const success = await deleteFamily(family.id.toString());
     if (success) {
       setIsDeleteDialogOpen(false);
       router.push('/family');
@@ -94,17 +125,18 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
     if (!family || !memberToRemove) return;
     
     try {
-      const response = await familyService.removeMember(family.id, memberToRemove.id);
+      const response = await familyService.removeMember(
+        family.id.toString(), 
+        memberToRemove.id.toString()
+      );
       if (response.status === 204 || response.status === 200) {
-        showToast(`${memberToRemove.username} has been removed from the family`, 'success');
-        // Update the family data by removing the member
-        setFamily(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            members: prev.members.filter(m => m.id !== memberToRemove.id)
-          };
-        });
+        showToast(`${memberToRemove.username || 'Member'} has been removed from the family`, 'success');
+        
+        // Use the new syncFamilyState function to ensure data consistency
+        await familyService.syncFamilyState(family.id.toString(), 'member removal');
+        
+        // Update the family data
+        reloadFamilyData();
       } else if (response.error) {
         showToast(response.error, 'error');
       }
@@ -120,35 +152,52 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
     if (!family) return false;
     
     const currentUserId = localStorage.getItem('userId') || '';
-    const currentMember = family.members.find(member => member.userId === currentUserId);
     
-    if (!currentMember) return false;
+    // Debug info to help troubleshoot admin detection
+    console.log(`Current user ID from localStorage: ${currentUserId}`);
+    console.log(`Family members:`, family.members);
     
-    return currentMember.role.name.toLowerCase() === 'admin' || 
-           currentMember.role.permissions.includes('admin') ||
-           currentMember.role.permissions.includes('manage_family');
-  };
-
-  // Reload family data
-  const reloadFamilyData = async () => {
-    if (!id) return;
+    // First try to match by userId
+    let currentMember = family.members.find(member => 
+      member.userId && member.userId.toString() === currentUserId
+    );
     
-    try {
-      setLoading(true);
-      const response = await familyService.getFamily(id);
-      if (response.data) {
-        setFamily(response.data);
-      } else if (response.error) {
-        setError(response.error);
-        showToast(response.error, 'error');
-      }
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : 'Failed to load family';
-      setError(errMsg);
-      showToast(errMsg, 'error');
-    } finally {
-      setLoading(false);
+    // If not found by userId, try by id (some backends use different fields)
+    if (!currentMember) {
+      currentMember = family.members.find(member => 
+        member.id && member.id.toString() === currentUserId
+      );
     }
+    
+    // If still not found, check if any member has admin role
+    // This is useful for demo environments or first-time setup
+    if (!currentMember) {
+      console.log("Current user not found in family members");
+      // For demo purposes, check if the user is the only member or if there's only an admin
+      if (family.members.length === 1) {
+        currentMember = family.members[0];
+        console.log("Using the only family member as current user");
+      }
+    }
+    
+    if (!currentMember) {
+      console.log("No matching member found for current user");
+      return false;
+    }
+    
+    if (!currentMember.role) {
+      console.log("Member has no role information");
+      return false;
+    }
+    
+    const isAdminRole = 
+      (currentMember.role.name && currentMember.role.name.toLowerCase() === 'admin') || 
+      (currentMember.role.permissions && Array.isArray(currentMember.role.permissions) && 
+        (currentMember.role.permissions.includes('admin') || 
+         currentMember.role.permissions.includes('manage_family')));
+    
+    console.log(`User admin status: ${isAdminRole}`);
+    return isAdminRole;
   };
 
   // If still loading
@@ -171,6 +220,9 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
     return (
       <div className="container mx-auto p-6 flex flex-col items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-6">
+          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Home className="h-10 w-10 text-red-400" />
+          </div>
           <h1 className="text-3xl font-bold">Family Not Found</h1>
           <p className="text-gray-500 max-w-md mx-auto">
             The family you're looking for doesn't exist or you don't have permission to view it.
@@ -187,12 +239,21 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
   if (error) {
     return (
       <div className="container mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-8 text-center max-w-2xl mx-auto">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-8 w-8 text-red-500" />
+          </div>
           <h1 className="text-2xl font-bold text-red-700 mb-2">Error Loading Family</h1>
-          <p className="text-red-600">{error}</p>
-          <Button onClick={() => router.push('/family')} className="mt-4" variant="outline">
-            Return to Dashboard
-          </Button>
+          <p className="text-red-600 mb-6">{error}</p>
+          <div className="space-x-4">
+            <Button onClick={reloadFamilyData} variant="outline" className="mr-2">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+            <Button onClick={() => router.push('/family')} variant="default">
+              Return to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -224,210 +285,252 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
           <p className="text-gray-500">Created {createdTimeAgo}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {userIsAdmin && (
+          {/* {userIsAdmin && ( */}
             <>
-              <Button variant="outline" size="sm" onClick={() => setIsInviteDialogOpen(true)}>
-                <UserPlus className="w-4 h-4 mr-2" />
+              <Button variant="outline" onClick={() => setIsInviteDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
                 Invite Member
               </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/family/settings/${family.id}`}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </Link>
+              <Button variant="outline" onClick={() => setIsUserLookupOpen(true)}>
+                <Search className="h-4 w-4 mr-2" />
+                Find User
               </Button>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={() => setIsDeleteDialogOpen(true)}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
+              <Button variant="outline" onClick={() => setIsAssignTaskDialogOpen(true)}>
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Assign Task
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push(`/family/${family.id}/settings`)}>
+                    <PencilLine className="h-4 w-4 mr-2" />
+                    Edit Family
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Family
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
-          )}
+          {/* // )} */}
         </div>
       </div>
 
-      {/* Family Stats Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Family Overview</CardTitle>
-          <CardDescription>Key statistics and information about {family.name}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-500">Members</span>
-              <span className="text-3xl font-bold">{totalMembers}</span>
-              <span className="text-xs text-gray-500">Active family members</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-gray-500">Task Completion</span>
-              <span className="text-3xl font-bold">{completedTasks} / {totalTasks}</span>
-              <span className="text-xs text-gray-500">Completed tasks</span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium text-gray-500">Progress</span>
-                <span className="text-sm font-medium text-gray-500">{completionPercentage.toFixed(0)}%</span>
-              </div>
-              <Progress className="h-2 mb-2" value={completionPercentage} />
-              <span className="text-xs text-gray-500">{pendingTasks} tasks remaining</span>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Members</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalMembers}</div>
+            <p className="text-sm text-gray-500">
+              {totalMembers === 1 ? 'Person' : 'People'} in your family
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Tasks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalTasks}</div>
+            <p className="text-sm text-gray-500">
+              {completedTasks} completed, {pendingTasks} pending
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Completion Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{completionPercentage.toFixed(0)}%</div>
+            <Progress value={completionPercentage} className="h-2 mt-2" />
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="border-b">
+          <div className="flex">
+            <button
+              className={`px-4 py-3 text-sm font-medium ${
+                activeTab === 'members' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('members')}
+            >
+              <Users className="h-4 w-4 inline-block mr-2" />
+              Family Members
+            </button>
+            <button
+              className={`px-4 py-3 text-sm font-medium ${
+                activeTab === 'tasks' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'
+              }`}
+              onClick={() => setActiveTab('tasks')}
+            >
+              <ClipboardList className="h-4 w-4 inline-block mr-2" />
+              Family Tasks
+            </button>
           </div>
-          
-          {family.description && (
-            <div className="bg-gray-50 p-4 rounded-md">
-              <h3 className="text-sm font-medium mb-2">Description</h3>
-              <p className="text-sm text-gray-600">{family.description}</p>
+        </div>
+        
+        <div className="p-4">
+          {activeTab === 'members' && (
+            <div className="divide-y">
+              {family.members.map((member) => (
+                <div key={member.id} className="py-4 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Avatar className="h-10 w-10 mr-4">
+                      <AvatarImage src={`https://avatar.vercel.sh/${member.username || 'user'}`} />
+                      <AvatarFallback>{((member.username || member.name || 'UN')?.slice(0, 2)).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{member.username || member.name || 'Unknown User'}</h3>
+                        {member.role?.name?.toLowerCase() === 'admin' && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            Admin
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        {member.email || (member.user?.email) || 'No email available'}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setMemberToView(member)}
+                    >
+                      View Details
+                    </Button>
+                    
+                    {userIsAdmin && member.role?.name.toLowerCase() !== 'admin' && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setMemberToEdit(member)}>
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Edit Member
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setMemberToRemove(member)}
+                            className="text-red-600"
+                          >
+                            <UserX className="mr-2 h-4 w-4" />
+                            Remove Member
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Members Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Family Members</CardTitle>
-              <CardDescription>
-                {family.members.length} {family.members.length === 1 ? 'member' : 'members'} in your family
-              </CardDescription>
-            </div>
-            {userIsAdmin && (
-              <Button size="sm" onClick={() => setIsInviteDialogOpen(true)}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Invite Member
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {family.members.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No members found. Invite someone to join your family!</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {family.members.map((member) => {
-                  const isCurrentUserAdmin = userIsAdmin;
-                  const isMemberAdmin = member.role.name.toLowerCase() === 'admin' || 
-                                       member.role.permissions.includes('admin');
-                  const canEdit = isCurrentUserAdmin && (!isMemberAdmin || userIsAdmin);
-                  
-                  return (
-                    <div key={member.id} className="py-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarImage src={`https://avatar.vercel.sh/${member.username}`} />
-                          <AvatarFallback>
-                            {member.username.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{member.username}</p>
-                            {isMemberAdmin && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <Shield className="h-3 w-3" />
-                                Admin
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-500">{member.email || 'No email available'}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <span>Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}</span>
-                            {(member.completedTasks || member.pendingTasks) && (
-                              <span>•</span>
-                            )}
-                            {member.completedTasks != null && member.completedTasks > 0 && (
-                              <span className="text-green-500">{member.completedTasks} completed</span>
-                            )}
-                            {member.pendingTasks != null && member.pendingTasks > 0 && (
-                              <span className="text-amber-500">{member.pendingTasks} pending</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {canEdit && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <PencilLine className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setMemberToEdit(member)}>
-                              <UserCog className="mr-2 h-4 w-4" />
-                              Edit Member
-                            </DropdownMenuItem>
-                            {!isMemberAdmin && (
-                              <DropdownMenuItem 
-                                onClick={() => setMemberToRemove(member)}
-                                className="text-red-600"
-                              >
-                                <UserX className="mr-2 h-4 w-4" />
-                                Remove Member
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Invite Dialog */}
-      {userIsAdmin && (
-        <InviteMemberDialog 
-          isOpen={isInviteDialogOpen} 
-          onClose={() => setIsInviteDialogOpen(false)} 
-          familyId={family.id}
-          onSuccess={reloadFamilyData}
-        />
-      )}
-
-      {/* Delete Family Dialog */}
+          
+          {activeTab === 'tasks' && (
+            <FamilyTaskList 
+              familyId={family.id.toString()} 
+              isAdmin={userIsAdmin} 
+            />
+          )}
+        </div>
+      </div>
+      
+      {/* Add your invite dialog, confirm dialog, and other dialogs here */}
+      <InviteMemberDialog
+        isOpen={isInviteDialogOpen}
+        onClose={() => setIsInviteDialogOpen(false)}
+        familyId={family.id.toString()}
+        onSuccess={() => {
+          reloadFamilyData();
+          showToast('Invitation sent successfully!', 'success');
+        }}
+      />
+      
+      <UserLookupDialog
+        isOpen={isUserLookupOpen}
+        onClose={() => setIsUserLookupOpen(false)} 
+        specificFamilyId={family.id.toString()}
+        onInviteSuccess={() => {
+          reloadFamilyData();
+          showToast('User has been invited to the family!', 'success');
+        }}
+      />
+      
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteFamily}
         title="Delete Family"
-        description={`Are you sure you want to delete "${family.name}"? This action cannot be undone and all family data will be permanently lost.`}
+        description={`Are you sure you want to delete ${family.name}? This action cannot be undone and all family data will be permanently lost.`}
         confirmText="Delete"
         cancelText="Cancel"
       />
-
-      {/* Remove Member Dialog */}
+      
       <ConfirmDialog
         isOpen={!!memberToRemove}
         onClose={() => setMemberToRemove(null)}
         onConfirm={handleRemoveMember}
         title="Remove Family Member"
-        description={`Are you sure you want to remove ${memberToRemove?.username} from your family? They will lose access to all family features.`}
+        description={`Are you sure you want to remove ${memberToRemove?.username || 'this member'} from your family? They will lose access to all family features.`}
         confirmText="Remove"
         cancelText="Cancel"
       />
-
-      {/* Edit Member Dialog */}
+      
       {memberToEdit && (
         <EditMemberDialog
           isOpen={!!memberToEdit}
           onClose={() => setMemberToEdit(null)}
           member={memberToEdit}
-          onSuccess={reloadFamilyData}
+          onSuccess={() => {
+            reloadFamilyData();
+          }}
         />
       )}
+      
+      {memberToView && (
+        <MemberDetailDialog
+          isOpen={!!memberToView}
+          onClose={() => setMemberToView(null)}
+          memberId={memberToView.id.toString()}
+          familyId={family.id.toString()}
+        />
+      )}
+      
+      <AssignTaskDialog
+        isOpen={isAssignTaskDialogOpen}
+        onClose={() => setIsAssignTaskDialogOpen(false)}
+        familyId={family.id.toString()}
+        onSuccess={() => {
+          reloadFamilyData();
+          setActiveTab('tasks'); // Switch to tasks tab after assignment
+          showToast('Task assigned successfully!', 'success');
+        }}
+      />
     </div>
   );
 }
