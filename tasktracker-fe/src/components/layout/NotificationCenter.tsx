@@ -10,7 +10,11 @@ import {
   Loader2,
   CalendarClock,
   CheckCircle2,
-  Home
+  Home,
+  User,
+  Mail,
+  Settings,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +34,7 @@ import { familyService } from '@/lib/services/familyService';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/useToast';
 import { useRouter } from 'next/navigation';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -109,8 +114,16 @@ export default function NotificationCenter() {
       setNotifications(prev => prev.map(notif => 
         notif.id === id ? { ...notif, isRead: true } : notif
       ));
+      showToast(
+        "Notification marked as read",
+        "success"
+      );
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      showToast(
+        "Failed to mark notification as read",
+        "error"
+      );
     }
   };
 
@@ -225,7 +238,7 @@ export default function NotificationCenter() {
               onClick={() => declineInvitation(notification)}
               disabled={isProcessing}
             >
-              {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
+              {isProcessing ? <Spinner size="xs" className="mr-1" /> : <X className="h-3 w-3 mr-1" />}
               Decline
             </Button>
             <Button 
@@ -234,7 +247,7 @@ export default function NotificationCenter() {
               onClick={() => acceptInvitation(notification)}
               disabled={isProcessing}
             >
-              {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+              {isProcessing ? <Spinner size="xs" className="mr-1" /> : <Check className="h-3 w-3 mr-1" />}
               Accept
             </Button>
           </div>
@@ -281,7 +294,7 @@ export default function NotificationCenter() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild className="no-auto-focus-trap">
         <Button variant="ghost" size="sm" className="relative">
           {unreadCount > 0 ? (
             <>
@@ -295,10 +308,10 @@ export default function NotificationCenter() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end">
+      <DropdownMenuContent className="w-80" align="end" sideOffset={8}>
         <DropdownMenuLabel className="flex justify-between items-center">
           <span>Notifications</span>
-          {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          {loading && <Spinner size="sm" className="ml-2" />}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -330,13 +343,18 @@ export default function NotificationCenter() {
           >
             {loading ? (
               <>
-                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                <Spinner size="xs" className="mr-2 animate-spin" />
                 Loading...
               </>
             ) : (
               'Refresh Notifications'
             )}
           </Button>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <a href="/notifications" className="flex justify-center items-center py-2">
+            View all notifications
+          </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

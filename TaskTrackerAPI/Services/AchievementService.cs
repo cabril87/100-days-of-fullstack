@@ -17,7 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Gamification;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Gamification;
 using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Services
@@ -43,7 +43,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 IEnumerable<Achievement> achievements = await _context.Achievements
-                    .Where(a => a.IsActive)
+                    .Where(a => !a.IsDeleted)
                     .ToListAsync();
 
                 return _mapper.Map<IEnumerable<AchievementDTO>>(achievements);
@@ -60,7 +60,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 Achievement? achievement = await _context.Achievements
-                    .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
+                    .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
                 if (achievement == null)
                 {
@@ -81,7 +81,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 IEnumerable<Achievement> achievements = await _context.Achievements
-                    .Where(a => a.Category.ToLower() == type.ToLower() && a.IsActive)
+                    .Where(a => a.Category.ToLower() == type.ToLower() && !a.IsDeleted)
                     .ToListAsync();
 
                 return _mapper.Map<IEnumerable<AchievementDTO>>(achievements);
@@ -104,9 +104,10 @@ namespace TaskTrackerAPI.Services
                     Category = achievementDto.Category,
                     PointValue = achievementDto.PointValue,
                     IconUrl = achievementDto.IconUrl,
-                    TargetValue = achievementDto.TargetValue,
-                    Difficulty = achievementDto.Difficulty,
-                    CreatedAt = DateTime.UtcNow
+                    Criteria = achievementDto.TargetValue.ToString(),
+                    Difficulty = (AchievementDifficulty)achievementDto.Difficulty,
+                    CreatedAt = DateTime.UtcNow,
+                    IsDeleted = false
                 };
 
                 _context.Achievements.Add(achievement);
@@ -138,8 +139,8 @@ namespace TaskTrackerAPI.Services
                 achievement.Category = achievementDto.Category;
                 achievement.PointValue = achievementDto.PointValue;
                 achievement.IconUrl = achievementDto.IconUrl;
-                achievement.TargetValue = achievementDto.TargetValue;
-                achievement.Difficulty = achievementDto.Difficulty;
+                achievement.Criteria = achievementDto.TargetValue.ToString();
+                achievement.Difficulty = (AchievementDifficulty)achievementDto.Difficulty;
                 achievement.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -164,7 +165,7 @@ namespace TaskTrackerAPI.Services
                     return false;
                 }
 
-                achievement.IsActive = false;
+                achievement.IsDeleted = true;
                 achievement.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -184,7 +185,7 @@ namespace TaskTrackerAPI.Services
                 int userIdInt = int.Parse(userId);
                 IEnumerable<UserAchievement> userAchievements = await _context.UserAchievements
                     .Include(ua => ua.Achievement)
-                    .Where(ua => ua.UserId == userIdInt && ua.Achievement != null && ua.Achievement.IsActive)
+                    .Where(ua => ua.UserId == userIdInt && ua.Achievement != null && !ua.Achievement.IsDeleted)
                     .ToListAsync();
                 
                 return _mapper.Map<IEnumerable<UserAchievementDTO>>(userAchievements);
@@ -203,39 +204,43 @@ namespace TaskTrackerAPI.Services
                 int userIdInt = int.Parse(userId);
                 UserAchievement? userAchievement = await _context.UserAchievements
                     .FirstOrDefaultAsync(ua => ua.UserId == userIdInt && ua.AchievementId == achievementId);
-
+                
                 if (userAchievement == null)
                 {
-                    // Create a new user achievement and mark it as unlocked if progress is 100%
+                    // Create new user achievement record
                     userAchievement = new UserAchievement
                     {
                         UserId = userIdInt,
                         AchievementId = achievementId,
-                        UnlockedAt = progress >= 100 ? DateTime.UtcNow : default
+                        Progress = 0,
+                        IsCompleted = false,
+                        StartedAt = DateTime.UtcNow
                     };
+                    
                     _context.UserAchievements.Add(userAchievement);
                 }
-                else if (progress >= 100 && userAchievement.UnlockedAt == default)
+                
+                // Ensure progress is between 0 and 100
+                progress = Math.Clamp(progress, 0, 100);
+                
+                // Update progress
+                userAchievement.Progress = progress;
+                
+                // If progress reached 100%, mark as completed
+                if (progress >= 100 && !userAchievement.IsCompleted)
                 {
-                    // Update unlocked date if progress reaches 100%
-                    userAchievement.UnlockedAt = DateTime.UtcNow;
-
-                    // Award points for completing the achievement
-                    Achievement? achievement = await _context.Achievements.FindAsync(achievementId);
-                    if (achievement != null)
-                    {
-                        // TODO: Award points to the user
-                        // This would involve creating a PointTransaction entry
-                        // or calling another service to handle point awards
-                    }
+                    userAchievement.IsCompleted = true;
+                    userAchievement.CompletedAt = DateTime.UtcNow;
+                    
+                    // TODO: Award points for completing achievement
                 }
-
+                
                 await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating progress for user {UserId} on achievement {AchievementId}", 
+                _logger.LogError(ex, "Error updating achievement progress for user {UserId}, achievement {AchievementId}",
                     userId, achievementId);
                 throw;
             }
@@ -265,9 +270,9 @@ namespace TaskTrackerAPI.Services
 
                 foreach (Achievement achievement in relevantAchievements)
                 {
-                    // Skip already unlocked achievements
+                    // Skip already completed achievements
                     if (userAchievementDict.TryGetValue(achievement.Id, out UserAchievement? userAchievement) && 
-                        userAchievement != null && userAchievement.UnlockedAt != default)
+                        userAchievement != null && userAchievement.IsCompleted)
                     {
                         continue;
                     }
@@ -279,16 +284,20 @@ namespace TaskTrackerAPI.Services
                         {
                             UserId = userIdInt,
                             AchievementId = achievement.Id,
-                            UnlockedAt = default
+                            Progress = 0,
+                            IsCompleted = false,
+                            StartedAt = DateTime.UtcNow
                         };
                         _context.UserAchievements.Add(userAchievement);
                         userAchievementDict[achievement.Id] = userAchievement;
                     }
 
-                    // Check if the activity value meets or exceeds the target value for unlocking
-                    if (activityValue.HasValue && activityValue.Value >= achievement.TargetValue)
+                    // Check if the activity value meets or exceeds the target value for completing
+                    if (activityValue.HasValue && int.TryParse(achievement.Criteria, out int targetValue) && activityValue.Value >= targetValue)
                     {
-                        userAchievement.UnlockedAt = DateTime.UtcNow;
+                        userAchievement.Progress = 100;
+                        userAchievement.IsCompleted = true;
+                        userAchievement.CompletedAt = DateTime.UtcNow;
                         // TODO: Award points
                     }
                 }
@@ -311,11 +320,8 @@ namespace TaskTrackerAPI.Services
                 int userIdInt = int.Parse(userId);
                 IEnumerable<UserAchievement> userAchievements = await _context.UserAchievements
                     .Include(ua => ua.Achievement)
-                    .Where(ua => 
-                        ua.UserId == userIdInt && 
-                        ua.Achievement != null && ua.Achievement.IsActive && 
-                        ua.UnlockedAt != default)
-                    .OrderByDescending(ua => ua.UnlockedAt)
+                    .Where(ua => ua.UserId == userIdInt && ua.IsCompleted && ua.CompletedAt != null)
+                    .OrderByDescending(ua => ua.CompletedAt)
                     .Take(count)
                     .ToListAsync();
                 

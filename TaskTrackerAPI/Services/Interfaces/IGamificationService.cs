@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Gamification;
 
 namespace TaskTrackerAPI.Services.Interfaces
 {
@@ -23,13 +24,13 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task UpdateStreakAsync(int userId);
         
         // Achievements
-        Task<List<UserAchievement>> GetUserAchievementsAsync(int userId);
-        Task<List<Achievement>> GetAvailableAchievementsAsync(int userId);
-        Task<UserAchievement> UnlockAchievementAsync(int userId, int achievementId);
+        Task<List<Models.Gamification.UserAchievement>> GetUserAchievementsAsync(int userId);
+        Task<List<Models.Gamification.Achievement>> GetAvailableAchievementsAsync(int userId);
+        Task<Models.Gamification.UserAchievement> UnlockAchievementAsync(int userId, int achievementId);
         
         // Badges
-        Task<List<UserBadge>> GetUserBadgesAsync(int userId);
-        Task<UserBadge> AwardBadgeAsync(int userId, int badgeId);
+        Task<List<Models.UserBadge>> GetUserBadgesAsync(int userId);
+        Task<Models.UserBadge> AwardBadgeAsync(int userId, int badgeId);
         Task<bool> ToggleBadgeDisplayAsync(int userId, int badgeId, bool isDisplayed);
         
         // Rewards

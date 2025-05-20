@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TaskList } from '@/components/tasks/TaskList';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { useTasks } from '@/lib/providers/TaskProvider';
 import { Task } from '@/lib/types/task';
 import Link from 'next/link';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function TasksPage() {
   const router = useRouter();
@@ -47,8 +48,8 @@ export default function TasksPage() {
     return (
       <div className="flex-center min-h-[60vh]">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-navy mb-4"></div>
-          <p className="text-brand-navy-dark dark:text-brand-cream text-sm">Loading your tasks...</p>
+          <Spinner size="lg" />
+          <p className="text-brand-navy-dark dark:text-brand-cream text-sm mt-4">Loading your tasks...</p>
         </div>
       </div>
     );
@@ -58,8 +59,8 @@ export default function TasksPage() {
     return (
       <div className="flex-center min-h-[60vh]">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-navy mb-4"></div>
-          <p className="text-brand-navy-dark dark:text-brand-cream text-sm">Please wait...</p>
+          <Spinner size="lg" />
+          <p className="text-brand-navy-dark dark:text-brand-cream text-sm mt-4">Please wait...</p>
         </div>
       </div>
     );

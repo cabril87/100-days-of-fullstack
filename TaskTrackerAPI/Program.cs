@@ -196,6 +196,9 @@ public class Program
         builder.Services.AddScoped<IFamilyAchievementRepository, FamilyAchievementRepository>();
         builder.Services.AddScoped<IFamilyCalendarRepository, FamilyCalendarRepository>();
         
+        // Add notification preference repository
+        builder.Services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
+        
         // Register AuthHelper (critical dependency)
         builder.Services.AddScoped<AuthHelper>();
 
@@ -211,6 +214,10 @@ public class Program
         builder.Services.AddScoped<IFamilyService, FamilyService>();
         builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
         builder.Services.AddScoped<IInvitationService, InvitationService>();
+        
+        // Add notification preference service
+        builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+        
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
@@ -568,6 +575,13 @@ public class Program
 
                 if (app.Environment.IsDevelopment())
                 {
+                    // Apply any pending migrations
+                    logger.LogInformation("Applying pending migrations...");
+                    context.Database.Migrate();
+                }
+                else 
+                {
+                    // Just make sure the database exists
                     context.Database.EnsureCreated();
                 }
                 

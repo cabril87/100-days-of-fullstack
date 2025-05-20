@@ -135,5 +135,59 @@ namespace TaskTrackerAPI.Controllers.V1
                 return StatusCode(500, "An error occurred while declining the invitation.");
             }
         }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult> CancelInvitation(int id)
+        {
+            try
+            {
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in CancelInvitation");
+                    return Unauthorized("User authentication failed");
+                }
+                
+                bool result = await _invitationService.DeleteAsync(id, userId);
+                
+                if (!result)
+                {
+                    return BadRequest("Failed to cancel invitation. You may not have permission or the invitation does not exist.");
+                }
+
+                return Ok(new { message = "Invitation canceled successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error canceling invitation: {Message}", ex.Message);
+                return StatusCode(500, "An error occurred while canceling the invitation.");
+            }
+        }
+
+        [HttpPost("{id}/resend")]
+        public async Task<ActionResult> ResendInvitation(int id)
+        {
+            try
+            {
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in ResendInvitation");
+                    return Unauthorized("User authentication failed");
+                }
+                
+                bool result = await _invitationService.ResendInvitationAsync(id, userId);
+                
+                if (!result)
+                {
+                    return BadRequest("Failed to resend invitation. You may not have permission or the invitation does not exist.");
+                }
+
+                return Ok(new { message = "Invitation resent successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resending invitation: {Message}", ex.Message);
+                return StatusCode(500, "An error occurred while resending the invitation.");
+            }
+        }
     }
 } 

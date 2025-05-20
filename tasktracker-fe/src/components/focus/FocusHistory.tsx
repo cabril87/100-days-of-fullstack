@@ -7,6 +7,7 @@ import { FocusSession } from '@/lib/services/focusService';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { Spinner } from '@/components/ui/spinner';
 
 export function FocusHistory() {
   const { fetchHistory, fetchSessionDistractions } = useFocus();
@@ -86,8 +87,8 @@ export function FocusHistory() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center p-6">
+        <Spinner size="lg" />
       </div>
     );
   }

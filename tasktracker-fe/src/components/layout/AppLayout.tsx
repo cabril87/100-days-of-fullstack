@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/providers/AuthContext';
+import { useAuth } from '@/lib/hooks/useAuth';
 import Header from './Header';
 import Footer from './Footer';
+import { useEffect } from 'react';
+import { Spinner } from '@/components/ui/spinner';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -23,11 +25,9 @@ export default function AppLayout({ children, requireAuth = true }: AppLayoutPro
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Spinner size="lg" />
+        <p className="mt-4 text-gray-600">Loading...</p>
       </div>
     );
   }

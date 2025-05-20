@@ -1,16 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, AlertCircle, Briefcase, UserCheck, Trash2, Lock, Archive } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Briefcase, UserCheck, Trash2, Lock, Archive } from 'lucide-react';
 import { useToast } from '@/lib/hooks/useToast';
 import { taskService } from '@/lib/services/taskService';
 import { familyService } from '@/lib/services/familyService';
 import { Task } from '@/lib/types/task';
 import { formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
+import { Spinner } from '@/components/ui/spinner';
 
 interface FamilyTaskListProps {
   familyId: string;
@@ -148,15 +149,9 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
   
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Family Tasks</CardTitle>
-          <CardDescription>Tasks assigned to family members</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-8">
+        <Spinner size="lg" />
+      </div>
     );
   }
   

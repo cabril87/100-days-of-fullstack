@@ -29,7 +29,7 @@ namespace TaskTrackerAPI.Models.Gamification
         /// User ID
         
         [Required]
-        public string UserId { get; set; } = string.Empty;
+        public int UserId { get; set; } = 0;
         
         
         /// Achievement ID
@@ -61,6 +61,9 @@ namespace TaskTrackerAPI.Models.Gamification
         public DateTime? CompletedAt { get; set; }
         
         // Navigation properties
+        [ForeignKey("UserId")]
+        public virtual User? User { get; set; }
+        
         [ForeignKey("AchievementId")]
         public virtual Achievement? Achievement { get; set; }
     }

@@ -53,7 +53,6 @@ namespace TaskTrackerAPI.DTOs.Gamification
         
         /// Target value required to unlock the achievement
         
-        [Required]
         public int TargetValue { get; set; }
 
         

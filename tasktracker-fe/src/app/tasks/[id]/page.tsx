@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTasks } from '@/lib/providers/TaskProvider';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { Task } from '@/lib/types/task';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import Link from 'next/link';
+import { Spinner } from '@/components/ui/spinner';
 
 // Helper to normalize task data from API
 const normalizeTaskData = (task: Task): Task => {
@@ -180,7 +181,7 @@ export default function TaskDetailPage() {
   if (authLoading || loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -188,7 +189,7 @@ export default function TaskDetailPage() {
   if (!user) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <Spinner size="lg" />
       </div>
     );
   }

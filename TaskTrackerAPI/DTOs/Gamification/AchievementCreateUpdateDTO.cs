@@ -46,6 +46,13 @@ namespace TaskTrackerAPI.DTOs.Gamification
         public int PointValue { get; set; } 
 
         
+        /// Target value required to unlock the achievement
+        
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Target value must be at least 1")]
+        public int TargetValue { get; set; } = 1;
+
+        
         /// URI to the achievement's icon
         
         [StringLength(255, ErrorMessage = "Icon URL cannot exceed 255 characters")]
@@ -57,12 +64,5 @@ namespace TaskTrackerAPI.DTOs.Gamification
         [Required]
         [Range(0, 4, ErrorMessage = "Difficulty must be between 0 and 4, representing VeryEasy to VeryHard")]
         public int Difficulty { get; set; }
-
-        
-        /// Target value required to unlock the achievement
-        
-        [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Target value must be greater than 0")]
-        public int TargetValue { get; set; }
     }
 } 

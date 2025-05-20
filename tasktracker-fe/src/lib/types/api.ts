@@ -1,10 +1,11 @@
-
 export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   status?: number;
   details?: any; 
   headers?: Headers;
+  cached?: boolean;
+  originalError?: string;
 }
 
 export interface PaginationMeta {

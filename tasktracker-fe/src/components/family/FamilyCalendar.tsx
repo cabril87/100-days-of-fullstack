@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState, useCallback } from 'react';
 import { FamilyCalendarEvent, familyCalendarService } from '@/lib/services/familyCalendarService';
 import { useToast } from '@/lib/providers/ToastProvider';

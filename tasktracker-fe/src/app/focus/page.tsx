@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { FocusMode } from '@/components/focus/FocusMode';
 import { FocusStats } from '@/components/focus/FocusStats';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function FocusPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -19,8 +20,8 @@ export default function FocusPage() {
 
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <Spinner size="lg" />
       </div>
     );
   }

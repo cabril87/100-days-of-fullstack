@@ -172,14 +172,14 @@ namespace TaskTrackerAPI.Services
         private async Task CheckForStreakAchievements(int userId, int currentStreak)
         {
             // Find achievements related to streaks
-            List<Achievement> streakAchievements = await _context.Achievements
+            List<Models.Gamification.Achievement> streakAchievements = await _context.Achievements
                 .Where(a => a.Category == "Streak" && !_context.UserAchievements.Any(ua => ua.UserId == userId && ua.AchievementId == a.Id))
                 .ToListAsync();
                 
-            foreach (Achievement achievement in streakAchievements)
+            foreach (Models.Gamification.Achievement achievement in streakAchievements)
             {
-                // Assuming the threshold is stored in the achievement target value
-                if (currentStreak >= achievement.TargetValue)
+                // Check if the streak meets the criteria
+                if (int.TryParse(achievement.Criteria, out int targetValue) && currentStreak >= targetValue)
                 {
                     await UnlockAchievementAsync(userId, achievement.Id);
                 }
@@ -190,57 +190,68 @@ namespace TaskTrackerAPI.Services
         
         #region Achievements
 
-        public async Task<List<UserAchievement>> GetUserAchievementsAsync(int userId)
+        public async Task<List<Models.Gamification.UserAchievement>> GetUserAchievementsAsync(int userId)
         {
             return await _context.UserAchievements
                 .Include(ua => ua.Achievement)
                 .Where(ua => ua.UserId == userId)
-                .OrderByDescending(ua => ua.UnlockedAt)
+                .OrderByDescending(ua => ua.CompletedAt)
                 .ToListAsync();
         }
 
-        public async Task<List<Achievement>> GetAvailableAchievementsAsync(int userId)
+        public async Task<List<Models.Gamification.Achievement>> GetAvailableAchievementsAsync(int userId)
         {
             // Get all achievements except those already unlocked by the user
             List<int> unlockedAchievementIds = await _context.UserAchievements
-                .Where(ua => ua.UserId == userId)
+                .Where(ua => ua.UserId == userId && ua.IsCompleted)
                 .Select(ua => ua.AchievementId)
                 .ToListAsync();
                 
             return await _context.Achievements
-                .Where(a => !unlockedAchievementIds.Contains(a.Id))
+                .Where(a => !unlockedAchievementIds.Contains(a.Id) && !a.IsDeleted)
                 .OrderBy(a => a.Category)
                 .ThenBy(a => a.Name)
                 .ToListAsync();
         }
 
-        public async Task<UserAchievement> UnlockAchievementAsync(int userId, int achievementId)
+        public async Task<Models.Gamification.UserAchievement> UnlockAchievementAsync(int userId, int achievementId)
         {
             // Check if already unlocked
-            UserAchievement? existingUnlock = await _context.UserAchievements
+            Models.Gamification.UserAchievement? existingUnlock = await _context.UserAchievements
                 .FirstOrDefaultAsync(ua => ua.UserId == userId && ua.AchievementId == achievementId);
                 
-            if (existingUnlock != null)
+            if (existingUnlock != null && existingUnlock.IsCompleted)
             {
                 throw new InvalidOperationException("Achievement already unlocked");
             }
             
             // Get the achievement
-            Achievement? achievement = await _context.Achievements.FindAsync(achievementId);
+            Models.Gamification.Achievement? achievement = await _context.Achievements.FindAsync(achievementId);
             if (achievement == null)
             {
                 throw new ArgumentException("Achievement not found", nameof(achievementId));
             }
             
-            // Create the user achievement record
-            UserAchievement userAchievement = new UserAchievement
+            // Create or update the user achievement record
+            if (existingUnlock == null)
             {
-                UserId = userId,
-                AchievementId = achievementId,
-                UnlockedAt = DateTime.UtcNow
-            };
-            
-            _context.UserAchievements.Add(userAchievement);
+                existingUnlock = new Models.Gamification.UserAchievement
+                {
+                    UserId = userId,
+                    AchievementId = achievementId,
+                    Progress = 100,
+                    IsCompleted = true,
+                    StartedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow
+                };
+                _context.UserAchievements.Add(existingUnlock);
+            }
+            else
+            {
+                existingUnlock.Progress = 100;
+                existingUnlock.IsCompleted = true;
+                existingUnlock.CompletedAt = DateTime.UtcNow;
+            }
             
             // Award points for unlocking this achievement
             await AddPointsAsync(userId, achievement.PointValue, "achievement", $"Unlocked achievement: {achievement.Name}");
@@ -248,22 +259,22 @@ namespace TaskTrackerAPI.Services
             await _context.SaveChangesAsync();
             
             // Load the achievement relationship
-            await _context.Entry(userAchievement).Reference(ua => ua.Achievement).LoadAsync();
+            await _context.Entry(existingUnlock).Reference(ua => ua.Achievement).LoadAsync();
             
-            return userAchievement;
+            return existingUnlock;
         }
         
         private async Task UnlockLevelBasedAchievements(int userId, int level)
         {
             // Find achievements related to level milestones
-            List<Achievement> levelAchievements = await _context.Achievements
+            List<Models.Gamification.Achievement> levelAchievements = await _context.Achievements
                 .Where(a => a.Category == "Level" && !_context.UserAchievements.Any(ua => ua.UserId == userId && ua.AchievementId == a.Id))
                 .ToListAsync();
                 
-            foreach (Achievement achievement in levelAchievements)
+            foreach (Models.Gamification.Achievement achievement in levelAchievements)
             {
-                // Compare current level against achievement target value
-                if (level >= achievement.TargetValue)
+                // Check if the level meets the criteria
+                if (int.TryParse(achievement.Criteria, out int targetValue) && level >= targetValue)
                 {
                     try
                     {
@@ -281,7 +292,7 @@ namespace TaskTrackerAPI.Services
         
         #region Badges
 
-        public async Task<List<UserBadge>> GetUserBadgesAsync(int userId)
+        public async Task<List<Models.UserBadge>> GetUserBadgesAsync(int userId)
         {
             return await _context.UserBadges
                 .Include(ub => ub.Badge)
@@ -290,10 +301,10 @@ namespace TaskTrackerAPI.Services
                 .ToListAsync();
         }
 
-        public async Task<UserBadge> AwardBadgeAsync(int userId, int badgeId)
+        public async Task<Models.UserBadge> AwardBadgeAsync(int userId, int badgeId)
         {
             // Check if already awarded
-            UserBadge? existingBadge = await _context.UserBadges
+            Models.UserBadge? existingBadge = await _context.UserBadges
                 .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
                 
             if (existingBadge != null)
@@ -302,14 +313,14 @@ namespace TaskTrackerAPI.Services
             }
             
             // Get the badge
-            Badge? badge = await _context.Badges.FindAsync(badgeId);
+            Models.Badge? badge = await _context.Badges.FindAsync(badgeId);
             if (badge == null)
             {
                 throw new ArgumentException("Badge not found", nameof(badgeId));
             }
             
             // Create the user badge record
-            UserBadge userBadge = new UserBadge
+            Models.UserBadge userBadge = new Models.UserBadge
             {
                 UserId = userId,
                 BadgeId = badgeId,
@@ -332,7 +343,7 @@ namespace TaskTrackerAPI.Services
 
         public async Task<bool> ToggleBadgeDisplayAsync(int userId, int badgeId, bool isDisplayed)
         {
-            UserBadge? userBadge = await _context.UserBadges
+            Models.UserBadge? userBadge = await _context.UserBadges
                 .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
                 
             if (userBadge == null)
@@ -701,8 +712,8 @@ namespace TaskTrackerAPI.Services
                 .Select(ua => ua.AchievementId)
                 .ToListAsync();
                 
-            Achievement? nextAchievement = await _context.Achievements
-                .Where(a => !unlockedAchievements.Contains(a.Id))
+            Models.Gamification.Achievement? nextAchievement = await _context.Achievements
+                .Where(a => !unlockedAchievements.Contains(a.Id) && !a.IsDeleted)
                 .OrderBy(a => a.Difficulty)
                 .FirstOrDefaultAsync();
                 
@@ -712,13 +723,13 @@ namespace TaskTrackerAPI.Services
                 {
                     Id = suggestionId++,
                     Type = "achievement",
-                    Title = "Unlock an achievement",
-                    Description = $"Try to unlock \"{nextAchievement.Name}\": {nextAchievement.Description}",
+                    Title = $"Unlock '{nextAchievement.Name}'",
+                    Description = nextAchievement.Description,
                     Points = nextAchievement.PointValue,
-                    ActionType = "unlock_achievement",
+                    ActionType = "achievement",
                     ActionId = nextAchievement.Id,
                     PotentialPoints = nextAchievement.PointValue,
-                    RelevanceScore = 0.7,
+                    RelevanceScore = 0.8,
                     IsCompleted = false,
                     CreatedAt = DateTime.UtcNow
                 });

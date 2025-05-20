@@ -133,18 +133,18 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                IEnumerable<UserAchievement> achievements = await _gamificationService.GetUserAchievementsAsync(userId);
+                IEnumerable<Models.Gamification.UserAchievement> achievements = await _gamificationService.GetUserAchievementsAsync(userId);
                 
                 List<UserAchievementDTO> result = new List<UserAchievementDTO>();
-                foreach (UserAchievement ua in achievements)
+                foreach (Models.Gamification.UserAchievement ua in achievements)
                 {
                     result.Add(new UserAchievementDTO
                     {
                         Id = ua.Id,
                         UserId = ua.UserId,
                         AchievementId = ua.AchievementId,
-                        IsCompleted = true,
-                        CompletedAt = ua.UnlockedAt,
+                        IsCompleted = ua.IsCompleted,
+                        CompletedAt = ua.CompletedAt,
                         Achievement = new AchievementDTO
                         {
                             Id = ua.Achievement?.Id ?? 0,
@@ -173,10 +173,10 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                IEnumerable<Achievement> achievements = await _gamificationService.GetAvailableAchievementsAsync(userId);
+                IEnumerable<Models.Gamification.Achievement> achievements = await _gamificationService.GetAvailableAchievementsAsync(userId);
                 
                 List<AchievementDTO> result = new List<AchievementDTO>();
-                foreach (Achievement achievement in achievements)
+                foreach (Models.Gamification.Achievement achievement in achievements)
                 {
                     // Skip admin-only achievements for regular users
                     // Use appropriate property - IsHidden, IsSecret, or check visibility another way

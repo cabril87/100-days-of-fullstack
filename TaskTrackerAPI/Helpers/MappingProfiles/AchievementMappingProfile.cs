@@ -10,7 +10,7 @@
  */
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Gamification;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Gamification;
 
 namespace TaskTrackerAPI.Helpers.MappingProfiles
 {

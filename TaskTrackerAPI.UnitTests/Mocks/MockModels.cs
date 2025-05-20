@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TaskTrackerAPI.Models;
-using TaskTrackerAPI.Models.DTOs;
+using TaskTrackerAPI.Models.Gamification;
 
 namespace TaskTrackerAPI.UnitTests.Mocks
 {
@@ -33,8 +33,8 @@ namespace TaskTrackerAPI.UnitTests.Mocks
         public TaskItem? Task { get; set; }
     }
     
-    // Achievement
-    public class Achievement
+    // Achievement - renamed to MockAchievement to avoid conflicts with the Gamification namespace
+    public class MockAchievement
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
@@ -45,13 +45,13 @@ namespace TaskTrackerAPI.UnitTests.Mocks
         public int RequiredCount { get; set; } = 1;
     }
     
-    // User Achievement
-    public class UserAchievement
+    // User Achievement - renamed to MockUserAchievement to avoid conflicts
+    public class MockUserAchievement
     {
         public int Id { get; set; }
         public int UserId { get; set; }
         public int AchievementId { get; set; }
-        public Achievement Achievement { get; set; } = null!;
+        public MockAchievement Achievement { get; set; } = null!;
         public bool IsComplete { get; set; }
         public int CurrentProgress { get; set; }
         public DateTime? UnlockedAt { get; set; }

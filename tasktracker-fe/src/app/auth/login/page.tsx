@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthContext';
+import { Spinner } from '@/components/ui/spinner';
 
 const loginSchema = z.object({
   email: z
@@ -83,7 +84,7 @@ export default function Login() {
   if (isLoading || isRedirecting) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <Spinner size="lg" />
       </div>
     );
   }

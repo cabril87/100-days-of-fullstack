@@ -165,34 +165,86 @@ export const familyService = {
     try {
       // Make sure to convert ID to string
       console.log(`[familyService] Sending request to get family ${id}`);
-      const response = await apiClient.get<Family>(`/v1/family/${id}`, options);
-      console.log('[familyService] Get family response:', response);
       
-      if (response.status === 401) {
-        console.error('[familyService] Authentication failed in getFamily');
-        // Clear invalid token
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
-        return { 
-          error: 'Authentication failed. Please log in again.',
-          status: 401 
+      // Attempt to get cached family data first if there's a 500 error or server issue
+      const cachedData = localStorage.getItem(`family_data_${id}`);
+      
+      try {
+        const response = await apiClient.get<Family>(`/v1/family/${id}`, options);
+        console.log('[familyService] Get family response:', response);
+        
+        if (response.status === 200 && response.data) {
+          // Cache the successful response for future fallbacks
+          try {
+            localStorage.setItem(`family_data_${id}`, JSON.stringify(response.data));
+            console.log('[familyService] Cached family data for future use');
+          } catch (cacheError) {
+            console.warn('[familyService] Failed to cache family data:', cacheError);
+          }
+        }
+        
+        if (response.status === 401) {
+          console.error('[familyService] Authentication failed in getFamily');
+          // Clear invalid token
+          localStorage.removeItem('token');
+          sessionStorage.removeItem('token');
+          return { 
+            error: 'Authentication failed. Please log in again.',
+            status: 401 
+          };
+        }
+        
+        if (response.error) {
+          console.error('[familyService] Error in getFamily:', response.error);
+          
+          // If server error and we have cached data, use that instead
+          if (response.status === 500 && cachedData) {
+            console.log('[familyService] Using cached family data due to server error');
+            try {
+              const parsedCache = JSON.parse(cachedData);
+              return {
+                data: this.convertFamily(parsedCache),
+                status: 200, // Pretend it's a success
+                cached: true
+              };
+            } catch (parseError) {
+              console.error('[familyService] Failed to parse cached family data:', parseError);
+            }
+          }
+          
+          return { error: response.error, status: response.status };
+        }
+
+        if (!response.data) {
+          console.error('[familyService] No family data received');
+          return { error: 'No family data received', status: response.status };
+        }
+
+        return {
+          data: this.convertFamily(response.data),
+          status: response.status
         };
+      } catch (requestError) {
+        // Request failed completely - try to use cached data if available
+        console.error(`[familyService] API request failed for family ${id}:`, requestError);
+        
+        if (cachedData) {
+          console.log('[familyService] Using cached family data due to request failure');
+          try {
+            const parsedCache = JSON.parse(cachedData);
+            return {
+              data: this.convertFamily(parsedCache),
+              status: 200,
+              cached: true,
+              originalError: requestError instanceof Error ? requestError.message : 'API request failed'
+            };
+          } catch (parseError) {
+            console.error('[familyService] Failed to parse cached family data:', parseError);
+          }
+        }
+        
+        throw requestError; // Re-throw if we couldn't use the cache
       }
-      
-      if (response.error) {
-        console.error('[familyService] Error in getFamily:', response.error);
-        return { error: response.error, status: response.status };
-      }
-
-      if (!response.data) {
-        console.error('[familyService] No family data received');
-        return { error: 'No family data received', status: response.status };
-      }
-
-      return {
-        data: this.convertFamily(response.data),
-        status: response.status
-      };
     } catch (error) {
       console.error(`[familyService] Error getting family ${id}:`, error);
       return {
@@ -429,7 +481,17 @@ export const familyService = {
     console.log(`[familyService] Getting invitations for family ${familyId}`);
     return this.withRetry(async () => {
       try {
-        const response = await apiClient.get(`/v1/family/${familyId}/invitations`, options);
+        // Include no-cache headers by default to prevent stale data
+        const defaultOptions = {
+          extraHeaders: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          ...options
+        };
+        
+        const response = await apiClient.get(`/v1/family/${familyId}/invitations`, defaultOptions);
         console.log('[familyService] Get family invitations response:', response);
         
         if (response.error) {
@@ -1251,5 +1313,61 @@ export const familyService = {
       console.error('[familyService] Error extracting CSRF token:', error);
       return '';
     }
+  },
+
+  async cancelInvitation(familyId: string, invitationId: string, options?: ApiOptions): Promise<ApiResponse<any>> {
+    console.log(`[familyService] Canceling invitation ${invitationId} for family ${familyId}`);
+    return this.withRetry(async () => {
+      try {
+        // For the cancel invitation, we need to use the DELETE method on the invitation resource
+        // The backend has DeleteAsync method which checks permissions
+        const response = await apiClient.delete(`/v1/invitation/${invitationId}`, options);
+        
+        console.log('[familyService] Cancel invitation response:', response);
+        
+        if (response.error) {
+          return { error: response.error, status: response.status };
+        }
+        
+        return {
+          data: { success: true },
+          status: response.status
+        };
+      } catch (error) {
+        console.error('[familyService] Error canceling invitation:', error);
+        return {
+          error: error instanceof Error ? error.message : 'Failed to cancel invitation',
+          status: 500
+        };
+      }
+    }, options?.retries);
+  },
+  
+  async resendInvitation(familyId: string, invitationId: string, options?: ApiOptions): Promise<ApiResponse<any>> {
+    console.log(`[familyService] Resending invitation ${invitationId} for family ${familyId}`);
+    return this.withRetry(async () => {
+      try {
+        // For resending, we'll use the POST method to the resend endpoint
+        // The backend has ResendInvitationAsync method which updates expiration and resends
+        const response = await apiClient.post(`/v1/invitation/${invitationId}/resend`, {}, options);
+        
+        console.log('[familyService] Resend invitation response:', response);
+        
+        if (response.error) {
+          return { error: response.error, status: response.status };
+        }
+        
+        return {
+          data: { success: true },
+          status: response.status
+        };
+      } catch (error) {
+        console.error('[familyService] Error resending invitation:', error);
+        return {
+          error: error instanceof Error ? error.message : 'Failed to resend invitation',
+          status: 500
+        };
+      }
+    }, options?.retries);
   }
 }; 

@@ -1,3 +1,5 @@
-import { useToast as useToastContext } from '@/lib/providers/ToastProvider'; 
+'use client';
+
+import { useToast as useToastContext } from '@/lib/providers/ToastProvider';
 
 export { useToastContext as useToast }; 

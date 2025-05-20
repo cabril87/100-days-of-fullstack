@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Loader2, CheckCircle, Clock, BarChart4, UserX, 
+  CheckCircle, Clock, BarChart4, UserX, 
   UserCog, Star, Calendar, Award, Activity, AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/lib/hooks/useToast';
@@ -25,6 +25,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Spinner } from '@/components/ui/spinner';
 
 interface MemberStats {
   completedTasks: number;
@@ -148,8 +149,8 @@ export default function MemberDetailDialog({
               Please wait while we load the member details...
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex justify-center items-center py-12">
+            <Spinner size="lg" />
           </div>
         </DialogContent>
       </Dialog>

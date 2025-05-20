@@ -10,6 +10,7 @@ import { familyService } from '@/lib/services/familyService';
 import { taskService } from '@/lib/services/taskService';
 import { FamilyMember } from '@/lib/types/family';
 import ConfirmDialog from './ConfirmDialog';
+import { Spinner } from '@/components/ui/spinner';
 
 interface FamilyMemberManagerProps {
   familyId: string;
@@ -84,15 +85,9 @@ export default function FamilyMemberManager({ familyId, isAdmin }: FamilyMemberM
   
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Family Members</CardTitle>
-          <CardDescription>Manage your family members</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center p-8">
+        <Spinner size="lg" />
+      </div>
     );
   }
   

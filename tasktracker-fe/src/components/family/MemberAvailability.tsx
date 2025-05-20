@@ -4,6 +4,7 @@ import { useToast } from '@/lib/hooks/useToast';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 
 interface MemberAvailabilityProps {
   familyId: number;
@@ -84,7 +85,11 @@ export function MemberAvailability({ familyId, startDate, endDate, onConflictsDe
   }, [familyId, startDate, endDate]);
 
   if (loading) {
-    return <div>Loading availability data...</div>;
+    return (
+      <div className="flex justify-center items-center p-4">
+        <Spinner size="md" />
+      </div>
+    );
   }
 
   return (

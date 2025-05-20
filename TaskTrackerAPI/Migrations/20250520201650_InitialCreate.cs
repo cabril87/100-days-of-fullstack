@@ -23,11 +23,11 @@ namespace TaskTrackerAPI.Migrations
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     PointValue = table.Column<int>(type: "int", nullable: false),
                     Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    TargetValue = table.Column<int>(type: "int", nullable: false),
+                    Criteria = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     IconUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
                     Difficulty = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -114,28 +114,6 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_FamilyRoles", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "GamificationAchievements",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    PointValue = table.Column<int>(type: "int", nullable: false),
-                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Criteria = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    IconUrl = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    Difficulty = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_GamificationAchievements", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -241,30 +219,6 @@ namespace TaskTrackerAPI.Migrations
                         name: "FK_FamilyRolePermissions_FamilyRoles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "FamilyRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "GamificationUserAchievements",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AchievementId = table.Column<int>(type: "int", nullable: false),
-                    Progress = table.Column<int>(type: "int", nullable: false),
-                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
-                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_GamificationUserAchievements", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_GamificationUserAchievements_GamificationAchievements_AchievementId",
-                        column: x => x.AchievementId,
-                        principalTable: "GamificationAchievements",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -582,6 +536,38 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "NotificationPreferences",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    NotificationType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Enabled = table.Column<bool>(type: "bit", nullable: false),
+                    Priority = table.Column<int>(type: "int", nullable: false),
+                    FamilyId = table.Column<int>(type: "int", nullable: true),
+                    EnableEmailNotifications = table.Column<bool>(type: "bit", nullable: false),
+                    EnablePushNotifications = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_NotificationPreferences", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_NotificationPreferences_Families_FamilyId",
+                        column: x => x.FamilyId,
+                        principalTable: "Families",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_NotificationPreferences_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Notifications",
                 columns: table => new
                 {
@@ -698,7 +684,11 @@ namespace TaskTrackerAPI.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     AchievementId = table.Column<int>(type: "int", nullable: false),
-                    UnlockedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Progress = table.Column<int>(type: "int", nullable: false),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UserId1 = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -715,6 +705,11 @@ namespace TaskTrackerAPI.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserAchievements_Users_UserId1",
+                        column: x => x.UserId1,
+                        principalTable: "Users",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1260,7 +1255,7 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "AgeGroup", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "PrimaryFamilyId", "Role", "Salt", "Username" },
-                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46eAuyyDdMPH5X51VeN6HRsYTq7AvVZOYInjn4NTFXG4nbhqeR3flgDyATZgQcBcT6cCjHzZLA-VkPp40RISGPC91YDPRBHMl2oVfjjyVWk8yfqudgs-ZNegujKf3-juyzI", "CfDJ8HeiyxunoJNOiKpgMimE46dlxA3foyG6WoLE99wHchQocoxQxJS6Dhe2OHZ0qjGNEvZCxK1jqZHzpNAaEAR8rxM9D8LK8F8-DughO1mWL-vAGdIUrCSnhhK3iDwVnDWR9g", true, "CfDJ8HeiyxunoJNOiKpgMimE46eLA0QC7U3dojpOuhH1tck4MmBz2KuSVDGNM3twDtiXYyOikDfdVVdGPox7ZQ8p5nJ9PvYQLjHLNQxlWKIAaRfd8aE6eyoP6tNa3YBml0243A", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
+                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46cgl7-DVIHgwQwpFLPrPZIsIJZazltuvC40wi-MNajiuPFZQqp-monA8OxH22wnhC2ha4vv0g7KXy6FVubDtueVPjEzTC-w5fuIjr8HULd49JmdDoDUXugVu3vUv-Lshgw", "CfDJ8HeiyxunoJNOiKpgMimE46fQVdiN5I9LL7ZrpGZwabb0Jxz72umqhYfVYPn1Nos-TTah91QUuKLfmj6P54hXHR6isgoVTYN0QPpku2vEn6m1NfP-pq1lyelS2w-w-IS2kg", true, "CfDJ8HeiyxunoJNOiKpgMimE46dikc0yPqkYApSxc9G-pDUXOepNIJKakDVRTA9q2Xn2SQIzcYOUhOSN39vIIZF12gE6Slz_wUYGS6waSbo0y_8zAyJI-KCq3mxqAgedQsx4YQ", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",
@@ -1276,8 +1271,8 @@ namespace TaskTrackerAPI.Migrations
                 columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "AssignedToName", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
                 values: new object[,]
                 {
-                    { 1, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(4950), 1, 1L },
-                    { 2, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(6451), 1, 1L }
+                    { 1, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(193), 1, 1L },
+                    { 2, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(1801), 1, 1L }
                 });
 
             migrationBuilder.CreateIndex(
@@ -1391,11 +1386,6 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_GamificationUserAchievements_AchievementId",
-                table: "GamificationUserAchievements",
-                column: "AchievementId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Invitations_CreatedById",
                 table: "Invitations",
                 column: "CreatedById");
@@ -1418,6 +1408,16 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Notes_UserId",
                 table: "Notes",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NotificationPreferences_FamilyId",
+                table: "NotificationPreferences",
+                column: "FamilyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_NotificationPreferences_UserId",
+                table: "NotificationPreferences",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -1524,6 +1524,11 @@ namespace TaskTrackerAPI.Migrations
                 name: "IX_UserAchievements_UserId",
                 table: "UserAchievements",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserAchievements_UserId1",
+                table: "UserAchievements",
+                column: "UserId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserApiQuotas_SubscriptionTierId",
@@ -1666,13 +1671,13 @@ namespace TaskTrackerAPI.Migrations
                 name: "FamilyRolePermissions");
 
             migrationBuilder.DropTable(
-                name: "GamificationUserAchievements");
-
-            migrationBuilder.DropTable(
                 name: "Invitations");
 
             migrationBuilder.DropTable(
                 name: "Notes");
+
+            migrationBuilder.DropTable(
+                name: "NotificationPreferences");
 
             migrationBuilder.DropTable(
                 name: "Notifications");
@@ -1727,9 +1732,6 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "FamilyCalendarEvents");
-
-            migrationBuilder.DropTable(
-                name: "GamificationAchievements");
 
             migrationBuilder.DropTable(
                 name: "Tags");
