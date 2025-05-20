@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250519014735_InitialMigration")]
-    partial class InitialMigration
+    [Migration("20250519192514_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1647,6 +1647,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int?>("AssignedToId")
                         .HasColumnType("int");
 
+                    b.Property<string>("AssignedToName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BoardColumn")
                         .HasColumnType("nvarchar(max)");
 
@@ -1764,7 +1767,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(3055),
+                            UpdatedAt = new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(4950),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1781,7 +1784,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(4744),
+                            UpdatedAt = new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(6451),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1925,10 +1928,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46ehGhjRgwbZ3FpBrRuSRibq7y99MunXS55Q6S3vsuCXG4MHtvyXcjl2PVQ0AH8CGsMhj619EnfDohWsWb6BBC9txAeSux2jJr_qOYUWFHAXw5xESJG5Wa-vv3_d6QzoX04",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46c8Meqy1ijp2FKpDBk9OT7N5F_w61n_yV5WpnA8XpVOZsxxxsureWLNgjnmYu51qpfUIo2AQQUNst3bG9JPflLJK1NFUQXXExo-VbnfRZw03A",
+                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46dfRVFQEWT6Hk8Bz0tOWC_sc88QbkRkNEBkE6TxOTXayP0BNYnQAYSqRmvQX-MV3sdaCKvbcsFdc5W6dDQ1Ovv7JdQBG1YiyFAbwLrgLYIdUWbWawq9o3hh1EL_KAbcdyU",
+                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46cmO55PH5_kN7yClPqN1GYmw-qGS5wqvi65H7ltzqs2KvlIEGh7LUtrpkFmFJVD0JonKjr4z9Q8WCCj8oiSJ3nyVcZqex14etZmSCabnsj1FQ",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46cHxes0Zj9-9vgfS8Ljwi1tZPoW9ESM_ipE6C0keAGgFMdeUKmEJ-bLH4NyttoxuDQl7T3H5VQTOL22g-o9ML7rpV0M_pJisdBp0nFfDasnog",
+                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46e10cpNIfumF50gIOopi98iu84HlOPNPsrKD3M1Xoqg6iHSqOvAZMpAdpbfBGADtG1nHgkM6aILTNI2zTy3W82u8OhCaPas6z4_UqFFarL0hw",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",

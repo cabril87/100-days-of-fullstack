@@ -10,6 +10,7 @@ export interface Family {
     name: string;
     permissions: string[];
   };
+  currentUserPermissions?: string[];
 }
 
 export interface FamilyMember {

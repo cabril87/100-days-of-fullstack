@@ -39,8 +39,40 @@ public class ReminderRepository : IReminderRepository
     public async Task<Reminder?> GetReminderByIdAsync(int reminderId)
     {
         return await _context.Reminders
-            .Include(r => r.TaskItem)
-            .FirstOrDefaultAsync(r => r.Id == reminderId);
+            .Where(r => r.Id == reminderId)
+            .Select(r => new Reminder
+            {
+                Id = r.Id,
+                UserId = r.UserId,
+                TaskItemId = r.TaskItemId,
+                Title = r.Title,
+                Description = r.Description,
+                ReminderTime = r.ReminderTime,
+                Priority = r.Priority,
+                IsRepeating = r.IsRepeating,
+                RepeatFrequency = r.RepeatFrequency,
+                Status = r.Status,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                DueDate = r.DueDate,
+                IsCompleted = r.IsCompleted,
+                CompletedAt = r.CompletedAt,
+                TaskItem = r.TaskItem != null ? new TaskItem
+                {
+                    Id = r.TaskItem.Id,
+                    Title = r.TaskItem.Title,
+                    Description = r.TaskItem.Description,
+                    Status = r.TaskItem.Status,
+                    DueDate = r.TaskItem.DueDate,
+                    Priority = r.TaskItem.Priority,
+                    CreatedAt = r.TaskItem.CreatedAt,
+                    UpdatedAt = r.TaskItem.UpdatedAt,
+                    IsCompleted = r.TaskItem.IsCompleted,
+                    UserId = r.TaskItem.UserId,
+                    // Don't include AssignedToName to avoid the error
+                } : null
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<Reminder>> GetRemindersByStatusAsync(int userId, ReminderStatus status)

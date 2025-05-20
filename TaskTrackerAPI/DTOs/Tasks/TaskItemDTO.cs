@@ -123,6 +123,10 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Version number for optimistic concurrency
         
         public long Version { get; set; } = 1;
+
+        /// Name of the user or family member assigned to this task
+
+        public string? AssignedToName { get; set; }
     }
 
     

@@ -210,68 +210,80 @@ class AuthService {
   }
   
   async refreshToken(): Promise<ApiResponse<AuthResponse>> {
-    console.log('AuthService: Refreshing token');
     try {
-      // Check if we're on an auth page already
-      if (typeof window !== 'undefined' && 
-          (window.location.pathname.includes('/auth/login') || 
-           window.location.pathname.includes('/auth/register'))) {
-        console.log('Already on auth page, skipping token refresh');
-        return {
-          error: 'Already on auth page',
-          status: 0
-        };
-      }
+      // Get CSRF token from cookies
+      const getCsrfToken = (): string => {
+        try {
+          const rawCsrfToken = document.cookie
+            .split(';')
+            .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
+            ?.split('=')[1];
+          
+          // Properly decode the token from URL encoding
+          return rawCsrfToken ? decodeURIComponent(rawCsrfToken) : '';
+        } catch (error) {
+          console.error('[authService] Error extracting CSRF token:', error);
+          return '';
+        }
+      };
+
+      const csrfToken = getCsrfToken();
+      console.log('[authService] Attempting to refresh token with CSRF token:', csrfToken ? 'Found' : 'Not found');
       
-      // First try to get a fresh CSRF token
-      const csrfToken = await this.fetchCsrfToken();
-      
-      // Get the refresh token from storage
+      // Get refresh token from storage
       const refreshToken = localStorage.getItem('refreshToken') || '';
       if (!refreshToken) {
-        console.error('No refresh token available');
-        this.clearCurrentUser();
+        console.warn('[authService] No refresh token available');
         return {
           error: 'No refresh token available',
           status: 401
         };
       }
       
-      // Call the refresh token endpoint
-      const response = await apiService.post<AuthResponse>(
-        '/v1/auth/refresh-token', 
-        { refreshToken, csrfToken }, 
-        false
-      );
+      // Make direct fetch to ensure correct headers
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/v1/auth/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'X-XSRF-TOKEN': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify({ refreshToken, csrfToken })
+      });
+
+      console.log('[authService] Refresh token response status:', response.status);
       
-      if (response.data && response.data.accessToken) {
-        console.log('AuthService: Token refresh successful');
-        // Store the new tokens
-        localStorage.setItem('token', response.data.accessToken);
-        
-        if (response.data.refreshToken) {
-          localStorage.setItem('refreshToken', response.data.refreshToken);
-        }
-        
-        // Update user data if available
-        if (response.data.user) {
-          this.setCurrentUser(response.data.user);
-        }
-        
-        return response;
-      } else {
-        console.error('AuthService: Token refresh failed', response.error);
-        // Clear all auth data on refresh failure
-        this.clearCurrentUser();
-        return response;
+      if (!response.ok) {
+        return {
+          error: `Token refresh failed: ${response.status}`,
+          status: response.status
+        };
       }
-    } catch (error) {
-      console.error('AuthService: Error refreshing token', error);
-      // Clear all auth data on refresh failure
-      this.clearCurrentUser();
+
+      const data = await response.json();
+      console.log('[authService] Token refresh successful');
+      
+        // Store the new tokens
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+        
+      if (data.refreshToken) {
+        localStorage.setItem('refreshToken', data.refreshToken);
+        }
+        
       return {
-        error: 'Failed to refresh authentication token',
-        status: 0
+        data: data,
+        status: response.status
+      };
+    } catch (error) {
+      console.error('[authService] Error in refreshToken:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to refresh token',
+        status: 500
       };
     }
   }

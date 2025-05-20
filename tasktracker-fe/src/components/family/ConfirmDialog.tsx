@@ -13,6 +13,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   danger?: boolean;
+  destructive?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -23,8 +24,11 @@ export default function ConfirmDialog({
   description,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  danger = false
+  danger = false,
+  destructive = false
 }: ConfirmDialogProps) {
+  const isDestructive = danger || destructive;
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -37,7 +41,7 @@ export default function ConfirmDialog({
             {cancelText}
           </Button>
           <Button 
-            variant={danger ? "destructive" : "default"} 
+            variant={isDestructive ? "destructive" : "default"} 
             onClick={() => {
               onConfirm();
               onClose();

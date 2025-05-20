@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, AlertCircle, Briefcase, UserCheck, Trash2, Lock } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, AlertCircle, Briefcase, UserCheck, Trash2, Lock, Archive } from 'lucide-react';
 import { useToast } from '@/lib/hooks/useToast';
 import { taskService } from '@/lib/services/taskService';
 import { familyService } from '@/lib/services/familyService';
@@ -20,7 +20,9 @@ interface FamilyTaskListProps {
 export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProps) {
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [taskToRemove, setTaskToRemove] = useState<Task | null>(null);
+  const [unassignedTasks, setUnassignedTasks] = useState<Task[]>([]);
+  const [taskToUnassign, setTaskToUnassign] = useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [taskToApprove, setTaskToApprove] = useState<Task | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { showToast } = useToast();
@@ -36,14 +38,37 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
   const loadFamilyTasks = async () => {
     setLoading(true);
     try {
-      const response = await taskService.getFamilyTasks(familyId);
+      // Try using familyService first, which has enhanced auth handling
+      console.log(`[FamilyTaskList] Loading tasks for family ${familyId} using familyService`);
+      const response = await familyService.getFamilyTasks(familyId);
+      
       if (response.data) {
-        setTasks(response.data);
+        console.log(`[FamilyTaskList] Successfully loaded ${response.data.length} tasks`);
+        // Split into assigned and unassigned tasks
+        const assigned = response.data.filter(task => task.assignedToName);
+        const unassigned = response.data.filter(task => !task.assignedToName);
+        
+        setTasks(assigned);
+        setUnassignedTasks(unassigned);
+      } else if (response.error) {
+        console.error(`[FamilyTaskList] Error from familyService:`, response.error);
+        
+        // Fall back to taskService as a backup
+        console.log(`[FamilyTaskList] Falling back to taskService`);
+        const fallbackResponse = await taskService.getFamilyTasks(familyId);
+        
+        if (fallbackResponse.data) {
+          const assigned = fallbackResponse.data.filter(task => task.assignedToName);
+          const unassigned = fallbackResponse.data.filter(task => !task.assignedToName);
+          
+          setTasks(assigned);
+          setUnassignedTasks(unassigned);
       } else {
-        showToast(response.error || 'Failed to load family tasks', 'error');
+          showToast(fallbackResponse.error || 'Failed to load family tasks', 'error');
+        }
       }
     } catch (error) {
-      console.error('Error loading family tasks:', error);
+      console.error('[FamilyTaskList] Error loading family tasks:', error);
       showToast('Error loading family tasks', 'error');
     } finally {
       setLoading(false);
@@ -51,11 +76,11 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
   };
   
   const handleUnassignTask = async () => {
-    if (!taskToRemove || !isAuthenticated) return;
+    if (!taskToUnassign || !isAuthenticated) return;
     
     try {
-      const response = await taskService.unassignTask(familyId, taskToRemove.id);
-      if (response.status === 204) {
+      const response = await taskService.unassignTask(familyId, taskToUnassign.id);
+      if (response.status === 200 || response.status === 204) {
         // Use familyService for state synchronization
         await familyService.syncFamilyState(familyId, 'task unassignment');
         
@@ -68,7 +93,29 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
       console.error('Error unassigning task:', error);
       showToast('Error unassigning task', 'error');
     } finally {
-      setTaskToRemove(null);
+      setTaskToUnassign(null);
+    }
+  };
+  
+  const handleDeleteTask = async () => {
+    if (!taskToDelete || !isAuthenticated) return;
+    
+    try {
+      const response = await taskService.deleteFamilyTask(familyId, taskToDelete.id);
+      if (response.status === 200 || response.status === 204) {
+        // Use familyService for state synchronization
+        await familyService.syncFamilyState(familyId, 'task deletion');
+        
+        showToast('Task deleted successfully', 'success');
+        loadFamilyTasks();
+      } else {
+        showToast(response.error || 'Failed to delete task', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      showToast('Error deleting task', 'error');
+    } finally {
+      setTaskToDelete(null);
     }
   };
   
@@ -143,23 +190,14 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
            !task.approvedBy;
   };
   
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Family Tasks</CardTitle>
-        <CardDescription>Tasks assigned to family members</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {tasks.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Briefcase className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>No tasks have been assigned to family members yet.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div 
-                key={task.id} 
+  // Generate a truly unique key for each task
+  const getTaskKey = (task: Task, section: string) => {
+    return `${section}-${task.id}-${Date.now()}`;
+  };
+  
+  const renderTaskItem = (task: Task, section: string, isUnassigned = false) => (
+    <div 
+      key={getTaskKey(task, section)} 
                 className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex justify-between items-start mb-2">
@@ -194,9 +232,20 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
                 
                 <div className="flex justify-between items-center mt-4">
                   <div className="flex items-center text-sm">
+          {!isUnassigned ? (
+            <>
                     <UserCheck className="h-4 w-4 text-gray-500 mr-1" />
                     <span>Assigned to: </span>
-                    <span className="font-medium ml-1">{task.assignedToName || 'Unknown'}</span>
+              <span className="font-medium ml-1">
+                {task.assignedToName || 'Unknown'}
+              </span>
+            </>
+          ) : (
+            <>
+              <Archive className="h-4 w-4 text-gray-500 mr-1" />
+              <span className="text-gray-600">Unassigned</span>
+            </>
+          )}
                   </div>
                   
                   <div className="flex space-x-2">
@@ -212,24 +261,70 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
                       </Button>
                     )}
                     
-                    {isAdmin && isAuthenticated && (
+          {isAdmin && isAuthenticated && !isUnassigned && (
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setTaskToRemove(task)}
+              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+              onClick={() => setTaskToUnassign(task)}
                       >
                         <Trash2 className="h-4 w-4 mr-1" />
                         Unassign
                       </Button>
                     )}
+          
+          {isAdmin && isAuthenticated && (
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => setTaskToDelete(task)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          )}
                   </div>
                 </div>
               </div>
-            ))}
+  );
+  
+  return (
+    <>
+      {/* Assigned Tasks Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Assigned Tasks</CardTitle>
+          <CardDescription>Tasks assigned to family members</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tasks.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Briefcase className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No tasks have been assigned to family members yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {tasks.map(task => renderTaskItem(task, 'assigned'))}
           </div>
         )}
       </CardContent>
+      </Card>
+      
+      {/* Unassigned Tasks Card */}
+      {unassignedTasks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Unassigned Tasks</CardTitle>
+            <CardDescription>Tasks not yet assigned to any family member</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {unassignedTasks.map(task => renderTaskItem(task, 'unassigned', true))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {!isAuthenticated && (
         <CardFooter className="bg-gray-50 border-t">
@@ -247,13 +342,25 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
       
       {/* Confirm Unassign Dialog */}
       <ConfirmDialog
-        isOpen={!!taskToRemove}
-        onClose={() => setTaskToRemove(null)}
+        isOpen={!!taskToUnassign}
+        onClose={() => setTaskToUnassign(null)}
         onConfirm={handleUnassignTask}
         title="Unassign Task"
-        description={`Are you sure you want to unassign "${taskToRemove?.title}" from this family member?`}
+        description={`Are you sure you want to unassign "${taskToUnassign?.title}" from this family member? The task will remain in the system and will move to the unassigned pool.`}
         confirmText="Unassign"
         cancelText="Cancel"
+      />
+      
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={!!taskToDelete}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={handleDeleteTask}
+        title="Delete Task"
+        description={`Are you sure you want to permanently delete "${taskToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        destructive={true}
       />
       
       {/* Confirm Approve Dialog */}
@@ -262,10 +369,10 @@ export default function FamilyTaskList({ familyId, isAdmin }: FamilyTaskListProp
         onClose={() => setTaskToApprove(null)}
         onConfirm={handleApproveTask}
         title="Approve Task"
-        description={`Confirm that "${taskToApprove?.title}" has been completed satisfactorily?`}
+        description={`Are you sure you want to approve "${taskToApprove?.title}"? This will mark the task as approved.`}
         confirmText="Approve"
         cancelText="Cancel"
       />
-    </Card>
+    </>
   );
 } 

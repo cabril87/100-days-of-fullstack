@@ -44,6 +44,25 @@ namespace TaskTrackerAPI.Services
                 .Where(t => t.UserId == userIdInt && 
                             t.Status != TaskItemStatus.Completed &&
                             t.Status != TaskItemStatus.Cancelled)
+                .Select(t => new TaskItem
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Description = t.Description,
+                    Status = t.Status,
+                    DueDate = t.DueDate,
+                    Priority = t.Priority,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    CompletedAt = t.CompletedAt,
+                    IsCompleted = t.IsCompleted,
+                    UserId = t.UserId,
+                    CategoryId = t.CategoryId,
+                    BoardId = t.BoardId,
+                    FamilyId = t.FamilyId,
+                    AssignedByUserId = t.AssignedByUserId,
+                    // Don't include AssignedToName to avoid the error
+                })
                 .ToListAsync();
                 
             return tasks
@@ -62,6 +81,25 @@ namespace TaskTrackerAPI.Services
                 .Where(t => t.UserId == userIdInt && 
                             t.Status != TaskItemStatus.Completed &&
                             t.Status != TaskItemStatus.Cancelled)
+                .Select(t => new TaskItem
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Description = t.Description,
+                    Status = t.Status,
+                    DueDate = t.DueDate,
+                    Priority = t.Priority,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    CompletedAt = t.CompletedAt,
+                    IsCompleted = t.IsCompleted,
+                    UserId = t.UserId,
+                    CategoryId = t.CategoryId,
+                    BoardId = t.BoardId,
+                    FamilyId = t.FamilyId,
+                    AssignedByUserId = t.AssignedByUserId,
+                    // Don't include AssignedToName to avoid the error
+                })
                 .ToListAsync();
                 
             return tasks

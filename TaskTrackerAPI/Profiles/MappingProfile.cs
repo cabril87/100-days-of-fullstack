@@ -50,6 +50,10 @@ namespace TaskTrackerAPI.Profiles
                     src.AssignedByUser != null ? src.AssignedByUser.Username : null))
                 .ForMember(dest => dest.AssignedToUserName, opt => opt.MapFrom(src => 
                     src.AssignedToFamilyMember != null ? src.AssignedToFamilyMember.User.Username : null))
+                .ForMember(dest => dest.AssignedToName, opt => opt.MapFrom(src => 
+                    src.AssignedToName != null ? src.AssignedToName : 
+                    src.AssignedToFamilyMember != null && src.AssignedToFamilyMember.User != null ? 
+                    src.AssignedToFamilyMember.User.Username : null))
                 .ForMember(dest => dest.ApprovedByUserName, opt => opt.MapFrom(src => 
                     src.ApprovedByUser != null ? src.ApprovedByUser.Username : null))
                 .ForMember(dest => dest.FamilyName, opt => opt.MapFrom(src => 

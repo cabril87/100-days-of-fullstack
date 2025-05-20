@@ -37,10 +37,34 @@ public class FocusRepository : IFocusRepository
         try
         {
             return await _context.FocusSessions
-                .Include(f => f.TaskItem)
-                .Include(f => f.Distractions)
                 .Where(f => f.UserId == userId && f.EndTime == null)
                 .OrderByDescending(f => f.StartTime)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    Status = f.Status,
+                    DurationMinutes = f.DurationMinutes,
+                    IsCompleted = f.IsCompleted,
+                    Notes = f.Notes,
+                    Distractions = f.Distractions,
+                    TaskItem = new TaskItem
+                    {
+                        Id = f.TaskItem.Id,
+                        Title = f.TaskItem.Title,
+                        Description = f.TaskItem.Description,
+                        Status = f.TaskItem.Status,
+                        DueDate = f.TaskItem.DueDate,
+                        Priority = f.TaskItem.Priority,
+                        CreatedAt = f.TaskItem.CreatedAt,
+                        UpdatedAt = f.TaskItem.UpdatedAt,
+                        UserId = f.TaskItem.UserId,
+                        // Don't include AssignedToName to avoid the error
+                    }
+                })
                 .FirstOrDefaultAsync();
         }
         catch (Exception ex)
@@ -55,9 +79,34 @@ public class FocusRepository : IFocusRepository
         try
         {
             return await _context.FocusSessions
-                .Include(f => f.TaskItem)
-                .Include(f => f.Distractions)
-                .FirstOrDefaultAsync(f => f.Id == sessionId);
+                .Where(f => f.Id == sessionId)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    Status = f.Status,
+                    DurationMinutes = f.DurationMinutes,
+                    IsCompleted = f.IsCompleted,
+                    Notes = f.Notes,
+                    Distractions = f.Distractions,
+                    TaskItem = new TaskItem
+                    {
+                        Id = f.TaskItem.Id,
+                        Title = f.TaskItem.Title,
+                        Description = f.TaskItem.Description,
+                        Status = f.TaskItem.Status,
+                        DueDate = f.TaskItem.DueDate,
+                        Priority = f.TaskItem.Priority,
+                        CreatedAt = f.TaskItem.CreatedAt,
+                        UpdatedAt = f.TaskItem.UpdatedAt,
+                        UserId = f.TaskItem.UserId,
+                        // Don't include AssignedToName to avoid the error
+                    }
+                })
+                .FirstOrDefaultAsync();
         }
         catch (Exception ex)
         {
@@ -71,10 +120,34 @@ public class FocusRepository : IFocusRepository
         try
         {
             return await _context.FocusSessions
-                .Include(f => f.TaskItem)
-                .Include(f => f.Distractions)
                 .Where(f => f.UserId == userId)
                 .OrderByDescending(f => f.StartTime)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    Status = f.Status,
+                    DurationMinutes = f.DurationMinutes,
+                    IsCompleted = f.IsCompleted,
+                    Notes = f.Notes,
+                    Distractions = f.Distractions,
+                    TaskItem = new TaskItem
+                    {
+                        Id = f.TaskItem.Id,
+                        Title = f.TaskItem.Title,
+                        Description = f.TaskItem.Description,
+                        Status = f.TaskItem.Status,
+                        DueDate = f.TaskItem.DueDate,
+                        Priority = f.TaskItem.Priority,
+                        CreatedAt = f.TaskItem.CreatedAt,
+                        UpdatedAt = f.TaskItem.UpdatedAt,
+                        UserId = f.TaskItem.UserId,
+                        // Don't include AssignedToName to avoid the error
+                    }
+                })
                 .ToListAsync();
         }
         catch (Exception ex)
@@ -89,10 +162,34 @@ public class FocusRepository : IFocusRepository
         try
         {
             return await _context.FocusSessions
-                .Include(f => f.TaskItem)
-                .Include(f => f.Distractions)
                 .Where(f => f.UserId == userId && f.StartTime >= startTime && (f.EndTime == null || f.EndTime <= endTime))
                 .OrderByDescending(f => f.StartTime)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    Status = f.Status,
+                    DurationMinutes = f.DurationMinutes,
+                    IsCompleted = f.IsCompleted,
+                    Notes = f.Notes,
+                    Distractions = f.Distractions,
+                    TaskItem = new TaskItem
+                    {
+                        Id = f.TaskItem.Id,
+                        Title = f.TaskItem.Title,
+                        Description = f.TaskItem.Description,
+                        Status = f.TaskItem.Status,
+                        DueDate = f.TaskItem.DueDate,
+                        Priority = f.TaskItem.Priority,
+                        CreatedAt = f.TaskItem.CreatedAt,
+                        UpdatedAt = f.TaskItem.UpdatedAt,
+                        UserId = f.TaskItem.UserId,
+                        // Don't include AssignedToName to avoid the error
+                    }
+                })
                 .ToListAsync();
         }
         catch (Exception ex)

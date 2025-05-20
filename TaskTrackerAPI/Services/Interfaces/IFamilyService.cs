@@ -29,6 +29,7 @@ public interface IFamilyService
     Task<bool> UpdateMemberRoleAsync(int familyId, int memberId, int roleId, int requestingUserId);
     Task<IEnumerable<FamilyMemberDTO>> GetMembersAsync(int familyId, int userId);
     Task<bool> HasPermissionAsync(int familyId, int userId, string permission);
+    Task<bool> IsFamilyMemberAsync(int familyId, int userId);
     Task<FamilyMemberDTO> CompleteMemberProfileAsync(int memberId, int userId, CompleteProfileDTO profileDto);
     Task<IEnumerable<FamilyMemberDTO>> GetPendingMembersAsync();
     Task<FamilyMemberDTO> ApproveMemberAsync(int memberId, int adminId);

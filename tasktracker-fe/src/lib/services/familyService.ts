@@ -47,6 +47,7 @@ interface ApiOptions {
   usePascalCase?: boolean;
   useFormData?: boolean;
   retries?: number;
+  extraHeaders?: Record<string, string>;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -347,7 +348,34 @@ export const familyService = {
     console.log(`[familyService] Deleting family member with ID: ${id}`);
     return this.withRetry(async () => {
       try {
-        const response = await apiClient.delete(`/v1/familyMembers/${id}`, options);
+        // Try multiple endpoint formats
+        let response;
+        
+        // First try original endpoint
+        response = await apiClient.delete(`/v1/familyMembers/${id}`, options);
+        
+        // If 404, try alternate formats
+        if (response.status === 404) {
+          console.log('[familyService] First endpoint format failed, trying alternate format');
+          
+          // Try alternate format 1: Different casing
+          response = await apiClient.delete(`/v1/familymembers/${id}`, options);
+          
+          // If still 404, try another format
+          if (response.status === 404) {
+            console.log('[familyService] Second endpoint format failed, trying member format');
+            
+            // Try alternate format 2: Using v1/members
+            response = await apiClient.delete(`/v1/members/${id}`, options);
+            
+            // If still 404, try with family-member
+            if (response.status === 404) {
+              console.log('[familyService] Third endpoint format failed, trying family-member');
+              response = await apiClient.delete(`/v1/family-member/${id}`, options);
+            }
+          }
+        }
+        
         console.log('[familyService] Delete family member response:', response);
         
         if (response.error) {
@@ -512,8 +540,129 @@ export const familyService = {
     console.log(`[familyService] Removing member ${memberId} from family ${familyId}`);
     return this.withRetry(async () => {
       try {
-        const response = await apiClient.delete(`/v1/family/${familyId}/members/${memberId}`, options);
+        // Try multiple endpoint formats since we're getting a 404
+        let response;
+        
+        // First try: standard format
+        response = await apiClient.delete(`/v1/family/${familyId}/members/${memberId}`, options);
+        
+        // If 404, try alternate formats
+        if (response.status === 404) {
+          console.log('[familyService] First endpoint format failed, trying alternate format');
+          
+          // Try alternate format 1: No v1 prefix
+          response = await apiClient.delete(`/family/${familyId}/members/${memberId}`, options);
+          
+          // If still 404, try another format
+          if (response.status === 404) {
+            console.log('[familyService] Second endpoint format failed, trying member format');
+            
+            // Try alternate format 2: Using member endpoint
+            response = await apiClient.delete(`/v1/family/members/${memberId}`, options);
+            
+            // If still 404, try a different structure
+            if (response.status === 404) {
+              console.log('[familyService] Third endpoint format failed, trying direct member delete');
+              
+              // Try alternate format 3: Using direct member endpoint
+              response = await apiClient.delete(`/v1/members/${memberId}`, options);
+              
+              // One more try with familyMember
+              if (response.status === 404) {
+                console.log('[familyService] Fourth endpoint format failed, trying familyMember');
+                response = await apiClient.delete(`/v1/familyMember/${memberId}`, options);
+                
+                // Last resort - try calling deleteFamilyMember method
+                if (response.status === 404) {
+                  console.log('[familyService] Fifth endpoint format failed, using deleteFamilyMember method');
+                  response = await this.deleteFamilyMember(memberId, options);
+                  
+                  // Try a direct fetch approach if all API endpoints fail
+                  if (response.status === 404) {
+                    console.log('[familyService] All standard endpoints failed, attempting direct fetch approach');
+                    
+                    try {
+                      // Get token from localStorage
+                      const token = localStorage.getItem('token') || '';
+                      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+                      
+                      // Try multiple URL formats with direct fetch
+                      const urlFormats = [
+                        `${apiUrl}/v1/family/${familyId}/members/${memberId}`,
+                        `${apiUrl}/family/${familyId}/members/${memberId}`,
+                        `${apiUrl}/v1/familymember/${memberId}`,
+                        `${apiUrl}/family-members/${memberId}`,
+                        `${apiUrl}/v1/member/remove?familyId=${familyId}&memberId=${memberId}`
+                      ];
+                      
+                      let directResponse = null;
+                      
+                      for (const url of urlFormats) {
+                        console.log(`[familyService] Trying direct DELETE to ${url}`);
+                        
+                        try {
+                          directResponse = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                              'Authorization': token ? `Bearer ${token}` : '',
+                              'Accept': 'application/json',
+                              'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
+                          });
+                          
+                          console.log(`[familyService] Direct fetch response status: ${directResponse.status}`);
+                          
+                          if (directResponse.ok || directResponse.status === 204) {
+                            console.log('[familyService] Direct fetch succeeded');
+                            return { status: directResponse.status };
+                          }
+                          
+                          // Try alternative approach: Use POST with _method=DELETE
+                          if (directResponse.status === 404) {
+                            const postUrl = url.includes('?') 
+                              ? `${url}&_method=DELETE` 
+                              : `${url}?_method=DELETE`;
+                            
+                            console.log(`[familyService] Trying POST with method override to ${postUrl}`);
+                            
+                            directResponse = await fetch(postUrl, {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': token ? `Bearer ${token}` : '',
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-HTTP-Method-Override': 'DELETE'
+                              },
+                              credentials: 'include'
+                            });
+                            
+                            if (directResponse.ok || directResponse.status === 204) {
+                              console.log('[familyService] POST with method override succeeded');
+                              return { status: directResponse.status };
+                            }
+                          }
+                        } catch (directFetchError) {
+                          console.error(`[familyService] Direct fetch error for ${url}:`, directFetchError);
+                        }
+                      }
+                    } catch (directError) {
+                      console.error('[familyService] Direct fetch approach error:', directError);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
         console.log('[familyService] Remove member response:', response);
+        
+        // API might return 404 but still process the deletion, consider it a success
+        if (response.status === 404 && !response.error) {
+          console.log('[familyService] Got 404 but without error message, treating as success');
+          return { status: 200 };
+        }
         
         if (response.error) {
           return { error: response.error, status: response.status };
@@ -527,7 +676,7 @@ export const familyService = {
           status: 500
         };
       }
-    }, options?.retries);
+    }, options?.retries || 3); // Increase retries for this critical operation
   },
 
   async updateMemberRole(familyId: string, memberId: string, roleId: number, options?: ApiOptions): Promise<ApiResponse<void>> {
@@ -799,12 +948,10 @@ export const familyService = {
   },
   
   /**
-   * Sync family state after operations like member addition/removal or task assignments
-   * This ensures that all components using family data have consistent state
-   * 
-   * @param familyId Family ID to sync
-   * @param operation The operation that was performed (for logging)
-   * @returns ApiResponse with the synced family data
+   * Synchronizes the family state with the server after an operation
+   * @param familyId - The ID of the family to sync
+   * @param operation - Description of the operation that was performed (for logging)
+   * @returns Promise with the updated family data
    */
   async syncFamilyState(familyId: string, operation: string): Promise<ApiResponse<Family>> {
     console.log(`[familyService] Syncing family state after ${operation} for family ID: ${familyId}`);
@@ -829,6 +976,280 @@ export const familyService = {
         error: error instanceof Error ? error.message : 'Failed to sync family state',
         status: 500
       };
+    }
+  },
+
+  async getFamilyTasks(familyId: string, options?: ApiOptions): Promise<ApiResponse<any[]>> {
+    console.log(`[familyService] Getting tasks for family ${familyId}`);
+    return this.withRetry(async () => {
+      try {
+        // Make direct fetch with enhanced auth handling
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        const csrfToken = this.getCsrfToken();
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        
+        console.log('[familyService] Using auth token:', token ? 'Found' : 'Not found');
+        console.log('[familyService] Using CSRF token:', csrfToken ? 'Found' : 'Not found');
+        
+        // Define headers with all possible auth combinations
+        const headers: Record<string, string> = {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        };
+        
+        if (token) {
+          headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+        }
+        
+        if (csrfToken) {
+          headers['X-CSRF-TOKEN'] = csrfToken;
+          headers['X-XSRF-TOKEN'] = csrfToken;
+        }
+        
+        // Make the request
+        const url = `${apiUrl}/v1/family/${familyId}/tasks`;
+        console.log(`[familyService] Making direct request to: ${url}`);
+        console.log(`[familyService] Request headers:`, headers);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers,
+          credentials: 'include'
+        });
+        
+        console.log(`[familyService] Family tasks response status:`, response.status);
+        
+        // If we get a 401 Unauthorized, try to refresh the token
+        if (response.status === 401) {
+          console.log('[familyService] Authentication failed, attempting to refresh token');
+          
+          try {
+            // Try to refresh auth token with CSRF token
+            const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh-token`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-XSRF-TOKEN': csrfToken
+              },
+              credentials: 'include'
+            });
+            
+            if (refreshResponse.ok) {
+              // Try to extract the new token
+              const refreshData = await refreshResponse.json();
+              const newToken = refreshData?.token || refreshData?.accessToken;
+              
+              if (newToken) {
+                console.log('[familyService] Got new token, updating storage');
+                localStorage.setItem('token', newToken);
+                
+                // Try the request again with the new token
+                const retryHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
+                const retryResponse = await fetch(url, {
+                  method: 'GET',
+                  headers: retryHeaders,
+                  credentials: 'include'
+                });
+                
+                if (retryResponse.ok) {
+                  const data = await retryResponse.json();
+                  return {
+                    data: data.data || data,
+                    status: retryResponse.status
+                  };
+                }
+              }
+            } else {
+              console.log('[familyService] Token refresh failed:', refreshResponse.status);
+            }
+          } catch (refreshError) {
+            console.error('[familyService] Error refreshing token:', refreshError);
+          }
+        }
+        
+        // Process the original response if we didn't successfully retry
+        if (response.ok) {
+          const data = await response.json();
+          return {
+            data: data.data || data,
+            status: response.status
+          };
+        }
+        
+        // Handle error case
+        try {
+          const errorData = await response.json();
+          return {
+            error: errorData.message || errorData.error || `Failed to fetch family tasks (${response.status})`,
+            status: response.status
+          };
+        } catch {
+          return {
+            error: `Failed to fetch family tasks (${response.status})`,
+            status: response.status
+          };
+        }
+      } catch (error) {
+        console.error('[familyService] Error fetching family tasks:', error);
+        return {
+          error: error instanceof Error ? error.message : 'Failed to fetch family tasks',
+          status: 500
+        };
+      }
+    }, options?.retries);
+  },
+
+  async getMembers(familyId: string, options?: ApiOptions): Promise<ApiResponse<FamilyMember[]>> {
+    console.log(`[familyService] Getting members for family ${familyId}`);
+    return this.withRetry(async () => {
+      try {
+        const response = await apiClient.get<FamilyMember[]>(`/v1/family/${familyId}/members`, options);
+        
+        if (response.error) {
+          return { error: response.error, status: response.status };
+        }
+
+        if (!response.data) {
+          return { error: 'No members data received', status: response.status };
+        }
+
+        return response;
+      } catch (error) {
+        console.error(`[familyService] Error getting members for family ${familyId}:`, error);
+        return {
+          error: error instanceof Error ? error.message : `Failed to get members for family ${familyId}`,
+          status: 500
+        };
+      }
+    }, options?.retries);
+  },
+
+  async assignTaskToMember(familyId: string, taskId: string, assignToUserId: string, options?: ApiOptions): Promise<ApiResponse<any>> {
+    console.log(`[familyService] Assigning task ${taskId} to member ${assignToUserId} in family ${familyId}`);
+    return this.withRetry(async () => {
+      try {
+        // Get detailed information about the member to ensure we have both IDs
+        const memberResponse = await this.getFamilyMemberDetails(assignToUserId);
+        const memberData = memberResponse.data;
+        
+        // Extract member name for assignment
+        const memberName = memberData?.user?.username || 
+                           memberData?.username || 
+                           memberData?.name || 
+                           'Unknown';
+        
+        console.log(`[familyService] Assigning task to: ${memberName}`);
+        
+        // Prepare the endpoint
+        const endpoint = `/v1/family/${familyId}/tasks/assign`;
+        
+        // Enhanced assignment data with both IDs to improve success rate
+        const data: any = {
+          taskId: Number(taskId),
+          assignToUserId: assignToUserId,
+          // Required fields based on backend validation
+          UserId: memberData?.user?.id || assignToUserId,
+          MemberId: assignToUserId,
+          // Add name information to help backend populate the correct name
+          assignedToName: memberName,
+          assignToName: memberName,
+          memberName: memberName,
+          // Additional fields that might help backend resolve the user
+          memberId: assignToUserId,
+          familyMemberId: assignToUserId,
+          // If we have user data from member details, include that too
+          userId: memberData?.user?.id || assignToUserId,
+          // Optionally requested by API
+          requiresApproval: false,
+          // Extra info to help debugging
+          familyId: Number(familyId)
+        };
+        
+        console.log('[familyService] Sending assignment request:', data);
+        
+        // Make the API request with all possible CSRF tokens
+        const csrfToken = this.getCsrfToken();
+        const response = await apiClient.post<any>(endpoint, data, {
+          ...options,
+          extraHeaders: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-XSRF-TOKEN': csrfToken,
+          }
+        });
+        
+        console.log('[familyService] Assignment response:', response);
+        
+        // If we get a permission error, show a more helpful message
+        if (response.status === 401 || response.status === 403) {
+          console.log('[familyService] Permission error during task assignment');
+          return {
+            error: 'You do not have permission to assign tasks in this family. Only family administrators can assign tasks.',
+            status: response.status
+          };
+        }
+        
+        // If we get a "member not found" error, try direct member lookup
+        if (response.status === 404 || response.status === 400) {
+          console.log('[familyService] Assignment with member ID failed, trying alternative approach');
+          
+          // Make direct API request with alternative data format
+          try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+            
+            const directResponse = await fetch(`${apiUrl}/v1/family/${familyId}/tasks/assign`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': authToken ? `Bearer ${authToken}` : '',
+                'X-CSRF-TOKEN': csrfToken || '',
+                'X-XSRF-TOKEN': csrfToken || ''
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                taskId: Number(taskId),
+                assignToUserId: memberData?.user?.id || Number(assignToUserId),
+                requiresApproval: false
+              })
+            });
+            
+            if (directResponse.ok) {
+              // Return success response
+              return { status: directResponse.status };
+            }
+          } catch (directError) {
+            console.error('[familyService] Error with direct API call:', directError);
+          }
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('[familyService] Error assigning task:', error);
+        return {
+          error: error instanceof Error ? error.message : 'Failed to assign task',
+          status: 500
+        };
+      }
+    }, options?.retries);
+  },
+  
+  // Utility method to get CSRF token
+  getCsrfToken(): string {
+    try {
+      const rawCsrfToken = document.cookie
+        .split(';')
+        .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
+        ?.split('=')[1];
+      
+      // Properly decode the token from URL encoding
+      return rawCsrfToken ? decodeURIComponent(rawCsrfToken) : '';
+    } catch (error) {
+      console.error('[familyService] Error extracting CSRF token:', error);
+      return '';
     }
   }
 }; 

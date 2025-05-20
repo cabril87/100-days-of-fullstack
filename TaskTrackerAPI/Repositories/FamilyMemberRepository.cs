@@ -17,6 +17,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Data.SqlClient;
 
 namespace TaskTrackerAPI.Repositories;
 
@@ -72,13 +73,38 @@ public class FamilyMemberRepository : IFamilyMemberRepository
 
     public async Task<bool> DeleteAsync(int id)
     {
+        try
+    {
         FamilyMember? member = await _context.FamilyMembers.FindAsync(id);
         if (member == null)
             return false;
 
-        _context.FamilyMembers.Remove(member);
-        await _context.SaveChangesAsync();
-        return true;
+            // Clear any orphaned tasks - set a flag in case we need to handle notifications or logs
+            bool tasksUnassigned = false;
+            int count = await _context.Tasks
+                .Where(t => t.AssignedToFamilyMemberId == id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
+                    .SetProperty(t => t.UpdatedAt, DateTime.UtcNow));
+                    
+            if (count > 0)
+            {
+                tasksUnassigned = true;
+                _logger.LogInformation("Unassigned {Count} tasks from family member {FamilyMemberId}", count, id);
+            }
+
+            // Use ExecuteDeleteAsync to delete the entity directly without loading it
+            int rowsDeleted = await _context.FamilyMembers
+                .Where(fm => fm.Id == id)
+                .ExecuteDeleteAsync();
+
+            return rowsDeleted > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting family member with ID {Id}", id);
+            throw;
+        }
     }
 
     public async Task<bool> ExistsByIdAsync(int id)
@@ -129,8 +155,30 @@ public class FamilyMemberRepository : IFamilyMemberRepository
 
     public async Task DeleteFamilyMemberAsync(FamilyMember familyMember)
     {
-        _context.FamilyMembers.Remove(familyMember);
-        await _context.SaveChangesAsync();
+        try
+        {
+            // Clear any orphaned tasks
+            int count = await _context.Tasks
+                .Where(t => t.AssignedToFamilyMemberId == familyMember.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
+                    .SetProperty(t => t.UpdatedAt, DateTime.UtcNow));
+                    
+            if (count > 0)
+            {
+                _logger.LogInformation("Unassigned {Count} tasks from family member {FamilyMemberId}", count, familyMember.Id);
+            }
+            
+            // Use ExecuteDeleteAsync to delete directly
+            await _context.FamilyMembers
+                .Where(fm => fm.Id == familyMember.Id)
+                .ExecuteDeleteAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting family member with ID {Id}", familyMember.Id);
+            throw;
+        }
     }
 
     public async Task<bool> IsFamilyMemberOwnedByUserAsync(int familyMemberId, int userId)

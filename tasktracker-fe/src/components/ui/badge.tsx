@@ -14,6 +14,10 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        success: "border-transparent bg-green-100 text-green-800 hover:bg-green-200",
+        warning: "border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+        info: "border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200",
+        danger: "border-transparent bg-red-100 text-red-800 hover:bg-red-200",
       },
     },
     defaultVariants: {
@@ -24,11 +28,41 @@ const badgeVariants = cva(
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+    VariantProps<typeof badgeVariants> {
+  /**
+   * Whether the badge should have a hover state
+   */
+  interactive?: boolean;
+  /**
+   * Accessibility properties for the badge
+   */
+  ariaBusy?: boolean;
+  ariaLabel?: string;
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({
+  className,
+  variant,
+  interactive = false,
+  ariaBusy,
+  ariaLabel,
+  ...props
+}: BadgeProps) {
+  const baseClasses = badgeVariants({ variant })
+  const classes = cn(
+    baseClasses,
+    !interactive && "hover:bg-none",
+    className
+  )
+  
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div 
+      className={classes} 
+      aria-busy={ariaBusy}
+      aria-label={ariaLabel}
+      role="status"
+      {...props} 
+    />
   )
 }
 

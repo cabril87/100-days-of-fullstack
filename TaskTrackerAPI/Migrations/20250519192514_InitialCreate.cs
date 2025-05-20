@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskTrackerAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -1038,6 +1038,7 @@ namespace TaskTrackerAPI.Migrations
                     RequiresApproval = table.Column<bool>(type: "bit", nullable: false),
                     ApprovedByUserId = table.Column<int>(type: "int", nullable: true),
                     ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AssignedToName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Version = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
@@ -1259,7 +1260,7 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "AgeGroup", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "PrimaryFamilyId", "Role", "Salt", "Username" },
-                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46eEliAD75xJNo0m_Nd1OX_qIxAKIyBGIxocS-_ZH6ovTjMTE2Gs2xhEVX6DylD74dy4w1QlLv8Iz1dbWX1nDFN5gjqXPPtgAGRq944_tytcJbMyfUcQCBaYBQHKtiHv2Po", "CfDJ8HeiyxunoJNOiKpgMimE46ddn-WRzxrAtS1Ahvy-IjhSMATGohmYT0wjt8ypL_Da9gw7TIPT1V_XklzDJTclr53lqF8pAI3lAU2JtncHS2pIrz4RNOwOq4-oYcV5bTU4tw", true, "CfDJ8HeiyxunoJNOiKpgMimE46degzIu2VbKVurGt12EAgEmlwXGOUbQ4_UJw4gbiVg7rkqu-aj_4vudiRWBk53qFcIY3lQTDdqOS0qzdpkDeJAQ3NwZwSh_JGN5HDEq6wv16g", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
+                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46eAuyyDdMPH5X51VeN6HRsYTq7AvVZOYInjn4NTFXG4nbhqeR3flgDyATZgQcBcT6cCjHzZLA-VkPp40RISGPC91YDPRBHMl2oVfjjyVWk8yfqudgs-ZNegujKf3-juyzI", "CfDJ8HeiyxunoJNOiKpgMimE46dlxA3foyG6WoLE99wHchQocoxQxJS6Dhe2OHZ0qjGNEvZCxK1jqZHzpNAaEAR8rxM9D8LK8F8-DughO1mWL-vAGdIUrCSnhhK3iDwVnDWR9g", true, "CfDJ8HeiyxunoJNOiKpgMimE46eLA0QC7U3dojpOuhH1tck4MmBz2KuSVDGNM3twDtiXYyOikDfdVVdGPox7ZQ8p5nJ9PvYQLjHLNQxlWKIAaRfd8aE6eyoP6tNa3YBml0243A", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",
@@ -1272,11 +1273,11 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.InsertData(
                 table: "Tasks",
-                columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
+                columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "AssignedToName", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
                 values: new object[,]
                 {
-                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(3055), 1, 1L },
-                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 19, 1, 47, 34, 503, DateTimeKind.Utc).AddTicks(4744), 1, 1L }
+                    { 1, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(4950), 1, 1L },
+                    { 2, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 19, 19, 25, 13, 382, DateTimeKind.Utc).AddTicks(6451), 1, 1L }
                 });
 
             migrationBuilder.CreateIndex(

@@ -31,6 +31,32 @@ public class TaskItemRepository : ITaskItemRepository
         return await _context.Tasks
             .Where(t => t.UserId == userId)
             .Include(t => t.Category)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                Version = t.Version,
+                FamilyId = t.FamilyId,
+                BoardId = t.BoardId,
+                ApprovedAt = t.ApprovedAt,
+                ApprovedByUserId = t.ApprovedByUserId,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedToFamilyMemberId = t.AssignedToFamilyMemberId,
+                AssignedToId = t.AssignedToId,
+                EstimatedTimeMinutes = t.EstimatedTimeMinutes,
+                // Don't include AssignedToName to avoid the error
+            })
             .ToListAsync();
     }
 
@@ -39,6 +65,32 @@ public class TaskItemRepository : ITaskItemRepository
         IQueryable<TaskItem> query = _context.Tasks
             .Where(t => t.UserId == userId)
             .Include(t => t.Category)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                Version = t.Version,
+                FamilyId = t.FamilyId,
+                BoardId = t.BoardId,
+                ApprovedAt = t.ApprovedAt,
+                ApprovedByUserId = t.ApprovedByUserId,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedToFamilyMemberId = t.AssignedToFamilyMemberId,
+                AssignedToId = t.AssignedToId,
+                EstimatedTimeMinutes = t.EstimatedTimeMinutes,
+                // Don't include AssignedToName to avoid the error
+            })
             .AsQueryable();
 
         int count = await query.CountAsync();
@@ -59,8 +111,34 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task<TaskItem?> GetTaskByIdAsync(int id, int userId)
     {
         return await _context.Tasks
-            .Include(t => t.Category)
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            .Where(t => t.Id == id && t.UserId == userId)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                Version = t.Version,
+                FamilyId = t.FamilyId,
+                BoardId = t.BoardId,
+                ApprovedAt = t.ApprovedAt,
+                ApprovedByUserId = t.ApprovedByUserId,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedToFamilyMemberId = t.AssignedToFamilyMemberId,
+                AssignedToId = t.AssignedToId,
+                EstimatedTimeMinutes = t.EstimatedTimeMinutes
+                // Explicitly excluding AssignedToName which doesn't exist in DB
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<TaskItem> CreateTaskAsync(TaskItem task)
@@ -98,13 +176,19 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task DeleteTaskAsync(int id, int userId)
     {
-        TaskItem? task = await _context.Tasks
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        // First approach - try to locate the task ID without including problematic properties
+        var taskQuery = _context.Tasks
+            .Where(t => t.Id == id && t.UserId == userId)
+            .Select(t => new { t.Id });
+            
+        var taskToDelete = await taskQuery.FirstOrDefaultAsync();
 
-        if (task != null)
+        if (taskToDelete != null)
         {
-            _context.Tasks.Remove(task);
-            await _context.SaveChangesAsync();
+            // Use ExecuteDeleteAsync to directly delete the entity without loading it
+            await _context.Tasks
+                .Where(t => t.Id == id)
+                .ExecuteDeleteAsync();
         }
     }
 
@@ -207,41 +291,113 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task<TaskItem?> GetSharedTaskByIdAsync(int taskId)
     {
         return await _context.Tasks
-            .Include(t => t.Category)
-            .Include(t => t.AssignedToFamilyMember)
-                .ThenInclude(fm => fm!.User)
-            .Include(t => t.AssignedByUser)
-            .Include(t => t.ApprovedByUser)
-            .Include(t => t.Family)
-            .FirstOrDefaultAsync(t => t.Id == taskId);
+            .Where(t => t.Id == taskId)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                FamilyId = t.FamilyId,
+                Family = t.Family,
+                AssignedToFamilyMemberId = t.AssignedToFamilyMemberId,
+                AssignedToFamilyMember = t.AssignedToFamilyMemberId != null ? new FamilyMember
+                {
+                    Id = t.AssignedToFamilyMember!.Id,
+                    FamilyId = t.AssignedToFamilyMember.FamilyId,
+                    UserId = t.AssignedToFamilyMember.UserId,
+                    Role = t.AssignedToFamilyMember.Role,
+                    User = t.AssignedToFamilyMember.User
+                } : null,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedByUser = t.AssignedByUser,
+                ApprovedByUserId = t.ApprovedByUserId,
+                ApprovedByUser = t.ApprovedByUser,
+                RequiresApproval = t.RequiresApproval,
+                // Explicitly do not include AssignedToName to avoid the error
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<IEnumerable<TaskItem>> GetTasksAssignedToFamilyMemberAsync(int familyMemberId)
     {
         return await _context.Tasks
-            .Include(t => t.Category)
-            .Include(t => t.AssignedByUser)
             .Where(t => t.AssignedToFamilyMemberId == familyMemberId)
             .OrderBy(t => t.DueDate)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                FamilyId = t.FamilyId,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedByUser = t.AssignedByUser,
+                // Don't include AssignedToName to avoid the error
+            })
             .ToListAsync();
     }
 
     public async Task<IEnumerable<TaskItem>> GetFamilyTasksAsync(int familyId)
     {
         return await _context.Tasks
-            .Include(t => t.Category)
-            .Include(t => t.AssignedToFamilyMember)
-                .ThenInclude(fm => fm!.User)
-            .Include(t => t.AssignedByUser)
             .Where(t => t.FamilyId == familyId)
             .OrderBy(t => t.DueDate)
+            .Select(t => new TaskItem
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                CategoryId = t.CategoryId,
+                Category = t.Category,
+                FamilyId = t.FamilyId,
+                AssignedToFamilyMemberId = t.AssignedToFamilyMemberId,
+                AssignedToFamilyMember = t.AssignedToFamilyMember != null ? new FamilyMember
+                {
+                    Id = t.AssignedToFamilyMember.Id,
+                    FamilyId = t.AssignedToFamilyMember.FamilyId,
+                    UserId = t.AssignedToFamilyMember.UserId,
+                    Role = t.AssignedToFamilyMember.Role,
+                    User = t.AssignedToFamilyMember.User
+                } : null,
+                AssignedByUserId = t.AssignedByUserId,
+                AssignedByUser = t.AssignedByUser,
+                // Don't include AssignedToName to avoid the error
+            })
             .ToListAsync();
     }
 
     public async Task<bool> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int assignedByUserId, bool requiresApproval)
     {
-        TaskItem? task = await _context.Tasks.FindAsync(taskId);
-        if (task == null)
+        // First check if task and family member exist
+        bool taskExists = await _context.Tasks.AnyAsync(t => t.Id == taskId);
+        if (!taskExists)
             return false;
 
         FamilyMember? familyMember = await _context.FamilyMembers
@@ -250,28 +406,31 @@ public class TaskItemRepository : ITaskItemRepository
 
         if (familyMember == null)
             return false;
-
-        task.AssignedToFamilyMemberId = familyMemberId;
-        task.FamilyId = familyMember?.FamilyId ?? 0;
-        task.AssignedByUserId = assignedByUserId;
-        task.RequiresApproval = requiresApproval;
-        task.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return true;
+        
+        // Use ExecuteUpdateAsync to avoid loading the entity with AssignedToName issues
+        int rowsAffected = await _context.Tasks
+            .Where(t => t.Id == taskId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AssignedToFamilyMemberId, familyMemberId)
+                .SetProperty(t => t.FamilyId, familyMember.FamilyId)
+                .SetProperty(t => t.AssignedByUserId, assignedByUserId)
+                .SetProperty(t => t.RequiresApproval, requiresApproval)
+                // Removed AssignedToName property since it doesn't exist in DB
+                .SetProperty(t => t.UpdatedAt, DateTime.UtcNow));
+            
+        return rowsAffected > 0;
     }
 
     public async Task<bool> UnassignTaskFromFamilyMemberAsync(int taskId)
     {
-        TaskItem? task = await _context.Tasks.FindAsync(taskId);
-        if (task == null)
-            return false;
-
-        task.AssignedToFamilyMemberId = null;
-        task.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-        return true;
+        // Use ExecuteUpdateAsync to avoid loading the entity with AssignedToName
+        int rowsAffected = await _context.Tasks
+            .Where(t => t.Id == taskId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
+                .SetProperty(t => t.UpdatedAt, DateTime.UtcNow));
+            
+        return rowsAffected > 0;
     }
 
     public async Task<bool> ApproveTaskAsync(int taskId, int approverUserId, string? comment)
@@ -308,6 +467,28 @@ public class TaskItemRepository : ITaskItemRepository
                 t.DueDate <= end &&
                 !t.IsCompleted)
             .Include(t => t.User)
+            .Select(t => new TaskItem 
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Description = t.Description,
+                Status = t.Status,
+                DueDate = t.DueDate,
+                Priority = t.Priority,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt,
+                IsCompleted = t.IsCompleted,
+                UserId = t.UserId,
+                User = t.User,
+                Version = t.Version,
+                FamilyId = t.FamilyId,
+                BoardId = t.BoardId,
+                ApprovedAt = t.ApprovedAt,
+                ApprovedByUserId = t.ApprovedByUserId,
+                AssignedByUserId = t.AssignedByUserId,
+                // Don't include AssignedToName to avoid the error
+            })
             .ToListAsync();
     }
 }

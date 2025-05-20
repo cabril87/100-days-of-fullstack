@@ -1011,22 +1011,70 @@ class TaskService {
         return this.generateMockFamilyTasks(familyId);
       }
       
-      // Get tasks from the API - no fallback to mock data
+      // First try: Get tasks from the API with standard authentication
       const response = await apiClient.get<Task[]>(`/v1/family/${familyId}/tasks`);
+      
+      // If the response is successful, return it
       if (response.data) {
+        console.log(`[taskService] Successfully fetched ${response.data.length} family tasks`);
         return response;
       }
       
-      // Only if API request fails with an error, return empty array instead of mock data
+      // If we get a 401 error, try refreshing the token and then retry
+      if (response.status === 401) {
+        console.log('[taskService] Authentication failed (401), attempting to refresh token');
+        
+        try {
+          // Try to refresh authentication token
+          const refreshResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/v1/auth/refresh-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            credentials: 'include'
+          });
+          
+          if (refreshResponse.ok) {
+            console.log('[taskService] Token refreshed successfully, retrying tasks fetch');
+            
+            // Try to get the new token from the response
+            const refreshData = await refreshResponse.json();
+            if (refreshData?.token) {
+              localStorage.setItem('token', refreshData.token);
+            }
+            
+            // Retry with the refreshed token
+            const retryResponse = await apiClient.get<Task[]>(`/v1/family/${familyId}/tasks`, {
+              suppressAuthError: true // Don't show errors for this retry attempt
+            });
+            
+            if (retryResponse.data) {
+              console.log(`[taskService] Retry successful, fetched ${retryResponse.data.length} family tasks`);
+              return retryResponse;
+            }
+          } else {
+            console.error('[taskService] Token refresh failed:', refreshResponse.status);
+          }
+        } catch (refreshError) {
+          console.error('[taskService] Error during token refresh:', refreshError);
+        }
+      }
+      
+      console.log('[taskService] Returning empty array due to API error:', response.error);
+      
+      // If we get here, both attempts failed, but we'll show tasks as empty instead of an error
       return {
         data: [],
-        status: 200
+        status: 200,
+        error: response.error // Include the error for debugging but don't break the UI
       };
     } catch (error) {
       console.error(`[taskService] Error getting family tasks for family ${familyId}:`, error);
       return {
         error: error instanceof Error ? error.message : `Failed to get tasks for family ${familyId}`,
-        status: 500
+        status: 500,
+        data: [] // Still include an empty data array to prevent UI errors
       };
     }
   }
@@ -1116,6 +1164,7 @@ class TaskService {
       
       console.log(`[taskService] Sending assignment data:`, safeAssignmentData);
       
+      // First try: Use standard API client
       const response = await apiClient.post<Task>(
         `/v1/family/${familyId}/tasks/assign`, 
         safeAssignmentData
@@ -1124,6 +1173,95 @@ class TaskService {
       // Log the response for debugging
       console.log(`[taskService] Assignment response:`, response);
       
+      // If successful, return it
+      if (response.status === 200 || response.status === 201 || response.status === 204) {
+        return response;
+      }
+      
+      // If we get a 401 error, try refreshing the token and retry
+      if (response.status === 401) {
+        console.log('[taskService] Authentication failed (401), attempting to refresh token');
+        
+        try {
+          // Try to refresh authentication token
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+          const refreshResponse = await fetch(`${apiUrl}/v1/auth/refresh-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            credentials: 'include'
+          });
+          
+          if (refreshResponse.ok) {
+            console.log('[taskService] Token refreshed successfully, retrying task assignment');
+            
+            // Try to get the new token from the response
+            const refreshData = await refreshResponse.json();
+            if (refreshData?.token) {
+              localStorage.setItem('token', refreshData.token);
+              
+              // Get CSRF token from cookies
+              const csrfToken = this.getCsrfTokenFromCookies();
+              
+              // Try direct fetch with the new token
+              const directResponse = await fetch(`${apiUrl}/v1/family/${familyId}/tasks/assign`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Authorization': `Bearer ${refreshData.token}`,
+                  'X-CSRF-TOKEN': csrfToken || '',
+                  'X-XSRF-TOKEN': csrfToken || ''
+                },
+                credentials: 'include',
+                body: JSON.stringify(safeAssignmentData)
+              });
+              
+              console.log('[taskService] Direct assignment response status:', directResponse.status);
+              
+              if (directResponse.ok) {
+                try {
+                  const data = await directResponse.json();
+                  return { data, status: directResponse.status };
+                } catch {
+                  // If we can't parse the response but it's successful, return generic success
+                  return { status: directResponse.status };
+                }
+              }
+              
+              // Try an alternative endpoint as last resort
+              const altResponse = await fetch(`${apiUrl}/v1/family-tasks/assign?familyId=${familyId}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Authorization': `Bearer ${refreshData.token}`,
+                  'X-CSRF-TOKEN': csrfToken || '',
+                  'X-XSRF-TOKEN': csrfToken || ''
+                },
+                credentials: 'include',
+                body: JSON.stringify(safeAssignmentData)
+              });
+              
+              if (altResponse.ok) {
+                try {
+                  const data = await altResponse.json();
+                  return { data, status: altResponse.status };
+                } catch {
+                  // If we can't parse the response but it's successful, return generic success
+                  return { status: altResponse.status };
+                }
+              }
+            }
+          }
+        } catch (refreshError) {
+          console.error('[taskService] Error during token refresh:', refreshError);
+        }
+      }
+      
+      // If we got this far, all attempts failed
       return response;
     } catch (error) {
       console.error(`[taskService] Error assigning task in family ${familyId}:`, error);
@@ -1143,6 +1281,34 @@ class TaskService {
       console.error(`[taskService] Error unassigning task ${taskId} in family ${familyId}:`, error);
       return {
         error: error instanceof Error ? error.message : `Failed to unassign task ${taskId}`,
+        status: 500
+      };
+    }
+  }
+  
+  async deleteFamilyTask(familyId: string, taskId: number): Promise<ApiResponse<void>> {
+    try {
+      console.log(`[taskService] Deleting task ${taskId} in family ${familyId}`);
+      const response = await apiClient.delete(`/v1/family/${familyId}/tasks/${taskId}`);
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error deleting task ${taskId} in family ${familyId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to delete task ${taskId}`,
+        status: 500
+      };
+    }
+  }
+  
+  async unassignAllTasksFromMember(familyId: string, familyMemberId: number): Promise<ApiResponse<number>> {
+    try {
+      console.log(`[taskService] Unassigning all tasks from family member ${familyMemberId} in family ${familyId}`);
+      const response = await apiClient.delete<number>(`/v1/family/${familyId}/member/${familyMemberId}/unassign-all`);
+      return response;
+    } catch (error) {
+      console.error(`[taskService] Error unassigning tasks from family member ${familyMemberId}:`, error);
+      return {
+        error: error instanceof Error ? error.message : `Failed to unassign tasks from family member ${familyMemberId}`,
         status: 500
       };
     }

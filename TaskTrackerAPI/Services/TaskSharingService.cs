@@ -78,17 +78,19 @@ namespace TaskTrackerAPI.Services
                     return null;
                 }
 
-                // Check if the task exists and if the user has permission to assign it
-                TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
-                if (task == null)
-                {
-                    // Try to get a shared task
+                // Get assignee name for display
+                string assignedToName = !string.IsNullOrEmpty(memberUser.Username) ? memberUser.Username : 
+                                        !string.IsNullOrEmpty(familyMember.Name) ? familyMember.Name : 
+                                        memberUser.Email ?? "Family Member";
+
+                _logger.LogInformation("Assigning task to {AssignedToName}", assignedToName);
+
+                // Check if the task exists and if the user has permission to assign it - USE SHARED TASK METHOD INSTEAD
                     TaskItem? sharedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
-                    if (sharedTask == null || sharedTask?.FamilyId != familyId)
+                if (sharedTask == null)
                     {
                         _logger.LogWarning("Task {TaskId} not found or not part of family {FamilyId}", taskId, familyId);
                         return null;
-                    }
                 }
 
                 // Perform the assignment
@@ -116,11 +118,19 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
+                _logger.LogInformation("Attempting to unassign task {TaskId} by user {UserId}", taskId, userId);
+                
                 // Get the task
                 TaskItem? task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
-                if (task == null || task.AssignedToFamilyMemberId == null)
+                if (task == null)
                 {
-                    _logger.LogWarning("Task {TaskId} not found or not assigned to any family member", taskId);
+                    _logger.LogWarning("Task {TaskId} not found", taskId);
+                    return false;
+                }
+                
+                if (task.AssignedToFamilyMemberId == null)
+                {
+                    _logger.LogWarning("Task {TaskId} is not assigned to any family member", taskId);
                     return false;
                 }
 
@@ -142,6 +152,7 @@ namespace TaskTrackerAPI.Services
                     throw new UnauthorizedAccessException("You don't have permission to unassign this task");
                 }
 
+                _logger.LogInformation("Unassigning task {TaskId} from family member {FamilyMemberId}", taskId, task.AssignedToFamilyMemberId);
                 return await _taskRepository.UnassignTaskFromFamilyMemberAsync(taskId);
             }
             catch (Exception ex)
@@ -276,6 +287,102 @@ namespace TaskTrackerAPI.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting family task {TaskId}", taskId);
+                throw;
+            }
+        }
+
+        public async Task<int> UnassignAllTasksFromFamilyMemberAsync(int familyMemberId, int userId)
+        {
+            try
+            {
+                // Get the family member to check permissions
+                FamilyMember? familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
+                if (familyMember == null)
+                {
+                    _logger.LogWarning("Family member with ID {FamilyMemberId} not found", familyMemberId);
+                    return 0;
+                }
+
+                int familyId = familyMember.FamilyId;
+
+                // Check if the user has admin permissions for this family
+                bool hasPermission = await _familyRepository.HasPermissionAsync(familyId, userId, "manage_family");
+                if (!hasPermission)
+                {
+                    _logger.LogWarning("User {UserId} doesn't have admin permission for family {FamilyId}", userId, familyId);
+                    throw new UnauthorizedAccessException("You need admin permissions to perform this action");
+                }
+
+                // Get all tasks assigned to this family member
+                IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksAssignedToFamilyMemberAsync(familyMemberId);
+                if (!tasks.Any())
+                {
+                    _logger.LogInformation("No tasks found assigned to family member {FamilyMemberId}", familyMemberId);
+                    return 0;
+                }
+
+                int unassignedCount = 0;
+                foreach (var task in tasks)
+                {
+                    bool success = await _taskRepository.UnassignTaskFromFamilyMemberAsync(task.Id);
+                    if (success)
+                    {
+                        unassignedCount++;
+                        _logger.LogInformation("Successfully unassigned task {TaskId} from family member {FamilyMemberId}", task.Id, familyMemberId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to unassign task {TaskId} from family member {FamilyMemberId}", task.Id, familyMemberId);
+                    }
+                }
+
+                _logger.LogInformation("Unassigned {Count} tasks from family member {FamilyMemberId}", unassignedCount, familyMemberId);
+                return unassignedCount;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error unassigning all tasks from family member {FamilyMemberId}", familyMemberId);
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteFamilyTaskAsync(int taskId, int userId)
+        {
+            try
+            {
+                // Get the task
+                TaskItem? task = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                if (task == null)
+                {
+                    _logger.LogWarning("Task {TaskId} not found", taskId);
+                    return false;
+                }
+
+                // Check if the user has permission to delete the task
+                int familyId = task.FamilyId ?? 0;
+                if (familyId == 0)
+                {
+                    _logger.LogWarning("Task {TaskId} is not associated with any family", taskId);
+                    return false;
+                }
+
+                bool canDelete = await _familyRepository.HasPermissionAsync(familyId, userId, "manage_tasks") || 
+                                 task.AssignedByUserId == userId;
+
+                if (!canDelete)
+                {
+                    _logger.LogWarning("User {UserId} doesn't have permission to delete task {TaskId}", userId, taskId);
+                    throw new UnauthorizedAccessException("You don't have permission to delete this task");
+                }
+
+                // Delete the task
+                await _taskRepository.DeleteTaskAsync(task.Id, task.UserId);
+                _logger.LogInformation("Task {TaskId} deleted successfully by user {UserId}", taskId, userId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting task {TaskId}", taskId);
                 throw;
             }
         }

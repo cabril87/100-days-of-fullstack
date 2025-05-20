@@ -52,10 +52,23 @@ namespace TaskTrackerAPI.Controllers.V2
             string userId = _userAccessor.GetCurrentUserId();
 
             // Get the user's current focus item (if any is explicitly set)
-            FocusSession? currentFocus = await _context.FocusSessions
-                .Include(f => f.TaskItem)
+            var currentFocus = await _context.FocusSessions
                 .Where(f => f.UserId == int.Parse(userId) && f.EndTime == null)
                 .OrderByDescending(f => f.StartTime)
+                .Select(f => new 
+                {
+                    FocusSession = f,
+                    TaskItem = new TaskItem
+                    {
+                        Id = f.TaskItem.Id,
+                        Title = f.TaskItem.Title,
+                        Description = f.TaskItem.Description,
+                        Status = f.TaskItem.Status,
+                        DueDate = f.TaskItem.DueDate,
+                        Priority = f.TaskItem.Priority,
+                        // Don't include AssignedToName
+                    }
+                })
                 .FirstOrDefaultAsync();
 
             // If user has an active focus session
@@ -69,6 +82,7 @@ namespace TaskTrackerAPI.Controllers.V2
                     Status = currentFocus.TaskItem.Status,
                     DueDate = currentFocus.TaskItem.DueDate,
                     Priority = ConvertPriorityToInt(currentFocus.TaskItem.Priority),
+                    // Don't include AssignedToName to avoid the error
                     // Map other properties as needed
                 };
 
@@ -101,6 +115,7 @@ namespace TaskTrackerAPI.Controllers.V2
                 Status = suggestedTask.Status,
                 DueDate = suggestedTask.DueDate,
                 Priority = ConvertPriorityToInt(suggestedTask.Priority),
+                // Don't include AssignedToName to avoid the error
                 // Map other properties as needed
             };
 
@@ -126,7 +141,17 @@ namespace TaskTrackerAPI.Controllers.V2
 
             // Validate task exists and belongs to user
             TaskItem? task = await _context.Tasks
-                .FirstOrDefaultAsync(t => t.Id == focusRequest.TaskId && t.UserId == userIdInt);
+                .Where(t => t.Id == focusRequest.TaskId && t.UserId == userIdInt)
+                .Select(t => new TaskItem
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Description = t.Description,
+                    Status = t.Status,
+                    UserId = t.UserId,
+                    // Only include properties needed for validation
+                })
+                .FirstOrDefaultAsync();
             
             if (task == null)
             {
@@ -140,6 +165,15 @@ namespace TaskTrackerAPI.Controllers.V2
             // End any current focus sessions
             List<FocusSession> activeSessions = await _context.FocusSessions
                 .Where(f => f.UserId == userIdInt && f.EndTime == null)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    // Only include needed properties
+                })
                 .ToListAsync();
 
             foreach (FocusSession session in activeSessions)
@@ -190,7 +224,18 @@ namespace TaskTrackerAPI.Controllers.V2
 
             // Find the active session
             FocusSession? session = await _context.FocusSessions
-                .FirstOrDefaultAsync(f => f.Id == sessionId && f.UserId == userIdInt && f.EndTime == null);
+                .Where(f => f.Id == sessionId && f.UserId == userIdInt && f.EndTime == null)
+                .Select(f => new FocusSession
+                {
+                    Id = f.Id,
+                    UserId = f.UserId,
+                    TaskId = f.TaskId,
+                    StartTime = f.StartTime,
+                    EndTime = f.EndTime,
+                    Notes = f.Notes,
+                    // Only include needed properties
+                })
+                .FirstOrDefaultAsync();
 
             if (session == null)
             {
@@ -244,6 +289,7 @@ namespace TaskTrackerAPI.Controllers.V2
                 Status = task.Status,
                 DueDate = task.DueDate,
                 Priority = ConvertPriorityToInt(task.Priority),
+                // Don't include AssignedToName to avoid the error
                 // Map other properties as needed
             }).ToList();
 

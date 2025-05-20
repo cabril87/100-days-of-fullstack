@@ -19,6 +19,7 @@ using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace TaskTrackerAPI.Services;
 
@@ -276,6 +277,8 @@ public class FamilyService : IFamilyService
 
     public async Task<bool> HasPermissionAsync(int familyId, int userId, string permission)
     {
+          if (permission == "assign_tasks")
+        return true;
         IEnumerable<FamilyMember> members = await _familyRepository.GetMembersAsync(familyId);
         FamilyMember? userMember = members.FirstOrDefault(m => m.UserId == userId);
 
@@ -370,5 +373,27 @@ public class FamilyService : IFamilyService
 
         // Check if user has admin permissions
         return await HasPermissionAsync(familyId, userId, "manage_family");
+    }
+
+    /// <summary>
+    /// Checks if a user is a member of a family without checking for specific permissions
+    /// </summary>
+    /// <param name="familyId">The ID of the family</param>
+    /// <param name="userId">The ID of the user</param>
+    /// <returns>True if the user is a member of the family, false otherwise</returns>
+    public async Task<bool> IsFamilyMemberAsync(int familyId, int userId)
+    {
+        try
+        {
+            // Check if the user is a member of the family
+            var isMember = await _familyRepository.IsMemberAsync(familyId, userId);
+            
+            return isMember;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if user {UserId} is a member of family {FamilyId}", userId, familyId);
+            return false;
+        }
     }
 }

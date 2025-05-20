@@ -43,17 +43,36 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
+            var sessionData = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
                 .OrderByDescending(fs => fs.StartTime)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
                 .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
+            
+            // Manually set the TaskItem
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             return ApiOk(session);
         }
@@ -123,14 +142,33 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
-                .FirstOrDefaultAsync(fs => fs.Id == id && fs.UserId == userId);
+            var sessionData = await _context.FocusSessions
+                .Where(fs => fs.Id == id && fs.UserId == userId)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
+                .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
+
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             if (session.Status == SessionStatus.Completed)
             {
@@ -155,17 +193,35 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
+            var sessionData = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
                 .OrderByDescending(fs => fs.StartTime)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
                 .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
+
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             session.EndTime = DateTime.UtcNow;
             session.Status = SessionStatus.Completed;
@@ -185,14 +241,33 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
-                .FirstOrDefaultAsync(fs => fs.Id == id && fs.UserId == userId);
+            var sessionData = await _context.FocusSessions
+                .Where(fs => fs.Id == id && fs.UserId == userId)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
+                .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
+
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             if (session.Status != SessionStatus.InProgress)
             {
@@ -211,16 +286,34 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
+            var sessionData = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && fs.Status == SessionStatus.InProgress)
                 .OrderByDescending(fs => fs.StartTime)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
                 .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
+
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             session.Status = SessionStatus.Paused;
             await _context.SaveChangesAsync();
@@ -234,14 +327,33 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var session = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
-                .FirstOrDefaultAsync(fs => fs.Id == id && fs.UserId == userId);
+            var sessionData = await _context.FocusSessions
+                .Where(fs => fs.Id == id && fs.UserId == userId)
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
+                .FirstOrDefaultAsync();
 
-            if (session == null)
+            if (sessionData == null)
             {
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
+
+            var session = sessionData.Session;
+            session.TaskItem = sessionData.TaskItem;
 
             if (session.Status != SessionStatus.Paused)
             {
@@ -265,6 +377,20 @@ namespace TaskTrackerAPI.Controllers.V1
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)
                 .Take(count)
+                .Select(t => new TaskItem 
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Description = t.Description,
+                    Status = t.Status,
+                    DueDate = t.DueDate,
+                    Priority = t.Priority,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    IsCompleted = t.IsCompleted,
+                    UserId = t.UserId,
+                    // Excluding AssignedToName to avoid the error
+                })
                 .ToListAsync();
 
             return ApiOk(suggestions);
@@ -346,12 +472,34 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var history = await _context.FocusSessions
-                .Include(fs => fs.TaskItem)
+            var historySessions = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId)
                 .OrderByDescending(fs => fs.StartTime)
                 .Take(50) // Limit to 50 most recent sessions
+                .Select(fs => new {
+                    Session = fs,
+                    TaskItem = new TaskItem {
+                        Id = fs.TaskItem.Id,
+                        Title = fs.TaskItem.Title,
+                        Description = fs.TaskItem.Description,
+                        Status = fs.TaskItem.Status,
+                        DueDate = fs.TaskItem.DueDate,
+                        Priority = fs.TaskItem.Priority,
+                        CreatedAt = fs.TaskItem.CreatedAt,
+                        UpdatedAt = fs.TaskItem.UpdatedAt,
+                        IsCompleted = fs.TaskItem.IsCompleted,
+                        UserId = fs.TaskItem.UserId,
+                        // Don't include AssignedToName
+                    }
+                })
                 .ToListAsync();
+
+            // Create list of sessions with manually assigned TaskItems
+            var history = historySessions.Select(data => {
+                var session = data.Session;
+                session.TaskItem = data.TaskItem;
+                return session;
+            }).ToList();
 
             return ApiOk(history);
         }

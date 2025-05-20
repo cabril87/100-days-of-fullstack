@@ -23,5 +23,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         Task<IEnumerable<FamilyTaskItemDTO>> GetFamilyTasksAsync(int familyId, int userId);
         Task<bool> ApproveTaskAsync(int taskId, int userId, TaskApprovalDTO approvalDto);
         Task<FamilyTaskItemDTO?> GetFamilyTaskByIdAsync(int taskId, int userId);
+        Task<int> UnassignAllTasksFromFamilyMemberAsync(int familyMemberId, int userId);
+        Task<bool> DeleteFamilyTaskAsync(int taskId, int userId);
     }
 } 
