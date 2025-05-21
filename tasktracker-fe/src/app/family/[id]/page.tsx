@@ -155,10 +155,16 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
   const handleDeleteFamily = async () => {
     if (!family) return;
 
-    const success = await deleteFamily(family.id.toString());
-    if (success) {
-      setIsDeleteDialogOpen(false);
-      router.push('/family');
+    try {
+      const success = await deleteFamily(family.id.toString());
+      if (success) {
+        setIsDeleteDialogOpen(false);
+        // Navigate to the family dashboard and ensure we're not trying to fetch the deleted family
+        router.push('/family');
+      }
+    } catch (error) {
+      console.error("Error deleting family:", error);
+      showToast('Failed to delete family. Please try again.', 'error');
     }
   };
 

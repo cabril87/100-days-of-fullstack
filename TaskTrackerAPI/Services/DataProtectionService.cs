@@ -69,7 +69,7 @@ public class DataProtectionService : IDataProtectionService
     /// Decrypts a string value
     /// </summary>
     /// <param name="cipherText">The encrypted text to decrypt</param>
-    /// <returns>The decrypted value, or null if input was null</returns>
+    /// <returns>The decrypted value, or the original value if decryption fails, or null if input was null</returns>
     public string? Decrypt(string? cipherText)
     {
         if (cipherText == null)
@@ -85,10 +85,18 @@ public class DataProtectionService : IDataProtectionService
             // Decrypt the value
             return protector.Unprotect(cipherText);
         }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            _logger.LogWarning(ex, "Decryption failed, returning original value as fallback");
+            // Return the original value as a fallback when keys don't match
+            // This allows the application to continue functioning with encrypted data
+            return cipherText;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error decrypting value");
-            throw new TaskTrackerAPI.Exceptions.SecurityException("Error decrypting data", ex);
+            // Return the original value as a fallback
+            return cipherText;
         }
     }
     

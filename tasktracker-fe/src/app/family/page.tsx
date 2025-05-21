@@ -11,6 +11,27 @@ import { familyService } from '@/lib/services/familyService';
 import { Family } from '@/lib/types/family';
 import { useToast } from '@/lib/hooks/useToast';
 import FamilyCard from '@/components/family/FamilyCard';
+import { useRouter, usePathname } from 'next/navigation';
+
+// Constants for retries
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+const REFRESH_INTERVAL_MS = 2000; // How often to check for updates
+
+// Helper function to get cached families
+const getCachedFamilies = (): Family[] => {
+  if (typeof window === 'undefined') return [];
+  
+  try {
+    const cached = localStorage.getItem('family_dashboard_cache');
+    if (cached) {
+      return JSON.parse(cached);
+    }
+  } catch (error) {
+    console.error('Error reading cached families:', error);
+  }
+  return [];
+};
 
 export default function FamilyDashboard() {
   const [families, setFamilies] = useState<Family[]>([]);
@@ -18,6 +39,8 @@ export default function FamilyDashboard() {
   const [connectionError, setConnectionError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [usingCachedData, setUsingCachedData] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  const [cacheKey, setCacheKey] = useState<string>(Date.now().toString());
   const [stats, setStats] = useState({
     totalMembers: 0,
     totalCompletedTasks: 0,
@@ -25,169 +48,232 @@ export default function FamilyDashboard() {
     activeFamilies: 0
   });
   const { showToast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
   
-  // Fetch all families the user belongs to
-  const fetchFamilies = async (retry = 0) => {
+  // Fetch all families with cache busting
+  const fetchFamilies = async (retry = 0, forceCacheBust = false) => {
     setLoading(true);
     setConnectionError(false);
     
+    // Generate a new cache key if force cache busting is requested
+    if (forceCacheBust) {
+      setCacheKey(Date.now().toString());
+    }
+    
     try {
-      console.log("Fetching all families for dashboard");
-      const response = await familyService.getAllFamilies();
-      console.log("Families response:", response);
+      console.log(`[DEBUG] Fetching all families for dashboard (cache key: ${cacheKey})`);
       
-      if (response.data) {
-        setFamilies(response.data);
-        setUsingCachedData(false);
+      // Standard API call - no fancy options
+      const response = await familyService.getAllFamilies();
+      console.log("[DEBUG] Families API response:", response);
+      
+      if (response.data && Array.isArray(response.data)) {
+        console.log(`[DEBUG] Got ${response.data.length} families from server`);
         
-        // Cache successful response for future use
-        try {
-          localStorage.setItem('family_dashboard_cache', JSON.stringify(response.data));
-          console.log('Cached family dashboard data');
-        } catch (cacheError) {
-          console.warn('Failed to cache family dashboard data:', cacheError);
+        // Check for recently deleted families that might still appear
+        const filteredFamilies = response.data.filter(family => {
+          // Check if this family was recently deleted
+          const wasRecent = localStorage.getItem(`recently_deleted_family_${family.id}`);
+          if (wasRecent) {
+            console.log(`[DEBUG] Filtering out recently deleted family: ${family.id}`);
+            return false;
+          }
+          return true;
+        });
+        
+        if (filteredFamilies.length !== response.data.length) {
+          console.log(`[DEBUG] Filtered out ${response.data.length - filteredFamilies.length} recently deleted families`);
         }
         
-        // Calculate dashboard stats
-        const totalMembers = response.data.reduce((sum, family) => sum + family.members.length, 0);
+        // Process families data
+        setFamilies(filteredFamilies);
+        
+        // Calculate stats
+        const totalMembers = response.data.reduce((sum, family) => 
+          sum + (family.members?.length || 0), 0);
+        
         const totalCompletedTasks = response.data.reduce((sum, family) => 
-          sum + family.members.reduce((s, m) => s + (m.completedTasks || 0), 0), 0);
+          sum + family.members?.reduce((memberSum, member) => 
+            memberSum + (member.completedTasks || 0), 0) || 0, 0);
+        
         const totalPendingTasks = response.data.reduce((sum, family) => 
-          sum + family.members.reduce((s, m) => s + (m.pendingTasks || 0), 0), 0);
-        const activeFamilies = response.data.filter(family => 
-          family.members.some(m => (m.completedTasks || 0) > 0 || (m.pendingTasks || 0) > 0)).length;
+          sum + family.members?.reduce((memberSum, member) => 
+            memberSum + (member.pendingTasks || 0), 0) || 0, 0);
         
         setStats({
           totalMembers,
           totalCompletedTasks,
           totalPendingTasks,
-          activeFamilies
+          activeFamilies: response.data.length
         });
-      } else if (response.error) {
-        console.error("Error response from API:", response.error, "Status:", response.status);
-        setConnectionError(true);
-        setRetryCount(prevCount => prevCount + 1);
         
-        // Try to use cached data if available
-        const cachedData = localStorage.getItem('family_dashboard_cache');
-        if (cachedData) {
-          try {
-            const parsedCache = JSON.parse(cachedData);
-            console.log('Using cached family dashboard data due to API error');
-            setFamilies(parsedCache);
-            setUsingCachedData(true);
-            
-            // Calculate dashboard stats from cache
-            const totalMembers = parsedCache.reduce((sum: number, family: any) => sum + family.members.length, 0);
-            const totalCompletedTasks = parsedCache.reduce((sum: number, family: any) => 
-              sum + family.members.reduce((s: number, m: any) => s + (m.completedTasks || 0), 0), 0);
-            const totalPendingTasks = parsedCache.reduce((sum: number, family: any) => 
-              sum + family.members.reduce((s: number, m: any) => s + (m.pendingTasks || 0), 0), 0);
-            const activeFamilies = parsedCache.filter((family: any) => 
-              family.members.some((m: any) => (m.completedTasks || 0) > 0 || (m.pendingTasks || 0) > 0)).length;
-            
-            setStats({
-              totalMembers,
-              totalCompletedTasks,
-              totalPendingTasks,
-              activeFamilies
-            });
-            
-            // Show toast about using cached data
-            showToast('Using cached family data. Some information may be outdated.', 'warning');
-          } catch (parseError) {
-            console.error("Failed to parse cached family data:", parseError);
-            showToast(response.error, 'error');
-          }
-        } else {
-          // If no cache, retry if not max retries
-          if (retry < 3 && response.status === 500) {
-            const retryDelay = 1000 * Math.pow(2, retry);  // Exponential backoff
-            console.log(`Will retry in ${retryDelay}ms (attempt ${retry + 1}/3)`);
-            showToast(`Server error. Retrying in ${retryDelay/1000}s...`, 'warning');
-            
-            setTimeout(() => fetchFamilies(retry + 1), retryDelay);
-            return;
-          } else {
-            showToast(response.error, 'error');
-          }
+        // Reset error states
+        setConnectionError(false);
+        setUsingCachedData(false);
+      } else if (response.error) {
+        console.error("Error fetching families:", response.error);
+        setConnectionError(true);
+        
+        // Use cached data as fallback
+        const cachedFamilies = getCachedFamilies();
+        if (cachedFamilies.length > 0) {
+          setFamilies(cachedFamilies);
+          setUsingCachedData(true);
         }
       }
     } catch (error) {
-      console.error("Exception fetching families:", error);
+      console.error("Exception in fetchFamilies:", error);
       setConnectionError(true);
-      setRetryCount(prevCount => prevCount + 1);
       
-      // Try to use cached data on exception
-      const cachedData = localStorage.getItem('family_dashboard_cache');
-      if (cachedData) {
-        try {
-          const parsedCache = JSON.parse(cachedData);
-          console.log('Using cached family dashboard data due to exception');
-          setFamilies(parsedCache);
-          setUsingCachedData(true);
-          
-          // Calculate dashboard stats from cache
-          const totalMembers = parsedCache.reduce((sum: number, family: any) => sum + family.members.length, 0);
-          const totalCompletedTasks = parsedCache.reduce((sum: number, family: any) => 
-            sum + family.members.reduce((s: number, m: any) => s + (m.completedTasks || 0), 0), 0);
-          const totalPendingTasks = parsedCache.reduce((sum: number, family: any) => 
-            sum + family.members.reduce((s: number, m: any) => s + (m.pendingTasks || 0), 0), 0);
-          const activeFamilies = parsedCache.filter((family: any) => 
-            family.members.some((m: any) => (m.completedTasks || 0) > 0 || (m.pendingTasks || 0) > 0)).length;
-          
-          setStats({
-            totalMembers,
-            totalCompletedTasks,
-            totalPendingTasks,
-            activeFamilies
-          });
-          
-          showToast('Using cached data. Connection to server failed.', 'warning');
-        } catch (parseError) {
-          console.error("Failed to parse cached family data:", parseError);
-          showToast('Failed to load families', 'error');
-        }
-      } else {
-        // If no cache and exception, retry once
-        if (retry < 2) {
-          const retryDelay = 1500 * (retry + 1);
-          console.log(`Connection failed. Will retry in ${retryDelay}ms (attempt ${retry + 1}/2)`);
-          showToast(`Connection failed. Retrying in ${retryDelay/1000}s...`, 'warning');
-          
-          setTimeout(() => fetchFamilies(retry + 1), retryDelay);
-          return;
-        } else {
-          showToast('Failed to load families after multiple attempts', 'error');
-        }
+      // Use cached data as fallback
+      const cachedFamilies = getCachedFamilies();
+      if (cachedFamilies.length > 0) {
+        setFamilies(cachedFamilies);
+        setUsingCachedData(true);
+      }
+      
+      // Auto-retry logic
+      if (retry < MAX_RETRIES) {
+        setRetryCount(retry + 1);
+        setTimeout(() => fetchFamilies(retry + 1), RETRY_DELAY_MS * (retry + 1));
       }
     } finally {
       setLoading(false);
+      setLastRefresh(Date.now());
     }
   };
   
-  // Initial data load
+  // Initial load and polling setup
   useEffect(() => {
-    fetchFamilies();
-  }, []);
+    console.log("[DEBUG] Family dashboard mounted - setting up data fetching");
+    
+    // Always clear the deletion in progress flag when we reach the family dashboard
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('family_deletion_in_progress');
+    }
+    
+    // Check if we're coming from a family deletion or check for recently deleted families
+    const isComingFromDeletion = 
+      localStorage.getItem('family_deletion_timestamp') || 
+      Object.keys(localStorage).some(key => key.includes('recently_deleted_family_'));
+    
+    if (isComingFromDeletion) {
+      console.log('[DEBUG] Coming from family deletion, showing loading state immediately');
+      setLoading(true);
+      
+      // Wipe all family-related data from local storage
+      try {
+        Object.keys(localStorage)
+          .filter(key => key.includes('family') && !key.includes('recently_deleted_family_'))
+          .forEach(key => localStorage.removeItem(key));
+          
+        console.log('[DEBUG] Cleared all regular family cache entries after deletion');
+      } catch (err) {
+        console.warn('[DEBUG] Error clearing family cache:', err);
+      }
+    }
+    
+    // Check if we're coming from a family deletion
+    const deletionTimestamp = localStorage.getItem('family_deletion_timestamp');
+    if (deletionTimestamp) {
+      const timeSinceDeletion = Date.now() - parseInt(deletionTimestamp, 10);
+      console.log(`[DEBUG] Page loaded after family deletion (${timeSinceDeletion}ms ago)`);
+      
+      // If the deletion was recent (within 30 seconds), force a reload
+      if (timeSinceDeletion < 30000) {
+        console.log('[DEBUG] Recent deletion detected, forcing reload of page');
+        
+        // Remove the deletion timestamp to prevent infinite reload loop
+        localStorage.removeItem('family_deletion_timestamp');
+        
+        // Force a complete reload to ensure fresh data
+        window.location.reload();
+        return;
+      } else {
+        // Clear old deletion timestamp
+        localStorage.removeItem('family_deletion_timestamp');
+      }
+    }
+    
+    // Clear all family-related caches
+    try {
+      console.log('[DEBUG] Clearing family caches on dashboard mount');
+      localStorage.removeItem('family_dashboard_cache');
+      
+      // Check for recently deleted families
+      const deletedFamilyKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.includes('recently_deleted_family_')) {
+          deletedFamilyKeys.push(key);
+          const familyId = key.replace('recently_deleted_family_', '');
+          console.log(`[DEBUG] Found record of recently deleted family: ${familyId}`);
+        }
+        
+        // Also clear other family-related caches
+        if (key && key.includes('family')) {
+          localStorage.removeItem(key);
+        }
+      }
+      
+      // Clear deletion markers after handling them
+      deletedFamilyKeys.forEach(key => {
+        console.log(`[DEBUG] Removing deletion marker: ${key}`);
+        localStorage.removeItem(key);
+      });
+    } catch (err) {
+      console.warn('[DEBUG] Error clearing family cache:', err);
+    }
+    
+    // Initial fetch
+    console.log('[DEBUG] Starting initial families fetch');
+    fetchFamilies(0, true);
+    
+    // Set up polling to check for updates
+    // This helps when families are created/deleted in other tabs or after redirection
+    const pollInterval = setInterval(() => {
+      console.log("[DEBUG] Polling for family updates...");
+      fetchFamilies(0, true);
+    }, 3000); // Poll every 3 seconds
+    
+    // Stop polling after 15 seconds to conserve resources
+    const stopPollingTimeout = setTimeout(() => {
+      clearInterval(pollInterval);
+      console.log("[DEBUG] Stopped polling for family updates");
+    }, 15000);
+    
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(stopPollingTimeout);
+    };
+  }, [pathname]); // Re-run when pathname changes
+  
+  // Force refresh handler
+  const handleForceRefresh = () => {
+    fetchFamilies(0, true);
+    showToast('Refreshing family data...', 'info');
+  };
 
   if (loading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-40" />
-          <Skeleton className="h-10 w-32" />
+          <h1 className="text-3xl font-bold text-gray-400">Loading Family Data...</h1>
+          <div className="animate-pulse">
+            <div className="h-10 w-32 bg-gray-200 rounded"></div>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32" />
+            <div key={i} className="animate-pulse">
+              <div className="h-32 bg-gray-200 rounded"></div>
+            </div>
           ))}
         </div>
-        <Skeleton className="h-64" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-64" />
-          ))}
+        <div className="animate-pulse">
+          <div className="h-12 bg-gray-200 w-1/3 rounded mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
         </div>
       </div>
     );
@@ -198,6 +284,15 @@ export default function FamilyDashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Family Dashboard</h1>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleForceRefresh}
+            className="flex items-center"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          
           {connectionError && (
             <Button 
               variant="destructive" 
@@ -354,7 +449,11 @@ export default function FamilyDashboard() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {families.map((family) => (
-              <FamilyCard key={family.id} family={family} />
+              <FamilyCard 
+                key={family.id} 
+                family={family} 
+                onRefresh={() => fetchFamilies(0, true)} 
+              />
             ))}
           </div>
         )}

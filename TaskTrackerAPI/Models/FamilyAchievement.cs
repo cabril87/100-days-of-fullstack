@@ -15,6 +15,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskTrackerAPI.Models;
 
+[Table("FamilyAchievements")]
 public class FamilyAchievement
 {
     public int Id { get; set; }
@@ -55,6 +56,7 @@ public class FamilyAchievement
     public virtual ICollection<FamilyAchievementMember> MemberContributions { get; set; } = new List<FamilyAchievementMember>();
 }
 
+[Table("FamilyAchievementMembers")]
 public class FamilyAchievementMember
 {
     public int Id { get; set; }

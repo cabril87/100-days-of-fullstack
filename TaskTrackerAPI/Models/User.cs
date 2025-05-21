@@ -12,6 +12,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models.Gamification;
 
 namespace TaskTrackerAPI.Models;
 
@@ -60,6 +61,9 @@ public class User
 
     // Navigation property for user's family members
     public virtual ICollection<FamilyMember> FamilyMembers { get; set; } = new List<FamilyMember>();
+    
+    // Navigation property for user's achievements
+    public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
 
     public int? PrimaryFamilyId { get; set; }
     

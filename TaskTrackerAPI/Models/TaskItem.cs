@@ -79,6 +79,7 @@ public class TaskItem
     public bool RequiresApproval { get; set; } = false;
     public int? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAt { get; set; }
+    [NotMapped]    
     public string? AssignedToName { get; set; }
 
     // For optimistic concurrency

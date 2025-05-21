@@ -8,20 +8,56 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/lib/hooks/useToast';
+import { familyService } from '@/lib/services/familyService';
 
 export default function CreateFamilyPage() {
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { createFamily } = useFamily();
+  const router = useRouter();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name) return;
-
+    if (!name.trim()) return;
+    
     setIsSubmitting(true);
+    
     try {
-      await createFamily({ name });
-      // Redirect will be handled by the createFamily function
+      // Create the family
+      const success = await createFamily({ name });
+      
+      if (success) {
+        console.log('Family created successfully, navigating directly to the new family page');
+        
+        // We'll need to fetch the newly created family details
+        const response = await familyService.getAllFamilies();
+        
+        if (response.data && response.data.length > 0) {
+          // Find the family we just created - it's likely the newest one
+          const sortedByCreationDate = [...response.data].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          
+          const newFamily = sortedByCreationDate[0];
+          
+          if (newFamily) {
+            // Navigate directly to the family detail page instead of the dashboard
+            router.push(`/family/${newFamily.id}`);
+            return;
+          }
+        }
+        
+        // Fallback - if we couldn't find the new family, just go to the dashboard
+        router.push('/family');
+      } else {
+        showToast('Failed to create family', 'error');
+      }
+    } catch (error) {
+      console.error('Error creating family:', error);
+      showToast('An error occurred while creating your family', 'error');
     } finally {
       setIsSubmitting(false);
     }

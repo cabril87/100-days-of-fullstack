@@ -17,6 +17,7 @@ namespace TaskTrackerAPI.Models.Gamification
     
     /// Represents a user's progress towards an achievement
     
+    [Table("UserAchievements")]
     public class UserAchievement
     {
         
@@ -29,7 +30,7 @@ namespace TaskTrackerAPI.Models.Gamification
         /// User ID
         
         [Required]
-        public int UserId { get; set; } = 0;
+        public int UserId { get; set; }
         
         
         /// Achievement ID
@@ -62,7 +63,7 @@ namespace TaskTrackerAPI.Models.Gamification
         
         // Navigation properties
         [ForeignKey("UserId")]
-        public virtual User? User { get; set; }
+        public virtual TaskTrackerAPI.Models.User? User { get; set; }
         
         [ForeignKey("AchievementId")]
         public virtual Achievement? Achievement { get; set; }

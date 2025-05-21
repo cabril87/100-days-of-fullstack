@@ -243,34 +243,97 @@ export default function AssignTaskDialog({
   const onSubmitNewTaskForm = async (data: TaskAssignmentFormData) => {
     try {
       setIsLoading(true);
+
+      // Map string priority to numeric value that C# backend expects
+      let priorityValue = 1; // Medium default
+      if (data.priority === 'low') priorityValue = 0;
+      if (data.priority === 'high') priorityValue = 2;
       
-      // Create task object with correct typing
-      const taskData: Partial<FamilyTaskFormData> = {
-        title: data.title,
-        description: data.description || '',
-        status: TaskStatus.Todo,
-        priority: (data.priority as TaskPriority) || TaskPriority.Medium,
-        dueDate: data.dueDate,
+      console.log('[AssignTaskDialog] Starting two-step task creation and assignment');
+      
+      // STEP 1: Create a task with the generic taskitems endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const token = localStorage.getItem('token') || '';
+      const csrfToken = familyService.getCsrfToken?.() || '';
+      
+      // Create a basic task first
+      const taskData = {
+        Title: data.title,
+        Description: data.description || '',
+        Status: 0, // NotStarted/Todo = 0 in C# enum
+        Priority: priorityValue,
+        DueDate: data.dueDate
       };
       
-      // Add family-specific data
-      const familyTaskData = {
-        ...taskData,
-        assigneeId: Number(data.memberId),
-        familyId: Number(familyId),
-        createdBy: user?.id // Track who created the task
-      };
+      console.log('[AssignTaskDialog] Step 1: Creating task with data:', taskData);
       
-      // Create the task
-      const response = await taskService.createTask(familyTaskData as any);
-      
-      // Handle response
-      if ('status' in response && (response.status === 201 || response.status === 200)) {
-        showToast('Task created and assigned successfully!', 'success');
-        onSuccess();
-        handleClose();
-      } else if ('error' in response) {
-        showToast(response.error || 'Failed to create task', 'error');
+      try {
+        // Create the task first
+        const createResponse = await fetch(`${apiUrl}/v1/taskitems`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-XSRF-TOKEN': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify(taskData)
+        });
+        
+        console.log('[AssignTaskDialog] Task creation response status:', createResponse.status);
+        
+        if (createResponse.ok) {
+          // Parse the response to get the created task ID
+          const createdTask = await createResponse.json();
+          console.log('[AssignTaskDialog] Task created successfully:', createdTask);
+          
+          if (createdTask && createdTask.id) {
+            // STEP 2: Assign the task to the family member
+            console.log(`[AssignTaskDialog] Step 2: Assigning task ${createdTask.id} to member ${data.memberId}`);
+            
+            const assignmentData = {
+              taskId: createdTask.id,
+              assignToUserId: data.memberId,
+              requiresApproval: false
+            };
+            
+            const assignResponse = await fetch(`${apiUrl}/v1/family/${familyId}/tasks/assign`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : '',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-XSRF-TOKEN': csrfToken
+              },
+              credentials: 'include',
+              body: JSON.stringify(assignmentData)
+            });
+            
+            console.log('[AssignTaskDialog] Assignment response status:', assignResponse.status);
+            
+            if (assignResponse.ok) {
+              showToast('Task created and assigned successfully!', 'success');
+              onSuccess();
+              handleClose();
+              return;
+            } else {
+              console.error('[AssignTaskDialog] Failed to assign task:', await assignResponse.text());
+              showToast('Task created but assignment failed. Please try again.', 'warning');
+            }
+          } else {
+            console.error('[AssignTaskDialog] Created task has no ID:', createdTask);
+            showToast('Task was created but could not be assigned. Please try again.', 'warning');
+          }
+        } else {
+          console.error('[AssignTaskDialog] Failed to create task:', await createResponse.text());
+          showToast('Failed to create task. Please try again.', 'error');
+        }
+      } catch (error) {
+        console.error('[AssignTaskDialog] Error in two-step task creation:', error);
+        showToast('Failed to create or assign task. Please try again.', 'error');
       }
     } catch (error) {
       console.error('Failed to assign task:', error);
@@ -647,7 +710,7 @@ export default function AssignTaskDialog({
                           </SelectItem>
                         );
                       }) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="none" disabled>
                           No members available
                     </SelectItem>
                       )}
@@ -700,7 +763,7 @@ export default function AssignTaskDialog({
                       </SelectItem>
                     ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="none" disabled>
                           No available tasks found
                         </SelectItem>
                   )}
@@ -739,7 +802,7 @@ export default function AssignTaskDialog({
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="none" disabled>
                           No families available
                     </SelectItem>
                       )}
@@ -774,7 +837,7 @@ export default function AssignTaskDialog({
                             </SelectItem>
                           );
                         }) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="none" disabled>
                             No members available
                       </SelectItem>
                   )}

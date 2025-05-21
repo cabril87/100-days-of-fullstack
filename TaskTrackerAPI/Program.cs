@@ -246,6 +246,9 @@ public class Program
             options.MaximumReceiveMessageSize = 102400; // 100KB
         });
         
+        // Register notification real-time service
+        builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
+        
         // Register task synchronization service
         builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
 
@@ -560,6 +563,7 @@ public class Program
 
         // Map SignalR hubs
         app.MapHub<TaskHub>("/hubs/tasks");
+        app.MapHub<NotificationHub>("/hubs/notifications");
 
         app.MapControllers();
 

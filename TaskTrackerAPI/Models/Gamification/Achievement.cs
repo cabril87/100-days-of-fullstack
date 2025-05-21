@@ -18,6 +18,7 @@ namespace TaskTrackerAPI.Models.Gamification
     
     /// Represents an achievement in the system
     
+    [Table("Achievements")]
     public class Achievement
     {
         

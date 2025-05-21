@@ -81,8 +81,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PointTransaction> PointTransactions { get; set; } = null!;
     
     // Using only the Gamification namespace models for achievements
-    public DbSet<Models.Gamification.Achievement> Achievements { get; set; } = null!;
-    public DbSet<Models.Gamification.UserAchievement> UserAchievements { get; set; } = null!;
+    public DbSet<Achievement> Achievements { get; set; } = null!;
+    public DbSet<UserAchievement> UserAchievements { get; set; } = null!;
     public DbSet<Models.Badge> Badges { get; set; } = null!;
     public DbSet<Models.UserBadge> UserBadges { get; set; } = null!;
     public DbSet<Reward> Rewards { get; set; } = null!;
@@ -351,8 +351,8 @@ public class ApplicationDbContext : DbContext
 
         // Configure UserAchievement relationships
         modelBuilder.Entity<Models.Gamification.UserAchievement>()
-            .HasOne<User>()
-            .WithMany()
+            .HasOne(ua => ua.User)
+            .WithMany(u => u.UserAchievements)
             .HasForeignKey(ua => ua.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

@@ -285,9 +285,48 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await familyService.createFamily(input.name);
       if (response.data) {
+        // Set the current family to the newly created one
         setFamily(response.data);
+        
+        // Clear any cached family dashboard data to force a fresh load
+        if (typeof window !== 'undefined') {
+          try {
+            // Aggressively clear all family-related caches
+            localStorage.removeItem('family_dashboard_cache');
+            sessionStorage.removeItem('family_dashboard_data');
+            
+            // Remove all items with 'family' in the key
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.includes('family')) {
+                localStorage.removeItem(key);
+              }
+            }
+            
+            // Store the newly created family in a temporary cache to ensure
+            // it's immediately available even if API hasn't propagated it yet
+            const tempCacheKey = 'temp_new_family_' + Date.now();
+            localStorage.setItem(tempCacheKey, JSON.stringify(response.data));
+            
+            // Set a timeout to remove this temporary cache after 30 seconds
+            setTimeout(() => {
+              try {
+                localStorage.removeItem(tempCacheKey);
+              } catch (err) {
+                console.warn('Error removing temporary family cache:', err);
+              }
+            },
+            30000);
+            
+            console.log('Cleared family cache and stored new family in temporary cache');
+          } catch (err) {
+            console.warn('Error managing family cache:', err);
+          }
+        }
+        
         showToast('Family created successfully!', 'success');
-        router.push('/family/dashboard');
+        
+        // Let the create page handle navigation depending on where they want to go
         return true;
       } else if (response.error) {
         showToast(response.error, 'error');
@@ -326,18 +365,101 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   // Delete a family
   const deleteFamily = async (id: string): Promise<boolean> => {
     try {
+      // Add debug logs
+      console.log(`[DEBUG] Starting family deletion process for family ID: ${id}`);
+      
+      // IMMEDIATELY set loading state to true and clear family data
+      // This prevents any error flashes during navigation
+      setLoading(true);
+      
+      // Set global deletion in progress flag for the overlay FIRST
+      // The overlay component will handle navigation after showing overlay
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('family_deletion_in_progress', 'true');
+        // Short delay to ensure overlay appears before we proceed
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Before deletion, capture which family we're removing
+      const familyToDelete = family;
+      console.log(`[DEBUG] About to delete family:`, familyToDelete);
+      
+      // Clear current family state BEFORE making the API call
+      // This ensures we don't try to access deleted data
+      setFamily(null);
+      console.log(`[DEBUG] Preemptively cleared local family state`);
+      
+      // Add a special marker to indicate this family was just deleted
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('recently_deleted_family_' + id, Date.now().toString());
+        localStorage.setItem('family_deletion_timestamp', Date.now().toString());
+        console.log(`[DEBUG] Added deletion markers before API call`);
+      }
+      
+      // Try to delete the family
+      console.log(`[DEBUG] Calling deleteFamily API for ID: ${id}`);
       const response = await familyService.deleteFamily(id);
+      console.log(`[DEBUG] Delete API response:`, response);
+      
       if (response.status === 204 || response.status === 200) {
-        setFamily(null);
+        console.log(`[DEBUG] Family deletion succeeded with status: ${response.status}`);
+        
+        // Clear any cached data about the family
+        if (typeof window !== 'undefined') {
+          try {
+            console.log(`[DEBUG] Starting cache cleanup for deleted family`);
+            
+            // Aggressively clear all family-related caches
+            localStorage.removeItem('family_dashboard_cache');
+            sessionStorage.removeItem('family_dashboard_data');
+            
+            // Remove all items with 'family' in the key
+            let clearedItems = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (
+                key.includes('family') || 
+                key.includes('family_data') || 
+                key.includes(`family_${id}`)
+              ) && !key.includes('recently_deleted_family_') && !key.includes('family_deletion_timestamp') && !key.includes('family_deletion_in_progress')) {
+                localStorage.removeItem(key);
+                clearedItems++;
+              }
+            }
+            console.log(`[DEBUG] Cleared ${clearedItems} cache items`);
+            console.log('[DEBUG] Cleared family cache data after deletion');
+          } catch (err) {
+            console.warn('[DEBUG] Error clearing family cache:', err);
+          }
+        }
+        
         showToast('Family deleted successfully!', 'success');
-        router.push('/family/create');
+        
+        // DO NOT NAVIGATE - the DeletionOverlay component will handle navigation
+        // This prevents any loading flicker issues
+        console.log(`[DEBUG] Deletion completed successfully, overlay will handle navigation`);
+        
         return true;
       } else if (response.error) {
+        console.error(`[DEBUG] Family deletion failed with error: ${response.error}`);
+        // Clear deletion in progress flag
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('family_deletion_in_progress');
+        }
+        // Reset loading state since we're not navigating away
+        setLoading(false);
         showToast(response.error, 'error');
       }
       return false;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete family';
+      console.error(`[DEBUG] Exception in deleteFamily: ${errorMessage}`, err);
+      // Clear deletion in progress flag
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('family_deletion_in_progress');
+      }
+      // Reset loading state since we're not navigating away
+      setLoading(false);
       showToast(errorMessage, 'error');
       return false;
     }

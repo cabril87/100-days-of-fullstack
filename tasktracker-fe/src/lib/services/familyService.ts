@@ -284,7 +284,27 @@ export const familyService = {
   },
 
   async deleteFamily(id: string, options?: ApiOptions): Promise<ApiResponse<void>> {
-    console.log('[familyService] Deleting family with ID:', id);
+    console.log('[DEBUG] [familyService] Deleting family with ID:', id);
+    
+    // Clear any cached data about this family immediately
+    try {
+      if (typeof window !== 'undefined') {
+        console.log('[DEBUG] [familyService] Clearing cache for family:', id);
+        localStorage.removeItem('family_dashboard_cache');
+        sessionStorage.removeItem('family_dashboard_data');
+        
+        // Delete any family-specific cache items
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('family') || key.includes(`family_${id}`))) {
+            localStorage.removeItem(key);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[DEBUG] [familyService] Error clearing cache:', err);
+    }
+    
     return this.withRetry(async () => {
       try {
         // Get fresh token
@@ -295,33 +315,66 @@ export const familyService = {
           .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
           ?.split('=')[1];
         
-        console.log('[familyService] Using CSRF token for delete:', csrfToken ? 'Available' : 'Not available');
+        console.log('[DEBUG] [familyService] Using CSRF token for delete:', csrfToken ? 'Available' : 'Not available');
         
         const url = `${API_URL}/v1/family/${id}`;
-        console.log('[familyService] DELETE - URL:', url);
+        console.log('[DEBUG] [familyService] DELETE - URL:', url);
         
-        // Make DELETE request
+        // Make DELETE request with cache control headers
         const response = await fetch(url, {
           method: 'DELETE',
           headers: {
             'Accept': 'application/json',
             'Authorization': token ? `Bearer ${token}` : '',
             'X-CSRF-TOKEN': csrfToken || '', 
-            'X-XSRF-TOKEN': csrfToken || ''
+            'X-XSRF-TOKEN': csrfToken || '',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
           },
           credentials: 'include'
         });
         
-        console.log('[familyService] DELETE - Response status:', response.status);
+        console.log('[DEBUG] [familyService] DELETE - Response status:', response.status);
         
         // Handle different response statuses
         if (response.status === 204 || response.status === 200) {
+          console.log('[DEBUG] [familyService] Family deleted successfully');
+          
+          // Mark this family as deleted in localStorage for UI filtering
+          localStorage.setItem('recently_deleted_family_' + id, Date.now().toString());
+          
+          // Double check all family-related caches are cleared
+          try {
+            if (typeof window !== 'undefined') {
+              console.log('[DEBUG] [familyService] Double-checking cache after successful deletion');
+              // Remove all family dashboard caches
+              localStorage.removeItem('family_dashboard_cache');
+              sessionStorage.removeItem('family_dashboard_data');
+              
+              // Delete any family-specific cache items
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('family') || key.includes(`family_${id}`))) {
+                  if (!key.includes('recently_deleted_family_')) { // Keep this marker
+                    localStorage.removeItem(key);
+                  }
+                }
+              }
+            }
+          } catch (cacheErr) {
+            console.warn('[DEBUG] [familyService] Error clearing cache after deletion:', cacheErr);
+          }
+          
           return { status: response.status };
         } else if (response.status === 404) {
+          console.log('[DEBUG] [familyService] Family not found');
           return { error: 'Family not found', status: 404 };
         } else if (response.status === 403) {
+          console.log('[DEBUG] [familyService] Permission denied');
           return { error: 'You do not have permission to delete this family', status: 403 };
         } else if (response.status === 401) {
+          console.log('[DEBUG] [familyService] Authentication required');
           return { error: 'Authentication required', status: 401 };
         }
         
@@ -329,17 +382,19 @@ export const familyService = {
         let errorMessage = 'Failed to delete family';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          // If parsing fails, use default error message
+          errorMessage = errorData.message || errorData.title || errorMessage;
+          console.error('[DEBUG] [familyService] Detailed error:', errorData);
+        } catch (jsonError) {
+          // Couldn't parse JSON error, use default message
+          console.error('[DEBUG] [familyService] Could not parse error response', jsonError);
         }
         
         return { error: errorMessage, status: response.status };
       } catch (error) {
-        console.error('[familyService] Error deleting family:', error);
-        return { 
+        console.error('[DEBUG] [familyService] Exception deleting family:', error);
+        return {
           error: error instanceof Error ? error.message : 'Failed to delete family',
-          status: 500 
+          status: 500
         };
       }
     }, options?.retries);
@@ -1189,110 +1244,38 @@ export const familyService = {
     }, options?.retries);
   },
 
-  async assignTaskToMember(familyId: string, taskId: string, assignToUserId: string, options?: ApiOptions): Promise<ApiResponse<any>> {
-    console.log(`[familyService] Assigning task ${taskId} to member ${assignToUserId} in family ${familyId}`);
+  async assignTaskToMember(familyId: string, taskId: string, memberId: string, options?: ApiOptions): Promise<ApiResponse<any>> {
+    console.log(`[familyService] Assigning task ${taskId} to member ${memberId} in family ${familyId}`);
     return this.withRetry(async () => {
       try {
-        // Get detailed information about the member to ensure we have both IDs
-        const memberResponse = await this.getFamilyMemberDetails(assignToUserId);
-        const memberData = memberResponse.data;
-        
-        // Extract member name for assignment
-        const memberName = memberData?.user?.username || 
-                           memberData?.username || 
-                           memberData?.name || 
-                           'Unknown';
-        
-        console.log(`[familyService] Assigning task to: ${memberName}`);
-        
-        // Prepare the endpoint
-        const endpoint = `/v1/family/${familyId}/tasks/assign`;
-        
-        // Enhanced assignment data with both IDs to improve success rate
-        const data: any = {
-          taskId: Number(taskId),
-          assignToUserId: assignToUserId,
-          // Required fields based on backend validation
-          UserId: memberData?.user?.id || assignToUserId,
-          MemberId: assignToUserId,
-          // Add name information to help backend populate the correct name
-          assignedToName: memberName,
-          assignToName: memberName,
-          memberName: memberName,
-          // Additional fields that might help backend resolve the user
-          memberId: assignToUserId,
-          familyMemberId: assignToUserId,
-          // If we have user data from member details, include that too
-          userId: memberData?.user?.id || assignToUserId,
-          // Optionally requested by API
-          requiresApproval: false,
-          // Extra info to help debugging
-          familyId: Number(familyId)
-        };
-        
-        console.log('[familyService] Sending assignment request:', data);
-        
-        // Make the API request with all possible CSRF tokens
-        const csrfToken = this.getCsrfToken();
-        const response = await apiClient.post<any>(endpoint, data, {
-          ...options,
-          extraHeaders: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-XSRF-TOKEN': csrfToken,
-          }
-        });
-        
-        console.log('[familyService] Assignment response:', response);
-        
-        // If we get a permission error, show a more helpful message
-        if (response.status === 401 || response.status === 403) {
-          console.log('[familyService] Permission error during task assignment');
+        // Verify parameters are valid strings
+        if (!familyId || !taskId || !memberId) {
           return {
-            error: 'You do not have permission to assign tasks in this family. Only family administrators can assign tasks.',
-            status: response.status
+            error: 'Missing required parameters',
+            status: 400
           };
         }
+
+        // Simplified data object with only the essential fields needed by the API
+        // Explicitly avoid including any name fields that might cause database errors
+        const assignData = {
+          taskId: Number(taskId),
+          assignToUserId: memberId,
+          requiresApproval: false
+        };
+
+        console.log(`[familyService] Assigning task ${taskId} to member ${memberId} in family ${familyId}`);
         
-        // If we get a "member not found" error, try direct member lookup
-        if (response.status === 404 || response.status === 400) {
-          console.log('[familyService] Assignment with member ID failed, trying alternative approach');
-          
-          // Make direct API request with alternative data format
-          try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-            const authToken = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-            
-            const directResponse = await fetch(`${apiUrl}/v1/family/${familyId}/tasks/assign`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': authToken ? `Bearer ${authToken}` : '',
-                'X-CSRF-TOKEN': csrfToken || '',
-                'X-XSRF-TOKEN': csrfToken || ''
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                taskId: Number(taskId),
-                assignToUserId: memberData?.user?.id || Number(assignToUserId),
-                requiresApproval: false
-              })
-            });
-            
-            if (directResponse.ok) {
-              // Return success response
-              return { status: directResponse.status };
-            }
-          } catch (directError) {
-            console.error('[familyService] Error with direct API call:', directError);
-          }
-        }
+        const response = await apiClient.post(
+          `/v1/family/${familyId}/tasks/assign`,
+          assignData
+        );
         
         return response;
       } catch (error) {
-        console.error('[familyService] Error assigning task:', error);
+        console.error(`Error assigning task to family member:`, error);
         return {
-          error: error instanceof Error ? error.message : 'Failed to assign task',
+          error: error instanceof Error ? error.message : 'Error assigning task',
           status: 500
         };
       }

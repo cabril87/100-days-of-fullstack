@@ -992,16 +992,11 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("UserId1")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("AchievementId");
 
                     b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
 
                     b.ToTable("UserAchievements");
                 });
@@ -1645,9 +1640,6 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int?>("AssignedToId")
                         .HasColumnType("int");
 
-                    b.Property<string>("AssignedToName")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("BoardColumn")
                         .HasColumnType("nvarchar(max)");
 
@@ -1765,7 +1757,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(193),
+                            UpdatedAt = new DateTime(2025, 5, 21, 21, 30, 21, 595, DateTimeKind.Utc).AddTicks(8611),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1782,7 +1774,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(1801),
+                            UpdatedAt = new DateTime(2025, 5, 21, 21, 30, 21, 596, DateTimeKind.Utc).AddTicks(164),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1873,21 +1865,18 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
-                        .HasComment("Encrypted field - PII");
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)")
-                        .HasComment("Encrypted field - PII");
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)")
-                        .HasComment("Encrypted field - PII");
+                        .HasColumnType("nvarchar(250)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -1926,10 +1915,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46dZnJ6enV8h4z5n6An_AbZwfG1EEPN34nLF3RnJxqfkEc1HRVr8F6-1sQ97ygnEqML_fj24xle3xJPR82kHDMQrzdVGJjZ4Tth2awEs5iyNSw6CopaLk42ENxV1UFsPUD4",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46dJFID9LAkEnqyExiqoo_q6XV6zVryklLYoE6KoaN_SZZvBMGm5lbDxoRASodcLDdHPTSMCcZ4_v_5v4557A_CAujxAq3bfthafhv6MNtbo4g",
+                            Email = "admin@tasktracker.com",
+                            FirstName = "Admin",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46dUDApXxPf0jpXhIOx3BEFQIT8EOwYrVqvTnrCSrcc77Mhztdg0oTOp4y4yyCG-sbHfOyqwaWfblyIiZEzQNPEIU1GK-MeNnCRKP1EdNV-eCA",
+                            LastName = "User",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",
@@ -2411,15 +2400,11 @@ namespace TaskTrackerAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("TaskTrackerAPI.Models.User", null)
-                        .WithMany()
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany("UserAchievements")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TaskTrackerAPI.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId1");
 
                     b.Navigation("Achievement");
 
@@ -2860,6 +2845,8 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("FamilyMembers");
 
                     b.Navigation("Tasks");
+
+                    b.Navigation("UserAchievements");
                 });
 #pragma warning restore 612, 618
         }

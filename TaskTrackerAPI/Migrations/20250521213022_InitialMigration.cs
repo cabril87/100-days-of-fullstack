@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskTrackerAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -393,11 +393,11 @@ namespace TaskTrackerAPI.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Username = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false, comment: "Encrypted field - PII"),
+                    Email = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Salt = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true, comment: "Encrypted field - PII"),
-                    LastName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true, comment: "Encrypted field - PII"),
+                    FirstName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true),
+                    LastName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: true),
                     Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
@@ -687,8 +687,7 @@ namespace TaskTrackerAPI.Migrations
                     Progress = table.Column<int>(type: "int", nullable: false),
                     IsCompleted = table.Column<bool>(type: "bit", nullable: false),
                     StartedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    UserId1 = table.Column<int>(type: "int", nullable: true)
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -705,11 +704,6 @@ namespace TaskTrackerAPI.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_UserAchievements_Users_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "Users",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -1033,7 +1027,6 @@ namespace TaskTrackerAPI.Migrations
                     RequiresApproval = table.Column<bool>(type: "bit", nullable: false),
                     ApprovedByUserId = table.Column<int>(type: "int", nullable: true),
                     ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    AssignedToName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Version = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
@@ -1255,7 +1248,7 @@ namespace TaskTrackerAPI.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "AgeGroup", "CreatedAt", "Email", "FirstName", "IsActive", "LastName", "PasswordHash", "PrimaryFamilyId", "Role", "Salt", "Username" },
-                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "CfDJ8HeiyxunoJNOiKpgMimE46cgl7-DVIHgwQwpFLPrPZIsIJZazltuvC40wi-MNajiuPFZQqp-monA8OxH22wnhC2ha4vv0g7KXy6FVubDtueVPjEzTC-w5fuIjr8HULd49JmdDoDUXugVu3vUv-Lshgw", "CfDJ8HeiyxunoJNOiKpgMimE46fQVdiN5I9LL7ZrpGZwabb0Jxz72umqhYfVYPn1Nos-TTah91QUuKLfmj6P54hXHR6isgoVTYN0QPpku2vEn6m1NfP-pq1lyelS2w-w-IS2kg", true, "CfDJ8HeiyxunoJNOiKpgMimE46dikc0yPqkYApSxc9G-pDUXOepNIJKakDVRTA9q2Xn2SQIzcYOUhOSN39vIIZF12gE6Slz_wUYGS6waSbo0y_8zAyJI-KCq3mxqAgedQsx4YQ", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
+                values: new object[] { 1, 2, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "admin@tasktracker.com", "Admin", true, "User", "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", null, "Admin", "AAECAwQFBgcICQoLDA0ODw==", "admin" });
 
             migrationBuilder.InsertData(
                 table: "Categories",
@@ -1268,11 +1261,11 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.InsertData(
                 table: "Tasks",
-                columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "AssignedToName", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
+                columns: new[] { "Id", "ApprovedAt", "ApprovedByUserId", "AssignedByUserId", "AssignedToFamilyMemberId", "AssignedToId", "BoardColumn", "BoardId", "BoardOrder", "CategoryId", "CompletedAt", "CreatedAt", "Description", "DueDate", "EstimatedTimeMinutes", "FamilyId", "IsCompleted", "IsRecurring", "LastRecurrence", "NextRecurrence", "PositionX", "PositionY", "Priority", "RecurringPattern", "RequiresApproval", "Status", "Title", "UpdatedAt", "UserId", "Version" },
                 values: new object[,]
                 {
-                    { 1, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(193), 1, 1L },
-                    { 2, null, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 20, 20, 16, 49, 986, DateTimeKind.Utc).AddTicks(1801), 1, 1L }
+                    { 1, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the initial project structure", new DateTime(2025, 4, 5, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "High", null, false, 4, "Complete project setup", new DateTime(2025, 5, 21, 21, 30, 21, 595, DateTimeKind.Utc).AddTicks(8611), 1, 1L },
+                    { 2, null, null, null, null, null, null, null, null, 1, null, new DateTime(2025, 4, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), "Set up the database connection and models", new DateTime(2025, 4, 6, 0, 0, 0, 0, DateTimeKind.Unspecified), null, null, false, false, null, null, null, null, "Medium", null, false, 4, "Database integration", new DateTime(2025, 5, 21, 21, 30, 21, 596, DateTimeKind.Utc).AddTicks(164), 1, 1L }
                 });
 
             migrationBuilder.CreateIndex(
@@ -1524,11 +1517,6 @@ namespace TaskTrackerAPI.Migrations
                 name: "IX_UserAchievements_UserId",
                 table: "UserAchievements",
                 column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_UserAchievements_UserId1",
-                table: "UserAchievements",
-                column: "UserId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserApiQuotas_SubscriptionTierId",

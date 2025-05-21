@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
+import signalRService from './signalRService';
 
 export interface Notification {
   id: string;
@@ -37,6 +38,80 @@ export interface NotificationPreference {
   familyName?: string;
   enableEmailNotifications: boolean;
   enablePushNotifications: boolean;
+}
+
+// Enhanced notification methods
+
+/**
+ * Initialize real-time notifications by connecting to SignalR
+ */
+export async function initializeRealTimeNotifications(): Promise<void> {
+  try {
+    await signalRService.connectToNotificationHub();
+  } catch (error) {
+    console.error('Failed to connect to notification hub:', error);
+  }
+}
+
+/**
+ * Register a callback for new notifications
+ */
+export function onNewNotification(callback: (notification: any) => void): () => void {
+  return signalRService.onNotification(callback);
+}
+
+/**
+ * Register a callback for unread count updates
+ */
+export function onUnreadCountUpdate(callback: (count: number) => void): () => void {
+  return signalRService.onUnreadCountUpdate(callback);
+}
+
+/**
+ * Register a callback for notification action results
+ */
+export function onNotificationActionResult(callback: (result: any) => void): () => void {
+  return signalRService.onActionResult(callback);
+}
+
+/**
+ * Join a family notification group
+ */
+export async function joinFamilyNotificationGroup(familyId: number): Promise<void> {
+  await signalRService.joinFamilyNotificationGroup(familyId);
+}
+
+/**
+ * Leave a family notification group
+ */
+export async function leaveFamilyNotificationGroup(familyId: number): Promise<void> {
+  await signalRService.leaveFamilyNotificationGroup(familyId);
+}
+
+/**
+ * Mark a notification as read
+ */
+export async function markNotificationAsRead(notificationId: number): Promise<boolean> {
+  try {
+    const response = await apiClient.put(`/v1/notifications/${notificationId}/read`);
+    return response.status === 200;
+  } catch (error) {
+    console.error(`Error marking notification ${notificationId} as read:`, error);
+    return false;
+  }
+}
+
+/**
+ * Delete a notification
+ */
+export async function deleteNotification(notificationId: number): Promise<boolean> {
+  try {
+    const response = await apiClient.delete(`/v1/notifications/${notificationId}`);
+    return response.status === 200;
+  } catch (error) {
+    console.error(`Error deleting notification ${notificationId}:`, error);
+    return false;
+  }
 }
 
 const MOCK_NOTIFICATIONS: Notification[] = [
