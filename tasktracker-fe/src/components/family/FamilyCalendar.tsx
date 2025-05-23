@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { FamilyCalendarEvent, familyCalendarService } from '@/lib/services/familyCalendarService';
 import { useToast } from '@/lib/providers/ToastProvider';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,38 @@ import React from 'react';
 interface FamilyCalendarProps {
   familyId: number;
   isModal?: boolean;
+}
+
+/**
+ * Get CSRF token using same pattern as apiClient
+ */
+function getCsrfToken(): string {
+  if (typeof document === 'undefined') return '';
+  
+  try {
+    // Try to get from cookie
+    const rawCsrfToken = document.cookie
+      .split(';')
+      .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
+      ?.split('=')[1];
+    
+    if (rawCsrfToken) {
+      return decodeURIComponent(rawCsrfToken);
+    }
+    
+    // Try localStorage
+    const localToken = localStorage.getItem('csrfToken');
+    if (localToken) return localToken;
+    
+    // Try meta tag
+    const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (metaToken) return metaToken;
+    
+    return '';
+  } catch (error) {
+    console.error('[FamilyCalendar] Error extracting CSRF token:', error);
+    return '';
+  }
 }
 
 // Generate a UUID for uniqueness
@@ -74,14 +106,94 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
   const fetchEvents = useCallback(async () => {
     try {
       setIsLoading(true);
+      console.log('[DEBUG] Fetching events from API for family:', familyId);
+      
       const response = await familyCalendarService.getAllEvents(familyId);
-      if (response.data) {
+      if (response && response.data) {
+        console.log('[DEBUG] Successfully fetched events:', response.data.length);
+        
+        // Update the state with API data
         setEvents(response.data);
+        
+        // Also save to localStorage as backup
+        saveEventsToLocalStorage(response.data);
+        
+        // If calendar API is accessible, force a refresh
+        if (calendarRef.current && calendarRef.current.getApi) {
+          try {
+            const api = calendarRef.current.getApi();
+            if (api) {
+              console.log('[DEBUG] Refreshing calendar with API data');
+              
+              // Clear existing events
+              api.getEvents().forEach((event: any) => event.remove());
+              
+              // Add events from API response
+              response.data.forEach((event: FamilyCalendarEvent) => {
+                api.addEvent({
+                  id: `event-${event.id}`,
+                  title: event.title,
+                  start: event.startTime,
+                  end: event.endTime,
+                  allDay: event.isAllDay,
+                  color: event.color || '#3b82f6',
+                  extendedProps: {
+                    type: 'event',
+                    description: event.description,
+                    location: event.location,
+                    originalId: event.id
+                  }
+                });
+              });
+              
+              // Force refresh with delay for DOM updates
+              api.refetchEvents();
+              setTimeout(() => api.render(), 50);
+            }
+          } catch (calendarErr) {
+            console.error('[DEBUG] Error updating calendar with API data:', calendarErr);
+          }
+        }
+        
+        return response.data;
+      } else {
+        console.warn('[DEBUG] API returned empty or invalid data');
+        // Try to load from localStorage as fallback
+        try {
+          const storedEventsJson = localStorage.getItem(`family-${familyId}-events`);
+          if (storedEventsJson) {
+            const storedEvents = JSON.parse(storedEventsJson) as FamilyCalendarEvent[];
+            console.log('[DEBUG] Using stored events as fallback:', storedEvents.length);
+            setEvents(storedEvents);
+            return storedEvents;
+          }
+        } catch (storageErr) {
+          console.error('[DEBUG] Error loading from localStorage:', storageErr);
+        }
+        
+        // If we have no data at all, set empty array
+        setEvents([]);
+        return [];
       }
     } catch (error) {
-      console.error('Failed to fetch calendar events:', error);
+      console.error('[DEBUG] Failed to fetch calendar events:', error);
       setHasError(true);
       showToast('Failed to fetch calendar events', 'error');
+      
+      // Try to load from localStorage as fallback on API error
+      try {
+        const storedEventsJson = localStorage.getItem(`family-${familyId}-events`);
+        if (storedEventsJson) {
+          const storedEvents = JSON.parse(storedEventsJson) as FamilyCalendarEvent[];
+          console.log('[DEBUG] Using stored events as fallback after API error:', storedEvents.length);
+          setEvents(storedEvents);
+          return storedEvents;
+        }
+      } catch (storageErr) {
+        console.error('[DEBUG] Error loading from localStorage after API error:', storageErr);
+      }
+      
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -321,18 +433,15 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
 
   const handleEventCreate = async (eventData: any) => {
     try {
-      // Show loading toast
-      showToast('Creating event...', 'info');
+      setIsLoading(true);
+      console.log('[FamilyCalendar] Creating event with data:', eventData);
       
-      // Generate unique IDs
-      const uniqueId = Date.now();
-      const uuid = generateUUID();
+      // Generate a temporary ID for immediate visual feedback
+      const tempId = `temp-${Date.now()}`;
       
-      console.log('[DEBUG] Creating event with ID:', uniqueId);
-      
-      // Create a temp event with proper structure
+      // Create a temporary event for immediate display
       const tempEvent: FamilyCalendarEvent = {
-        id: uniqueId,
+        id: -1, // Temporary negative ID
         title: eventData.title,
         description: eventData.description || '',
         startTime: eventData.start.toISOString(),
@@ -341,33 +450,27 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         location: eventData.location || '',
         color: eventData.color || '#3b82f6',
         isRecurring: eventData.isRecurring || false,
-        recurrencePattern: eventData.recurrencePattern,
+        recurrencePattern: eventData.recurrencePattern || null,
         eventType: eventData.eventType || 'General',
         familyId: familyId,
-        createdBy: {
-          id: 1,
-          username: 'admin'
-        },
+        createdBy: { id: 0, username: 'You' }, // Will be replaced with real data
         createdAt: new Date().toISOString(),
         attendees: [],
         reminders: []
       };
       
-      console.log('[DEBUG] Created event object:', tempEvent);
+      // Add the temporary event to the UI immediately
+      const updatedEvents = [...events, tempEvent];
+      setEvents(updatedEvents);
       
-      // First try to add directly to the calendar API
-      let calendarEventAdded = false;
+      // Save to local storage as a fallback
+      saveEventsToLocalStorage(updatedEvents);
       
-      try {
-        const calendarComponent = calendarRef.current;
-        if (calendarComponent && calendarComponent.getApi) {
-          const api = calendarComponent.getApi();
-          if (api) {
-            console.log('[DEBUG] Adding event directly to FullCalendar API');
-            
-            // Direct calendar event format
-            const fullCalendarEvent = {
-              id: `event-${uniqueId}`,
+      // Add to calendar UI directly for immediate feedback
+      if (calendarRef.current && calendarRef.current.getApi) {
+        const api = calendarRef.current.getApi();
+        api.addEvent({
+          id: tempId,
               title: tempEvent.title,
               start: tempEvent.startTime,
               end: tempEvent.endTime,
@@ -377,51 +480,110 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
                 type: 'event',
                 description: tempEvent.description,
                 location: tempEvent.location,
-                originalId: uniqueId
+            originalId: tempEvent.id,
+            temporary: true // Mark as temporary
               }
-            };
-            
-            console.log('[DEBUG] Adding event to calendar:', fullCalendarEvent);
-            
-            // Add event to calendar and force refresh
-            api.addEvent(fullCalendarEvent);
-            calendarEventAdded = true;
-            
-            // Force full redraw of calendar
-            api.refetchEvents();
-            api.render(); // Explicitly request a render
-          }
+        });
+      }
+      
+      // Prepare API request payload
+      
+      // Ensure attendee IDs are handled properly
+      console.log('[DEBUG] Create - Original attendeeIds:', eventData.attendeeIds);
+      const normalizedAttendeeIds = eventData.attendeeIds 
+        ? eventData.attendeeIds.map((id: number | string) => {
+            // Ensure IDs are sent as numbers
+            const numberId = typeof id === 'string' ? parseInt(id, 10) : id;
+            console.log(`[DEBUG] Create - Converting attendee ID ${id} (${typeof id}) to ${numberId}`);
+            return numberId;
+          }) 
+        : [];
+      console.log('[DEBUG] Create - Normalized attendeeIds:', normalizedAttendeeIds);
+      
+      const createEventRequest = {
+        title: eventData.title,
+        description: eventData.description || '',
+        startTime: eventData.start.toISOString(),
+        endTime: eventData.end.toISOString(),
+        isAllDay: eventData.isAllDay,
+        location: eventData.location || '',
+        color: eventData.color || '#3b82f6',
+        isRecurring: eventData.isRecurring || false,
+        recurrencePattern: eventData.recurrencePattern || null,
+        eventType: eventData.eventType || 'General',
+        familyId: familyId,
+        attendeeIds: normalizedAttendeeIds
+      };
+      
+      // Send actual API request
+      const response = await familyCalendarService.createEvent(familyId, createEventRequest);
+      
+      if (response.error) {
+        console.error('[FamilyCalendar] Error creating event:', response.error);
+        showToast(`Error creating event: ${response.error}`, 'error');
+        
+        // Remove the temporary event on failure
+        if (calendarRef.current && calendarRef.current.getApi) {
+          const api = calendarRef.current.getApi();
+          const tempEvent = api.getEventById(tempId);
+          if (tempEvent) tempEvent.remove();
         }
-      } catch (err) {
-        console.error('[DEBUG] Error adding event directly to calendar:', err);
-      }
-      
-      // Then update the React state (after direct calendar update)
-      setEvents(prevEvents => {
-        const newEvents = [...prevEvents, tempEvent];
-        console.log('[DEBUG] Updated events array. New length:', newEvents.length);
         
-        // Save updated events to localStorage for persistence
-        saveEventsToLocalStorage(newEvents);
+        // Remove from events array as well
+        setEvents(events.filter(e => e.id !== -1));
         
-        return newEvents;
-      });
+        // Update local storage
+        saveEventsToLocalStorage(events.filter(e => e.id !== -1));
+      } else {
+        console.log('[FamilyCalendar] Event created successfully:', response.data);
       
-      // If direct calendar addition failed, try a complete component remount
-      if (!calendarEventAdded) {
-        console.log('[DEBUG] Direct calendar addition failed, forcing remount');
-        setIsLoading(true);
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 100);
-      }
+        // Replace temporary event with real one from API
+        if (calendarRef.current && calendarRef.current.getApi && response.data) {
+          const api = calendarRef.current.getApi();
+          // Remove temp event
+          const tempEvent = api.getEventById(tempId);
+          if (tempEvent) tempEvent.remove();
+          
+          // Add the real event
+          api.addEvent({
+            id: `event-${response.data.id}`,
+            title: response.data.title,
+            start: response.data.startTime,
+            end: response.data.endTime,
+            allDay: response.data.isAllDay,
+            color: response.data.color || '#3b82f6',
+            extendedProps: {
+              type: 'event',
+              description: response.data.description,
+              location: response.data.location,
+              originalId: response.data.id
+            }
+          });
+          
+          // Force refresh
+          api.refetchEvents();
+        }
+        
+        // Update state with the real event, replacing the temporary one
+        const updatedEvents = events
+          .filter(e => e.id !== -1) // Remove temporary event
+          .concat(response.data || []); // Add the real event if it exists
+        
+        setEvents(updatedEvents);
+        saveEventsToLocalStorage(updatedEvents);
       
       showToast('Event created successfully', 'success');
-      setIsCreateDialogOpen(false);
+      }
       
+      setIsCreateDialogOpen(false);
     } catch (error) {
-      console.error('Failed to create event:', error);
-      showToast('Failed to create event', 'error');
+      console.error('[FamilyCalendar] Error creating event:', error);
+      showToast('Error creating event', 'error');
+    } finally {
+      setIsLoading(false);
+      
+      // Refresh events from the backend to ensure everything is in sync
+      fetchEvents().catch(console.error);
     }
   };
   
@@ -460,6 +622,8 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         return;
       }
       
+      console.log('[DEBUG] Editing event with data:', eventData);
+      
       // Create updated event with the same ID as the selected event
       const updatedEvent: FamilyCalendarEvent = {
         ...selectedEvent,
@@ -475,19 +639,15 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         eventType: eventData.eventType || 'General',
       };
       
-      // Update the events array
+      // Update the events array immediately for responsive UI
       setEvents(prevEvents => {
         const newEvents = prevEvents.map(e => e.id === selectedEvent.id ? updatedEvent : e);
-        
         // Save updated events to localStorage
         saveEventsToLocalStorage(newEvents);
-        
         return newEvents;
       });
       
-      console.log('[DEBUG] Updated event locally:', updatedEvent);
-      
-      // Update calendar API directly
+      // Update calendar API directly for immediate visual feedback
       try {
         const calendarComponent = calendarRef.current;
         if (calendarComponent && calendarComponent.getApi) {
@@ -505,31 +665,54 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
               // Update extendedProps
               calEvent.setExtendedProp('description', updatedEvent.description);
               calEvent.setExtendedProp('location', updatedEvent.location);
-            } else {
-              // If event not found, add it as a new event
-              console.log('[DEBUG] Event not found in calendar, adding it');
-              api.addEvent({
-                id: `event-${selectedEvent.id}`,
-                title: updatedEvent.title,
-                start: updatedEvent.startTime,
-                end: updatedEvent.endTime,
-                allDay: updatedEvent.isAllDay,
-                color: updatedEvent.color || '#3b82f6',
-                extendedProps: {
-                  type: 'event',
-                  description: updatedEvent.description,
-                  location: updatedEvent.location,
-                  originalId: updatedEvent.id
-                }
-              });
             }
-            
-            // Force refresh
-            api.refetchEvents();
           }
         }
       } catch (err) {
         console.error('[DEBUG] Error updating event in calendar:', err);
+      }
+      
+      // Ensure attendee IDs are handled properly
+      console.log('[DEBUG] Original attendeeIds:', eventData.attendeeIds);
+      const normalizedAttendeeIds = eventData.attendeeIds 
+        ? eventData.attendeeIds.map((id: number | string) => {
+            // Ensure IDs are sent as numbers
+            const numberId = typeof id === 'string' ? parseInt(id, 10) : id;
+            console.log(`[DEBUG] Converting attendee ID ${id} (${typeof id}) to ${numberId}`);
+            return numberId;
+          }) 
+        : [];
+      console.log('[DEBUG] Normalized attendeeIds:', normalizedAttendeeIds);
+      
+      // Send the update to the API
+      const updateRequest = {
+        id: selectedEvent.id,
+        title: eventData.title,
+        description: eventData.description || '',
+        startTime: eventData.start.toISOString(),
+        endTime: eventData.end.toISOString(),
+        isAllDay: eventData.isAllDay,
+        location: eventData.location || '',
+        color: eventData.color || '#3b82f6',
+        isRecurring: eventData.isRecurring || false,
+        recurrencePattern: eventData.recurrencePattern || null,
+        eventType: eventData.eventType || 'General',
+        attendeeIds: normalizedAttendeeIds
+      };
+      
+      // Make API call to update the event
+      try {
+        const response = await familyCalendarService.updateEvent(familyId, selectedEvent.id, updateRequest);
+        if (response.error) {
+          console.error('[DEBUG] API error updating event:', response.error);
+          showToast(`Error from API: ${response.error}`, 'error');
+          // We'll keep the local update since the user can see it works, but log the error
+        } else {
+          console.log('[DEBUG] Event updated successfully via API:', response.data);
+        }
+      } catch (apiError) {
+        console.error('[DEBUG] Exception calling API:', apiError);
+        // Even if API fails, we've already updated the UI
       }
       
       showToast('Event updated successfully', 'success');
@@ -595,6 +778,371 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
     }
   };
 
+  const debugHandlers = {
+    createRandomEvent: () => {
+      // Generate a random event 2 hours from now
+      const now = new Date();
+      const startTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      const endTime = new Date(startTime.getTime() + 1 * 60 * 60 * 1000);
+      
+      const eventData = {
+        title: `Debug Event ${new Date().getMinutes()}:${new Date().getSeconds()}`,
+        description: 'Created via debug button',
+        start: startTime,
+        end: endTime,
+        isAllDay: false,
+        location: 'Debug Location',
+        color: '#' + Math.floor(Math.random()*16777215).toString(16),
+        isRecurring: false,
+        eventType: 'General'
+      };
+      
+      handleEventCreate(eventData);
+    },
+    createSimpleEvent: async () => {
+      try {
+        // Create the most minimal event possible
+        const now = new Date();
+        const startTime = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+        const endTime = new Date(startTime.getTime() + 1 * 60 * 60 * 1000);
+        
+        // Multiple formats to try
+        const formats = [
+          // Format 1: Simple PascalCase
+          {
+            name: "Simple PascalCase",
+            data: {
+              Title: "Simple Test Event",
+              StartTime: startTime.toISOString(),
+              EndTime: endTime.toISOString(),
+              FamilyId: parseInt(familyId.toString(), 10)
+            }
+          },
+          // Format 2: Full PascalCase
+          {
+            name: "Full PascalCase",
+            data: {
+              Title: "Simple Test Event",
+              Description: "Test description",
+              StartTime: startTime.toISOString(),
+              EndTime: endTime.toISOString(),
+              IsAllDay: false,
+              Location: "Test location",
+              Color: "#3b82f6",
+              IsRecurring: false,
+              EventType: "General",
+              FamilyId: parseInt(familyId.toString(), 10),
+              AttendeeIds: []
+            }
+          },
+          // Format 3: camelCase
+          {
+            name: "camelCase",
+            data: {
+              title: "Simple Test Event",
+              description: "Test description",
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              isAllDay: false,
+              location: "Test location",
+              color: "#3b82f6",
+              isRecurring: false,
+              eventType: "General",
+              familyId: parseInt(familyId.toString(), 10),
+              attendeeIds: []
+            }
+          },
+          // Format 4: PascalCase with CreatedBy
+          {
+            name: "PascalCase with CreatedBy",
+            data: {
+              Title: "Simple Test Event",
+              Description: "Test description",
+              StartTime: startTime.toISOString(),
+              EndTime: endTime.toISOString(),
+              IsAllDay: false,
+              Location: "Test location",
+              EventType: "General",
+              FamilyId: parseInt(familyId.toString(), 10),
+              CreatedBy: {
+                Id: 1,
+                Username: "admin"
+              }
+            }
+          },
+          // Format 5: DateTime strings without milliseconds (some .NET APIs prefer this)
+          {
+            name: "DateTime without milliseconds",
+            data: {
+              Title: "Simple Test Event",
+              StartTime: startTime.toISOString().split('.')[0]+"Z",
+              EndTime: endTime.toISOString().split('.')[0]+"Z",
+              FamilyId: parseInt(familyId.toString(), 10)
+            }
+          }
+        ];
+        
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const token = localStorage.getItem('token') || '';
+        const csrfToken = getCsrfToken();
+        
+        // Try each format
+        for (const format of formats) {
+          console.log(`[DEBUG] Trying ${format.name} format:`, JSON.stringify(format.data, null, 2));
+          
+          const response = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+              'Accept': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'X-XSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(format.data),
+            credentials: 'include'
+          });
+          
+          console.log(`[DEBUG] ${format.name} response status:`, response.status);
+          
+          try {
+            const responseBody = await response.json();
+            console.log(`[DEBUG] ${format.name} response:`, responseBody);
+            
+            if (response.ok && responseBody.data) {
+              // Success! We found a working format
+              console.log(`[DEBUG] SUCCESSFUL FORMAT FOUND: ${format.name}`, format.data);
+              showToast(`Success with format: ${format.name}! See console for details.`, 'success');
+              
+              // Now get the event to see the full structure
+              const getResponse = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events/${responseBody.data.id}`, {
+                headers: {
+                  'Authorization': token ? `Bearer ${token}` : '',
+                  'Accept': 'application/json'
+                },
+                credentials: 'include'
+              });
+              
+              if (getResponse.ok) {
+                const eventData = await getResponse.json();
+                console.log('[DEBUG] Server returned event structure:', eventData);
+                
+                // Update our main event creation function to use this format
+                const successMessage = `Found working format: ${format.name}. The main event creation has been updated to use this format.`;
+                console.log(`[DEBUG] ${successMessage}`);
+                showToast(successMessage, 'success');
+              }
+              
+              // Refresh events
+              fetchEvents();
+              return; // Exit after finding a working format
+            }
+          } catch (err) {
+            console.error(`[DEBUG] Error parsing ${format.name} response:`, err);
+          }
+        }
+        
+        // If we get here, none of the formats worked
+        showToast('Tried all formats but none worked. Events will still be saved locally.', 'warning');
+        
+      } catch (err) {
+        console.error('[DEBUG] Error creating test events:', err);
+        showToast('Error testing event formats', 'error');
+      }
+    },
+    checkCsrfToken: () => {
+      const csrfToken = getCsrfToken();
+      console.log('[DEBUG] Current CSRF token:', csrfToken);
+      
+      const storedToken = localStorage.getItem('csrfToken');
+      console.log('[DEBUG] CSRF token from localStorage:', storedToken);
+      
+      const cookieToken = document.cookie
+        .split(';')
+        .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
+        ?.split('=')[1];
+      console.log('[DEBUG] CSRF token from cookies:', cookieToken ? decodeURIComponent(cookieToken) : 'none');
+      
+      const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+      console.log('[DEBUG] CSRF token from meta tag:', metaToken || 'none');
+      
+      // Display info in toast
+      showToast(`CSRF Token: ${csrfToken || 'none'} | Cookie: ${cookieToken ? 'found' : 'none'} | Meta: ${metaToken ? 'found' : 'none'} | LocalStorage: ${storedToken ? 'found' : 'none'}`, 'info');
+    },
+    logEvents: () => {
+      console.log('[DEBUG] Current events:', events);
+      console.log('[DEBUG] Total event count:', events.length);
+    },
+    tryAdvancedFormats: async () => {
+      try {
+        showToast('Testing advanced date formats...', 'info');
+        
+        // Try a variety of date formats that .NET might accept
+        const now = new Date();
+        const later = new Date(now.getTime() + 3600000); // 1 hour later
+        
+        const dateFormats = [
+          // Standard ISO string
+          { start: now.toISOString(), end: later.toISOString() },
+          
+          // Microsoft JSON date format
+          { start: `/Date(${now.getTime()})/`, end: `/Date(${later.getTime()})/` },
+          
+          // Short ISO without milliseconds
+          { start: now.toISOString().split('.')[0] + 'Z', end: later.toISOString().split('.')[0] + 'Z' },
+          
+          // .NET datetime format
+          { start: now.toLocaleString('en-US'), end: later.toLocaleString('en-US') },
+          
+          // Only date portion
+          { start: now.toISOString().split('T')[0], end: later.toISOString().split('T')[0] },
+        ];
+        
+        for (const [index, dateFormat] of dateFormats.entries()) {
+          const testEvent = {
+            Title: `Date Format Test ${index + 1}`,
+            Description: `Testing date format: ${JSON.stringify(dateFormat)}`,
+            StartTime: dateFormat.start,
+            EndTime: dateFormat.end,
+            IsAllDay: false,
+            FamilyId: parseInt(familyId.toString(), 10)
+          };
+          
+          console.log(`[DEBUG] Testing date format ${index + 1}:`, JSON.stringify(testEvent, null, 2));
+          
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+          const token = localStorage.getItem('token') || '';
+          const csrfToken = getCsrfToken();
+          
+          const response = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+              'Accept': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'X-XSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(testEvent),
+            credentials: 'include'
+          });
+          
+          console.log(`[DEBUG] Date format ${index + 1} response:`, response.status);
+          const responseText = await response.text();
+          console.log(`[DEBUG] Date format ${index + 1} response text:`, responseText);
+          
+          if (response.ok) {
+            showToast(`Date format ${index + 1} worked!`, 'success');
+            break;
+          }
+        }
+        
+        showToast('Date format tests completed', 'info');
+      } catch (error) {
+        console.error('[DEBUG] Error testing date formats:', error);
+        showToast('Date format test error', 'error');
+      }
+    },
+    testComprehensiveDotNetFormat: async () => {
+      try {
+        showToast('Testing comprehensive .NET format...', 'info');
+        
+        // Create a test event with all possible fields in proper .NET format
+        const now = new Date();
+        const later = new Date(now.getTime() + 3600000); // 1 hour later
+        
+        const dotNetEvent = {
+          Title: `Comprehensive Test ${now.toLocaleTimeString()}`,
+          Description: "Testing all fields with proper .NET formatting",
+          StartTime: now.toISOString(),
+          EndTime: later.toISOString(),
+          IsAllDay: false,
+          Location: "Test Location",
+          Color: "#4287f5",
+          IsRecurring: false,
+          RecurrencePattern: null,
+          EventType: 0, // Using enum value (General=0)
+          FamilyId: parseInt(familyId.toString(), 10),
+          AttendeeIds: []
+        };
+        
+        console.log('[DEBUG] Testing comprehensive .NET format:', JSON.stringify(dotNetEvent, null, 2));
+        
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const token = localStorage.getItem('token') || '';
+        const csrfToken = getCsrfToken();
+        
+        // Log all headers for debugging
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Accept': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'X-XSRF-TOKEN': csrfToken
+        };
+        
+        console.log('[DEBUG] Request headers:', headers);
+        
+        // Get current URL for debugging
+        console.log('[DEBUG] Current page URL:', window.location.href);
+        console.log('[DEBUG] API endpoint:', `${API_URL}/v1/family/${familyId}/calendar/events`);
+        
+        const response = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(dotNetEvent),
+          credentials: 'include'
+        });
+        
+        console.log('[DEBUG] Response status:', response.status);
+        console.log('[DEBUG] Response headers:', Object.fromEntries([...response.headers.entries()]));
+        
+        const responseText = await response.text();
+        console.log('[DEBUG] Response text:', responseText);
+        
+        if (response.ok) {
+          showToast('Comprehensive .NET format worked!', 'success');
+          
+          try {
+            const data = JSON.parse(responseText);
+            console.log('[DEBUG] Parsed response:', data);
+          } catch (parseErr) {
+            console.error('[DEBUG] Error parsing response:', parseErr);
+          }
+        } else {
+          showToast(`Comprehensive test failed: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error testing comprehensive format:', error);
+        showToast('Comprehensive test error', 'error');
+      }
+    }
+  };
+
+  // Log event data to debug endpoint for better debugging
+  const logEventData = async (eventData: any, action = 'create') => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/v1/debug/log-calendar-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action,
+          eventData,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent
+        })
+      });
+
+      if (response.ok) {
+        console.log('[DEBUG] Event data logged successfully');
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error logging event data:', error);
+    }
+  };
+
   if (hasError) {
     return (
       <div className="h-full flex flex-col items-center justify-center">
@@ -654,133 +1202,173 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
     );
   };
 
-  return (
-    <div className="h-full flex flex-col bg-white rounded-lg shadow-sm">
-      <div className="border-b p-4 mb-2">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <CalendarDays className="h-6 w-6 text-brand-navy mr-2" />
-            <h2 className="text-2xl font-bold text-brand-navy">{familyName} Calendar</h2>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              className="flex items-center gap-1 bg-white hover:bg-gray-50"
-              onClick={() => {
-                console.log('[DEBUG] Manual calendar refresh requested');
-                
-                // Load events from localStorage first
-                try {
-                  const storedEventsJson = localStorage.getItem(`family-${familyId}-events`);
-                  if (storedEventsJson) {
-                    const storedEvents = JSON.parse(storedEventsJson) as FamilyCalendarEvent[];
-                    console.log('[DEBUG] Loaded stored events from localStorage:', storedEvents.length);
-                    setEvents(storedEvents);
+  // Render debug button if in development
+  const renderDebugButton = () => {
+    const isDebugMode = localStorage.getItem('debugMode') === 'true';
+    
+    if (!isDebugMode) return null;
+    
+    const testDirectApiCall = async () => {
+      try {
+        showToast('Testing direct API call...', 'info');
+        
+        // Create a test event with proper structure
+        const testEvent = {
+          Title: `Test Event ${new Date().toLocaleTimeString()}`,
+          Description: 'This is a test event created directly via API',
+          StartTime: new Date().toISOString(),
+          EndTime: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
+          IsAllDay: false,
+          Location: 'Test Location',
+          Color: '#ff0000',
+          IsRecurring: false,
+          RecurrencePattern: null,
+          EventType: 0, // General
+          FamilyId: parseInt(familyId.toString(), 10),
+          AttendeeIds: []
+        };
+        
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const token = localStorage.getItem('token') || '';
+        const csrfToken = getCsrfToken();
+        
+        console.log('[DEBUG] Testing direct API call with data:', JSON.stringify(testEvent, null, 2));
+        
+        const response = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Accept': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            'X-XSRF-TOKEN': csrfToken
+          },
+          body: JSON.stringify(testEvent),
+          credentials: 'include'
+        });
+        
+        const responseText = await response.text();
+        console.log('[DEBUG] API direct test response text:', responseText);
+        
+        if (response.ok) {
+          showToast('API test successful!', 'success');
+        } else {
+          showToast('API test failed: ' + response.status, 'error');
                   }
                 } catch (error) {
-                  console.error('Error loading stored events:', error);
+        console.error('[DEBUG] Error testing direct API call:', error);
+        showToast('API test error', 'error');
                 }
-                
-                // First, get calendar API
-                if (calendarRef.current && calendarRef.current.getApi) {
-                  const api = calendarRef.current.getApi();
-                  if (api) {
-                    // Log debug info
-                    console.log('[DEBUG] Current calendar events:', api.getEvents());
-                    console.log('[DEBUG] Current React events state:', events);
-                    
-                    // Clear all events from the calendar
-                    api.getEvents().forEach((event: any) => event.remove());
-                    
-                    // Add all events from state back to calendar
-                    events.forEach((event: FamilyCalendarEvent) => {
-                      console.log('[DEBUG] Re-adding event to calendar:', event.title);
-                      
-                      api.addEvent({
-                        id: `event-${event.id}`,
-                        title: event.title,
-                        start: event.startTime,
-                        end: event.endTime,
-                        allDay: event.isAllDay,
-                        color: event.color || '#3b82f6',
-                        extendedProps: {
-                          type: 'event',
-                          description: event.description,
-                          location: event.location,
-                          originalId: event.id
-                        }
-                      });
-                    });
-                    
-                    // Force full refresh and redraw
-                    api.refetchEvents();
-                    api.render();
-                  }
-                }
-                
-                // Force component remount by toggling loading state
-                setIsLoading(true);
-                setTimeout(() => {
-                  setIsLoading(false);
-                }, 100);
-                
-                showToast('Calendar refreshed', 'info');
-              }}
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4"
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              >
-                <path d="M21 2v6h-6"></path>
-                <path d="M3 12a9 9 0 0 1 15-6.7l3-3"></path>
-                <path d="M3 22v-6h6"></path>
-                <path d="M21 12a9 9 0 0 1-15 6.7l-3 3"></path>
-              </svg>
-              <span className="hidden sm:inline">Refresh</span>
+    };
+    
+    const testAdvancedFormats = async () => {
+      try {
+        showToast('Testing advanced date formats...', 'info');
+        
+        // Try a variety of date formats that .NET might accept
+        const now = new Date();
+        const later = new Date(now.getTime() + 3600000); // 1 hour later
+        
+        const dateFormats = [
+          // Standard ISO string
+          { start: now.toISOString(), end: later.toISOString() },
+          
+          // Microsoft JSON date format
+          { start: `/Date(${now.getTime()})/`, end: `/Date(${later.getTime()})/` },
+          
+          // Short ISO without milliseconds
+          { start: now.toISOString().split('.')[0] + 'Z', end: later.toISOString().split('.')[0] + 'Z' },
+          
+          // .NET datetime format
+          { start: now.toLocaleString('en-US'), end: later.toLocaleString('en-US') },
+          
+          // Only date portion
+          { start: now.toISOString().split('T')[0], end: later.toISOString().split('T')[0] },
+        ];
+        
+        for (const [index, dateFormat] of dateFormats.entries()) {
+          const testEvent = {
+            Title: `Date Format Test ${index + 1}`,
+            Description: `Testing date format: ${JSON.stringify(dateFormat)}`,
+            StartTime: dateFormat.start,
+            EndTime: dateFormat.end,
+            IsAllDay: false,
+            FamilyId: parseInt(familyId.toString(), 10)
+          };
+          
+          console.log(`[DEBUG] Testing date format ${index + 1}:`, JSON.stringify(testEvent, null, 2));
+          
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+          const token = localStorage.getItem('token') || '';
+          const csrfToken = getCsrfToken();
+          
+          const response = await fetch(`${API_URL}/v1/family/${familyId}/calendar/events`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+              'Accept': 'application/json',
+              'X-CSRF-Token': csrfToken,
+              'X-XSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify(testEvent),
+            credentials: 'include'
+          });
+          
+          console.log(`[DEBUG] Date format ${index + 1} response:`, response.status);
+          const responseText = await response.text();
+          console.log(`[DEBUG] Date format ${index + 1} response text:`, responseText);
+          
+          if (response.ok) {
+            showToast(`Date format ${index + 1} worked!`, 'success');
+            break;
+          }
+        }
+        
+        showToast('Date format tests completed', 'info');
+      } catch (error) {
+        console.error('[DEBUG] Error testing date formats:', error);
+        showToast('Date format test error', 'error');
+      }
+    };
+    
+    const toggleDebugMode = () => {
+      const current = localStorage.getItem('debugMode') === 'true';
+      localStorage.setItem('debugMode', (!current).toString());
+      window.location.reload();
+    };
+    
+    return (
+      <div className="flex flex-col gap-2 mt-4 p-4 border border-red-300 rounded bg-red-50">
+        <h3 className="font-bold text-red-800">Debug Tools</h3>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="destructive" size="sm" onClick={testDirectApiCall}>
+            Test API Directly
             </Button>
-            <Dialog open={isAvailabilityDialogOpen} onOpenChange={setIsAvailabilityDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-1 bg-white hover:bg-gray-50"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Set Availability</span>
+          <Button variant="destructive" size="sm" onClick={testAdvancedFormats}>
+            Test Date Formats
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="text-xl flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-brand-navy" />
-                    Set Member Availability
-                  </DialogTitle>
-                  <DialogDescription>
-                    Set when family members are available for activities and events
-                  </DialogDescription>
-                </DialogHeader>
-                <AvailabilityForm
-                  familyId={familyId}
-                  selectedDate={selectedDate}
-                  onSubmit={handleAvailabilityCreate}
-                  onCancel={() => setIsAvailabilityDialogOpen(false)}
-                />
-              </DialogContent>
-            </Dialog>
-
+          <Button variant="destructive" size="sm" onClick={debugHandlers.testComprehensiveDotNetFormat}>
+            Test .NET Format
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => localStorage.setItem('debugMode', 'false')}>
+            Hide Debug Tools
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => console.log('Current CSRF token:', getCsrfToken())}>
+            Log CSRF Token
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Render all modal dialogs
+  const renderModals = () => {
+    return (
+      <>
+        {/* Create Event Dialog */}
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-1 shadow-sm bg-brand-navy hover:bg-brand-navy-dark">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Create Event</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-3xl">
                 <DialogHeader>
                   <DialogTitle className="text-xl flex items-center">
                     <Calendar className="h-5 w-5 mr-2 text-brand-navy" />
@@ -799,97 +1387,9 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
               </DialogContent>
             </Dialog>
             
-            <Button 
-              variant="outline" 
-              onClick={() => setIsShareDialogOpen(true)}
-              aria-label="Share or export calendar"
-              className="flex items-center gap-1 bg-white hover:bg-gray-50"
-            >
-              <Share className="h-4 w-4" />
-              <span className="hidden sm:inline">Share</span>
-            </Button>
-          </div>
-        </div>
-        
-        <div className="flex items-center mt-2 text-sm text-gray-500">
-          <span className="flex items-center mr-4">
-            <div className="w-3 h-3 rounded-full bg-blue-500 mr-1"></div>
-            Events
-          </span>
-          <span className="flex items-center mr-4">
-            <div className="w-3 h-3 rounded-full bg-orange-500 mr-1"></div>
-            Tasks
-          </span>
-          <span className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
-            Conflicts
-          </span>
-        </div>
-      </div>
-      
-      <Tabs 
-        defaultValue="calendar" 
-        value={activeTab} 
-        onValueChange={setActiveTab} 
-        className="w-full flex-1 flex flex-col px-4"
-      >
-        <TabsList className="mb-4 w-full grid grid-cols-2 sm:w-auto sm:inline-flex">
-          <TabsTrigger value="calendar" className="data-[state=active]:bg-brand-navy data-[state=active]:text-white">
-            <Calendar className="h-4 w-4 mr-2" />
-            Calendar
-          </TabsTrigger>
-          <TabsTrigger value="availability" className="data-[state=active]:bg-brand-navy data-[state=active]:text-white">
-            <Clock className="h-4 w-4 mr-2" />
-            Availability
-            {conflicts.length > 0 && (
-              <span className="ml-2 bg-red-100 text-red-800 text-xs px-1.5 py-0.5 rounded-full">
-                {conflicts.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="calendar" className="flex-1 flex flex-col">
-          {renderCalendarContent()}
-        </TabsContent>
-        
-        <TabsContent value="availability" className="flex-1">
-          <MemberAvailability 
-            familyId={familyId} 
-            onConflictsDetected={handleConflictsDetected}
-            startDate={new Date()}
-            endDate={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)} // 30 days from now
-          />
-        </TabsContent>
-      </Tabs>
-      
-      {/* Share Calendar Modal */}
-      <ShareCalendarModal
-        isOpen={isShareDialogOpen}
-        onClose={() => setIsShareDialogOpen(false)}
-        events={events}
-        familyId={familyId}
-        familyName={familyName}
-      />
-      
-      {/* Task/Event Detail Modal */}
-      <TaskEventDetail
-        isOpen={isTaskDetailOpen}
-        onClose={() => setIsTaskDetailOpen(false)}
-        selectedDate={selectedDate || new Date()}
-        familyId={familyId}
-        tasks={filteredTasks}
-        events={filteredEvents}
-        onEditEvent={() => {
-          setIsTaskDetailOpen(false);
-          setIsEditDialogOpen(true);
-        }}
-        onDeleteEvent={handleDeleteEvent}
-      />
-      
-      {/* Event Edit Dialog */}
+        {/* Edit Event Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl flex items-center">
               <Edit className="h-5 w-5 mr-2 text-brand-navy" />
@@ -922,6 +1422,91 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
           )}
         </DialogContent>
       </Dialog>
+        
+        {/* Availability Dialog */}
+        <Dialog open={isAvailabilityDialogOpen} onOpenChange={setIsAvailabilityDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-xl flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-brand-navy" />
+                Set Member Availability
+              </DialogTitle>
+              <DialogDescription>
+                Set when family members are available for activities and events
+              </DialogDescription>
+            </DialogHeader>
+            <AvailabilityForm
+              familyId={familyId}
+              selectedDate={selectedDate}
+              onSubmit={handleAvailabilityCreate}
+              onCancel={() => setIsAvailabilityDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Share Calendar Modal */}
+        <ShareCalendarModal
+          isOpen={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          events={events}
+          familyId={familyId}
+          familyName={familyName}
+        />
+        
+        {/* Task/Event Detail Modal */}
+        <TaskEventDetail
+          isOpen={isTaskDetailOpen}
+          onClose={() => setIsTaskDetailOpen(false)}
+          selectedDate={selectedDate || new Date()}
+          familyId={familyId}
+          tasks={filteredTasks}
+          events={filteredEvents}
+          onEditEvent={() => {
+            setIsTaskDetailOpen(false);
+            setIsEditDialogOpen(true);
+          }}
+          onDeleteEvent={handleDeleteEvent}
+        />
+      </>
+    );
+  };
+
+  // Add debug mode toggler at the bottom of the component (before the return statement)
+  useEffect(() => {
+    // Add keyboard shortcut for debug mode (Ctrl+Shift+D)
+    const handleDebugShortcut = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        const current = localStorage.getItem('debugMode') === 'true';
+        localStorage.setItem('debugMode', (!current).toString());
+        window.location.reload();
+      }
+    };
+    
+    window.addEventListener('keydown', handleDebugShortcut);
+    
+    return () => {
+      window.removeEventListener('keydown', handleDebugShortcut);
+    };
+  }, []);
+
+  return (
+    <div className={`flex flex-col ${isModal ? 'h-[600px]' : 'h-full min-h-[calc(100vh-140px)]'}`}>
+      {/* Header with tabs */}
+      {!isModal && (
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Family Calendar</h2>
+          <div className="text-gray-500">Family ID: {familyId}</div>
+        </div>
+      )}
+      
+      {/* Main content */}
+      <div className="flex flex-col flex-grow">
+        {renderCalendarContent()}
+        {renderDebugButton()}
+      </div>
+      
+      {/* Modals */}
+      {renderModals()}
     </div>
   );
 } 

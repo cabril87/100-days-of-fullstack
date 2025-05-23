@@ -724,6 +724,22 @@ modelBuilder.Entity<User>().HasData(
             return StatusCode(500, new { message = ex.Message });
         }
     }
+
+    [HttpPost("log-calendar-event")]
+    [AllowAnonymous]
+    public ActionResult LogCalendarEvent([FromBody] object eventData)
+    {
+        try
+        {
+            _logger.LogInformation("Calendar event data received: {@EventData}", eventData);
+            return Ok(new { success = true, message = "Event data logged successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging calendar event data");
+            return StatusCode(500, new { success = false, message = "Error logging event data" });
+        }
+    }
 }
 
 // Simple login model for debugging

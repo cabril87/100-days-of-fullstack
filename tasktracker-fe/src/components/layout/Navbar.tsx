@@ -6,6 +6,7 @@ import { useFamily } from '@/lib/providers/FamilyContext';
 import { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import NotificationCenter from './NotificationCenter';
+import GlobalSearch from '@/components/GlobalSearch';
 
 export function Navbar() {
   const { user, logout } = useAuth();
@@ -61,6 +62,12 @@ export function Navbar() {
               {user && (
                 <>
                   <Link
+                    href="/templates"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                  >
+                    Templates
+                  </Link>
+                  <Link
                     href="/focus"
                     className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
                   >
@@ -84,6 +91,7 @@ export function Navbar() {
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <div className="flex items-center space-x-4">
+              <GlobalSearch />
               <ThemeToggle />
               
             {user ? (
@@ -160,7 +168,7 @@ export function Navbar() {
                             logout();
                             setIsProfileMenuOpen(false);
                           }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
+                            className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
                           role="menuitem"
                         >
                           Logout
@@ -189,6 +197,7 @@ export function Navbar() {
             </div>
           </div>
           <div className="-mr-2 flex items-center sm:hidden">
+            <GlobalSearch />
             <ThemeToggle />
             {user && (
               <div className="mx-2">
@@ -261,11 +270,11 @@ export function Navbar() {
             {user && (
               <>
               <Link
-                href="/dashboard"
+                  href="/templates"
                   className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Dashboard
+                  Templates
               </Link>
                 <Link
                   href="/focus"

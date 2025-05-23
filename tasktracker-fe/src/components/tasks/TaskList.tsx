@@ -5,6 +5,9 @@ import { Task } from './Task';
 import { useState, useMemo, useEffect } from 'react';
 import { TaskSorter, SortOption, SortDirection } from './TaskSorter';
 import { taskService } from '@/lib/services/taskService';
+import { Badge } from '@/components/ui/badge';
+import { useTemplates } from '@/lib/providers/TemplateProvider';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Add this utility function to clear verification caches
 export function clearTaskVerificationCache(): void {
@@ -38,9 +41,23 @@ interface TaskListProps {
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: TaskType) => void;
+  showCategories?: boolean;
+  selectionMode?: boolean;
+  selectedTasks?: TaskType[];
+  onToggleSelection?: (task: TaskType) => void;
 }
 
-export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListProps) {
+export function TaskList({ 
+  tasks, 
+  onStatusChange, 
+  onDelete, 
+  onEdit, 
+  showCategories = false,
+  selectionMode = false,
+  selectedTasks = [],
+  onToggleSelection = () => {}
+}: TaskListProps) {
+  const { categories } = useTemplates();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortOption>('createdAt');
@@ -180,6 +197,11 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
   const inProgressCount = sortedTasks.filter(task => normalizeStatus(task.status) === 'in-progress').length;
   const doneCount = sortedTasks.filter(task => normalizeStatus(task.status) === 'done').length;
   
+  // Check if a task is selected
+  const isTaskSelected = (task: TaskType) => {
+    return selectedTasks.some(t => t.id === task.id);
+  };
+
   return (
     <div 
       className={`space-y-8 transition-opacity duration-500 ${animateIn ? 'opacity-100' : 'opacity-0'}`}
@@ -265,23 +287,34 @@ export function TaskList({ tasks, onStatusChange, onDelete, onEdit }: TaskListPr
           </button>
         </div>
       ) : (
-        <div className="space-y-6">
-          {sortedTasks && sortedTasks.map((task, index) => (
-            <div 
-              key={task.id}
-              style={{ 
-                animation: `fadeSlideIn 0.4s ease-out forwards`,
-                animationDelay: `${index * 0.05}s`,
-                opacity: 0,
-                transform: 'translateY(10px)'
-              }}
-            >
-              <Task
-                task={task}
-                onStatusChange={onStatusChange}
-                onDelete={onDelete}
-                onEdit={onEdit}
-              />
+        <div 
+          className="grid grid-cols-1 gap-4"
+          style={{ 
+            animation: 'slideInUp 0.5s ease-out',
+            animationFillMode: 'both'
+          }}
+        >
+          {sortedTasks.map((task, index) => (
+            <div key={task.id} className={`task-item-${index} flex items-start gap-3`}>
+              {selectionMode && (
+                <div className="pt-5 pl-1">
+                  <Checkbox
+                    checked={isTaskSelected(task)}
+                    onCheckedChange={() => onToggleSelection(task)}
+                    aria-label={`Select task ${task.title}`}
+                    className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                  />
+                </div>
+              )}
+              <div className={`flex-1 ${selectionMode ? 'pl-1' : ''}`}>
+                <Task
+                  task={task}
+                  onStatusChange={onStatusChange}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  showCategories={showCategories}
+                />
+              </div>
             </div>
           ))}
         </div>

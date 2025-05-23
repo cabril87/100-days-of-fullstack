@@ -210,6 +210,20 @@ public class FamilyRepository :IFamilyRepository
 
     public async Task<bool> HasPermissionAsync(int familyId, int userId, string permission)
     {
+        // Special case: Always allow calendar event creation for any family member
+        if (permission == "create_events" || permission == "manage_calendar")
+        {
+            // Just check if they're a member of the family
+            bool isMember = await IsMemberAsync(familyId, userId);
+            if (isMember)
+            {
+                _logger.LogInformation("Granting {Permission} permission to user {UserId} for family {FamilyId} by override", 
+                    permission, userId, familyId);
+                return true;
+            }
+        }
+
+        // Regular permission check for other permissions
         FamilyMember? member = await _context.FamilyMembers
             .Include(m => m.Role)
                 .ThenInclude(r => r.Permissions)

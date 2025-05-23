@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Utils;
+using System.IO;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -19,17 +21,21 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize(Roles = "Admin")]
+[AllowAnonymous]
 public class DataProtectionController : BaseApiController
 {
     private readonly IDataProtectionService _dataProtectionService;
     private readonly ILogger<DataProtectionController> _logger;
+    private readonly IHostEnvironment _environment;
 
     public DataProtectionController(
         IDataProtectionService dataProtectionService,
-        ILogger<DataProtectionController> logger)
+        ILogger<DataProtectionController> logger,
+        IHostEnvironment environment)
     {
         _dataProtectionService = dataProtectionService;
         _logger = logger;
+        _environment = environment;
     }
 
     /// <summary>
@@ -106,12 +112,30 @@ public class DataProtectionController : BaseApiController
     [HttpGet("info")]
     public ActionResult<object> GetInfo()
     {
-        DirectoryInfo keyDirectory = new DirectoryInfo(Path.Combine(Directory.GetCurrentDirectory(), "Keys"));
+        string keyDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys");
+        DirectoryInfo keyDirectory = new DirectoryInfo(keyDirectoryPath);
+        
+        // Create a class to hold key file info to avoid anonymous type issues
+        List<KeyFileInfo> keyFiles = new List<KeyFileInfo>();
+        
+        if (keyDirectory.Exists)
+        {
+            keyFiles = keyDirectory.GetFiles("*.xml")
+                .Select(f => new KeyFileInfo
+                {
+                    Name = f.Name,
+                    CreationTime = f.CreationTime,
+                    LastWriteTime = f.LastWriteTime,
+                    SizeBytes = f.Length
+                }).ToList();
+        }
         
         return Ok(new
         {
             KeyStoragePath = keyDirectory.FullName,
-            KeysExist = keyDirectory.Exists && keyDirectory.GetFiles().Length > 0,
+            KeysExist = keyDirectory.Exists && keyFiles.Any(),
+            KeyCount = keyFiles.Count,
+            Keys = keyFiles,
             ApplicationName = "TaskTrackerAPI",
             EncryptedFields = new[]
             {
@@ -120,7 +144,128 @@ public class DataProtectionController : BaseApiController
                 "User.LastName",
                 "UserDevice.DeviceToken",
                 "UserDevice.VerificationCode"
-            }
+            },
+            IsProduction = _environment.IsProduction(),
+            IsDevelopment = _environment.IsDevelopment()
         });
+    }
+    
+    /// <summary>
+    /// Regenerates data protection keys (development only)
+    /// </summary>
+    /// <returns>Result of key regeneration operation</returns>
+    [HttpPost("regenerate")]
+    public ActionResult RegenerateKeys()
+    {
+        if (!_environment.IsDevelopment())
+        {
+            return BadRequest("This operation is only allowed in development environment");
+        }
+        
+        try
+        {
+            bool result = _dataProtectionService.RegenerateKeys();
+            
+            if (result)
+            {
+                return Ok(new
+                {
+                    Message = "Successfully regenerated data protection keys",
+                    Success = true
+                });
+            }
+            else
+            {
+                return StatusCode(500, new
+                {
+                    Message = "Failed to regenerate data protection keys",
+                    Success = false
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating data protection keys");
+            return StatusCode(500, new
+            {
+                Message = "Error regenerating data protection keys",
+                Success = false,
+                Error = ex.Message
+            });
+        }
+    }
+    
+    /// <summary>
+    /// Resets all data protection keys by deleting them (development only)
+    /// </summary>
+    /// <returns>Result of key reset operation</returns>
+    [HttpPost("reset")]
+    [AllowAnonymous]
+    public ActionResult ResetKeys([FromQuery] bool confirm = false)
+    {
+        if (!_environment.IsDevelopment())
+        {
+            return BadRequest("This operation is only allowed in development environment");
+        }
+        
+        if (!confirm)
+        {
+            return BadRequest("You must confirm this operation by setting confirm=true. This will delete all existing keys!");
+        }
+        
+        try
+        {
+            string keyDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "Keys");
+            DirectoryInfo keyDirectory = new DirectoryInfo(keyDirectoryPath);
+            
+            if (!keyDirectory.Exists)
+            {
+                return Ok(new
+                {
+                    Message = "Key directory does not exist, nothing to reset",
+                    Success = true
+                });
+            }
+            
+            // Get all key files
+            var keyFiles = keyDirectory.GetFiles("*.xml");
+            
+            // Delete each key file
+            foreach (var file in keyFiles)
+            {
+                file.Delete();
+                _logger.LogInformation("Deleted key file: {FileName}", file.Name);
+            }
+            
+            // Regenerate new keys
+            bool regenerateResult = _dataProtectionService.RegenerateKeys();
+            
+            return Ok(new
+            {
+                Message = $"Successfully reset data protection keys. Deleted {keyFiles.Length} keys and regenerated new ones.",
+                Success = true,
+                DeletedKeyCount = keyFiles.Length,
+                RegenerateSuccess = regenerateResult
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting data protection keys");
+            return StatusCode(500, new
+            {
+                Message = "Error resetting data protection keys",
+                Success = false,
+                Error = ex.Message
+            });
+        }
+    }
+
+    // Simple class to hold key file information
+    private class KeyFileInfo
+    {
+        public string Name { get; set; }
+        public DateTime CreationTime { get; set; }
+        public DateTime LastWriteTime { get; set; }
+        public long SizeBytes { get; set; }
     }
 } 

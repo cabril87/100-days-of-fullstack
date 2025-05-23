@@ -27,6 +27,35 @@ export enum ApiTaskStatus {
   Completed = 2
 }
 
+// Task Categories for organizing tasks
+export interface TaskCategory {
+  id: number;
+  name: string;
+  description?: string;
+  color?: string; // hex color code for UI display
+  icon?: string; // icon name/identifier
+  parentId?: number; // For hierarchical categories
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Task Template for creating reusable tasks
+export interface TaskTemplate {
+  id: number;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  estimatedDuration?: number; // in minutes
+  categoryId?: number;
+  tags?: string[];
+  createdBy?: string;
+  isPublic?: boolean; // whether template is available to all users
+  isDefault?: boolean; // whether it's a system default template
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -46,6 +75,8 @@ export interface Task {
   completedAt?: string;
   tags?: string[];
   version?: number; // Version for concurrency control
+  categoryId?: number; // Reference to category
+  templateId?: number; // If created from a template
 }
 
 export interface TaskFormData {
@@ -55,6 +86,8 @@ export interface TaskFormData {
   dueDate?: string | null;
   dueTime?: string | null;
   priority?: 'low' | 'medium' | 'high';
+  categoryId?: number;
+  templateId?: number;
 }
 
 // For frontend use
@@ -66,6 +99,7 @@ export interface CreateTaskRequest {
   dueDate?: string;
   categoryId?: number;
   boardId?: number;
+  templateId?: number;
 }
 
 // For API use - matches the API's expected capitalization and types
@@ -79,6 +113,7 @@ export interface ApiCreateTaskRequest {
   IsRecurring?: boolean;
   CategoryId?: number;
   BoardId?: number;
+  TemplateId?: number;
 }
 
 // Quick task DTO for the API, with minimal fields
@@ -129,6 +164,8 @@ export interface TaskCreateInput {
   status?: string;
   priority?: string;
   dueDate?: string;
+  categoryId?: number;
+  templateId?: number;
 }
 
 export interface TaskUpdateInput {
@@ -137,6 +174,7 @@ export interface TaskUpdateInput {
   status?: string;
   priority?: string;
   dueDate?: string;
+  categoryId?: number;
 }
 
 export interface TaskHistoryItem {
@@ -148,4 +186,35 @@ export interface TaskHistoryItem {
   performedByName?: string;
   previousValue?: string;
   newValue?: string;
+}
+
+// Create template from existing task
+export interface SaveAsTemplateInput {
+  taskId?: number;
+  title: string;
+  description?: string;
+  categoryId?: number;
+  isPublic?: boolean;
+}
+
+// Interface for creating a new template directly
+export interface CreateTemplateInput {
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  estimatedDuration?: number;
+  categoryId?: number;
+  tags?: string[];
+  isPublic?: boolean;
+}
+
+export interface TemplateSummary {
+  id: number;
+  title: string;
+  categoryId?: number;
+  categoryName?: string;
+  isPublic: boolean;
+  isDefault: boolean;
+  timesUsed?: number; // Stats on template usage
 } 

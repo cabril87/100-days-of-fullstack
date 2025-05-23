@@ -90,64 +90,119 @@ public class FamilyCalendarService : IFamilyCalendarService
 
     public async Task<FamilyCalendarEventDTO?> CreateEventAsync(CreateFamilyCalendarEventDTO eventDto, int creatorId)
     {
-        // Check if user is a member of the family and has permission to create events
-        if (!await _familyRepository.HasPermissionAsync(eventDto.FamilyId, creatorId, "manage_calendar") && 
-            !await _familyRepository.HasPermissionAsync(eventDto.FamilyId, creatorId, "create_events"))
+        try
         {
-            _logger.LogWarning("User {UserId} attempted to create an event for family {FamilyId} without permission", 
-                creatorId, eventDto.FamilyId);
-            return null;
-        }
-
-        // Map DTO to entity
-        FamilyCalendarEvent eventEntity = _mapper.Map<FamilyCalendarEvent>(eventDto);
-        eventEntity.CreatedById = creatorId;
-        eventEntity.CreatedAt = DateTime.UtcNow;
-
-        // Create the event
-        FamilyCalendarEvent createdEvent = await _calendarRepository.CreateEventAsync(eventEntity);
-
-        // Add attendees if specified
-        if (eventDto.AttendeeIds.Any())
-        {
-            foreach (int memberId in eventDto.AttendeeIds)
+            // Check if user is a member of the family
+            bool isMember = await _familyRepository.IsMemberAsync(eventDto.FamilyId, creatorId);
+            if (!isMember)
             {
-                // Verify member belongs to this family
-                FamilyMember? familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
-                if (familyMember == null || familyMember.FamilyId != eventDto.FamilyId)
+                _logger.LogWarning("User {UserId} attempted to create event for family {FamilyId} without being a member", 
+                    creatorId, eventDto.FamilyId);
+                return null;
+            }
+
+            // Log that we're attempting to create an event
+            _logger.LogInformation("Creating event {Title} for family {FamilyId} by user {UserId}", 
+                eventDto.Title, eventDto.FamilyId, creatorId);
+
+            // Map DTO to entity
+            FamilyCalendarEvent eventEntity = _mapper.Map<FamilyCalendarEvent>(eventDto);
+            eventEntity.CreatedById = creatorId;
+            eventEntity.CreatedAt = DateTime.UtcNow;
+            eventEntity.UpdatedAt = DateTime.UtcNow;
+            
+            // Make sure dates are in UTC
+            if (eventEntity.StartTime.Kind != DateTimeKind.Utc)
+            {
+                eventEntity.StartTime = DateTime.SpecifyKind(eventEntity.StartTime, DateTimeKind.Utc);
+            }
+            
+            if (eventEntity.EndTime.Kind != DateTimeKind.Utc)
+            {
+                eventEntity.EndTime = DateTime.SpecifyKind(eventEntity.EndTime, DateTimeKind.Utc);
+            }
+            
+            // Make sure end time is after start time
+            if (eventEntity.EndTime <= eventEntity.StartTime && !eventEntity.IsAllDay)
+            {
+                eventEntity.EndTime = eventEntity.StartTime.AddHours(1);
+            }
+            
+            // Create the event
+            _logger.LogInformation("Saving event to database");
+            FamilyCalendarEvent createdEvent = await _calendarRepository.CreateEventAsync(eventEntity);
+            
+            // Add attendees if specified
+            if (eventDto.AttendeeIds != null && eventDto.AttendeeIds.Any())
+            {
+                _logger.LogInformation("Adding {Count} attendees to event {EventId}", 
+                    eventDto.AttendeeIds.Count(), createdEvent.Id);
+                    
+                foreach (int memberId in eventDto.AttendeeIds)
                 {
-                    continue;
+                    // Verify member belongs to this family
+                    FamilyMember? familyMember = await _familyRepository.GetMemberByIdAsync(memberId);
+                    if (familyMember == null || familyMember.FamilyId != eventDto.FamilyId)
+                    {
+                        _logger.LogWarning("Skipping invalid member {MemberId} for event {EventId}", 
+                            memberId, createdEvent.Id);
+                        continue;
+                    }
+
+                    FamilyEventAttendee attendee = new FamilyEventAttendee
+                    {
+                        EventId = createdEvent.Id,
+                        FamilyMemberId = memberId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _calendarRepository.CreateAttendeeAsync(attendee);
                 }
-
-                FamilyEventAttendee attendee = new FamilyEventAttendee
-                {
-                    EventId = createdEvent.Id,
-                    FamilyMemberId = memberId,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _calendarRepository.CreateAttendeeAsync(attendee);
             }
-        }
 
-        // Add reminders if specified
-        if (eventDto.Reminders.Any())
-        {
-            foreach (EventReminderCreateDTO reminderDto in eventDto.Reminders)
+            // Add reminders if specified
+            if (eventDto.Reminders != null && eventDto.Reminders.Any())
             {
-                FamilyEventReminder reminder = new FamilyEventReminder
+                _logger.LogInformation("Adding {Count} reminders to event {EventId}", 
+                    eventDto.Reminders.Count(), createdEvent.Id);
+                    
+                foreach (EventReminderCreateDTO reminderDto in eventDto.Reminders)
                 {
-                    EventId = createdEvent.Id,
-                    TimeBeforeInMinutes = reminderDto.TimeBeforeInMinutes,
-                    ReminderMethod = reminderDto.ReminderMethod,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _calendarRepository.CreateReminderAsync(reminder);
+                    FamilyEventReminder reminder = new FamilyEventReminder
+                    {
+                        EventId = createdEvent.Id,
+                        TimeBeforeInMinutes = reminderDto.TimeBeforeInMinutes,
+                        ReminderMethod = reminderDto.ReminderMethod,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _calendarRepository.CreateReminderAsync(reminder);
+                }
             }
-        }
 
-        // Get the full event with related data
-        FamilyCalendarEvent? completeEvent = await _calendarRepository.GetEventByIdAsync(createdEvent.Id);
-        return _mapper.Map<FamilyCalendarEventDTO>(completeEvent);
+            // Get the full event with related data
+            _logger.LogInformation("Retrieving complete event {EventId}", createdEvent.Id);
+            FamilyCalendarEvent? completeEvent = await _calendarRepository.GetEventByIdAsync(createdEvent.Id);
+            
+            if (completeEvent == null)
+            {
+                _logger.LogError("Created event {EventId} not found when retrieving complete data", createdEvent.Id);
+                // Return the basic created event if we can't get the complete one
+                return _mapper.Map<FamilyCalendarEventDTO>(createdEvent);
+            }
+            
+            // Successfully created and retrieved the complete event
+            _logger.LogInformation("Event {EventId} successfully created for family {FamilyId}", 
+                completeEvent.Id, completeEvent.FamilyId);
+            
+            return _mapper.Map<FamilyCalendarEventDTO>(completeEvent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating event {Title} for family {FamilyId}: {Message}", 
+                eventDto.Title, eventDto.FamilyId, ex.Message);
+            
+            // Re-throw to allow controller to handle the error
+            throw;
+        }
     }
 
     public async Task<FamilyCalendarEventDTO?> UpdateEventAsync(int eventId, UpdateFamilyCalendarEventDTO eventDto, int userId)

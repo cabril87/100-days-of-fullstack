@@ -13,17 +13,28 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 /**
  * Get CSRF token from cookies
  */
-function getCsrfToken(): string {
-  if (typeof document === 'undefined') return '';
-  
+async function getCsrfToken(): Promise<string> {
   try {
-    const rawCsrfToken = document.cookie
-      .split(';')
-      .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-      ?.split('=')[1];
+    // First try to get from cookies
+    const cookies = document.cookie.split(';');
+    const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
     
-    // Properly decode the token from URL encoding
-    return rawCsrfToken ? decodeURIComponent(rawCsrfToken) : '';
+    if (csrfCookie) {
+      const rawCsrfToken = csrfCookie.split('=')[1];
+      // Properly decode the token from URL encoding
+      return rawCsrfToken ? decodeURIComponent(rawCsrfToken) : '';
+    }
+    
+    // If not in cookies, try localStorage
+    const localToken = localStorage.getItem('csrfToken');
+    if (localToken) {
+      return localToken;
+    }
+    
+    // If no token found, try to refresh it
+    const { refreshCsrfToken } = await import('../utils/security');
+    const newToken = await refreshCsrfToken();
+    return newToken || '';
   } catch (error) {
     console.error('[apiClient] Error extracting CSRF token:', error);
     return '';
@@ -61,6 +72,111 @@ function getAuthToken(options: { suppressAuthError?: boolean } = {}): string | n
 }
 
 /**
+ * Convert an object to a FormData instance
+ */
+function formDataFromObject(obj: Record<string, any>): FormData {
+  const formData = new FormData();
+  Object.entries(obj).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) {
+      // Handle File objects
+      if (value instanceof File) {
+        formData.append(key, value);
+      }
+      // Handle arrays
+      else if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          formData.append(`${key}[${index}]`, item);
+        });
+      }
+      // Handle other values
+      else {
+        formData.append(key, value.toString());
+      }
+    }
+  });
+  return formData;
+}
+
+/**
+ * Convert an object to a query string
+ */
+function objectToQueryString(obj: Record<string, any>): string {
+  return Object.entries(obj)
+    .filter(([_, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => {
+      if (Array.isArray(value)) {
+        return value
+          .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(item)}`)
+          .join('&');
+      }
+      return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+    })
+    .join('&');
+}
+
+/**
+ * Handle API response and convert to ApiResponse format
+ */
+async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
+  // Handle no-content responses
+  if (response.status === 204) {
+    return { status: 204 };
+  }
+  
+  try {
+    const contentType = response.headers.get('content-type');
+    
+    // If not JSON, return the status
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      
+      if (response.ok) {
+        return { status: response.status };
+      }
+      
+      return {
+        error: text || response.statusText,
+        status: response.status
+      };
+    }
+    
+    // Parse JSON response
+    const json = await response.json();
+    
+    // Success response
+    if (response.ok) {
+      // Check if response is already wrapped
+      if (json.data !== undefined) {
+        return {
+          data: json.data,
+          status: response.status
+        };
+      }
+      
+      // Otherwise, wrap the response
+      return {
+        data: json as T,
+        status: response.status
+      };
+    }
+    
+    // Error response
+    return {
+      error: json.message || json.error || 'Unknown error',
+      details: json.errors || json.details || null,
+      status: response.status
+    };
+  } catch (error) {
+    console.error('[apiClient] Error parsing response:', error);
+    
+    return {
+      error: 'Failed to parse response',
+      status: response.status
+    };
+  }
+}
+
+/**
  * Generic API request function with method override support
  */
 async function apiRequest<T = any>(
@@ -77,12 +193,18 @@ async function apiRequest<T = any>(
   } = {}
 ): Promise<ApiResponse<T>> {
   try {
+    // For non-GET requests, refresh the CSRF token first
+    if (method !== 'GET') {
+      const { refreshCsrfToken } = await import('../utils/security');
+      await refreshCsrfToken();
+    }
+    
     // Get CSRF token for non-GET requests
     let csrfToken = '';
     if (method !== 'GET') {
       csrfToken = await getCsrfToken();
-      if (!options.suppressAuthError) {
-        console.log('[apiClient] Got CSRF token from cookies:', csrfToken);
+      if (!options.suppressAuthError && csrfToken) {
+        console.log('[apiClient] Got CSRF token:', csrfToken);
       }
     }
 
@@ -116,253 +238,69 @@ async function apiRequest<T = any>(
     }
 
     // Add CSRF token for non-GET requests
-    if (method !== 'GET') {
-      const csrfToken = getCsrfToken();
-      if (csrfToken) {
+    if (method !== 'GET' && csrfToken) {
       headers['X-CSRF-TOKEN'] = csrfToken;
-        headers['X-XSRF-TOKEN'] = csrfToken;
-        console.log(`[apiClient] Added CSRF token to headers: ${csrfToken}`);
-      }
+      headers['X-XSRF-TOKEN'] = csrfToken;
+      console.log(`[apiClient] Added CSRF token to headers: ${csrfToken}`);
     }
-    
+
     // Add any extra headers
     if (options.extraHeaders) {
-      for (const [key, value] of Object.entries(options.extraHeaders)) {
+      Object.entries(options.extraHeaders).forEach(([key, value]) => {
         headers[key] = value;
-      }
-      console.log('[apiClient] Added extra headers:', options.extraHeaders);
-    }
-
-    // Prepare request options
-    const requestOptions: RequestInit = {
-      method,
-      headers,
-      credentials: 'include'
-    };
-
-    // Add body for non-GET requests
-    if (method !== 'GET' && data) {
-      if (options.useFormData) {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          formData.append(key, value as string);
-        });
-        requestOptions.body = formData;
-        // Remove Content-Type header for FormData
-        const { 'Content-Type': _, ...restHeaders } = headers;
-        requestOptions.headers = restHeaders;
-      } else {
-        requestOptions.body = JSON.stringify(data);
-      }
-    }
-
-    // Log the request
-    if (!options.suppressAuthError) {
-      console.log(`[apiClient] ${method} request to ${API_URL}${endpoint}`, {
-        ...requestOptions,
-        headers: { ...requestOptions.headers, Authorization: authToken ? 'Bearer [REDACTED]' : undefined }
       });
     }
 
-    // Special handling for task assignment endpoints
-    const isTaskAssignEndpoint = endpoint.includes('/tasks/assign');
+    // Format the data if PascalCase is required (for .NET backend compatibility)
+    let formattedData = data;
+    if (options.usePascalCase && data) {
+      formattedData = toPascalCase(data);
+    }
+
+    // Create the request options
+    let requestMethod = method;
+    let requestUrl = `${API_URL}${endpoint}`;
+
+    // Apply method override if needed
+    if (options.useMethodOverride && ['PUT', 'PATCH', 'DELETE'].includes(method)) {
+      // Use POST method with override headers
+      requestMethod = 'POST';
+      headers['X-HTTP-Method-Override'] = method;
+      
+      // Add _method query parameter
+      const separator = requestUrl.includes('?') ? '&' : '?';
+      requestUrl = `${requestUrl}${separator}_method=${method}`;
+    }
+
+    const requestOptions: RequestInit = {
+      method: requestMethod,
+      headers,
+      credentials: 'include', // Include cookies for CSRF token
+    };
+
+    // Add the body for non-GET requests
+    if (method !== 'GET' && formattedData !== undefined) {
+      requestOptions.body = options.useFormData
+        ? formDataFromObject(formattedData)
+        : JSON.stringify(formattedData);
+    }
+
+    // Build the URL with query parameters for GET requests
+    if (method === 'GET' && data) {
+      const queryString = objectToQueryString(data);
+      requestUrl = `${requestUrl}${requestUrl.includes('?') ? '&' : '?'}${queryString}`;
+    }
 
     // Make the request
-    const url = `${API_URL}${endpoint}`;
-    console.log(`[apiClient] ${method} request to ${url}`, { method, headers, credentials: 'include' });
+    const response = await fetch(requestUrl, requestOptions);
 
-    // Special handling for sensitive mutations that might need extra authentication
-    let response;
-    
-    // For regular requests
-    response = await fetch(url, {
-      method,
-      headers,
-      credentials: 'include',
-      body: requestOptions.body || undefined
-    });
-    
-      console.log(`[apiClient] Response status: ${response.status} ${response.statusText}`);
-    
-    // Special handling for 401 errors on task assignment
-    if (response.status === 401 && isTaskAssignEndpoint) {
-      console.log('[apiClient] 401 on task assignment endpoint, attempting token refresh');
-      
-      try {
-        // Try to refresh the token
-        const refreshResponse = await fetch(`${API_URL}/v1/auth/refresh-token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          credentials: 'include'
-        });
-        
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          const newToken = refreshData?.token || refreshData?.accessToken;
-          
-          if (newToken) {
-            console.log('[apiClient] Token refreshed, updating storage and retrying request');
-            localStorage.setItem('token', newToken);
-            
-            // Update Authorization header with new token
-            headers['Authorization'] = `Bearer ${newToken}`;
-            
-            // Retry the request with new token
-            const retryResponse = await fetch(url, {
-              method,
-              headers,
-              credentials: 'include',
-              body: requestOptions.body || undefined
-            });
-            
-            console.log(`[apiClient] Retry response status: ${retryResponse.status}`);
-            if (retryResponse.ok) {
-              response = retryResponse; // Use successful retry response
-            }
-          }
-        }
-      } catch (refreshError) {
-        console.error('[apiClient] Error refreshing token:', refreshError);
-      }
-    }
-    
-    // Authentication failed
-    if (response.status === 401) {
-      console.log('[apiClient] Received 401 response');
-      if (!options.suppressAuthError) {
-        // Don't clear token to allow retry with refresh
-        console.log('[apiClient] Authentication failed but tokens preserved for retry');
-      }
-    }
-
-    // Handle rate limiting
-    if (response.status === 429) {
-      return {
-        error: 'Too many requests. Please try again later.',
-        status: 429
-      };
-    }
-
-    // Handle 500 server errors with more detailed reporting
-    if (response.status === 500) {
-      console.error(`[apiClient] Server error (500) occurred when calling ${endpoint}`);
-      // Try to extract error details from response if available
-      try {
-        const errorText = await response.text();
-        console.error('[apiClient] Server error details:', errorText);
-        
-        // Try to parse as JSON if possible
-        try {
-          const errorJson = JSON.parse(errorText);
-          return {
-            error: errorJson.message || errorJson.error || 'Server error occurred',
-            details: errorJson.errors || errorJson.details || errorJson.stackTrace || null,
-            status: 500
-          };
-        } catch (jsonError) {
-          // Not JSON, return the text
-          return {
-            error: 'Server error occurred',
-            details: errorText.substring(0, 200) + (errorText.length > 200 ? '...' : ''),
-            status: 500
-          };
-        }
-      } catch (textError) {
-        // Couldn't even get the text
-        return {
-          error: 'Unknown server error',
-          status: 500
-        };
-      }
-    }
-
-    // Handle non-JSON or no-content responses
-    if (response.status === 204) {
-      // Special handling for logout
-      if (endpoint === '/v1/auth/logout') {
-        console.log('[apiClient] Logout detected, clearing all storage');
-        // Clear local storage and session storage
-        localStorage.clear();
-        sessionStorage.clear();
-        // Clear cookies
-        document.cookie.split(';').forEach(cookie => {
-          const [name] = cookie.trim().split('=');
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-        });
-      }
-      return { status: 204 };
-    }
-
-    // Try to parse the response as JSON
-    try {
-      const text = await response.text();
-
-      // Handle empty responses
-      if (!text) {
-        if (response.ok) {
-          return { status: response.status };
-        }
-        return { 
-          error: `Empty response with status ${response.status}`,
-          status: response.status
-        };
-      }
-
-      // Parse JSON
-      const json = JSON.parse(text);
-
-      // Handle 404 specifically
-      if (response.status === 404) {
-        return {
-          error: json.message || 'Resource not found',
-          status: 404
-        };
-      }
-
-      // Successful response
-      if (response.ok) {
-        // Check if the response is already in ApiResponse format
-        if (json.data !== undefined) {
-          return {
-            data: json.data as T,
-            status: response.status
-          };
-        }
-
-        // Otherwise, wrap the response in ApiResponse format
-        return {
-          data: json as T,
-          status: response.status
-        };
-      }
-
-      // Error response
-      return {
-        error: json.message || json.error || 'Unknown error',
-        details: json.errors || json.details || null,
-        status: response.status
-      };
-    } catch (parseError) {
-      // Handle non-JSON responses
-      console.error('[apiClient] Error parsing response:', parseError);
-
-      if (response.ok) {
-        return { status: response.status };
-      }
-
-      return {
-        error: `Error parsing response: ${response.statusText}`,
-        status: response.status
-      };
-    }
+    // Handle the response
+    return handleApiResponse<T>(response);
   } catch (error) {
-    console.error('[apiClient] Request failed:', error);
+    console.error(`[apiClient] Error in ${method} request to ${endpoint}:`, error);
     return {
-      error: error instanceof Error ? error.message : 'Request failed',
-      status: 0
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+      status: 500
     };
   }
 }
@@ -383,6 +321,7 @@ export const apiClient = {
     // Special handling for calendar event creation to improve success rate
     if (endpoint.includes('/calendar/events')) {
       console.log('[apiClient] Calendar event creation detected, adding special headers');
+      console.log('[apiClient] Calendar event data:', JSON.stringify(data, null, 2));
       
       // Set extraHeaders if not already set
       options.extraHeaders = options.extraHeaders || {};
@@ -394,6 +333,14 @@ export const apiClient = {
         'X-Permissions-Bypass': 'true',
         'X-Calendar-Access': 'full'
       };
+      
+      // Handle potential issues with recurrencePattern
+      if (data && data.recurrencePattern === null) {
+        console.log('[apiClient] Converting null recurrencePattern to undefined');
+        const modifiedData = { ...data };
+        delete modifiedData.recurrencePattern;
+        return apiRequest<T>(endpoint, 'POST', modifiedData, options);
+      }
     }
     
     return apiRequest<T>(endpoint, 'POST', data, options);

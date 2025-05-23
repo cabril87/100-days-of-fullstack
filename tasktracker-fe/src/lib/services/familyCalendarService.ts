@@ -50,7 +50,7 @@ export interface CreateFamilyCalendarEvent {
   location?: string;
   color?: string;
   isRecurring?: boolean;
-  recurrencePattern?: string;
+  recurrencePattern?: string | null;
   eventType: string;
   familyId: number;
   attendeeIds: number[];
@@ -161,40 +161,100 @@ export const familyCalendarService = {
     try {
       console.log('[familyCalendarService] Creating event:', event);
       
-      // Try to create the event with special flags
-      if (event._bypassPermissions || event._adminOverride) {
-        console.log('[familyCalendarService] Using permission bypass attempt');
+      // First, make sure we have a fresh CSRF token
+      const { refreshCsrfToken, getCsrfToken } = await import('../utils/security');
+      await refreshCsrfToken();
+      const csrfToken = getCsrfToken();
+      
+      // Create a properly formatted event object for the API
+      const apiEventData = {
+        title: event.title,
+        description: event.description || '',
+        startTime: event.startTime,
+        endTime: event.endTime,
+        isAllDay: event.isAllDay || false,
+        location: event.location || '',
+        color: event.color || '#3b82f6',
+        isRecurring: event.isRecurring || false,
+        recurrencePattern: event.recurrencePattern || null,
+        eventType: event.eventType || 'General',
+        familyId: familyId,
+        attendeeIds: event.attendeeIds || []
+      };
+      
+      console.log('[familyCalendarService] Sending API request with data:', apiEventData);
+      
+      // Get auth token from storage
+      const authToken = localStorage.getItem('token');
         
-        // Create a clean version of the event without special flags
-        const cleanEvent = { ...event };
-        delete cleanEvent._bypassPermissions;
-        delete cleanEvent._adminOverride;
-        
-        // Try with special headers
-        const response = await apiClient.post(
-          `/v1/family/${familyId}/calendar/events`, 
-          cleanEvent,
-          {
-            extraHeaders: {
-              'X-Admin-Override': 'true',
-              'X-Special-Permission': 'create_events',
-              'X-User-Role': 'Admin'
-            }
-          }
-        );
-        
-        if (response.status === 200 || response.status === 201) {
-          return response;
-        }
-        
-        // If that fails, try standard approach
-        console.log('[familyCalendarService] Permission bypass failed, trying standard approach');
+      // Prepare API URL
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const url = `${API_URL}/v1/family/${familyId}/calendar/events`;
+      
+      // Prepare headers with all possible CSRF token formats
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      };
+      
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
       }
       
-      // Standard approach
-      return apiClient.post(`/v1/family/${familyId}/calendar/events`, event);
+      // Add CSRF token in all possible formats
+      if (csrfToken) {
+        headers['X-CSRF-TOKEN'] = csrfToken;
+        headers['X-XSRF-TOKEN'] = csrfToken;
+      }
+      
+      console.log('[familyCalendarService] Request headers:', {
+        ...headers,
+        Authorization: headers.Authorization ? '[REDACTED]' : undefined
+      });
+        
+      // Make the direct fetch request for more control
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(apiEventData),
+        credentials: 'include'
+      });
+      
+      // Parse the response
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.warn('[familyCalendarService] Non-JSON response:', text);
+        data = { message: text };
+      }
+      
+      console.log('[familyCalendarService] Response status:', response.status);
+      
+      if (response.ok) {
+        // If API returns a wrapped response with success property
+        if (data.success !== undefined && data.data) {
+          console.log('[familyCalendarService] Successfully created event:', data.data);
+          return { data: data.data, status: response.status };
+      }
+      
+        // If API returns data directly
+        console.log('[familyCalendarService] Successfully created event:', data);
+        return { data, status: response.status };
+      }
+      
+      // Handle error responses
+      console.error('[familyCalendarService] Error creating event:', data);
+      return {
+        error: data.message || 'Failed to create event',
+        details: JSON.stringify(data),
+        status: response.status
+      };
     } catch (error) {
-      console.error('[familyCalendarService] Error creating event:', error);
+      console.error('[familyCalendarService] Exception creating event:', error);
       return {
         error: 'Failed to create event',
         details: error instanceof Error ? error.message : String(error),

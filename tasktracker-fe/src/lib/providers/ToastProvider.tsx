@@ -3,6 +3,15 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { Toast, ToastType } from '@/components/ui/Toast';
 
+// Add a utility function to generate unique IDs
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 interface ToastContextProps {
   showToast: (message: string, type: ToastType) => void;
 }
@@ -14,7 +23,7 @@ interface ToastProviderProps {
 }
 
 interface ToastItem {
-  id: number;
+  id: string;
   message: string;
   type: ToastType;
 }
@@ -23,11 +32,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   
   const showToast = (message: string, type: ToastType) => {
-    const id = Date.now();
+    const id = generateUUID();
     setToasts(prev => [...prev, { id, message, type }]);
   };
   
-  const removeToast = (id: number) => {
+  const removeToast = (id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
   

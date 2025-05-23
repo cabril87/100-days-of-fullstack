@@ -35,6 +35,12 @@ export const taskSchema = z.object({
       // Basic time format validation (HH:MM)
       return /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(val);
     }, 'Invalid time format (use HH:MM)'),
+  categoryId: z
+    .number()
+    .int('Category ID must be an integer')
+    .positive('Category ID must be positive')
+    .optional()
+    .nullable(),
 });
 
 export type TaskSchemaType = z.infer<typeof taskSchema>; 

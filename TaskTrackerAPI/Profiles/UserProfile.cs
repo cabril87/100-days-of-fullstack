@@ -13,6 +13,7 @@ using TaskTrackerAPI.Models;
 using UserDTO = TaskTrackerAPI.DTOs.User.UserDTO;
 using UserMinimalDTO = TaskTrackerAPI.DTOs.User.UserMinimalDTO;
 using AuthUserDTO = TaskTrackerAPI.DTOs.Auth.UserDTO;
+using System;
 
 namespace TaskTrackerAPI.Profiles
 {
@@ -23,12 +24,20 @@ public class UserProfile : Profile
             // Map for User.UserDTO
         CreateMap<User, UserDTO>()
             .ForMember(dest => dest.DisplayName, opt => 
-                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"));
+                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom((src, dest) => 
+                    // If username is null or empty, use a fallback like "User_{Id}"
+                    !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom((src, dest) => 
+                    // If email is null or empty, generate a placeholder
+                    !string.IsNullOrEmpty(src.Email) ? src.Email : $"user{src.Id}@tasktracker.com"));
                 
             // Map for UserMinimalDTO
         CreateMap<User, UserMinimalDTO>()
             .ForMember(dest => dest.DisplayName, opt => 
-                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"));
+                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom((src, dest) => 
+                    !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"));
                     
             // Map for Auth.UserDTO - added to fix AutoMapper missing mapping
             CreateMap<User, AuthUserDTO>()
@@ -37,7 +46,9 @@ public class UserProfile : Profile
                 .ForMember(dest => dest.Role, opt => 
                     opt.MapFrom(src => src.Role))
                 .ForMember(dest => dest.AgeGroup, opt => 
-                    opt.MapFrom(src => src.AgeGroup));
+                    opt.MapFrom(src => src.AgeGroup))
+                .ForMember(dest => dest.Username, opt => opt.MapFrom((src, dest) => 
+                    !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"));
         }
     }
 } 

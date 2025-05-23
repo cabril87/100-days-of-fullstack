@@ -40,8 +40,14 @@ public interface IDataProtectionService
     /// <summary>
     /// Re-encrypts a value with the current encryption key version
     /// </summary>
-    /// <param name="cipherText">The encrypted text to re-encrypt</param>
+    /// <param name="plainText">The plaintext value to re-encrypt</param>
     /// <param name="oldVersion">The version it was originally encrypted with</param>
     /// <returns>The re-encrypted value with the current version</returns>
-    string? ReEncrypt(string? cipherText, string oldVersion);
+    string? ReEncrypt(string? plainText, string oldVersion);
+    
+    /// <summary>
+    /// Forces regeneration of data protection keys
+    /// </summary>
+    /// <returns>True if keys were successfully regenerated</returns>
+    bool RegenerateKeys();
 } 

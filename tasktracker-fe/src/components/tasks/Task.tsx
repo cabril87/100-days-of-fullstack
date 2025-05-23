@@ -1,92 +1,75 @@
 import { useState } from 'react';
 import { Task as TaskType } from '@/lib/types/task';
+import { Badge } from '@/components/ui/badge';
+import { useTemplates } from '@/lib/providers/TemplateProvider';
 
 interface TaskProps {
   task: TaskType;
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: TaskType) => void;
+  showCategories?: boolean;
 }
 
-export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
+export function Task({ task, onStatusChange, onDelete, onEdit, showCategories = false }: TaskProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { categories } = useTemplates();
 
-  const statusColors = {
-    'todo': 'bg-gradient-to-r from-brand-navy/20 to-brand-navy/10 text-brand-navy-dark border-brand-navy border-opacity-20',
-    'in-progress': 'bg-gradient-to-r from-brand-beige/30 to-brand-beige/20 text-brand-navy-dark border-brand-beige border-opacity-40',
-    'done': 'bg-gradient-to-r from-brand-navy-dark/20 to-brand-navy-dark/10 text-brand-navy-dark border-brand-navy-dark border-opacity-20',
+  // Get category name by ID
+  const getCategoryName = (categoryId?: number): string => {
+    if (!categoryId) return 'Uncategorized';
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'Uncategorized';
   };
 
-  const priorityColors = {
-    'low': 'bg-gradient-to-r from-brand-cream/50 to-brand-cream/30 text-brand-navy-dark border-brand-navy border-opacity-10',
-    'medium': 'bg-gradient-to-r from-brand-beige/60 to-brand-beige/40 text-brand-navy-dark border-brand-beige border-opacity-40',
-    'high': 'bg-gradient-to-r from-brand-navy-dark/20 to-brand-navy/10 text-brand-navy-dark border-brand-navy-dark border-opacity-20',
+  // Get category color by ID
+  const getCategoryColor = (categoryId?: number): string => {
+    if (!categoryId) return '#6b7280';
+    const category = categories.find(c => c.id === categoryId);
+    return category?.color || '#6b7280';
   };
-
-  const statusColor = statusColors[task.status as keyof typeof statusColors] || 'bg-gray-200';
-  const priorityColor = task.priority ? (priorityColors[task.priority as keyof typeof priorityColors] || '') : '';
-
-  // Format date for better display
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'No due date';
-    
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-      
-      // Check if there's a time component other than midnight
-      const hasTimeComponent = 
-        date.getHours() !== 0 || 
-        date.getMinutes() !== 0;
-      
-      // Format with date and time if time component exists
-      if (hasTimeComponent) {
-        return new Intl.DateTimeFormat('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      }
-      
-      // Otherwise just format the date
-      return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }).format(date);
-    } catch (e) {
-      return 'Invalid date';
-    }
-  };
-
-  // Get appropriate icon for task status
+  
   const getStatusIcon = () => {
-    switch (task.status) {
-      case 'todo':
+    if (task.status === 'done') {
         return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
         );
-      case 'in-progress':
+    } else if (task.status === 'in-progress') {
         return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
           </svg>
         );
-      case 'done':
+    } else {
         return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
           </svg>
         );
-      default:
-        return null;
     }
   };
+
+  let statusColor = '';
+  if (task.status === 'todo') {
+    statusColor = 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
+  } else if (task.status === 'in-progress') {
+    statusColor = 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400';
+  } else {
+    statusColor = 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400';
+  }
+
+  let priorityColor = '';
+  if (task.priority === 'high') {
+    priorityColor = 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
+  } else if (task.priority === 'medium') {
+    priorityColor = 'bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400';
+  } else {
+    priorityColor = 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400';
+  }
 
   // Check if task is overdue
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
@@ -105,30 +88,15 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
     >
       <div className="flex justify-between items-start relative">
         {/* Left side content */}
-        <div className="flex-1 pr-10 relative">
-          {/* Status indicator dot */}
-          <div 
-            className={`absolute -left-4 top-1.5 h-2 w-2 rounded-full transition-colors duration-300 ${
-              task.status === 'todo' ? 'bg-brand-navy' : 
-              task.status === 'in-progress' ? 'bg-brand-beige' : 
-              'bg-green-500'
-            }`}
-            style={{ opacity: isHovering ? 0.9 : 0.6 }}
-          ></div>
-          
-          {/* Overdue badge */}
-          {isOverdue && (
-            <div className="mb-2 flex">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Overdue
-              </span>
-            </div>
+        <div className="task-content" onClick={() => setIsExpanded(!isExpanded)}>
+          <h3 className="task-title">
+            {task.title}
+          </h3>
+          {task.description && (
+            <p className={`task-description ${isExpanded ? '' : 'line-clamp-2'}`}>
+              {task.description}
+            </p>
           )}
-          
-          <h3 className="font-medium text-lg mb-2 tracking-tight text-brand-navy-dark dark:text-cream">{task.title}</h3>
           
           <div className="flex flex-wrap gap-2 mb-3">
             <div className={`status-badge ${statusColor} backdrop-blur-sm shadow-sm`}>
@@ -159,117 +127,185 @@ export function Task({ task, onStatusChange, onDelete, onEdit }: TaskProps) {
                   : `${String(task.priority)} Priority`}
               </div>
             )}
+            
+            {/* Show category badge if showCategories is true and task has a category */}
+            {showCategories && task.categoryId && (
+              <Badge 
+                variant="outline" 
+                className="flex items-center gap-1"
+                style={{ 
+                  backgroundColor: `${getCategoryColor(task.categoryId)}20`,
+                  color: getCategoryColor(task.categoryId),
+                  borderColor: `${getCategoryColor(task.categoryId)}40`
+                }}
+              >
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: getCategoryColor(task.categoryId) }}
+                />
+                {getCategoryName(task.categoryId)}
+              </Badge>
+            )}
           </div>
           
+          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-3">
           {task.dueDate && (
-            <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500 dark:text-red-400 font-medium' : ''}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
               </svg>
-              <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
-                Due: {formatDate(task.dueDate)}
+                <span>
+                  {isOverdue ? 'Overdue: ' : 'Due: '}
+                  {new Date(task.dueDate).toLocaleDateString()}
               </span>
             </div>
           )}
           
-          {isExpanded && (
-            <div 
-              className="mt-4 text-gray-700 dark:text-gray-200 text-sm leading-relaxed rounded-lg bg-gray-50 dark:bg-white/5 p-4 border border-gray-100 dark:border-white/10"
-              style={{ 
-                animation: 'fadeIn 0.3s ease-in-out',
-                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.02)'
-              }}
-            >
-              {task.description ? (
-                <p>{task.description}</p>
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400 italic">No description provided</p>
+            {task.createdAt && (
+              <div className="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+                <span>Created {new Date(task.createdAt).toLocaleDateString()}</span>
+              </div>
               )}
             </div>
-          )}
         </div>
         
         {/* Right side actions */}
-        <div className="flex items-center space-x-1">
+        <div className={`task-actions ${isHovering ? 'opacity-100' : 'opacity-0'}`}>
           <button 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="icon-button text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-white/10"
-            aria-label={isExpanded ? "Collapse task" : "Expand task"}
-            style={{ transition: 'all 0.2s ease' }}
+            className="task-action-btn"
+            onClick={() => onEdit(task)}
+            aria-label="Edit task"
           >
-            {isExpanded ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="18 15 12 9 6 15"></polyline>
-              </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+            </svg>
+            <span>Edit</span>
+          </button>
+          
+          <button
+            className={`task-action-btn ${task.status === 'done' ? 'text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300' : 'text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300'}`}
+            onClick={() => onStatusChange(String(task.id), task.status === 'done' ? 'todo' : 'done')}
+            aria-label={task.status === 'done' ? 'Mark as incomplete' : 'Mark as complete'}
+          >
+            {task.status === 'done' ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                <span>Incomplete</span>
+              </>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>Complete</span>
+              </>
             )}
           </button>
+          
           <button 
-            onClick={() => onEdit(task)}
-            className="icon-button text-brand-navy hover:text-brand-navy-dark hover:bg-brand-navy/10 dark:text-brand-beige dark:hover:text-white dark:hover:bg-brand-beige/20"
-            aria-label="Edit task"
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-          <button 
+            className={`task-action-btn text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={() => {
-              console.log('Task component: Delete button clicked for task ID:', task.id);
+              if (!isDeleting) {
+                setIsDeleting(true);
               onDelete(String(task.id));
+              }
             }}
-            className="icon-button text-brand-navy-dark hover:text-red-600 hover:bg-red-50 dark:text-brand-beige dark:hover:text-red-400 dark:hover:bg-red-900/30"
+            disabled={isDeleting}
             aria-label="Delete task"
-            style={{ transition: 'all 0.2s ease' }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
+            <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
           </button>
         </div>
       </div>
       
-      {isExpanded && (
-        <div 
-          className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700/50 flex justify-between items-center"
-          style={{ animation: 'fadeIn 0.3s ease-in-out' }}
-        >
-          <div className="flex items-center space-x-4">
-            {task.createdAt && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                Created: {new Date(task.createdAt).toLocaleDateString()}
-              </span>
-            )}
-            {task.updatedAt && task.updatedAt !== task.createdAt && (
-              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-full">
-                Updated: {new Date(task.updatedAt).toLocaleDateString()}
-              </span>
-            )}
-          </div>
-          <select
-            value={task.status}
-            onChange={(e) => onStatusChange(String(task.id), e.target.value)}
-            className="text-sm border rounded-full py-1.5 px-3.5 bg-white/80 dark:bg-white/10 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige backdrop-blur-sm shadow-sm"
-            style={{ transition: 'all 0.2s ease' }}
-          >
-            <option value="todo">To Do</option>
-            <option value="in-progress">In Progress</option>
-            <option value="done">Done</option>
-          </select>
-        </div>
-      )}
-
-      {/* Style for animation */}
       <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-5px); }
-          to { opacity: 1; transform: translateY(0); }
+        .task-item {
+          border-radius: 12px;
+          border: 1px solid rgba(229, 231, 235, 0.5);
+          padding: 16px;
+          margin-bottom: 16px;
+          cursor: pointer;
+          overflow: hidden;
+          position: relative;
+        }
+        
+        .task-content {
+          flex: 1;
+          padding-right: 100px;
+        }
+        
+        .task-title {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1F2937;
+          margin-bottom: 6px;
+        }
+        
+        .dark .task-title {
+          color: #F3F4F6;
+        }
+        
+        .task-description {
+          font-size: 0.9375rem;
+          color: #4B5563;
+          margin-bottom: 12px;
+          line-height: 1.5;
+        }
+        
+        .dark .task-description {
+          color: #D1D5DB;
+        }
+        
+        .status-badge, .priority-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        
+        .task-actions {
+          position: absolute;
+          top: 0;
+          right: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          transition: all 0.2s ease;
+        }
+        
+        .task-action-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          background-color: rgba(255, 255, 255, 0.8);
+          transition: all 0.2s ease;
+        }
+        
+        .dark .task-action-btn {
+          background-color: rgba(15, 23, 42, 0.8);
+        }
+        
+        .task-action-btn:hover {
+          background-color: rgba(255, 255, 255, 1);
+        }
+        
+        .dark .task-action-btn:hover {
+          background-color: rgba(30, 41, 59, 0.8);
         }
       `}</style>
     </div>

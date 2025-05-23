@@ -41,6 +41,11 @@ using TaskTrackerAPI.ModelBinders;
 using TaskTrackerAPI.Filters;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.OpenApi.Models;
+using System.IO;
+using System.Security.Cryptography;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using System.Threading;
 
 namespace TaskTrackerAPI;
 
@@ -435,11 +440,64 @@ public class Program
             Directory.CreateDirectory(keyDirectory);
         }
         
-        // Configure Data Protection with appropriate settings
+        // Configure Data Protection with improved settings for development/production
         IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
             .SetApplicationName("TaskTrackerAPI")
-            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory))
-            .SetDefaultKeyLifetime(TimeSpan.FromDays(90)); // Set keys to expire after 90 days
+            .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+
+        // Configure key lifetime based on environment
+        if (builder.Environment.IsDevelopment())
+        {
+            // Use longer key lifetime in development to avoid frequent key rotation issues
+            dataProtectionBuilder.SetDefaultKeyLifetime(TimeSpan.FromDays(365)); // 1 year for development
+            
+            // Check for keys before disabling generation
+            if (Directory.GetFiles(keyDirectory, "*.xml").Length == 0)
+            {
+                // No keys found, we need to generate one first
+                builder.Services.AddDataProtection()
+                    .SetApplicationName("TaskTrackerAPI")
+                    .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
+                    
+                // Create a directory watcher to monitor key changes
+                builder.Services.AddSingleton<FileSystemWatcher>(provider => {
+                    var logger = provider.GetRequiredService<ILogger<FileSystemWatcher>>();
+                    
+                    var watcher = new FileSystemWatcher(keyDirectory);
+                    watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+                    watcher.Filter = "*.xml";
+                    
+                    watcher.Changed += (sender, e) => {
+                        logger.LogInformation("Data protection key changed: {FileName}", e.Name);
+                    };
+                    
+                    watcher.Created += (sender, e) => {
+                        logger.LogInformation("New data protection key created: {FileName}", e.Name);
+                    };
+                    
+                    watcher.Deleted += (sender, e) => {
+                        logger.LogWarning("Data protection key deleted: {FileName}", e.Name);
+                    };
+                    
+                    watcher.Renamed += (sender, e) => {
+                        logger.LogInformation("Data protection key renamed: {OldName} to {NewName}", e.OldName, e.Name);
+                    };
+                    
+                    watcher.EnableRaisingEvents = true;
+                    return watcher;
+                });
+            }
+            else
+            {
+                // We have keys, disable automatic generation to avoid issues
+                dataProtectionBuilder.DisableAutomaticKeyGeneration();
+            }
+        }
+        else
+        {
+            // Production key lifetime
+            dataProtectionBuilder.SetDefaultKeyLifetime(TimeSpan.FromDays(90)); // 90 days for production
+        }
             
         // Only use DPAPI on Windows platforms
         if (OperatingSystem.IsWindows())

@@ -85,8 +85,17 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
         // Re-add all events from the prop
         if (events.length > 0) {
           console.log('[Calendar] Re-adding events from props');
+          
+          // Create a map for quick event lookup
+          const eventMap = new Map();
+          events.forEach(event => {
+            eventMap.set(event.id, event);
+          });
+          
+          // Add each event to the calendar
           events.forEach((event) => {
-            calendarApi.addEvent({
+            // Create a calendar event with consistent ID format
+            const calEvent = {
               id: `event-${event.id}`,
               title: event.title,
               start: event.startTime,
@@ -99,15 +108,55 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
                 location: event.location,
                 originalId: event.id
               }
-            });
+            };
+            
+            try {
+              // Try to add the event
+              calendarApi.addEvent(calEvent);
+            } catch (addErr) {
+              console.error('[Calendar] Error adding event:', addErr);
+              
+              // If adding fails, try to get and update the existing event
+              try {
+                const existingEvent = calendarApi.getEventById(`event-${event.id}`);
+                if (existingEvent) {
+                  existingEvent.setProp('title', event.title);
+                  existingEvent.setStart(event.startTime);
+                  existingEvent.setEnd(event.endTime);
+                  existingEvent.setAllDay(event.isAllDay);
+                  existingEvent.setProp('backgroundColor', event.color || '#3b82f6');
+                  existingEvent.setExtendedProp('description', event.description);
+                  existingEvent.setExtendedProp('location', event.location);
+                }
+              } catch (updateErr) {
+                console.error('[Calendar] Error updating existing event:', updateErr);
+              }
+            }
           });
         }
+        
+        // Do a double render with delay to ensure updates are applied
+        calendarApi.refetchEvents();
+        
+        // Add a small delay before the final render
+        setTimeout(() => {
+          try {
+            calendarApi.render();
+          } catch (renderErr) {
+            console.error('[Calendar] Error during delayed render:', renderErr);
+          }
+        }, 50);
+        
       } catch (err) {
         console.error('[Calendar] Error updating events directly:', err);
-      }
       
-      // Always call refetchEvents for good measure
+        // As a fallback, just call refetchEvents
+        try {
       calendarApi.refetchEvents();
+        } catch (refetchErr) {
+          console.error('[Calendar] Error during fallback refetch:', refetchErr);
+        }
+      }
     }
   }, [events, calendarApi]);
 

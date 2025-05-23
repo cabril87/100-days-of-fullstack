@@ -16,6 +16,10 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+using System.Web;
+using System.Net;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -121,6 +125,68 @@ public class AuthController : ControllerBase
     {
         // CSRF token is automatically set in a cookie by the middleware for GET requests
         return Ok(new { message = "Public CSRF token has been set" });
+    }
+
+    /// <summary>
+    /// Provides detailed information about CSRF tokens for debugging in development
+    /// </summary>
+    /// <returns>Detailed information about CSRF tokens</returns>
+    [HttpGet("debug-csrf")]
+    [AllowAnonymous]
+    public ActionResult DebugCsrfToken()
+    {
+        var environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        
+        if (!environment.IsDevelopment())
+        {
+            return NotFound("This endpoint is only available in development mode");
+        }
+        
+        // Generate a new CSRF token using the same algorithm as the middleware
+        byte[] tokenBytes = new byte[32];
+        using (System.Security.Cryptography.RandomNumberGenerator rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(tokenBytes);
+        }
+        string newToken = Convert.ToBase64String(tokenBytes);
+        
+        // Get the token from the request header
+        string? headerToken = HttpContext.Request.Headers["X-CSRF-TOKEN"];
+        
+        // Get the token from the cookie
+        string? cookieToken = HttpContext.Request.Cookies["XSRF-TOKEN"];
+        
+        // Set a new token cookie
+        CookieOptions cookieOptions = new CookieOptions
+        {
+            HttpOnly = false, // JavaScript needs to read this cookie
+            Secure = HttpContext.Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.Add(TimeSpan.FromDays(1))
+        };
+        HttpContext.Response.Cookies.Append("XSRF-TOKEN", newToken, cookieOptions);
+        
+        // Return detailed information about CSRF tokens
+        return Ok(new 
+        { 
+            Message = "New CSRF token has been set",
+            Debug = new
+            {
+                NewToken = newToken,
+                ExistingCookieToken = cookieToken,
+                HeaderToken = headerToken,
+                TokensMatch = !string.IsNullOrEmpty(headerToken) && !string.IsNullOrEmpty(cookieToken) && 
+                              WebUtility.UrlDecode(headerToken) == WebUtility.UrlDecode(cookieToken),
+                CookieOptions = new
+                {
+                    HttpOnly = cookieOptions.HttpOnly,
+                    Secure = cookieOptions.Secure,
+                    SameSite = cookieOptions.SameSite.ToString(),
+                    ExpirationTime = cookieOptions.Expires?.ToString()
+                },
+                Instructions = "To use this token, include it in the X-CSRF-TOKEN header in subsequent requests"
+            }
+        });
     }
 
     [Authorize]

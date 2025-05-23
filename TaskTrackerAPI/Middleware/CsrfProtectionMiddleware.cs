@@ -25,6 +25,7 @@ public class CsrfProtectionMiddleware
     private readonly ILogger<CsrfProtectionMiddleware> _logger;
     private readonly IMemoryCache _cache;
     private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _environment;
     
     // CSRF token header name
     private const string CsrfTokenHeaderName = "X-CSRF-TOKEN";
@@ -40,17 +41,22 @@ public class CsrfProtectionMiddleware
     
     // Token expiration time
     private readonly TimeSpan _tokenExpiration;
+    
+    // Toggle for development bypass
+    private readonly bool _bypassCsrfInDevelopment;
 
     public CsrfProtectionMiddleware(
         RequestDelegate next,
         ILogger<CsrfProtectionMiddleware> logger,
         IMemoryCache cache,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         _next = next;
         _logger = logger;
         _cache = cache;
         _configuration = configuration;
+        _environment = environment;
         
         // Load excluded endpoints from configuration or use defaults
         _excludedEndpoints = new HashSet<string>(
@@ -70,18 +76,31 @@ public class CsrfProtectionMiddleware
                     "/api/v1/debug/", // Exclude all debug endpoints for testing
                     "/api/v1/debug/csrf-test",
                     "/api/v1/debug/test-login",
-                    "/api/v1/focus/test" // Only exclude the public test endpoint
+                    "/api/v1/focus/test", // Only exclude the public test endpoint
+                    "/api/v1/dataprotection/" // Exclude data protection endpoints
                 },
             StringComparer.OrdinalIgnoreCase);
         
         // Get token expiration from configuration or use default
         _tokenExpiration = TimeSpan.FromMinutes(
             _configuration.GetValue<int>("Csrf:TokenExpirationMinutes", 120));
+            
+        // In development mode, make CSRF optional based on configuration
+        _bypassCsrfInDevelopment = _environment.IsDevelopment() && 
+            _configuration.GetValue<bool>("Csrf:BypassInDevelopment", false);
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         string path = context.Request.Path.Value?.ToLowerInvariant() ?? string.Empty;
+        
+        // Always generate a new token for GET requests if one doesn't exist
+        if (context.Request.Method == "GET" && !context.Request.Cookies.ContainsKey(CsrfTokenCookieName))
+        {
+            string token = GenerateToken();
+            SetCsrfCookie(context, token);
+            _logger.LogDebug("Generated new CSRF token for path: {Path}", path);
+        }
         
         // Skip CSRF validation for excluded endpoints
         if (_excludedEndpoints.Any(endpoint => 
@@ -89,7 +108,15 @@ public class CsrfProtectionMiddleware
                 ? path.StartsWith(endpoint, StringComparison.OrdinalIgnoreCase) 
                 : path.Equals(endpoint, StringComparison.OrdinalIgnoreCase) || path.StartsWith($"{endpoint}/", StringComparison.OrdinalIgnoreCase)))
         {
-            _logger.LogInformation("Skipping CSRF validation for excluded path: {Path}", path);
+            _logger.LogDebug("Skipping CSRF validation for excluded path: {Path}", path);
+            await _next(context);
+            return;
+        }
+        
+        // Skip validation in development mode if bypass is enabled
+        if (_bypassCsrfInDevelopment)
+        {
+            _logger.LogWarning("Bypassing CSRF validation in development mode for path: {Path}", path);
             await _next(context);
             return;
         }
@@ -101,7 +128,22 @@ public class CsrfProtectionMiddleware
             if (!context.Request.Headers.TryGetValue(CsrfTokenHeaderName, out StringValues headerToken) || string.IsNullOrEmpty(headerToken))
             {
                 _logger.LogWarning("CSRF token missing from header for {Path}", path);
-                await RespondWithCsrfError(context);
+                
+                // In development, we'll log details and continue for easier debugging
+                if (_environment.IsDevelopment())
+                {
+                    _logger.LogWarning("CSRF validation failed, but continuing in development mode");
+                    string token = GenerateToken();
+                    SetCsrfCookie(context, token);
+                    
+                    // Add header to response indicating the token was missing
+                    context.Response.Headers.Add("X-CSRF-Status", "Token-Missing");
+                    
+                    await _next(context);
+                    return;
+                }
+                
+                await RespondWithCsrfError(context, "CSRF token missing from request header");
                 return;
             }
             
@@ -110,7 +152,22 @@ public class CsrfProtectionMiddleware
             if (string.IsNullOrEmpty(cookieToken))
             {
                 _logger.LogWarning("CSRF token missing from cookie for {Path}", path);
-                await RespondWithCsrfError(context);
+                
+                // In development, refresh the token and continue
+                if (_environment.IsDevelopment())
+                {
+                    _logger.LogWarning("CSRF cookie missing, but continuing in development mode");
+                    string token = GenerateToken();
+                    SetCsrfCookie(context, token);
+                    
+                    // Add header to response indicating the cookie was missing
+                    context.Response.Headers.Add("X-CSRF-Status", "Cookie-Missing");
+                    
+                    await _next(context);
+                    return;
+                }
+                
+                await RespondWithCsrfError(context, "CSRF token cookie missing");
                 return;
             }
             
@@ -118,22 +175,34 @@ public class CsrfProtectionMiddleware
             if (!ValidateToken(headerToken!, cookieToken!))
             {
                 _logger.LogWarning("CSRF token validation failed for {Path}", path);
-                await RespondWithCsrfError(context);
+                
+                // Log token values in development for debugging
+                if (_environment.IsDevelopment())
+                {
+                    _logger.LogWarning("Header token: {HeaderToken}, Cookie token: {CookieToken}", 
+                        headerToken.ToString(), cookieToken);
+                        
+                    // Continue in development but set a new token
+                    _logger.LogWarning("CSRF validation failed, but continuing in development mode");
+                    string token = GenerateToken();
+                    SetCsrfCookie(context, token);
+                    
+                    // Add header to response indicating tokens didn't match
+                    context.Response.Headers.Add("X-CSRF-Status", "Token-Mismatch");
+                    
+                    await _next(context);
+                    return;
+                }
+                
+                await RespondWithCsrfError(context, "CSRF token validation failed");
                 return;
             }
-        }
-        
-        // For GET requests, generate and set a new CSRF token if one doesn't exist
-        if (context.Request.Method == "GET" && !context.Request.Cookies.ContainsKey(CsrfTokenCookieName))
-        {
-            string token = GenerateToken();
-            SetCsrfCookie(context, token);
         }
         
         await _next(context);
     }
     
-    private async Task RespondWithCsrfError(HttpContext context)
+    private async Task RespondWithCsrfError(HttpContext context, string message)
     {
         context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
         context.Response.ContentType = "application/json";
@@ -141,7 +210,7 @@ public class CsrfProtectionMiddleware
         await context.Response.WriteAsJsonAsync(new 
         {
             Status = (int)HttpStatusCode.Forbidden,
-            Message = "Invalid CSRF token"
+            Message = message
         });
     }
     

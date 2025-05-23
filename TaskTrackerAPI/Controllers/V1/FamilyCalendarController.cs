@@ -18,6 +18,7 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -105,27 +106,54 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
+                // Check if model is valid
+                if (!ModelState.IsValid)
+                {
+                    var errors = string.Join("; ", ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage));
+                    _logger.LogWarning("Invalid model state: {Errors}", errors);
+                    return BadRequest(ApiResponse<object>.BadRequestResponse($"Invalid input: {errors}"));
+                }
+
                 // Ensure the familyId in the route matches the one in the DTO
                 if (eventDto.FamilyId != familyId)
                 {
                     return BadRequest(ApiResponse<object>.BadRequestResponse("Family ID in the request body must match the ID in the URL"));
                 }
                 
+                // Get user ID from token
                 int userId = User.GetUserIdAsInt();
+                _logger.LogInformation("Creating event for family {FamilyId} by user {UserId}", familyId, userId);
+                
+                // Log request data for debugging
+                _logger.LogDebug("Event creation request: {@EventDto}", new
+                {
+                    Title = eventDto.Title,
+                    StartTime = eventDto.StartTime,
+                    EndTime = eventDto.EndTime,
+                    FamilyId = eventDto.FamilyId,
+                    IsAllDay = eventDto.IsAllDay,
+                    EventType = eventDto.EventType
+                });
+                
+                // Call service to create event
                 FamilyCalendarEventDTO? createdEvent = await _calendarService.CreateEventAsync(eventDto, userId);
                 
                 if (createdEvent == null)
                 {
-                    return BadRequest(ApiResponse<FamilyCalendarEventDTO>.BadRequestResponse("Failed to create event"));
+                    _logger.LogWarning("Failed to create event for family {FamilyId}. Service returned null.", familyId);
+                    return BadRequest(ApiResponse<FamilyCalendarEventDTO>.BadRequestResponse("Failed to create event. You may not have permission or there was a validation error."));
                 }
                 
+                _logger.LogInformation("Successfully created event {EventId} for family {FamilyId}", createdEvent.Id, familyId);
                 return CreatedAtAction(nameof(GetEvent), new { familyId, eventId = createdEvent.Id }, 
                     ApiResponse<FamilyCalendarEventDTO>.SuccessResponse(createdEvent));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating event for family {FamilyId}", familyId);
-                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+                _logger.LogError(ex, "Error creating event for family {FamilyId}: {ErrorMessage}", familyId, ex.Message);
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse("An unexpected error occurred. Please try again."));
             }
         }
 

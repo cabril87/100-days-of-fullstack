@@ -8,6 +8,7 @@ import { FocusProvider } from "@/lib/providers/FocusContext";
 import { Navbar } from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FamilyProvider } from '@/lib/providers/FamilyContext';
+import { TemplateProvider } from '@/lib/providers/TemplateProvider';
 import FetchInterceptor from '@/components/FetchInterceptor';
 import DeletionOverlay from '@/components/DeletionOverlay';
 
@@ -47,12 +48,14 @@ export default function RootLayout({
               <ToastProvider>
                 <FocusProvider>
                   <FamilyProvider>
+                    <TemplateProvider>
                     <FetchInterceptor />
                     <DeletionOverlay />
                     <Navbar />
                     <main className="container mx-auto px-4 py-6">
                       {children}
                     </main>
+                    </TemplateProvider>
                   </FamilyProvider>
                 </FocusProvider>
               </ToastProvider>
