@@ -1316,6 +1316,14 @@ export default function FamilyDashboard() {
                     <span className="text-xs">Find Members</span>
                   </Link>
                 </Button>
+                {families.length > 0 && families[0] && (
+                  <Button variant="outline" size="sm" className="h-auto py-3 flex flex-col items-center justify-center border-primary/10 sm:col-span-2 lg:col-span-1" asChild>
+                    <Link href={`/family/${families[0].id}/activity`}>
+                      <Activity className="h-5 w-5 mb-1 text-green-500" />
+                      <span className="text-xs">Activity Feed</span>
+                    </Link>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

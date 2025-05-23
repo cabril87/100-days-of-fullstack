@@ -32,7 +32,7 @@ public class DataSeeder
         try
         {
             // Seed subscription tiers
-            await SubscriptionTierSeed.SeedSubscriptionTiersAsync(context, logger);
+            await SubscriptionTierSeed.SeedSubscriptionTiersAsync(context, logger as Microsoft.Extensions.Logging.ILogger);
 
             // Check specifically for admin user
             bool adminExists = await context.Users.AnyAsync(u => u.Email == "admin@tasktracker.com");

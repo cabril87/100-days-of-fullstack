@@ -9,6 +9,8 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using TaskTrackerAPI.DTOs.Notifications;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

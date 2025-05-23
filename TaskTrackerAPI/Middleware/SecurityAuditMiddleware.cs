@@ -20,6 +20,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
+using Microsoft.AspNetCore.Builder;
 
 namespace TaskTrackerAPI.Middleware
 {

@@ -11,8 +11,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.RateLimiting;
+using System.Threading.Tasks;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
@@ -215,7 +220,7 @@ public class RateLimitMonitoringController : ControllerBase
             var circuitBreakers = CircuitBreaker.GetAll();
             if (circuitBreakers.TryGetValue(name, out CircuitBreaker? circuitBreaker))
             {
-                circuitBreaker.Reset();
+                circuitBreaker!.Reset();
                 return Ok(Models.ApiResponse<object>.SuccessResponse(new 
                 { 
                     Name = name,

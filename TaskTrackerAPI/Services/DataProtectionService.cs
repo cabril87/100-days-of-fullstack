@@ -9,6 +9,8 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Text;
 using TaskTrackerAPI.Services.Interfaces;

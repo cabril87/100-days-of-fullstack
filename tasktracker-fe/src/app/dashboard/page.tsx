@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/lib/providers/AuthContext';
@@ -14,14 +14,11 @@ import { FocusHistory } from '@/components/focus/FocusHistory';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { useFamily } from '@/lib/providers/FamilyContext';
-import { Button } from '@/components/ui/button';
-import { familyService } from '@/lib/services/familyService';
+
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { tasks: allTasks, loading: tasksLoading, error, fetchTasks } = useTasks();
-  const { currentFamily, isLoading: familyLoading, families, handleSwitchFamily } = useFamily();
+  const { tasks: allTasks, error, fetchTasks } = useTasks();
   const router = useRouter();
   const { showToast } = useToast();
   

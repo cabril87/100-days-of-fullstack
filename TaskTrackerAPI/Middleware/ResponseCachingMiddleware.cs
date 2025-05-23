@@ -8,9 +8,17 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace TaskTrackerAPI.Middleware;

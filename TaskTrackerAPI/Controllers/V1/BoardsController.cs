@@ -18,6 +18,7 @@ using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
+using Microsoft.AspNetCore.Http;
 
 namespace TaskTrackerAPI.Controllers.V1
 {

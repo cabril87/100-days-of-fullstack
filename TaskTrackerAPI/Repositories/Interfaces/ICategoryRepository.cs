@@ -9,6 +9,8 @@
  * accordance with the terms contained in the LICENSE file.
  */
 // Repositories/Interfaces/ICategoryRepository.cs
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Repositories.Interfaces;

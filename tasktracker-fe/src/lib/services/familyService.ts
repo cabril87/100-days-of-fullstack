@@ -1223,17 +1223,22 @@ export const familyService = {
     console.log(`[familyService] Getting members for family ${familyId}`);
     return this.withRetry(async () => {
       try {
-        const response = await apiClient.get<FamilyMember[]>(`/v1/family/${familyId}/members`, options);
+        // Get the family data which includes members
+        const familyResponse = await this.getFamily(familyId, options);
         
-        if (response.error) {
-          return { error: response.error, status: response.status };
+        if (familyResponse.error) {
+          return { error: familyResponse.error, status: familyResponse.status };
         }
 
-        if (!response.data) {
-          return { error: 'No members data received', status: response.status };
+        if (!familyResponse.data || !familyResponse.data.members) {
+          return { error: 'No family or members data received', status: familyResponse.status };
         }
 
-        return response;
+        // Extract and return the members from the family data
+        return {
+          data: familyResponse.data.members,
+          status: familyResponse.status
+        };
       } catch (error) {
         console.error(`[familyService] Error getting members for family ${familyId}:`, error);
         return {

@@ -9,8 +9,12 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace TaskTrackerAPI.Extensions
 {

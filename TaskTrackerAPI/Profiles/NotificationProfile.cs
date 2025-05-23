@@ -12,7 +12,7 @@ using AutoMapper;
 using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
 
-namespace TaskTrackerAPI.Helpers.Profiles
+namespace TaskTrackerAPI.Profiles
 {
     public class NotificationProfile : Profile
     {

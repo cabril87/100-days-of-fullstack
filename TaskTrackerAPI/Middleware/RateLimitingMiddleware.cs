@@ -14,6 +14,11 @@ using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
+using System;
 
 namespace TaskTrackerAPI.Middleware;
 

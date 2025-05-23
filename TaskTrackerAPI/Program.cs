@@ -46,6 +46,13 @@ using System.Security.Cryptography;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
+using Microsoft.AspNetCore.Builder;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Net.Http;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
 
 namespace TaskTrackerAPI;
 
@@ -200,6 +207,7 @@ public class Program
         builder.Services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();
         builder.Services.AddScoped<IFamilyAchievementRepository, FamilyAchievementRepository>();
         builder.Services.AddScoped<IFamilyCalendarRepository, FamilyCalendarRepository>();
+        builder.Services.AddScoped<IFamilyActivityRepository, FamilyActivityRepository>();
         
         // Add notification preference repository
         builder.Services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
@@ -218,6 +226,7 @@ public class Program
         // Add services that exist in the project
         builder.Services.AddScoped<IFamilyService, FamilyService>();
         builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
+        builder.Services.AddScoped<IFamilyActivityService, FamilyActivityService>();
         builder.Services.AddScoped<IInvitationService, InvitationService>();
         
         // Add notification preference service
@@ -378,7 +387,13 @@ public class Program
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseSqlServer(defaultConn, 
-                    sqlOptions => sqlOptions.EnableRetryOnFailure());
+                    sqlOptions => {
+                        sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(30),
+                            errorNumbersToAdd: null);
+                        sqlOptions.CommandTimeout(60);
+                    });
             });
         }
 
@@ -623,42 +638,92 @@ public class Program
         app.MapHub<TaskHub>("/hubs/tasks");
         app.MapHub<NotificationHub>("/hubs/notifications");
 
+        // Add health check endpoint for Docker
+        app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+        app.MapGet("/api/v1/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", version = "1.0", timestamp = DateTime.UtcNow }));
+
         app.MapControllers();
 
         // Seed the database if needed
         using (IServiceScope scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
-                var logger = services.GetRequiredService<ILogger<Program>>();
                 var authHelper = services.GetRequiredService<AuthHelper>();
+
+                // Wait for SQL Server to be ready (especially important in Docker)
+                logger.LogInformation("Waiting for database to be ready...");
+                
+                // Add initial delay in Docker to give SQL Server more startup time
+                bool isRunningInDocker = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
+                if (isRunningInDocker)
+                {
+                    logger.LogInformation("Docker environment detected, waiting 10 seconds for SQL Server startup...");
+                    await Task.Delay(10000);
+                }
+                
+                await WaitForDatabaseAsync(context, logger);
 
                 if (app.Environment.IsDevelopment())
                 {
                     // Apply any pending migrations
                     logger.LogInformation("Applying pending migrations...");
-                    context.Database.Migrate();
+                    await context.Database.MigrateAsync();
                 }
                 else 
                 {
                     // Just make sure the database exists
-                    context.Database.EnsureCreated();
+                    await context.Database.EnsureCreatedAsync();
                 }
                 
                 var seeder = new Data.SeedData.DataSeeder();
                 await seeder.SeedAsync(context, logger, authHelper);
                 
-                Console.WriteLine("Database seeding completed.");
+                logger.LogInformation("Database seeding completed successfully.");
             }
             catch (Exception ex)
             {
-                var logger = services.GetRequiredService<ILogger<Program>>();
                 logger.LogError(ex, "An error occurred while seeding the database.");
             }
         }
 
         app.Run();
+    }
+    
+    /// <summary>
+    /// Waits for the database to become available with exponential backoff
+    /// </summary>
+    private static async Task WaitForDatabaseAsync(ApplicationDbContext context, ILogger logger)
+    {
+        var delay = TimeSpan.FromSeconds(1);
+        const int maxRetries = 30;
+        
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                await context.Database.OpenConnectionAsync();
+                await context.Database.CloseConnectionAsync();
+                logger.LogInformation("Database connection successful.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning($"Database connection attempt {i + 1}/{maxRetries} failed: {ex.Message}");
+                
+                if (i == maxRetries - 1)
+                {
+                    logger.LogError("Max database connection retries reached. Database may not be available.");
+                    throw;
+                }
+                
+                await Task.Delay(delay);
+                delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 10000)); // Max 10 second delay
+            }
+        }
     }
 }

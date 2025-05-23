@@ -13,7 +13,7 @@ using System;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models;
 
-namespace TaskTrackerAPI.Helpers.Profiles
+namespace TaskTrackerAPI.Profiles
 {
     public class ChallengeProfile : Profile
     {

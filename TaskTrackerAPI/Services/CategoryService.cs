@@ -15,6 +15,11 @@ using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Categories;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System;
+using System.Linq;
 
 namespace TaskTrackerAPI.Services;
 

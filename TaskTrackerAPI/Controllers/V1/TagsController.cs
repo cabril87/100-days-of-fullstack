@@ -10,7 +10,11 @@
  */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;

@@ -160,19 +160,31 @@ public class InvitationRepository : IInvitationRepository
                 if (invitation.Family == null)
                 {
                     _logger.LogWarning("Invitation {Id} has null Family, attempting to load explicitly", invitation.Id);
-                    invitation.Family = await _context.Families.FindAsync(invitation.FamilyId);
+                    var family = await _context.Families.FindAsync(invitation.FamilyId);
+                    invitation.Family = family ?? new Family { Name = "Unknown Family" };
                 }
                 
                 if (invitation.Role == null)
                 {
                     _logger.LogWarning("Invitation {Id} has null Role, attempting to load explicitly", invitation.Id);
-                    invitation.Role = await _context.FamilyRoles.FindAsync(invitation.RoleId);
+                    var role = await _context.FamilyRoles.FindAsync(invitation.RoleId);
+                    invitation.Role = role ?? new FamilyRole { Name = "Unknown Role" };
                 }
                 
                 if (invitation.CreatedBy == null)
                 {
                     _logger.LogWarning("Invitation {Id} has null CreatedBy, attempting to load explicitly", invitation.Id);
-                    invitation.CreatedBy = await _context.Users.FindAsync(invitation.CreatedById);
+                    var createdBy = await _context.Users.FindAsync(invitation.CreatedById);
+                    if (createdBy == null)
+                    {
+                        // Log issue but continue without setting CreatedBy to avoid initialization errors
+                        _logger.LogWarning("User with ID {UserId} not found for invitation {InvitationId}", invitation.CreatedById, invitation.Id);
+                        // Don't set CreatedBy if we can't find the real user
+                    }
+                    else
+                    {
+                        invitation.CreatedBy = createdBy;
+                    }
                 }
             }
             

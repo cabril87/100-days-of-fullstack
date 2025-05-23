@@ -179,7 +179,7 @@ async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>>
 /**
  * Generic API request function with method override support
  */
-async function apiRequest<T = any>(
+export async function apiRequest<T = any>(
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   data?: any,

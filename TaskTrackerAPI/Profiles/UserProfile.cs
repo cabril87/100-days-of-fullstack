@@ -10,35 +10,42 @@
  */
 using AutoMapper;
 using TaskTrackerAPI.Models;
-using UserDTO = TaskTrackerAPI.DTOs.User.UserDTO;
+using TaskTrackerAPI.DTOs.User;
 using UserMinimalDTO = TaskTrackerAPI.DTOs.User.UserMinimalDTO;
 using AuthUserDTO = TaskTrackerAPI.DTOs.Auth.UserDTO;
 using System;
 
 namespace TaskTrackerAPI.Profiles
 {
-public class UserProfile : Profile
-{
-    public UserProfile()
+    public class UserProfile : Profile
     {
-            // Map for User.UserDTO
-        CreateMap<User, UserDTO>()
-            .ForMember(dest => dest.DisplayName, opt => 
-                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
+        public UserProfile()
+        {
+            // Map for User.UserDTO (combined from both profiles)
+            CreateMap<User, UserDTO>()
+                .ForMember(dest => dest.DisplayName, opt => 
+                        opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
                 .ForMember(dest => dest.Username, opt => opt.MapFrom((src, dest) => 
-                    // If username is null or empty, use a fallback like "User_{Id}"
-                    !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"))
+                        !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom((src, dest) => 
-                    // If email is null or empty, generate a placeholder
-                    !string.IsNullOrEmpty(src.Email) ? src.Email : $"user{src.Id}@tasktracker.com"));
+                        !string.IsNullOrEmpty(src.Email) ? src.Email : $"user{src.Id}@tasktracker.com"));
+            
+            // UserDTO -> User (from Helpers.Profiles)
+            CreateMap<UserDTO, User>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.Role, opt => opt.Ignore())
+                .ForMember(dest => dest.Tasks, opt => opt.Ignore());
                 
             // Map for UserMinimalDTO
-        CreateMap<User, UserMinimalDTO>()
-            .ForMember(dest => dest.DisplayName, opt => 
-                    opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
+            CreateMap<User, UserMinimalDTO>()
+                .ForMember(dest => dest.DisplayName, opt => 
+                        opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
                 .ForMember(dest => dest.Username, opt => opt.MapFrom((src, dest) => 
-                    !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"));
-                    
+                        !string.IsNullOrEmpty(src.Username) ? src.Username : $"User_{src.Id}"));
+                        
             // Map for Auth.UserDTO - added to fix AutoMapper missing mapping
             CreateMap<User, AuthUserDTO>()
                 .ForMember(dest => dest.DisplayName, opt => 

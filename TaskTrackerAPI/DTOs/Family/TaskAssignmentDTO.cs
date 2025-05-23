@@ -9,6 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -29,7 +30,7 @@ namespace TaskTrackerAPI.DTOs.Family
         /// The user ID to assign the task to - this can be handled flexibly
         /// </summary>
         [Required]
-        public dynamic AssignToUserId { get; set; } 
+        public dynamic AssignToUserId { get; set; } = new Dictionary<string, object>();
         
         /// <summary>
         /// Whether the task requires approval when completed
@@ -40,19 +41,19 @@ namespace TaskTrackerAPI.DTOs.Family
         /// Required: The member ID as expected by validator
         /// </summary>
         [Required]
-        public dynamic MemberId { get; set; }
+        public dynamic MemberId { get; set; } = new Dictionary<string, object>();
         
         /// <summary>
         /// Required: The user ID as expected by validator
         /// </summary>
         [Required]
-        public dynamic UserId { get; set; }
+        public dynamic UserId { get; set; } = new Dictionary<string, object>();
         
         /// <summary>
         /// Optional: Another way to reference the family member
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public dynamic FamilyMemberId { get; set; }
+        public dynamic FamilyMemberId { get; set; } = new Dictionary<string, object>();
         
         /// <summary>
         /// Optional: The family ID for cross-reference validation

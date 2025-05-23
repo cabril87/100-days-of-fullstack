@@ -10,6 +10,8 @@
  */
 using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.Models;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

@@ -12,7 +12,7 @@ using AutoMapper;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models.Gamification;
 
-namespace TaskTrackerAPI.Helpers.MappingProfiles
+namespace TaskTrackerAPI.Profiles
 {
     public class AchievementMappingProfile : Profile
     {

@@ -15,6 +15,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace TaskTrackerAPI.Repositories;
 

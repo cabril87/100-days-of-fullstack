@@ -11,6 +11,8 @@
 // Services/Interfaces/ITagService.cs
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

@@ -12,6 +12,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Extensions;
 

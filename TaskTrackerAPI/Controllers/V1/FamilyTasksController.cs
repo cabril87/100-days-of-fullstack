@@ -233,7 +233,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
                 
                 // Check if task exists first
-                var task = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
+                FamilyTaskItemDTO? task = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
                 if (task == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found for family {FamilyId}", taskId, familyId);
@@ -411,7 +411,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!hasPermission)
                 {
                     // Allow task creator to delete their own task - check if assigned by this user
-                    var task = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
+                    FamilyTaskItemDTO? task = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
                     bool isTaskAssignedByUser = task?.AssignedByUserId == userId;
                     
                     if (!isTaskAssignedByUser)
@@ -423,7 +423,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
                 
                 // Check if task exists and belongs to this family
-                var taskToDelete = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
+                FamilyTaskItemDTO? taskToDelete = await _taskSharingService.GetFamilyTaskByIdAsync(taskId, userId);
                 if (taskToDelete == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found for family {FamilyId}", taskId, familyId);
@@ -477,8 +477,9 @@ namespace TaskTrackerAPI.Controllers.V1
                     return intValue;
                     
                 // Handle System.Text.Json.JsonElement
-                var valueType = value.GetType();
-                if (valueType != null && valueType.FullName == "System.Text.Json.JsonElement")
+                string? valueType = value?.GetType()?.FullName;
+                if (valueType != null && 
+                   valueType.Equals("System.Text.Json.JsonElement", StringComparison.Ordinal))
                 {
                     var element = (System.Text.Json.JsonElement)value;
                     

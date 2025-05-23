@@ -541,6 +541,57 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("FamilyAchievementMembers");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyActivity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("EntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FamilyId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TargetId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Timestamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("TargetId");
+
+                    b.ToTable("FamilyActivities");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyCalendarEvent", b =>
                 {
                     b.Property<int>("Id")
@@ -1757,7 +1808,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Complete project setup",
-                            UpdatedAt = new DateTime(2025, 5, 22, 13, 25, 40, 882, DateTimeKind.Utc).AddTicks(7719),
+                            UpdatedAt = new DateTime(2025, 5, 23, 14, 20, 34, 449, DateTimeKind.Utc).AddTicks(7387),
                             UserId = 1,
                             Version = 1L
                         },
@@ -1774,7 +1825,7 @@ namespace TaskTrackerAPI.Migrations
                             RequiresApproval = false,
                             Status = 4,
                             Title = "Database integration",
-                            UpdatedAt = new DateTime(2025, 5, 22, 13, 25, 40, 882, DateTimeKind.Utc).AddTicks(9196),
+                            UpdatedAt = new DateTime(2025, 5, 23, 14, 20, 34, 449, DateTimeKind.Utc).AddTicks(9110),
                             UserId = 1,
                             Version = 1L
                         });
@@ -1918,10 +1969,10 @@ namespace TaskTrackerAPI.Migrations
                             Id = 1,
                             AgeGroup = 2,
                             CreatedAt = new DateTime(2025, 4, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            Email = "CfDJ8HeiyxunoJNOiKpgMimE46cHYORTZzfsJPKRe9sinjdtKVYvWJ4CjeM5PCLTVvWClFIvl8vWGcqHqvbnH3UEOQKlRelc1H1M23iIKL0z7GeTYb-Kj5lGymroBVeyDtRLzOTYD7nZbzfMXbda6FU1ASU",
-                            FirstName = "CfDJ8HeiyxunoJNOiKpgMimE46cLOIcenXD29-JGkCt0Jzh3OQqU3rPc6e7vM7IPyhId2HsVGqCwnomsmS-UPhThKPwE5CpUdI78RmFvkrv2qM3rsdLZpwuHCSpHscT3Y8kSTQ",
+                            Email = "CfDJ8HVHXjoCuL1MtUIjNQz5N_IuV9xf9kTZMqskwjGTyaE-N-HQzlrsDrem9DVXqoSb1ylz693vdbtggw58D4FPXMLmsKIz1zOzGgXcaOK5t1zVL7fWD43zRdAQ13-XTv6o43yNeUEjL0cv-nrc6vJ1Fio",
+                            FirstName = "CfDJ8HVHXjoCuL1MtUIjNQz5N_IG7EeBbgrrNXOMqVIvu8Ju30m2UFi-4LwaRN1XWavXmLtgbWeUFT8uAbVfSqt5LFOfJAwRT3kHx4jxrN8LIW9uevRVCBykA56Z2STDjjsSuQ",
                             IsActive = true,
-                            LastName = "CfDJ8HeiyxunoJNOiKpgMimE46fmWuS6Kcj-Nm4Nc-HCavJwZjPgHP11ofaksYM_3GpAd4UnBtOH4cGxkeRX5q5lbxWVYgJvBad5AEu9g17rwuJWafOazDKKoNeLz-AIBy5sUQ",
+                            LastName = "CfDJ8HVHXjoCuL1MtUIjNQz5N_IWA3kA6XyAbW1QcAH5WNvrtO4tZLN7soOi2dfX6SndJcefM6mp3Zd71iqa6zz5dY-miN5iSz2LCqdRbsjnqZSSt3qv-Um77qIdVfN4jTEraw",
                             PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=",
                             Role = "Admin",
                             Salt = "AAECAwQFBgcICQoLDA0ODw==",
@@ -2276,6 +2327,31 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Achievement");
 
                     b.Navigation("Member");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.FamilyActivity", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.Family", "Family")
+                        .WithMany()
+                        .HasForeignKey("FamilyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "Target")
+                        .WithMany()
+                        .HasForeignKey("TargetId");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Family");
+
+                    b.Navigation("Target");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyCalendarEvent", b =>

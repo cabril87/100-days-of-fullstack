@@ -8,10 +8,18 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 
 namespace TaskTrackerAPI.Middleware;
@@ -137,7 +145,7 @@ public class CsrfProtectionMiddleware
                     SetCsrfCookie(context, token);
                     
                     // Add header to response indicating the token was missing
-                    context.Response.Headers.Add("X-CSRF-Status", "Token-Missing");
+                    context.Response.Headers.Append("X-CSRF-Status", "Token-Missing");
                     
                     await _next(context);
                     return;
@@ -161,7 +169,7 @@ public class CsrfProtectionMiddleware
                     SetCsrfCookie(context, token);
                     
                     // Add header to response indicating the cookie was missing
-                    context.Response.Headers.Add("X-CSRF-Status", "Cookie-Missing");
+                    context.Response.Headers.Append("X-CSRF-Status", "Cookie-Missing");
                     
                     await _next(context);
                     return;
@@ -188,7 +196,7 @@ public class CsrfProtectionMiddleware
                     SetCsrfCookie(context, token);
                     
                     // Add header to response indicating tokens didn't match
-                    context.Response.Headers.Add("X-CSRF-Status", "Token-Mismatch");
+                    context.Response.Headers.Append("X-CSRF-Status", "Token-Mismatch");
                     
                     await _next(context);
                     return;

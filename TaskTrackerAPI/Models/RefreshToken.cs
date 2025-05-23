@@ -9,6 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 // Models/RefreshToken.cs
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

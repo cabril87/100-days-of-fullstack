@@ -14,6 +14,11 @@ using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using System.IO;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -263,7 +268,7 @@ public class DataProtectionController : BaseApiController
     // Simple class to hold key file information
     private class KeyFileInfo
     {
-        public string Name { get; set; }
+        public required string Name { get; set; }
         public DateTime CreationTime { get; set; }
         public DateTime LastWriteTime { get; set; }
         public long SizeBytes { get; set; }

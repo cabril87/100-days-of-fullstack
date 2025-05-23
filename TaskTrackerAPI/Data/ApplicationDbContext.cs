@@ -106,6 +106,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<FamilyEventReminder> FamilyEventReminders { get; set; } = null!;
     public DbSet<FamilyMemberAvailability> FamilyMemberAvailabilities { get; set; } = null!;
 
+    public DbSet<FamilyActivity> FamilyActivities { get; set; } = null!;
+    
     public DbSet<ChecklistItem> ChecklistItems { get; set; } = null!;
     public DbSet<ChecklistTemplateItem> ChecklistTemplateItems { get; set; } = null!;
 

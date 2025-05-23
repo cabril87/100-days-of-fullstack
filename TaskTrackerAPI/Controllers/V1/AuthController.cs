@@ -20,6 +20,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using System.Web;
 using System.Net;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -135,7 +137,7 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public ActionResult DebugCsrfToken()
     {
-        var environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        IHostEnvironment environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
         
         if (!environment.IsDevelopment())
         {

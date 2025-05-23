@@ -9,6 +9,10 @@
  * accordance with the terms contained in the LICENSE file.
  */
 // Repositories/TaskItemRepository.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using TaskTrackerAPI.Data;

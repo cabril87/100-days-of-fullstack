@@ -11,6 +11,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System;
 
 namespace TaskTrackerAPI.Controllers.V1;
 

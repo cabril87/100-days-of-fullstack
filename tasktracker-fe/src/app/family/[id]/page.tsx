@@ -3,15 +3,15 @@
 import React, { useState, useEffect, use } from 'react';
 import { useFamily } from '@/lib/providers/FamilyContext';
 import { useAuth } from '@/lib/providers/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Settings, UserPlus, Shield, UserCog, UserX, Trash2, PencilLine, Bell, ArrowLeft,
-  FileText, ClipboardList, Home, AlertTriangle, RefreshCw, Search, Users, MoreHorizontal, Calendar, Star, 
-  CalendarRange, Filter, Clock, PlusCircle, MapPin, Brain, XCircle, Play
+  Settings, UserPlus, Shield, UserCog, Trash2, PencilLine, ArrowLeft,
+   ClipboardList, Home, AlertTriangle, RefreshCw, Search, Users, Calendar, Star, 
+  CalendarRange, Clock, PlusCircle, MapPin, Brain, XCircle, Play, Activity, Filter, BarChart3, Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -23,18 +23,15 @@ import { familyService } from '@/lib/services/familyService';
 import { Family, FamilyMember } from '@/lib/types/family';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import EditMemberDialog from '@/components/family/EditMemberDialog';
-import { Progress } from '@/components/ui/progress';
 import AssignTaskDialog from '@/components/family/AssignTaskDialog';
 import FamilyTaskList from '@/components/family/FamilyTaskList';
 import MemberDetailDialog from '@/components/family/MemberDetailDialog';
 import { UserLookupDialog } from '@/components/family';
 import { CalendarModal } from '@/components/family/CalendarModal';
-import { FamilyCalendar } from '@/components/family/FamilyCalendar';
 import { FamilyCalendarEvent, familyCalendarService } from '@/lib/services/familyCalendarService';
 import { 
   Select, 
   SelectContent, 
-  SelectGroup, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
@@ -66,7 +63,7 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
   const [memberToRemove, setMemberToRemove] = useState<FamilyMember | null>(null);
   const [memberToEdit, setMemberToEdit] = useState<FamilyMember | null>(null);
   const [memberToView, setMemberToView] = useState<FamilyMember | null>(null);
-  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'events'>('members');
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'events' | 'activity'>('members');
   const { deleteFamily } = useFamily();
   const router = useRouter();
   const { showToast } = useToast();
@@ -1116,6 +1113,15 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
               <CalendarRange className="h-4 w-4 inline-block mr-2" />
               Family Events
             </button>
+            {/* Activity Feed Tab */}
+            <button
+              className={`px-4 py-3 text-sm font-medium ${activeTab === 'activity' ? 'border-b-2 border-primary text-primary' : 'text-gray-500'
+                }`}
+              onClick={() => setActiveTab('activity')}
+            >
+              <Activity className="h-4 w-4 inline-block mr-2" />
+              Activity Feed
+            </button>
           </div>
         </div>
 
@@ -1135,10 +1141,6 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
                         <AvatarImage src={`https://avatar.vercel.sh/${member.username || 'user'}`} />
                         <AvatarFallback>{((member.username || member.name || 'UN')?.slice(0, 2)).toUpperCase()}</AvatarFallback>
                       </Avatar>
-                      {member && (() => {
-                        console.log('Member:', member);
-                        return null;
-                      })()} 
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-medium">{member.username || member.user?.username || member.name || 'Unknown User'}</h3>
@@ -1518,6 +1520,114 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Activity Feed Tab Content */}
+          {activeTab === 'activity' && (
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Activity Feed</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Monitor family activities and member interactions
+                  </p>
+                </div>
+                <Button asChild variant="default" size="sm">
+                  <Link href={`/family/${id}/activity`}>
+                    <Activity className="h-4 w-4 mr-2" />
+                    Open Activity Feed
+                  </Link>
+                </Button>
+              </div>
+              
+              {/* Feature Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Real-time Tracking</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        See all family member activities as they happen, from task completions to event updates.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                
+                <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <Filter className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Smart Filtering</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Filter activities by member, action type, date range, or search for specific events.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                
+                <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <BarChart3 className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Activity Analytics</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        View statistics about family engagement, most active members, and activity trends.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                
+                <Card className="p-6 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                      <Eye className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Detailed Views</h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Expand activities for detailed information or view comprehensive details in modal.
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+              
+              {/* Quick Stats Preview */}
+              <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100">Quick Overview</h4>
+                    <Badge variant="secondary" className="text-xs">Live Data</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div>
+                      <div className="text-lg font-bold text-blue-600">📊</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Activity Statistics</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-green-600">🔍</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Search & Filter</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-purple-600">👥</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Member Tracking</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-orange-600">📅</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">Date Filtering</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>

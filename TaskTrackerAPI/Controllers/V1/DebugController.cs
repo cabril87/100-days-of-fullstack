@@ -9,6 +9,13 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
+using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Collections.Generic;
+using System;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -294,7 +301,7 @@ modelBuilder.Entity<User>().HasData(
         try 
         {
             // Get all users first for diagnostic purposes
-            var allUsers = _dbContext.Users.ToList();
+            List<User> allUsers = _dbContext.Users.ToList();
             
             // Debug information before finding the user
             var debugInfo = new
@@ -318,7 +325,7 @@ modelBuilder.Entity<User>().HasData(
                 debugInfo.AllEmails.Count(e => e.Match));
             
             // Find the user directly from the database
-            var matchingUsers = _dbContext.Users
+            List<User> matchingUsers = _dbContext.Users
                 .Where(u => 
                     u.Email.ToLower() == model.EmailOrUsername.ToLower() || 
                     u.Username.ToLower() == model.EmailOrUsername.ToLower())
@@ -336,13 +343,11 @@ modelBuilder.Entity<User>().HasData(
             }
             
             // Use the first matching user (the one with the lowest ID)
-            var user = matchingUsers.First();
+            User user = matchingUsers.First();
             _logger.LogInformation("Using user with ID {UserId} for password verification", user.Id);
             
-            // Get the auth helper to test password verification
-            var authHelper = new Helpers.AuthHelper(
-                _configuration
-            );
+            // Create an auth helper instance
+            AuthHelper authHelper = new AuthHelper(_configuration);
             
             // Try to verify the password
             bool passwordVerified = false;
@@ -471,7 +476,7 @@ modelBuilder.Entity<User>().HasData(
         try 
         {
             // Get the IAuthService from dependency injection
-            var authService = HttpContext.RequestServices.GetRequiredService<TaskTrackerAPI.Services.Interfaces.IAuthService>();
+            IAuthService authService = HttpContext.RequestServices.GetRequiredService<IAuthService>();
             
             // Create the login DTO
             var loginDto = new TaskTrackerAPI.DTOs.Auth.UserLoginDTO
@@ -631,7 +636,7 @@ modelBuilder.Entity<User>().HasData(
             }
             
             // Create an auth helper instance
-            var authHelper = new Helpers.AuthHelper(_configuration);
+            AuthHelper authHelper = new AuthHelper(_configuration);
             
             // Try to verify the password
             bool passwordVerified = false;

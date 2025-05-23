@@ -80,7 +80,6 @@ public class FamilyMemberRepository : IFamilyMemberRepository
             return false;
 
             // Clear any orphaned tasks - set a flag in case we need to handle notifications or logs
-            bool tasksUnassigned = false;
             int count = await _context.Tasks
                 .Where(t => t.AssignedToFamilyMemberId == id)
                 .ExecuteUpdateAsync(s => s
@@ -89,7 +88,6 @@ public class FamilyMemberRepository : IFamilyMemberRepository
                     
             if (count > 0)
             {
-                tasksUnassigned = true;
                 _logger.LogInformation("Unassigned {Count} tasks from family member {FamilyMemberId}", count, id);
             }
 
