@@ -89,6 +89,12 @@ namespace TaskTrackerAPI.DTOs.Gamification
         public int Difficulty { get; set; } = 1;
 
         
+        /// Minimum points required to join this challenge
+        
+        [Range(0, 100000, ErrorMessage = "Points required must be between 0 and 100000")]
+        public int PointsRequired { get; set; } = 0;
+
+        
         /// Reward badge ID for completing the challenge (if any)
         
         public int? RewardBadgeId { get; set; }
@@ -97,5 +103,76 @@ namespace TaskTrackerAPI.DTOs.Gamification
         /// Date when the challenge was created
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Data transfer object for user's active challenges with detailed information
+    /// </summary>
+    public class UserActiveChallengeDTO
+    {
+        /// <summary>
+        /// Challenge progress ID
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Challenge ID
+        /// </summary>
+        public int ChallengeId { get; set; }
+
+        /// <summary>
+        /// Challenge name
+        /// </summary>
+        public string ChallengeName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Challenge description
+        /// </summary>
+        public string ChallengeDescription { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Current progress value
+        /// </summary>
+        public int CurrentProgress { get; set; }
+
+        /// <summary>
+        /// Target progress value to complete the challenge
+        /// </summary>
+        public int TargetProgress { get; set; }
+
+        /// <summary>
+        /// Percentage of progress completed (0-100)
+        /// </summary>
+        public int ProgressPercentage { get; set; }
+
+        /// <summary>
+        /// Points reward for completing the challenge
+        /// </summary>
+        public int PointReward { get; set; }
+
+        /// <summary>
+        /// Challenge end date
+        /// </summary>
+        public DateTime? EndDate { get; set; }
+
+        /// <summary>
+        /// Date when the user enrolled in the challenge
+        /// </summary>
+        public DateTime EnrolledAt { get; set; }
+
+        /// <summary>
+        /// Number of days remaining to complete the challenge
+        /// </summary>
+        public int? DaysRemaining { get; set; }
+
+        /// <summary>
+        /// Activity type for the challenge
+        /// </summary>
+        public string ActivityType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Challenge difficulty level
+        /// </summary>
+        public int Difficulty { get; set; }
     }
 } 

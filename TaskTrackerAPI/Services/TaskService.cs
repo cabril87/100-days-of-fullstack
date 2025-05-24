@@ -29,19 +29,22 @@ namespace TaskTrackerAPI.Services
         private readonly ICategoryRepository _categoryRepository;
         private readonly IChecklistItemRepository _checklistItemRepository;
         private readonly ITaskSyncService _taskSyncService;
+        private readonly IGamificationService _gamificationService;
         
         public TaskService(
             ITaskItemRepository taskRepository, 
             IMapper mapper, 
             ICategoryRepository categoryRepository,
             IChecklistItemRepository checklistItemRepository,
-            ITaskSyncService taskSyncService)
+            ITaskSyncService taskSyncService,
+            IGamificationService gamificationService)
         {
             _taskRepository = taskRepository;
             _mapper = mapper;
             _categoryRepository = categoryRepository;
             _checklistItemRepository = checklistItemRepository;
             _taskSyncService = taskSyncService;
+            _gamificationService = gamificationService;
         }
         
         public async Task<IEnumerable<TaskItemDTO>> GetAllTasksAsync(int userId)
@@ -113,6 +116,27 @@ namespace TaskTrackerAPI.Services
                 
                 // Notify via SignalR
                 await _taskSyncService.NotifyTaskCreatedAsync(userId, resultDto);
+                
+                // Handle gamification for task creation
+                try
+                {
+                    // Award points for creating a task
+                    await _gamificationService.AddPointsAsync(
+                        userId, 
+                        5, // Base points for task creation
+                        "task_creation", 
+                        $"Created task: {result.Title}", 
+                        result.Id
+                    );
+                    
+                    // Process any challenge progress related to task creation
+                    await _gamificationService.ProcessChallengeProgressAsync(userId, "task_creation", result.Id);
+                }
+                catch (Exception)
+                {
+                    // Log the error but don't fail the task creation
+                    // _logger.LogError(ex, "Error processing gamification for task creation");
+                }
                 
                 return resultDto;
             }
@@ -383,11 +407,72 @@ namespace TaskTrackerAPI.Services
             if (task == null)
                 return; // Don't throw an exception, just return silently
             
+            // Store the previous status to check if this is a new completion
+            TaskItemStatus previousStatus = task.Status;
+            
             // Update and save
             task.Status = newStatus;
             task.UpdatedAt = DateTime.UtcNow;
             
+            // If task is being completed (and wasn't completed before), handle gamification
+            if (newStatus == TaskItemStatus.Completed && previousStatus != TaskItemStatus.Completed)
+            {
+                task.CompletedAt = DateTime.UtcNow;
+                task.IsCompleted = true;
+                
+                // Update the task first
+                await _taskRepository.UpdateTaskAsync(task);
+                
+                // Then handle gamification
+                try
+                {
+                    // Calculate and award points for task completion
+                    int pointsAwarded = await _gamificationService.CalculateTaskCompletionPointsAsync(
+                        userId, 
+                        taskId, 
+                        task.Priority ?? "Medium",
+                        task.Priority ?? "Medium",
+                        task.DueDate,
+                        false // isCollaborative - could be enhanced later
+                    );
+                    
+                    if (pointsAwarded > 0)
+                    {
+                        await _gamificationService.AddPointsAsync(
+                            userId, 
+                            pointsAwarded, 
+                            "task_completion", 
+                            $"Completed task: {task.Title}", 
+                            taskId
+                        );
+                    }
+                    
+                    // Update user streak for task completion
+                    await _gamificationService.UpdateStreakAsync(userId);
+                    
+                    // Process any challenge progress related to task completion
+                    await _gamificationService.ProcessChallengeProgressAsync(userId, "task_completion", taskId);
+                    
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't fail the task update
+                    // You might want to inject a logger here
+                    // _logger.LogError(ex, "Error processing gamification for task completion");
+                }
+            }
+            // If task is being uncompleted (was completed, now isn't), clear completion data
+            else if (previousStatus == TaskItemStatus.Completed && newStatus != TaskItemStatus.Completed)
+            {
+                task.CompletedAt = null;
+                task.IsCompleted = false;
+                await _taskRepository.UpdateTaskAsync(task);
+            }
+            else
+            {
+                // Just a regular status update
             await _taskRepository.UpdateTaskAsync(task);
+            }
         }
         
         public async Task AddTagToTaskAsync(int userId, int taskId, int tagId)
@@ -536,15 +621,56 @@ namespace TaskTrackerAPI.Services
                     {
                         task.CompletedAt = DateTime.UtcNow;
                         task.IsCompleted = true;
+                        
+                        await _taskRepository.UpdateTaskAsync(task);
+                        
+                        // Handle gamification for task completion
+                        try
+                        {
+                            // Calculate and award points for task completion
+                            int pointsAwarded = await _gamificationService.CalculateTaskCompletionPointsAsync(
+                                userId, 
+                                taskId, 
+                                task.Priority ?? "Medium",
+                                task.Priority ?? "Medium",
+                                task.DueDate,
+                                false // isCollaborative
+                            );
+                            
+                            if (pointsAwarded > 0)
+                            {
+                                await _gamificationService.AddPointsAsync(
+                                    userId, 
+                                    pointsAwarded, 
+                                    "task_completion", 
+                                    $"Completed task: {task.Title}", 
+                                    taskId
+                                );
+                            }
+                            
+                            // Update user streak for task completion
+                            await _gamificationService.UpdateStreakAsync(userId);
+                            
+                            // Process any challenge progress related to task completion
+                            await _gamificationService.ProcessChallengeProgressAsync(userId, "task_completion", taskId);
+                        }
+                        catch (Exception)
+                        {
+                            // Log the error but don't fail the batch operation
+                            // _logger.LogError(ex, "Error processing gamification for task completion in batch");
+                        }
                     }
                     // If moving from completed to something else, clear completed date
                     else if (previousStatus == TaskItemStatus.Completed && newStatus != TaskItemStatus.Completed)
                     {
                         task.CompletedAt = null;
                         task.IsCompleted = false;
+                        await _taskRepository.UpdateTaskAsync(task);
                     }
-
-                    await _taskRepository.UpdateTaskAsync(task);
+                    else
+                    {
+                        await _taskRepository.UpdateTaskAsync(task);
+                    }
 
                     TaskStatusUpdateResponseDTO response = new TaskStatusUpdateResponseDTO
                     {

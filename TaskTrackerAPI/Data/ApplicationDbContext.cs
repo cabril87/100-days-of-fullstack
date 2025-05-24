@@ -11,7 +11,7 @@
 // Data/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
-using TaskTrackerAPI.Models.Gamification;
+using GamificationModels = TaskTrackerAPI.Models.Gamification;
 using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -80,11 +80,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserProgress> UserProgresses { get; set; } = null!;
     public DbSet<PointTransaction> PointTransactions { get; set; } = null!;
     
-    // Using only the Gamification namespace models for achievements
-    public DbSet<Achievement> Achievements { get; set; } = null!;
-    public DbSet<UserAchievement> UserAchievements { get; set; } = null!;
-    public DbSet<Models.Badge> Badges { get; set; } = null!;
-    public DbSet<Models.UserBadge> UserBadges { get; set; } = null!;
+    // Using consistent Gamification namespace models
+    public DbSet<GamificationModels.Achievement> Achievements { get; set; } = null!;
+    public DbSet<GamificationModels.UserAchievement> UserAchievements { get; set; } = null!;
+    public DbSet<GamificationModels.Badge> Badges { get; set; } = null!;
+    public DbSet<GamificationModels.UserBadge> UserBadges { get; set; } = null!;
     public DbSet<Reward> Rewards { get; set; } = null!;
     public DbSet<UserReward> UserRewards { get; set; } = null!;
     public DbSet<PriorityMultiplier> PriorityMultipliers { get; set; } = null!;
@@ -129,7 +129,8 @@ public class ApplicationDbContext : DbContext
         }
         
         // Suppress all warnings about pending model changes
-        optionsBuilder.ConfigureWarnings(warnings => {
+        optionsBuilder.ConfigureWarnings(warnings =>
+        {
             warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning);
             warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ManyServiceProvidersCreatedWarning);
         });
@@ -149,6 +150,19 @@ public class ApplicationDbContext : DbContext
         {
             modelBuilder.ApplyEncryption(_dataProtectionService);
         }
+        
+        // Configure User model encryption comments
+        modelBuilder.Entity<User>()
+            .Property(u => u.Email)
+            .HasComment("Encrypted field - PII");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.FirstName)
+            .HasComment("Encrypted field - PII");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.LastName)
+            .HasComment("Encrypted field - PII");
         
         // Configure entity properties with value generators to use hardcoded values for snapshot generation
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
@@ -352,26 +366,26 @@ public class ApplicationDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         // Configure UserAchievement relationships
-        modelBuilder.Entity<Models.Gamification.UserAchievement>()
+        modelBuilder.Entity<GamificationModels.UserAchievement>()
             .HasOne(ua => ua.User)
             .WithMany(u => u.UserAchievements)
             .HasForeignKey(ua => ua.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<Models.Gamification.UserAchievement>()
+        modelBuilder.Entity<GamificationModels.UserAchievement>()
             .HasOne(ua => ua.Achievement)
             .WithMany(a => a.UserAchievements)
             .HasForeignKey(ua => ua.AchievementId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Configure UserBadge relationships
-        modelBuilder.Entity<Models.UserBadge>()
+        modelBuilder.Entity<GamificationModels.UserBadge>()
             .HasOne(ub => ub.User)
             .WithMany()
             .HasForeignKey(ub => ub.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<Models.UserBadge>()
+        modelBuilder.Entity<GamificationModels.UserBadge>()
             .HasOne(ub => ub.Badge)
             .WithMany(b => b.UserBadges)
             .HasForeignKey(ub => ub.BadgeId)
@@ -390,75 +404,10 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(ur => ur.RewardId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Seed default admin user
-        modelBuilder.Entity<User>().HasData(
-            new User
-            {
-                Id = 1,
-                Username = "admin",
-                Email = "admin@tasktracker.com",
-                PasswordHash = "L6Y+Dh8V3HZ1U3A12NPP8jfGaxL1cOFUeo84mMjO1vQ=", // This is a placeholder - use proper password hashing in real code
-                Salt = "AAECAwQFBgcICQoLDA0ODw==",
-                FirstName = "Admin",
-                LastName = "User",
-                Role = "Admin",
-                CreatedAt = new DateTime(2025, 4, 1)
-            }
-        );
-
-        // Seed some default categories
-        modelBuilder.Entity<Category>().HasData(
-            new Category
-            {
-                Id = 1,
-                Name = "Work",
-                Description = "Work-related tasks",
-                UserId = 1
-            },
-            new Category
-            {
-                Id = 2,
-                Name = "Personal",
-                Description = "Personal tasks",
-                UserId = 1
-            }
-        );
-
-        // Seed some default tasks
-        modelBuilder.Entity<TaskItem>().HasData(
-                new TaskItem
-                {
-                    Id = 1,
-                    Title = "Complete project setup",
-                    Description = "Set up the initial project structure",
-                    Status = TaskItemStatus.Completed,
-                    DueDate = new DateTime(2025, 4, 5),
-                    CreatedAt = new DateTime(2025, 4, 1),
-                    UserId = 1,
-                    CategoryId = 1,
-                    Priority = "High"
-                },
-               new TaskItem
-               {
-                   Id = 2,
-                   Title = "Database integration",
-                   Description = "Set up the database connection and models",
-                   Status = TaskItemStatus.Completed,
-                   DueDate = new DateTime(2025, 4, 6),
-                   CreatedAt = new DateTime(2025, 4, 2),
-                   UserId = 1,
-                   CategoryId = 1,
-                   Priority = "Medium"
-               }
-           );
-
-        // Seed default priority multipliers
-        modelBuilder.Entity<PriorityMultiplier>().HasData(
-            new PriorityMultiplier { Id = 1, Priority = "Low", Multiplier = 0.5 },
-            new PriorityMultiplier { Id = 2, Priority = "Medium", Multiplier = 1.0 },
-            new PriorityMultiplier { Id = 3, Priority = "High", Multiplier = 1.5 },
-            new PriorityMultiplier { Id = 4, Priority = "Critical", Multiplier = 2.0 }
-        );
+        // Seed all gamification data (achievements, badges, rewards, challenges)
+        SeedGamificationData(modelBuilder);
+        
+        // If this fails to compile, ensure GamificationSeedData.cs is included in the project
 
         // Configure Reminder relationships
         modelBuilder.Entity<Reminder>()
@@ -467,55 +416,24 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<Reminder>()
-            .HasOne(r => r.TaskItem)
-            .WithMany()
-            .HasForeignKey(r => r.TaskItemId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        // Configure Note relationships
-        modelBuilder.Entity<Note>()
-            .HasOne(n => n.User)
-            .WithMany()
-            .HasForeignKey(n => n.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Note>()
-            .HasOne(n => n.TaskItem)
-            .WithMany()
-            .HasForeignKey(n => n.TaskItemId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        // Fix ChallengeProgress relationship
-        modelBuilder.Entity<ChallengeProgress>(entity =>
-        {
-            // Explicitly ignore the navigation properties
-            entity.Ignore(cp => cp.User);
-            entity.Ignore(cp => cp.Challenge);
-            
-            // Manual mapping of the foreign keys
-            entity.Property(cp => cp.UserId).IsRequired();
-            entity.Property(cp => cp.ChallengeId).IsRequired();
-        });
-
-        // Configure Family entity relationships
+        // Configure Family relationships
         modelBuilder.Entity<Family>()
             .HasOne(f => f.CreatedByUser)
             .WithMany()
             .HasForeignKey(f => f.CreatedById)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Configure FamilyMember entity relationships
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.PrimaryFamily)
+            .WithMany(f => f.PrimaryFamilyUsers)
+            .HasForeignKey(u => u.PrimaryFamilyId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure FamilyMember relationships
         modelBuilder.Entity<FamilyMember>()
             .HasOne(fm => fm.Family)
             .WithMany(f => f.Members)
             .HasForeignKey(fm => fm.FamilyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<FamilyMember>()
-            .HasOne(fm => fm.User)
-            .WithMany(u => u.FamilyMembers)
-            .HasForeignKey(fm => fm.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<FamilyMember>()
@@ -524,111 +442,41 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(fm => fm.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Configure FamilyRolePermission entity relationships
-        modelBuilder.Entity<FamilyRolePermission>()
-            .HasOne(p => p.Role)
-            .WithMany(r => r.Permissions)
-            .HasForeignKey(p => p.RoleId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Configure Invitation entity relationships
-        modelBuilder.Entity<Invitation>()
-            .HasOne(i => i.Family)
-            .WithMany()
-            .HasForeignKey(i => i.FamilyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<Invitation>()
-            .HasOne(i => i.Role)
-            .WithMany()
-            .HasForeignKey(i => i.RoleId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Invitation>()
-            .HasOne(i => i.CreatedBy)
-            .WithMany()
-            .HasForeignKey(i => i.CreatedById)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Configure UserDevice entity relationships
-        modelBuilder.Entity<UserDevice>()
-            .HasOne(ud => ud.User)
-            .WithMany(u => u.Devices)
-            .HasForeignKey(ud => ud.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure FamilyAchievement relationships
-        modelBuilder.Entity<FamilyAchievement>()
-            .HasOne(fa => fa.Family)
-            .WithMany()
-            .HasForeignKey(fa => fa.FamilyId)
-            .OnDelete(DeleteBehavior.Cascade);
-            
-        // Configure FamilyAchievementMember relationships
+        // Configure FamilyAchievementMembers relationships to avoid cascade cycles
         modelBuilder.Entity<FamilyAchievementMember>()
             .HasOne(fam => fam.Achievement)
             .WithMany(fa => fa.MemberContributions)
             .HasForeignKey(fam => fam.AchievementId)
             .OnDelete(DeleteBehavior.Cascade);
-            
+
         modelBuilder.Entity<FamilyAchievementMember>()
             .HasOne(fam => fam.Member)
             .WithMany()
             .HasForeignKey(fam => fam.FamilyMemberId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction); // Use NoAction to avoid cascade cycle
 
-        // Configure FamilyCalendarEvent relationships
-        modelBuilder.Entity<FamilyCalendarEvent>()
-            .HasOne(e => e.Family)
-            .WithMany()
-            .HasForeignKey(e => e.FamilyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<FamilyCalendarEvent>()
-            .HasOne(e => e.CreatedByUser)
-            .WithMany()
-            .HasForeignKey(e => e.CreatedById)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Configure FamilyEventAttendee relationships
+        // Configure additional Family-related relationships to avoid cascade cycles
         modelBuilder.Entity<FamilyEventAttendee>()
-            .HasOne(a => a.Event)
-            .WithMany(e => e.Attendees)
-            .HasForeignKey(a => a.EventId)
+            .HasOne(fea => fea.Event)
+            .WithMany(fce => fce.Attendees)
+            .HasForeignKey(fea => fea.EventId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<FamilyEventAttendee>()
-            .HasOne(a => a.FamilyMember)
+            .HasOne(fea => fea.FamilyMember)
             .WithMany()
-            .HasForeignKey(a => a.FamilyMemberId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .HasForeignKey(fea => fea.FamilyMemberId)
+            .OnDelete(DeleteBehavior.NoAction); // Use NoAction to avoid cascade cycle
 
-        // Configure FamilyEventReminder relationships
-        modelBuilder.Entity<FamilyEventReminder>()
-            .HasOne(r => r.Event)
-            .WithMany(e => e.Reminders)
-            .HasForeignKey(r => r.EventId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Configure FamilyMemberAvailability relationships
         modelBuilder.Entity<FamilyMemberAvailability>()
-            .HasOne(a => a.FamilyMember)
+            .HasOne(fma => fma.FamilyMember)
             .WithMany()
-            .HasForeignKey(a => a.FamilyMemberId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .HasForeignKey(fma => fma.FamilyMemberId)
+            .OnDelete(DeleteBehavior.NoAction); // Use NoAction to avoid cascade cycle
+    }
 
-        // Configure TaskTemplate-ChecklistTemplateItem relationship
-        modelBuilder.Entity<ChecklistTemplateItem>()
-            .HasOne(c => c.TaskTemplate)
-            .WithMany(t => t.ChecklistItems)
-            .HasForeignKey(c => c.TaskTemplateId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Configure NotificationPreference relationships
-        modelBuilder.Entity<NotificationPreference>()
-            .HasOne(np => np.User)
-            .WithMany()
-            .HasForeignKey(np => np.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+    private void SeedGamificationData(ModelBuilder modelBuilder)
+    {
+        GamificationSeedData.SeedGamificationData(modelBuilder);
     }
 }

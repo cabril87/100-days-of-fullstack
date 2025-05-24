@@ -61,11 +61,27 @@ namespace TaskTrackerAPI.Models.Gamification
         public string Criteria { get; set; } = string.Empty;
 
         /// <summary>
-        /// Rarity level of the badge (e.g., 'Common', 'Rare', 'Legendary')
+        /// Rarity level of the badge (Common, Rare, Epic, Legendary)
         /// </summary>
         [Required]
         [StringLength(50)]
-        public string Rarity { get; set; } = string.Empty;
+        public string Rarity { get; set; } = "Common";
+
+        /// <summary>
+        /// Tier level of the badge (bronze, silver, gold, platinum, diamond, onyx)
+        /// </summary>
+        [StringLength(50)]
+        public string Tier { get; set; } = "bronze";
+
+        /// <summary>
+        /// Points required to unlock this badge
+        /// </summary>
+        public int PointsRequired { get; set; } = 0;
+
+        /// <summary>
+        /// Points awarded for earning the badge
+        /// </summary>
+        public int PointValue { get; set; } = 100;
 
         /// <summary>
         /// Color scheme for displaying the badge
@@ -82,6 +98,11 @@ namespace TaskTrackerAPI.Models.Gamification
         /// Whether the badge is active and can be earned
         /// </summary>
         public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Whether this is a special/limited badge
+        /// </summary>
+        public bool IsSpecial { get; set; } = false;
 
         /// <summary>
         /// When the badge was created

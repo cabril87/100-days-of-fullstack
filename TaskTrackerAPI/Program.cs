@@ -695,29 +695,36 @@ public class Program
     }
     
     /// <summary>
-    /// Waits for the database to become available with exponential backoff
+    /// Waits for the database server to become available with exponential backoff
     /// </summary>
     private static async Task WaitForDatabaseAsync(ApplicationDbContext context, ILogger logger)
     {
         var delay = TimeSpan.FromSeconds(1);
         const int maxRetries = 30;
         
+        // Get connection string and modify it to connect to master database for initial check
+        var connectionString = context.Database.GetConnectionString();
+        var masterConnectionString = connectionString?.Replace("Database=TaskTracker", "Database=master");
+        
         for (int i = 0; i < maxRetries; i++)
         {
             try
             {
-                await context.Database.OpenConnectionAsync();
-                await context.Database.CloseConnectionAsync();
-                logger.LogInformation("Database connection successful.");
-                return;
+                // First, test SQL Server connectivity using master database
+                using (var connection = new Microsoft.Data.SqlClient.SqlConnection(masterConnectionString))
+                {
+                    await connection.OpenAsync();
+                    logger.LogInformation("SQL Server connection successful.");
+                    return;
+                }
             }
             catch (Exception ex)
             {
-                logger.LogWarning($"Database connection attempt {i + 1}/{maxRetries} failed: {ex.Message}");
+                logger.LogWarning($"SQL Server connection attempt {i + 1}/{maxRetries} failed: {ex.Message}");
                 
                 if (i == maxRetries - 1)
                 {
-                    logger.LogError("Max database connection retries reached. Database may not be available.");
+                    logger.LogError("Max SQL Server connection retries reached. SQL Server may not be available.");
                     throw;
                 }
                 

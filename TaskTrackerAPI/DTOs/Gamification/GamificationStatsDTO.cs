@@ -122,4 +122,85 @@ namespace TaskTrackerAPI.DTOs.Gamification
         
         public int PotentialPoints { get; set; }
     }
+
+    /// <summary>
+    /// Data transfer object for gamification reset statistics - Admin testing only
+    /// </summary>
+    public class GamificationResetStatsDTO
+    {
+        /// <summary>
+        /// User ID being reset
+        /// </summary>
+        public int UserId { get; set; }
+
+        /// <summary>
+        /// Current user level before reset
+        /// </summary>
+        public int CurrentLevel { get; set; }
+
+        /// <summary>
+        /// Current points before reset
+        /// </summary>
+        public int CurrentPoints { get; set; }
+
+        /// <summary>
+        /// Total points earned before reset
+        /// </summary>
+        public int TotalPointsEarned { get; set; }
+
+        /// <summary>
+        /// Current streak before reset
+        /// </summary>
+        public int CurrentStreak { get; set; }
+
+        /// <summary>
+        /// Longest streak before reset
+        /// </summary>
+        public int LongestStreak { get; set; }
+
+        /// <summary>
+        /// Current tier before reset
+        /// </summary>
+        public string CurrentTier { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Number of point transactions to be deleted
+        /// </summary>
+        public int PointTransactionCount { get; set; }
+
+        /// <summary>
+        /// Number of achievements to be removed
+        /// </summary>
+        public int AchievementCount { get; set; }
+
+        /// <summary>
+        /// Number of badges to be removed
+        /// </summary>
+        public int BadgeCount { get; set; }
+
+        /// <summary>
+        /// Number of rewards to be removed
+        /// </summary>
+        public int RewardCount { get; set; }
+
+        /// <summary>
+        /// Number of challenge progresses to be removed
+        /// </summary>
+        public int ChallengeProgressCount { get; set; }
+
+        /// <summary>
+        /// Character level before reset
+        /// </summary>
+        public int CharacterLevel { get; set; }
+
+        /// <summary>
+        /// Character XP before reset
+        /// </summary>
+        public int CharacterXP { get; set; }
+
+        /// <summary>
+        /// Unlocked characters before reset
+        /// </summary>
+        public string[] UnlockedCharacters { get; set; } = new string[0];
+    }
 } 

@@ -44,12 +44,6 @@ public class DataSeeder
                 await SeedAdminUserAsync(context, logger, authHelper);
             }
             
-            // Seed regular users if needed (excluding admin)
-            if (!await context.Users.AnyAsync(u => u.Role == "User"))
-            {
-                await SeedRegularUsersAsync(context, logger, authHelper);
-            }
-            
             // Seed family roles
             if (!await context.FamilyRoles.AnyAsync())
             {
@@ -118,40 +112,6 @@ public class DataSeeder
         {
             logger.LogError(ex, "Error seeding admin user");
         }
-    }
-    
-    private async Task SeedRegularUsersAsync(ApplicationDbContext context, ILogger logger, AuthHelper? authHelper)
-    {
-        if (authHelper == null)
-        {
-            logger.LogWarning("AuthHelper not provided - cannot seed users");
-            return;
-        }
-        
-        logger.LogInformation("Seeding regular users...");
-        
-        // Create a proper password hash for a very simple password
-        authHelper.CreatePasswordHash("password", out string passwordHash, out string salt);
-
-        // Add default regular user for testing
-        User user = new User
-        {
-            Username = "user",
-            Email = "user@tasktracker.com",
-            PasswordHash = passwordHash,
-            Salt = salt,
-            Role = "User",
-            FirstName = "Regular",
-            LastName = "User",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true,
-            AgeGroup = FamilyMemberAgeGroup.Adult
-        };
-        
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-        
-        logger.LogInformation("Regular user created with email: user@tasktracker.com and password: password");
     }
     
     private async Task SeedFamilyRolesAsync(ApplicationDbContext context, ILogger logger)

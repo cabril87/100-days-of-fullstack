@@ -12,7 +12,6 @@ using AutoMapper;
 using System;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models.Gamification;
-using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Profiles
 {
@@ -20,27 +19,29 @@ namespace TaskTrackerAPI.Profiles
     {
         public BadgeProfile()
         {
-            // Badge -> BadgeDTO
-            CreateMap<TaskTrackerAPI.Models.Badge, BadgeDTO>()
-                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconPath ?? string.Empty))
-                .ForMember(dest => dest.Rarity, opt => opt.MapFrom(src => "Common")); // Default value
+            // Gamification Badge -> BadgeDTO
+            CreateMap<Badge, BadgeDTO>()
+                .ForMember(dest => dest.IconUrl, opt => opt.MapFrom(src => src.IconUrl ?? string.Empty));
                 
-            // BadgeCreateUpdateDTO -> Badge
-            CreateMap<BadgeCreateUpdateDTO, TaskTrackerAPI.Models.Badge>()
+            // BadgeCreateUpdateDTO -> Gamification Badge
+            CreateMap<BadgeCreateUpdateDTO, Badge>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.IconPath, opt => opt.MapFrom(src => src.IconUrl))
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.UserBadges, opt => opt.Ignore());
                 
-            // UserBadge -> UserBadgeDTO
-            CreateMap<TaskTrackerAPI.Models.UserBadge, UserBadgeDTO>()
-                .ForMember(dest => dest.Badge, opt => opt.MapFrom(src => src.Badge));
+            // Gamification UserBadge -> UserBadgeDTO
+            CreateMap<UserBadge, UserBadgeDTO>()
+                .ForMember(dest => dest.Badge, opt => opt.MapFrom(src => src.Badge))
+                .ForMember(dest => dest.AwardNote, opt => opt.MapFrom(src => src.AwardNote))
+                .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.AwardNote)); // Map to both properties
                 
-            // UserBadgeDTO -> UserBadge
-            CreateMap<UserBadgeDTO, TaskTrackerAPI.Models.UserBadge>()
+            // UserBadgeDTO -> Gamification UserBadge
+            CreateMap<UserBadgeDTO, UserBadge>()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
                 .ForMember(dest => dest.User, opt => opt.Ignore())
-                .ForMember(dest => dest.Badge, opt => opt.Ignore());
+                .ForMember(dest => dest.Badge, opt => opt.Ignore())
+                .ForMember(dest => dest.AwardNote, opt => opt.MapFrom(src => src.AwardNote ?? src.Notes));
         }
     }
 } 

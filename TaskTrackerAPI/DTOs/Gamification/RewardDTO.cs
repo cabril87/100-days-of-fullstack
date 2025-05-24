@@ -83,5 +83,17 @@ namespace TaskTrackerAPI.DTOs.Gamification
         /// Date when the reward was created
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        /// Whether this reward is available to the current user (based on level)
+        
+        public bool IsAvailable { get; set; } = true;
+        
+        /// Current user's level (for frontend to display lock state)
+        
+        public int UserLevel { get; set; }
+        
+        /// Current user's points (for frontend to show if they can afford it)
+        
+        public int UserPoints { get; set; }
     }
 } 

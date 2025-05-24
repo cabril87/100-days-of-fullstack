@@ -90,4 +90,84 @@ namespace TaskTrackerAPI.DTOs.Gamification
         
         public LeaderboardEntryDTO? CurrentUserRank { get; set; }
     }
+
+    /// <summary>
+    /// Data transfer object for user task count data
+    /// </summary>
+    public class UserTaskCountDTO
+    {
+        /// <summary>
+        /// User identifier
+        /// </summary>
+        public int UserId { get; set; }
+
+        /// <summary>
+        /// Number of completed tasks
+        /// </summary>
+        public int Count { get; set; }
+    }
+
+    /// <summary>
+    /// Data transfer object for user summary information
+    /// </summary>
+    public class UserSummaryDTO
+    {
+        /// <summary>
+        /// User identifier
+        /// </summary>
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Username for display
+        /// </summary>
+        public string Username { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Data transfer object for user progress data with points
+    /// </summary>
+    public class UserProgressDataDTO
+    {
+        /// <summary>
+        /// User identifier
+        /// </summary>
+        public int UserId { get; set; }
+
+        /// <summary>
+        /// Total points earned by the user
+        /// </summary>
+        public int TotalPointsEarned { get; set; }
+    }
+
+    /// <summary>
+    /// Data transfer object for user progress data with streak
+    /// </summary>
+    public class UserStreakDataDTO
+    {
+        /// <summary>
+        /// User identifier
+        /// </summary>
+        public int UserId { get; set; }
+
+        /// <summary>
+        /// Current streak days
+        /// </summary>
+        public int CurrentStreak { get; set; }
+    }
+
+    /// <summary>
+    /// Data transfer object for general user task count data (allows nullable UserId)
+    /// </summary>
+    public class GeneralUserTaskCountDTO
+    {
+        /// <summary>
+        /// User identifier (nullable for general queries)
+        /// </summary>
+        public int? UserId { get; set; }
+
+        /// <summary>
+        /// Number of completed tasks
+        /// </summary>
+        public int Count { get; set; }
+    }
 } 

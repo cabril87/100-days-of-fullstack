@@ -18,6 +18,8 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Gamification;
+using GamificationModels = TaskTrackerAPI.Models.Gamification;
 using TaskTrackerAPI.Services.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -41,7 +43,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                IEnumerable<Badge> badges = await _context.Badges
+                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
                     .Where(b => !b.IsSpecial)
                     .OrderBy(b => b.Name)
                     .ToListAsync();
@@ -60,7 +62,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                Badge? badge = await _context.Badges
+                GamificationModels.Badge? badge = await _context.Badges
                     .FirstOrDefaultAsync(b => b.Id == id);
 
                 return badge != null 
@@ -79,7 +81,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                IEnumerable<Badge> badges = await _context.Badges
+                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
                     .Where(b => !b.IsSpecial && b.Category == category)
                     .OrderBy(b => b.Name)
                     .ToListAsync();
@@ -99,7 +101,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Since we don't have Rarity property, just return all badges for now
-                IEnumerable<Badge> badges = await _context.Badges
+                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
                     .Where(b => !b.IsSpecial)
                     .OrderBy(b => b.Name)
                     .ToListAsync();
@@ -118,7 +120,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                Badge badge = _mapper.Map<Badge>(badgeDto);
+                GamificationModels.Badge badge = _mapper.Map<GamificationModels.Badge>(badgeDto);
                 badge.CreatedAt = DateTime.UtcNow;
 
                 _context.Badges.Add(badge);
@@ -138,7 +140,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                Badge? existingBadge = await _context.Badges.FindAsync(id);
+                GamificationModels.Badge? existingBadge = await _context.Badges.FindAsync(id);
                 if (existingBadge == null)
                 {
                     return false;
@@ -147,7 +149,7 @@ namespace TaskTrackerAPI.Services
                 existingBadge.Name = name;
                 existingBadge.Description = description ?? string.Empty;
                 existingBadge.Category = category ?? string.Empty;
-                existingBadge.IconPath = imageUrl ?? string.Empty;
+                existingBadge.IconUrl = imageUrl ?? string.Empty;
                 // Badge doesn't have UpdatedAt property
                 
                 await _context.SaveChangesAsync();
@@ -165,7 +167,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                Badge? badge = await _context.Badges.FindAsync(id);
+                GamificationModels.Badge? badge = await _context.Badges.FindAsync(id);
                 
                 if (badge == null)
                 {
@@ -174,7 +176,7 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Check if badge is associated with users
-                List<UserBadge> userBadges = await _context.UserBadges
+                List<GamificationModels.UserBadge> userBadges = await _context.UserBadges
                     .Where(ub => ub.BadgeId == id)
                     .ToListAsync();
 
@@ -205,7 +207,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                List<UserBadge> userBadges = await _context.UserBadges
+                List<GamificationModels.UserBadge> userBadges = await _context.UserBadges
                     .Include(ub => ub.Badge)
                     .Where(ub => ub.UserId == userId)
                     .ToListAsync();
@@ -225,7 +227,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Check if user already has this badge
-                UserBadge? existingBadge = await _context.UserBadges
+                GamificationModels.UserBadge? existingBadge = await _context.UserBadges
                     .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
 
                 if (existingBadge != null)
@@ -235,7 +237,7 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Verify badge exists
-                Badge? badge = await _context.Badges.FindAsync(badgeId);
+                GamificationModels.Badge? badge = await _context.Badges.FindAsync(badgeId);
                 if (badge == null || badge.IsSpecial)
                 {
                     _logger.LogWarning("Badge {BadgeId} not found or special", badgeId);
@@ -243,7 +245,7 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Award badge to user
-                UserBadge userBadge = new UserBadge
+                GamificationModels.UserBadge userBadge = new GamificationModels.UserBadge
                 {
                     UserId = userId,
                     BadgeId = badgeId,
@@ -270,7 +272,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                UserBadge? userBadge = await _context.UserBadges
+                GamificationModels.UserBadge? userBadge = await _context.UserBadges
                     .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
 
                 if (userBadge == null)
@@ -297,7 +299,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                UserBadge? userBadge = await _context.UserBadges
+                GamificationModels.UserBadge? userBadge = await _context.UserBadges
                     .FirstOrDefaultAsync(ub => ub.Id == userBadgeId && ub.UserId == userId);
 
                 if (userBadge == null)
@@ -329,7 +331,7 @@ namespace TaskTrackerAPI.Services
 
                 try
                 {
-                    UserBadge? userBadge = await _context.UserBadges
+                    GamificationModels.UserBadge? userBadge = await _context.UserBadges
                         .FirstOrDefaultAsync(ub => ub.Id == userBadgeId && ub.UserId == userId);
 
                     if (userBadge == null)

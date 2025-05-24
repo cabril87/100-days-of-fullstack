@@ -54,6 +54,11 @@ namespace TaskTrackerAPI.Models
         [Required]
         public int Difficulty { get; set; } = 1;
         
+        /// <summary>
+        /// Minimum points required to join this challenge
+        /// </summary>
+        public int PointsRequired { get; set; } = 0;
+        
         [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         

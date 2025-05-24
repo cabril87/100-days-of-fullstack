@@ -48,8 +48,19 @@ namespace TaskTrackerAPI.Models
         [Required]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         
+        // Character System Integration
+        public string CurrentCharacterClass { get; set; } = "explorer";
+        
+        public int CharacterXP { get; set; } = 0;
+        
+        public int CharacterLevel { get; set; } = 1;
+        
+        public string UnlockedCharacters { get; set; } = "explorer"; // Comma-separated list
+        
+        public string UserTier { get; set; } = "bronze"; // bronze, silver, gold, platinum, diamond, onyx
+        
         // Navigation property
         [ForeignKey("UserId")]
-        public User? User { get; set; }
+        public virtual User User { get; set; } = null!;
     }
 } 
