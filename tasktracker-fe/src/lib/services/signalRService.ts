@@ -1,195 +1,295 @@
-'use client';
+/**
+ * SignalR Service for Real-time Gamification Updates
+ * 
+ * This service provides real-time updates for:
+ * - Point changes
+ * - New achievements unlocked
+ * - Leaderboard position changes
+ * - Daily login status updates
+ * - Family member activities
+ */
 
-import { HubConnectionBuilder, HubConnection, LogLevel, HubConnectionState } from '@microsoft/signalr';
+import React from 'react';
+import * as signalR from '@microsoft/signalr';
 
-// Define the notification types we expect from the server
-export interface NotificationMessage {
-  id: number;
-  title: string;
-  message: string;
-  type: string;
-  notificationType: string;
-  isRead: boolean;
-  isImportant: boolean;
-  createdAt: string;
-  relatedEntityId?: number;
-  relatedEntityType?: string;
+interface GamificationEvent {
+  type: 'points_earned' | 'achievement_unlocked' | 'level_up' | 'streak_updated' | 'challenge_progress' | 'badge_earned' | 'reward_redeemed';
+  data: any;
+  userId: number;
+  timestamp: string;
 }
 
-export interface NotificationActionResult {
-  notificationId: number;
-  action: string;
-  success: boolean;
-  message: string;
-  data?: any;
-}
-
-export interface NotificationCounts {
-  totalCount: number;
-  unreadCount: number;
-  importantCount: number;
-  taskCount: number;
-  familyCount: number;
-  systemCount: number;
+export interface SignalREvents {
+  onGamificationUpdate: (update: GamificationEvent) => void;
+  onConnected: () => void;
+  onDisconnected: () => void;
+  onError: (error: Error) => void;
 }
 
 class SignalRService {
-  private hubConnection: HubConnection | null = null;
-  private notificationHubConnection: HubConnection | null = null;
-  private notificationCallbacks: ((notification: NotificationMessage) => void)[] = [];
-  private countUpdateCallbacks: ((count: number) => void)[] = [];
-  private actionResultCallbacks: ((result: NotificationActionResult) => void)[] = [];
-  private familyNotificationCallbacks: ((notification: NotificationMessage) => void)[] = [];
-  private connectionPromise: Promise<void> | null = null;
-  
-  // Fetch CSRF token for SignalR connection
-  private async fetchCSRFToken(): Promise<string> {
-    try {
-      const response = await fetch('/api/auth/csrf-token');
-      const data = await response.json();
-      return data.token || '';
-    } catch (error) {
-      console.error('Failed to fetch CSRF token:', error);
-      return '';
+  private connection: signalR.HubConnection | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000; // Start with 1 second
+  private eventHandlers: Map<string, Function[]> = new Map();
+
+  constructor() {
+    // Only initialize on client side
+    if (typeof window !== 'undefined') {
+      this.initializeConnection();
     }
   }
-  
-  // Initialize and connect to the notification hub
-  async connectToNotificationHub(): Promise<void> {
-    if (this.notificationHubConnection && 
-        this.notificationHubConnection.state === HubConnectionState.Connected) {
-      return;
-    }
-    
-    if (this.connectionPromise) {
-      return this.connectionPromise;
-    }
-    
-    this.connectionPromise = new Promise<void>(async (resolve, reject) => {
-      try {
-        // Get CSRF token for SignalR connection
-        const csrfToken = await this.fetchCSRFToken();
-        
-        // Build the hub connection
-        this.notificationHubConnection = new HubConnectionBuilder()
-          .withUrl('/api/hubs/notifications', {
-            headers: {
-              'X-CSRF-TOKEN': csrfToken
-            }
+
+  private async initializeConnection() {
+    try {
+      // Only run on client side
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      
+      this.connection = new signalR.HubConnectionBuilder()
+        .withUrl(`${baseUrl}/gamificationHub`, {
+          accessTokenFactory: () => {
+            return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+          },
+          transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
           })
-          .withAutomaticReconnect()
-          .configureLogging(LogLevel.Information)
+        .withAutomaticReconnect({
+          nextRetryDelayInMilliseconds: (retryContext) => {
+            // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+            return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 16000);
+          }
+        })
+        .configureLogging(signalR.LogLevel.Information)
           .build();
 
         // Set up event handlers
-        this.notificationHubConnection.on('ReceiveNotification', (notification: NotificationMessage) => {
-          this.notificationCallbacks.forEach(callback => callback(notification));
-        });
-        
-        this.notificationHubConnection.on('UnreadCountUpdated', (count: number) => {
-          this.countUpdateCallbacks.forEach(callback => callback(count));
-        });
-        
-        this.notificationHubConnection.on('NotificationCountsUpdated', (counts: NotificationCounts) => {
-          // Pass unread count to the same callbacks
-          this.countUpdateCallbacks.forEach(callback => callback(counts.unreadCount));
-        });
-        
-        this.notificationHubConnection.on('NotificationActionResult', (result: NotificationActionResult) => {
-          this.actionResultCallbacks.forEach(callback => callback(result));
-        });
-        
-        this.notificationHubConnection.on('ReceiveFamilyNotification', (notification: NotificationMessage) => {
-          this.familyNotificationCallbacks.forEach(callback => callback(notification));
-        });
-        
-        // Start the connection
-        await this.notificationHubConnection.start();
-        console.log('Connected to notification hub');
-        resolve();
-      } catch (err) {
-        console.error('Error connecting to notification hub:', err);
-        this.connectionPromise = null;
-        reject(err);
-      }
+      this.setupEventHandlers();
+
+      // Start connection
+      await this.startConnection();
+    } catch (error) {
+      console.error('SignalR: Failed to initialize connection', error);
+    }
+  }
+
+  private setupEventHandlers() {
+    if (!this.connection) return;
+
+    // Handle incoming gamification updates
+    this.connection.on('GamificationUpdate', (update: GamificationEvent) => {
+      console.log('Received gamification update:', update);
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
     });
-    
-    return this.connectionPromise;
+
+    // Handle points earned specifically
+    this.connection.on('PointsEarned', (data: { points: number; reason: string; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'points_earned',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+        });
+        
+    // Handle achievement unlocked
+    this.connection.on('AchievementUnlocked', (data: { achievementName: string; achievementId: number; points: number; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'achievement_unlocked',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+        });
+        
+    // Handle level up
+    this.connection.on('LevelUp', (data: { newLevel: number; oldLevel: number; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'level_up',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+    });
+
+    // Handle streak updates
+    this.connection.on('StreakUpdated', (data: { currentStreak: number; isNewRecord: boolean; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'streak_updated',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+    });
+
+    // Handle challenge progress
+    this.connection.on('ChallengeProgress', (data: { challengeName: string; progress: number; target: number; isCompleted: boolean; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'challenge_progress',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+    });
+
+    // Handle badge earned
+    this.connection.on('BadgeEarned', (data: { badgeName: string; badgeId: number; rarity: string; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'badge_earned',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+    });
+
+    // Handle reward redeemed
+    this.connection.on('RewardRedeemed', (data: { rewardName: string; pointsCost: number; userId: number }) => {
+      const update: GamificationEvent = {
+        type: 'reward_redeemed',
+        data,
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onGamificationUpdate')?.forEach(handler => handler(update));
+    });
+
+    // Connection events
+    this.connection.onclose((error) => {
+      console.log('SignalR connection closed:', error);
+      this.eventHandlers.get('onDisconnected')?.forEach(handler => handler());
+      this.handleReconnection();
+    });
+
+    this.connection.onreconnecting((error) => {
+      console.log('SignalR reconnecting:', error);
+    });
+
+    this.connection.onreconnected((connectionId) => {
+      console.log('SignalR reconnected:', connectionId);
+      this.reconnectAttempts = 0;
+      this.eventHandlers.get('onConnected')?.forEach(handler => handler());
+    });
   }
   
-  // Join a family notification group
-  async joinFamilyNotificationGroup(familyId: number): Promise<void> {
-    if (!this.notificationHubConnection || 
-        this.notificationHubConnection.state !== HubConnectionState.Connected) {
-      await this.connectToNotificationHub();
+  private async handleReconnection() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached');
+      this.eventHandlers.get('onError')?.forEach(handler => handler(new Error('Failed to reconnect to real-time updates')));
+      return;
+  }
+  
+    this.reconnectAttempts++;
+    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+
+    setTimeout(() => {
+      this.startConnection();
+    }, this.reconnectDelay * this.reconnectAttempts);
+  }
+
+  public on<K extends keyof SignalREvents>(event: K, callback: SignalREvents[K]) {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, []);
     }
-    
-    if (this.notificationHubConnection) {
-      await this.notificationHubConnection.invoke('JoinFamilyNotificationGroup', familyId);
-      console.log(`Joined family notification group ${familyId}`);
+    this.eventHandlers.get(event)?.push(callback);
+  }
+
+  public off<K extends keyof SignalREvents>(event: K) {
+    this.eventHandlers.delete(event);
+  }
+
+  public async startConnection(): Promise<boolean> {
+    if (!this.connection) {
+      await this.initializeConnection();
+    }
+
+    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+      return true;
+    }
+
+    try {
+      await this.connection?.start();
+      console.log('SignalR connected successfully');
+      this.reconnectAttempts = 0;
+      this.eventHandlers.get('onConnected')?.forEach(handler => handler());
+      return true;
+    } catch (error) {
+      console.error('Failed to connect to SignalR:', error);
+      this.eventHandlers.get('onError')?.forEach(handler => handler(error as Error));
+      return false;
+    }
+  }
+
+  public async disconnect(): Promise<void> {
+    try {
+      await this.connection?.stop();
+      console.log('SignalR disconnected');
+    } catch (error) {
+      console.error('Error disconnecting SignalR:', error);
     }
   }
   
-  // Leave a family notification group
-  async leaveFamilyNotificationGroup(familyId: number): Promise<void> {
-    if (this.notificationHubConnection && 
-        this.notificationHubConnection.state === HubConnectionState.Connected) {
-      await this.notificationHubConnection.invoke('LeaveFamilyNotificationGroup', familyId);
-      console.log(`Left family notification group ${familyId}`);
+  public getConnectionState(): signalR.HubConnectionState | null {
+    return this.connection?.state || null;
+  }
+
+  public isConnected(): boolean {
+    return this.connection?.state === signalR.HubConnectionState.Connected;
+  }
+
+  // Join specific groups for targeted updates
+  public async joinUserGroup(userId: number): Promise<void> {
+    if (this.isConnected()) {
+    try {
+        await this.connection?.invoke('JoinUserGroup', userId);
+        console.log(`Joined user group: ${userId}`);
+      } catch (error) {
+        console.error('Failed to join user group:', error);
+      }
     }
   }
-  
-  // Disconnect from the notification hub
-  async disconnect(): Promise<void> {
-    if (this.notificationHubConnection) {
-      await this.notificationHubConnection.stop();
-      console.log('Disconnected from notification hub');
+
+  public async joinFamilyGroup(familyId: number): Promise<void> {
+    if (this.isConnected()) {
+      try {
+        await this.connection?.invoke('JoinFamilyGroup', familyId);
+        console.log(`Joined family group: ${familyId}`);
+      } catch (error) {
+        console.error('Failed to join family group:', error);
+      }
     }
-    
-    this.connectionPromise = null;
   }
-  
-  // Register a callback for new notifications
-  onNotification(callback: (notification: NotificationMessage) => void): () => void {
-    this.notificationCallbacks.push(callback);
-    
-    // Return a function to unregister the callback
-    return () => {
-      this.notificationCallbacks = this.notificationCallbacks.filter(cb => cb !== callback);
-    };
+
+  public async leaveUserGroup(userId: number): Promise<void> {
+    if (this.isConnected()) {
+      try {
+        await this.connection?.invoke('LeaveUserGroup', userId);
+        console.log(`Left user group: ${userId}`);
+    } catch (error) {
+        console.error('Failed to leave user group:', error);
+      }
+    }
   }
-  
-  // Register a callback for unread count updates
-  onUnreadCountUpdate(callback: (count: number) => void): () => void {
-    this.countUpdateCallbacks.push(callback);
-    
-    // Return a function to unregister the callback
-    return () => {
-      this.countUpdateCallbacks = this.countUpdateCallbacks.filter(cb => cb !== callback);
-    };
-  }
-  
-  // Register a callback for notification action results
-  onActionResult(callback: (result: NotificationActionResult) => void): () => void {
-    this.actionResultCallbacks.push(callback);
-    
-    // Return a function to unregister the callback
-    return () => {
-      this.actionResultCallbacks = this.actionResultCallbacks.filter(cb => cb !== callback);
-    };
-  }
-  
-  // Register a callback for family notifications
-  onFamilyNotification(callback: (notification: NotificationMessage) => void): () => void {
-    this.familyNotificationCallbacks.push(callback);
-    
-    // Return a function to unregister the callback
-    return () => {
-      this.familyNotificationCallbacks = this.familyNotificationCallbacks.filter(cb => cb !== callback);
-    };
+
+  public async leaveFamilyGroup(familyId: number): Promise<void> {
+    if (this.isConnected()) {
+      try {
+        await this.connection?.invoke('LeaveFamilyGroup', familyId);
+        console.log(`Left family group: ${familyId}`);
+      } catch (error) {
+        console.error('Failed to leave family group:', error);
+      }
+    }
   }
 }
 
-// Singleton instance
+// Create singleton instance
 export const signalRService = new SignalRService();
 export default signalRService; 

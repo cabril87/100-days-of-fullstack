@@ -9,8 +9,20 @@ import { useAuth } from '@/lib/providers/AuthContext';
 import { authService } from '@/lib/services/authService';
 import { familyService } from '@/lib/services/familyService';
 import { notificationService } from '@/lib/services/notificationService';
-import { UserPlus, Check, X, Loader2 } from 'lucide-react';
+import { 
+  UserPlus, 
+  Check, 
+  X, 
+  Loader2, 
+  User, 
+  Shield, 
+  Mail, 
+  Settings,
+  Crown,
+  Star
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatsCard } from '@/components/ui/card';
 
 // Schema for profile update
 const profileSchema = z.object({
@@ -232,334 +244,451 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">Your Profile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="container mx-auto p-4 max-w-6xl">
+        {/* Header Section */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+            Your Profile
+          </h1>
+          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+        </div>
+
+        {/* Profile Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <StatsCard
+            title="Account Status"
+            value="Active"
+            icon={<User className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-green-400 to-emerald-500"
+            isLoading={false}
+          />
+          <StatsCard
+            title="Member Since"
+            value={user.createdAt ? new Date(user.createdAt).getFullYear().toString() : 'Unknown'}
+            icon={<Crown className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-purple-400 to-indigo-500"
+            isLoading={false}
+          />
+          <StatsCard
+            title="Profile"
+            value="Premium"
+            icon={<Star className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-yellow-400 to-orange-500"
+            isLoading={false}
+          />
+        </div>
       
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`pb-4 px-1 ${
-              activeTab === 'profile'
-                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Profile Information
-          </button>
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`pb-4 px-1 ${
-              activeTab === 'security'
-                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Security
-          </button>
-          <button
-            onClick={() => setActiveTab('invitations')}
-            className={`pb-4 px-1 ${
-              activeTab === 'invitations'
-                ? 'border-b-2 border-blue-500 font-medium text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Family Invitations
-          </button>
-        </nav>
-      </div>
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+          <nav className="flex space-x-0 p-2">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all duration-200 ${
+                activeTab === 'profile'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <User className="h-4 w-4" />
+              Profile Information
+            </button>
+            <button
+              onClick={() => setActiveTab('security')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all duration-200 ${
+                activeTab === 'security'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Shield className="h-4 w-4" />
+              Security
+            </button>
+            <button
+              onClick={() => setActiveTab('invitations')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg transition-all duration-200 ${
+                activeTab === 'invitations'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Mail className="h-4 w-4" />
+              Family Invitations
+              {pendingInvitations.length > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {pendingInvitations.length}
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
 
-      {activeTab === 'profile' && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">Profile Information</h2>
-          
-          {updateSuccess && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              Profile updated successfully.
-            </div>
-          )}
-          
-          {updateError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {updateError}
-            </div>
-          )}
-          
-          <form onSubmit={handleProfileSubmit(onProfileSubmit)}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  {...profileRegister('username')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {profileErrors.username && (
-                  <p className="mt-1 text-sm text-red-600">{profileErrors.username.message}</p>
-                )}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600">
+                <User className="h-6 w-6 text-white" />
               </div>
-              
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  {...profileRegister('email')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {profileErrors.email && (
-                  <p className="mt-1 text-sm text-red-600">{profileErrors.email.message}</p>
-                )}
-              </div>
-              
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  type="text"
-                  {...profileRegister('firstName')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  type="text"
-                  {...profileRegister('lastName')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Display Name
-                </label>
-                <input
-                  id="displayName"
-                  type="text"
-                  {...profileRegister('displayName')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  This is the name that will be displayed to other users.
-                </p>
+                <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
+                <p className="text-gray-600">Update your personal details and preferences</p>
               </div>
             </div>
             
-            <div className="mt-6">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {activeTab === 'security' && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">Change Password</h2>
-          
-          {passwordSuccess && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              Password changed successfully.
-            </div>
-          )}
-          
-          {passwordError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {passwordError}
-            </div>
-          )}
-          
-          <form onSubmit={handlePasswordSubmit(onPasswordSubmit)}>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Password
-                </label>
-                <input
-                  id="currentPassword"
-                  type="password"
-                  {...passwordRegister('currentPassword')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {passwordErrors.currentPassword && (
-                  <p className="mt-1 text-sm text-red-600">{passwordErrors.currentPassword.message}</p>
-                )}
+            {updateSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+                <Check className="h-5 w-5" />
+                Profile updated successfully.
               </div>
-              
-              <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password
-                </label>
-                <input
-                  id="newPassword"
-                  type="password"
-                  {...passwordRegister('newPassword')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {passwordErrors.newPassword && (
-                  <p className="mt-1 text-sm text-red-600">{passwordErrors.newPassword.message}</p>
-                )}
-                <p className="mt-1 text-sm text-gray-500">
-                  Password must be at least 8 characters.
-                </p>
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  {...passwordRegister('confirmPassword')}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {passwordErrors.confirmPassword && (
-                  <p className="mt-1 text-sm text-red-600">{passwordErrors.confirmPassword.message}</p>
-                )}
-              </div>
-            </div>
+            )}
             
-            <div className="mt-6">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Changing...' : 'Change Password'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {activeTab === 'invitations' && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium mb-4">Pending Family Invitations</h2>
-          
-          {loadingInvitations ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : invitationsError ? (
-            <div className="py-8 text-center">
-              <p className="text-red-500">{invitationsError}</p>
-            </div>
-          ) : pendingInvitations.length === 0 ? (
-            <div className="py-8 text-center">
-              <UserPlus className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-              <p className="text-gray-500">No pending invitations</p>
-              <p className="text-sm text-gray-400 mt-1">
-                When someone invites you to join their family, you'll see the invitation here.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingInvitations.map((invitation) => {
-                const isProcessing = processingInvitationIds.includes(invitation.id);
-                return (
-                  <div key={invitation.id} className="border rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <UserPlus className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">{invitation.familyName || 'Family'} Invitation</h3>
-                        <p className="text-sm text-gray-500">
-                          You've been invited to join {invitation.familyName || 'a family'}.
-                        </p>
-                        {invitation.invitedBy && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Invited by: {invitation.invitedBy}
-                          </p>
-                        )}
-                        <div className="flex gap-2 mt-3">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeclineInvitation(invitation.id, invitation.token)}
-                            disabled={isProcessing}
-                          >
-                            {isProcessing ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <X className="h-4 w-4 mr-1" />
-                            )}
-                            Decline
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAcceptInvitation(invitation.id, invitation.token)}
-                            disabled={isProcessing}
-                          >
-                            {isProcessing ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <Check className="h-4 w-4 mr-1" />
-                            )}
-                            Accept
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="flex justify-center mt-4">
+            {updateError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+                <X className="h-5 w-5" />
+                {updateError}
+              </div>
+            )}
+            
+            <form onSubmit={handleProfileSubmit(onProfileSubmit)}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    {...profileRegister('username')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {profileErrors.username && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <X className="h-4 w-4" />
+                      {profileErrors.username?.message}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    {...profileRegister('email')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {profileErrors.email && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <X className="h-4 w-4" />
+                      {profileErrors.email?.message}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    {...profileRegister('firstName')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    {...profileRegister('lastName')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Display Name
+                  </label>
+                  <input
+                    id="displayName"
+                    type="text"
+                    {...profileRegister('displayName')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  <p className="mt-2 text-sm text-gray-500">
+                    This is the name that will be displayed to other users.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-8 flex justify-end">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={loadPendingInvitations}
-                  disabled={loadingInvitations}
+                  type="submit"
+                  disabled={isSubmitting}
+                  variant="purple"
+                  className="min-w-[140px]"
                 >
-                  {loadingInvitations ? (
+                  {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Refreshing...
+                      Saving...
                     </>
                   ) : (
-                    'Refresh Invitations'
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
                   )}
                 </Button>
               </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'security' && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-lg bg-gradient-to-r from-red-500 to-red-600">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Security Settings</h2>
+                <p className="text-gray-600">Keep your account secure with a strong password</p>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+            
+            {passwordSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+                <Check className="h-5 w-5" />
+                Password changed successfully.
+              </div>
+            )}
+            
+            {passwordError && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6 flex items-center gap-2">
+                <X className="h-5 w-5" />
+                {passwordError}
+              </div>
+            )}
+            
+            <form onSubmit={handlePasswordSubmit(onPasswordSubmit)}>
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Password
+                  </label>
+                  <input
+                    id="currentPassword"
+                    type="password"
+                    {...passwordRegister('currentPassword')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {passwordErrors.currentPassword && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <X className="h-4 w-4" />
+                      {passwordErrors.currentPassword?.message}
+                    </p>
+                  )}
+                </div>
+                
+                <div>
+                  <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    New Password
+                  </label>
+                  <input
+                    id="newPassword"
+                    type="password"
+                    {...passwordRegister('newPassword')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {passwordErrors.newPassword && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <X className="h-4 w-4" />
+                      {passwordErrors.newPassword?.message}
+                    </p>
+                  )}
+                  <p className="mt-2 text-sm text-gray-500">
+                    Password must be at least 8 characters.
+                  </p>
+                </div>
+                
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm New Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    {...passwordRegister('confirmPassword')}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {passwordErrors.confirmPassword && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <X className="h-4 w-4" />
+                      {passwordErrors.confirmPassword?.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-8 flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  variant="purple"
+                  className="min-w-[140px]"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Changing...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4 mr-2" />
+                      Change Password
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'invitations' && (
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600">
+                <Mail className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Pending Family Invitations</h2>
+                <p className="text-gray-600">Manage your family membership invitations</p>
+              </div>
+            </div>
+            
+            {loadingInvitations ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+              </div>
+            ) : invitationsError ? (
+              <div className="py-12 text-center">
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg inline-flex items-center gap-2">
+                  <X className="h-5 w-5" />
+                  {invitationsError}
+                </div>
+              </div>
+            ) : pendingInvitations.length === 0 ? (
+              <div className="py-12 text-center">
+                <div className="w-16 h-16 mx-auto bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4">
+                  <UserPlus className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending invitations</h3>
+                <p className="text-gray-500 max-w-md mx-auto">
+                  When someone invites you to join their family, you'll see the invitation here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingInvitations.map((invitation) => {
+                  const isProcessing = processingInvitationIds.includes(invitation.id);
+                  return (
+                    <div key={invitation.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-gradient-to-r from-blue-100 to-blue-200 rounded-full">
+                          <UserPlus className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{invitation.familyName || 'Family'} Invitation</h3>
+                          <p className="text-gray-600 mt-1">
+                            You've been invited to join {invitation.familyName || 'a family'}.
+                          </p>
+                          {invitation.invitedBy && (
+                            <p className="text-sm text-gray-500 mt-2">
+                              Invited by: <span className="font-medium">{invitation.invitedBy}</span>
+                            </p>
+                          )}
+                          <div className="flex gap-3 mt-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeclineInvitation(invitation.id, invitation.token)}
+                              disabled={isProcessing}
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <X className="h-4 w-4 mr-2" />
+                              )}
+                              Decline
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="green"
+                              onClick={() => handleAcceptInvitation(invitation.id, invitation.token)}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <Check className="h-4 w-4 mr-2" />
+                              )}
+                              Accept
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={loadPendingInvitations}
+                    disabled={loadingInvitations}
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  >
+                    {loadingInvitations ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Refresh Invitations
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

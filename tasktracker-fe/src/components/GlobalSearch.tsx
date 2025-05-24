@@ -281,13 +281,11 @@ export default function GlobalSearch() {
           className="gap-2 text-gray-500 hover:text-gray-700 md:min-w-[200px] md:justify-between bg-white/80 backdrop-blur-sm border-gray-300 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300"
           onClick={() => setIsOpen(true)}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full">
             <SearchIcon className="h-4 w-4 text-gray-400" />
             <span className="hidden sm:inline text-gray-500">Search tasks & templates...</span>
           </div>
-          <kbd className="hidden md:flex h-5 items-center gap-1 rounded border bg-gray-50 px-1.5 font-mono text-[10px] font-medium text-gray-400 opacity-100">
-            <span className="text-xs">⌘</span>K
-          </kbd>
+         
         </Button>
       </DialogTrigger>
       

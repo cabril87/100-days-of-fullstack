@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatsCard, ProgressCard } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/lib/providers/AuthContext';
@@ -14,7 +15,18 @@ import { FocusHistory } from '@/components/focus/FocusHistory';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-
+import { 
+  CheckSquare, 
+  Clock, 
+  Target, 
+  TrendingUp, 
+  Users, 
+  Calendar, 
+  AlertTriangle,
+  Trophy,
+  Brain,
+  BarChart3
+} from 'lucide-react';
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -161,8 +173,13 @@ export default function DashboardPage() {
 
   if (authLoading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 animate-spin rounded-full border-4 border-dotted border-purple-500"></div>
+            <p className="text-gray-600 text-sm mt-4">Loading your dashboard...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -172,71 +189,150 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold text-brand-navy-dark mb-2">Dashboard</h1>
-        <p className="text-gray-600 text-xl">
-          Welcome back, {user?.displayName || user?.username || 'User'}
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent mb-4">
+            Dashboard
+          </h1>
+          <p className="text-gray-600 text-xl">
+            Welcome back, {user?.displayName || user?.username || 'User'}
+          </p>
+        </div>
+
+        {/* Stats Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Total Tasks"
+            value={taskStats.total.toString()}
+            icon={<CheckSquare className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-blue-500 to-blue-600"
+            isLoading={isLoading}
+          />
+          
+          <StatsCard
+            title="Completed"
+            value={taskStats.completed.toString()}
+            icon={<Trophy className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-green-500 to-emerald-600"
+            trend={taskStats.completionRate}
+            isLoading={isLoading}
+          />
+          
+          <StatsCard
+            title="In Progress"
+            value={taskStats.inProgress.toString()}
+            icon={<Clock className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-amber-500 to-orange-600"
+            isLoading={isLoading}
+          />
+          
+          <StatsCard
+            title="Due Soon"
+            value={taskStats.dueSoon.toString()}
+            icon={<AlertTriangle className="h-5 w-5 text-white" />}
+            bgColor="bg-gradient-to-br from-red-500 to-red-600"
+            isLoading={isLoading}
+          />
+        </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-8 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-gray-200">
-          <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Overview</TabsTrigger>
-          <TabsTrigger value="focus" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus Mode</TabsTrigger>
-          <TabsTrigger value="analytics" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Analytics</TabsTrigger>
-          <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Focus History</TabsTrigger>
-          <TabsTrigger value="family" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Family</TabsTrigger>
-          <TabsTrigger value="upcoming" className="rounded-full data-[state=active]:bg-brand-navy data-[state=active]:text-white">Upcoming Tasks</TabsTrigger>
+          <TabsList className="mb-8 bg-white/70 backdrop-blur-sm p-1 rounded-full border border-gray-200 shadow-sm">
+            <TabsTrigger value="overview" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="focus" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <Brain className="h-4 w-4 mr-2" />
+              Focus Mode
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="history" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <Calendar className="h-4 w-4 mr-2" />
+              History
+            </TabsTrigger>
+            <TabsTrigger value="family" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <Users className="h-4 w-4 mr-2" />
+              Family
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" className="rounded-full data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <Target className="h-4 w-4 mr-2" />
+              Upcoming
+            </TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="apple-card">
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Task Completion</h3>
-                <p className="text-gray-600 text-sm">Overall progress</p>
+              <ProgressCard
+                title="Task Completion"
+                currentValue={taskStats.completed}
+                maxValue={taskStats.total}
+                progress={taskStats.completionRate}
+                icon={<Trophy className="h-5 w-5 text-purple-600" />}
+                color="purple"
+                isLoading={isLoading}
+              />
+              
+              <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <Target className="h-5 w-5 text-blue-600" />
+                    Priority Distribution
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-32 bg-gray-200 rounded"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">High Priority</span>
+                        <span className="text-sm font-medium text-red-600">{taskStats.highPriority}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Medium Priority</span>
+                        <span className="text-sm font-medium text-amber-600">{taskStats.mediumPriority}</span>
               </div>
-              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.completionRate}%</div>
-              <Progress value={taskStats.completionRate} className="h-2 mb-2 bg-gray-100" />
-              <div className="text-sm text-gray-600">
-                {taskStats.completed} of {taskStats.total} tasks completed
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Low Priority</span>
+                        <span className="text-sm font-medium text-green-600">{taskStats.lowPriority}</span>
               </div>
             </div>
-            
-            <div className="apple-card">
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Due Soon</h3>
-                <p className="text-gray-600 text-sm">Tasks due in the next 3 days</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                    Urgent Tasks
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-16 bg-gray-200 rounded"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-sm font-medium text-red-800">Overdue</span>
+                        <span className="text-lg font-bold text-red-600">{taskStats.overdue}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <span className="text-sm font-medium text-amber-800">Due Soon</span>
+                        <span className="text-lg font-bold text-amber-600">{taskStats.dueSoon}</span>
               </div>
-              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.dueSoon}</div>
-              <div className="text-sm text-gray-600 mb-4">
-                {taskStats.dueSoon > 0 ? 
-                  <span className="text-brand-beige font-medium">Requires attention</span> : 
-                  <span className="text-green-600 font-medium">No urgent tasks</span>
-                }
               </div>
-              <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
-                View all tasks
-          </Link>
-            </div>
-            
-            <div className="apple-card">
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold mb-1 text-brand-navy-dark">Overdue</h3>
-                <p className="text-gray-600 text-sm">Tasks past their due date</p>
-              </div>
-              <div className="text-3xl font-bold text-brand-navy-dark mb-2">{taskStats.overdue}</div>
-              <div className="text-sm text-gray-600 mb-4">
-                {taskStats.overdue > 0 ? 
-                  <span className="text-brand-navy-dark font-medium">Action needed!</span> : 
-                  <span className="text-green-600 font-medium">All caught up</span>
-                }
-              </div>
-              <Link href="/tasks" className="text-brand-navy hover:text-brand-navy-dark text-sm font-medium">
-                View all tasks
-          </Link>
-        </div>
+                  )}
+                </CardContent>
+              </Card>
       </div>
 
           {/* Charts */}
@@ -343,7 +439,40 @@ export default function DashboardPage() {
           <FocusHistory />
         </TabsContent>
         
-        
+          <TabsContent value="family" className="space-y-6">
+            <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <Users className="h-5 w-5 text-purple-600" />
+                  Family Dashboard
+                </CardTitle>
+                <CardDescription>
+                  Shared tasks and family activities (Coming Soon)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center">
+                    <Users className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Family Features Coming Soon</h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      Share tasks with family members, create family goals, and track everyone's progress together.
+                    </p>
+                  </div>
+                  <div className="pt-4">
+                    <button 
+                      className="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+                      onClick={() => showToast('Family features coming in the next update!', 'info')}
+                    >
+                      Get Notified
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         
         <TabsContent value="upcoming" className="space-y-6">
           <Card>
@@ -425,6 +554,7 @@ export default function DashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 } 

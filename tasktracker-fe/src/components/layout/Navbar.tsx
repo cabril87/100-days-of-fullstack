@@ -74,6 +74,12 @@ export function Navbar() {
                     Focus Mode
                   </Link>
                 <Link
+                    href="/gamification"
+                    className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
+                  >
+                    Gamification
+                  </Link>
+                <Link
                     href="/family"
                     className="text-gray-700 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 border-transparent"
                 >
@@ -146,6 +152,14 @@ export function Navbar() {
                             onClick={() => setIsProfileMenuOpen(false)}
                           >
                             Focus Mode
+                          </Link>
+                          <Link
+                            href="/gamification"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-navy-dark"
+                            role="menuitem"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                          >
+                            Gamification
                           </Link>
                         <Link
                           href="/family"
@@ -282,6 +296,13 @@ export function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Focus Mode
+                </Link>
+                <Link
+                  href="/gamification"
+                  className="text-gray-700 hover:bg-gray-50 dark:text-gray-500 dark:hover:bg-navy block px-3 py-2 rounded-md text-base font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Gamification
                 </Link>
                 <Link
                   href="/family"

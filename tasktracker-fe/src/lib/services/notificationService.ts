@@ -1,6 +1,6 @@
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
-import signalRService from './signalRService';
+import { signalRService } from './signalRService';
 
 export interface Notification {
   id: string;
@@ -47,7 +47,7 @@ export interface NotificationPreference {
  */
 export async function initializeRealTimeNotifications(): Promise<void> {
   try {
-    await signalRService.connectToNotificationHub();
+    await signalRService.connect();
   } catch (error) {
     console.error('Failed to connect to notification hub:', error);
   }
@@ -57,35 +57,42 @@ export async function initializeRealTimeNotifications(): Promise<void> {
  * Register a callback for new notifications
  */
 export function onNewNotification(callback: (notification: any) => void): () => void {
-  return signalRService.onNotification(callback);
+  signalRService.on('notification', callback);
+  return () => signalRService.off('notification', callback);
 }
 
 /**
  * Register a callback for unread count updates
  */
 export function onUnreadCountUpdate(callback: (count: number) => void): () => void {
-  return signalRService.onUnreadCountUpdate(callback);
+  signalRService.on('unreadCountUpdate', callback);
+  return () => signalRService.off('unreadCountUpdate', callback);
 }
 
 /**
  * Register a callback for notification action results
  */
 export function onNotificationActionResult(callback: (result: any) => void): () => void {
-  return signalRService.onActionResult(callback);
+  signalRService.on('actionResult', callback);
+  return () => signalRService.off('actionResult', callback);
 }
 
 /**
  * Join a family notification group
  */
 export async function joinFamilyNotificationGroup(familyId: number): Promise<void> {
-  await signalRService.joinFamilyNotificationGroup(familyId);
+  if (signalRService.isConnected) {
+    await signalRService.sendMessage('JoinFamilyGroup', familyId);
+  }
 }
 
 /**
  * Leave a family notification group
  */
 export async function leaveFamilyNotificationGroup(familyId: number): Promise<void> {
-  await signalRService.leaveFamilyNotificationGroup(familyId);
+  if (signalRService.isConnected) {
+    await signalRService.sendMessage('LeaveFamilyGroup', familyId);
+  }
 }
 
 /**

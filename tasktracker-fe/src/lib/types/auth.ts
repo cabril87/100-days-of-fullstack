@@ -53,6 +53,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   clearError: () => void;
+  clearAllStorage: () => void;
   
   // Token Management
   getAccessToken: () => string | null;

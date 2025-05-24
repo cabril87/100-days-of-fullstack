@@ -27,7 +27,7 @@ export default function Login() {
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '/dashboard';
   const expired = searchParams?.get('expired') === 'true';
-  const { login, user, isLoading } = useAuth();
+  const { login, user, isLoading, clearAllStorage } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -42,6 +42,12 @@ export default function Login() {
       password: '',
     },
   });
+
+  const handleClearStorage = () => {
+    clearAllStorage();
+    setAuthError(null);
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (expired) {
@@ -173,6 +179,17 @@ export default function Login() {
             Create an account
           </Link>
         </p>
+
+        {/* Temporary button to clear storage */}
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={handleClearStorage}
+            className="text-xs text-gray-400 hover:text-gray-600 underline"
+          >
+            Clear Browser Storage (if seeing old data)
+          </button>
+        </div>
       </div>
     </div>
   );

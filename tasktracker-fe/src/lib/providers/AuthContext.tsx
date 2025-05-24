@@ -561,11 +561,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   // Utility functions
   const clearAuthStorage = () => {
-    if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
-    }
+    localStorage.removeItem('fingerprint');
+  };
+
+  // Add this new function for complete storage clearing
+  const clearAllStorage = () => {
+    localStorage.clear();
+    sessionStorage.clear();
   };
   
   const clearError = () => {
@@ -609,6 +614,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getTokenExpiry,
     updateUserActivity,
     isTokenExpired,
+    clearAllStorage,
   }), [state]);
   
   return (
