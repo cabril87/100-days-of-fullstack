@@ -1,5 +1,5 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/providers/AuthContext';
 import { TaskProvider } from "@/lib/providers/TaskProvider";
@@ -13,22 +13,27 @@ import { TemplateProvider } from '@/lib/providers/TemplateProvider';
 import { PWAProvider } from '@/lib/providers/PWAProvider';
 import FetchInterceptor from '@/components/FetchInterceptor';
 import DeletionOverlay from '@/components/DeletionOverlay';
+import SignalRManager from '@/components/SignalRManager';
 
 const inter = Inter({ subsets: ['latin'] });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#3b82f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#1e40af' },
+  ],
+};
 
 export const metadata: Metadata = {
   title: 'TaskTracker - Gamified Productivity',
   description: 'A gamified task tracking application with achievements, rewards, and family collaboration',
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   manifest: '/manifest.json',
-  themeColor: '#3b82f6',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover'
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -38,14 +43,9 @@ export const metadata: Metadata = {
     telephone: false
   },
   icons: {
-    icon: [
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' }
-    ],
-    apple: [
-      { url: '/icons/icon-152x152.png', sizes: '152x152', type: 'image/png' },
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' }
-    ]
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico'
   },
   other: {
     "Content-Security-Policy": 
@@ -88,6 +88,7 @@ export default function RootLayout({
                       <GamificationProvider>
                     <FetchInterceptor />
                     <DeletionOverlay />
+                    <SignalRManager />
                     <Navbar />
                     <main className="container mx-auto px-4 py-6">
                       {children}

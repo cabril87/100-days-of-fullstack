@@ -40,15 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Spinner } from '@/components/ui/spinner';
-
-interface NotificationPreferenceSummary {
-  enableGlobalNotifications: boolean;
-  enableTaskNotifications: boolean;
-  enableFamilyNotifications: boolean;
-  enableSystemNotifications: boolean;
-  enableEmailNotifications: boolean;
-  enablePushNotifications: boolean;
-}
+import { NotificationPreferenceSummary } from '@/lib/types/notification';
 
 interface PreferenceToggleProps {
   id: string;

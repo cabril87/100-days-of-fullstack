@@ -14,12 +14,13 @@ import {
   ApiCreateTaskRequest
 } from '@/lib/types/task';
 import { TaskFormData } from '../types/task';
-import DOMPurify from 'dompurify';
 import { mockTasks } from './mockData';
+import { fetchClient } from './fetchClient';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const USE_MOCK_DATA = false;
+const DISABLE_ALL_MOCK_DATA = true; // Force disable all mock data fallbacks
 
 let mockTasksData = [...mockTasks];
 
@@ -30,27 +31,10 @@ const sanitizeBasicString = (str: string): string => {
   return str.replace(/[^a-zA-Z0-9 ]/g, '');
 };
 
-// Function to sanitize data for API
-const sanitizeData = (data: any): any => {
-  if (!data) return data;
-  
-  const sanitized: any = {};
-  
-  Object.entries(data).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      if (typeof value === 'string') {
-        sanitized[key] = sanitizeBasicString(value);
-      } else {
-        sanitized[key] = value;
-      }
-    }
-  });
-  
-  return sanitized;
-};
+// Removed unused sanitizeData function
 
 // Debug helper function to track network activity
-const logNetworkActivity = (method: string, url: string, requestData?: any, responseStatus?: number, responseData?: any) => {
+const logNetworkActivity = (method: string, url: string, requestData?: unknown, responseStatus?: number, responseData?: unknown) => {
   console.log(`%cNETWORK ${method} to ${url}`, 'color: blue; font-weight: bold');
   
   if (requestData) {
@@ -159,7 +143,7 @@ async function testServerAuth(): Promise<boolean> {
 }
 
 // Function to create a task in the format the API expects
-function createSanitizedTask(task: TaskFormData): any {
+function createSanitizedTask(task: TaskFormData): Record<string, unknown> {
   // Remove all non-alphanumeric characters except spaces
   const safeTitle = task.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
   const safeDesc = task.description ? 
@@ -179,13 +163,7 @@ function createSanitizedTask(task: TaskFormData): any {
   
   // Create a result object with ONLY fields that exist in the database schema
   // Include only the basic fields known to exist in the C# Task model
-  const result: { 
-    Title: string; 
-    Description: string; 
-    Status: number; 
-    Priority: number;
-    [key: string]: any; 
-  } = {
+  const result: Record<string, unknown> = {
     Title: safeTitle,
     Description: safeDesc,
     Status: statusValue,
@@ -251,17 +229,7 @@ function createSqlSafeTask(): any {
   };
 }
 
-interface TaskAssignmentDTO {
-  taskId: number;
-  assignToUserId: string;
-  requiresApproval: boolean;
-}
-
-interface TaskApprovalDTO {
-  taskId: number;
-  approved: boolean;
-  feedback: string;
-}
+import { TaskAssignmentDTO, TaskApprovalDTO } from '@/lib/types/task';
 
 class TaskService {
   // Runs the diagnostic before any task operations
@@ -317,6 +285,64 @@ class TaskService {
     }
   }
 
+  // Helper to convert API task response to frontend format
+  private normalizeApiTask(apiTask: any): Task {
+    return {
+      ...apiTask,
+      // Convert C# enum status to frontend string format
+      status: this.mapApiStatusToFrontend(apiTask.status),
+      // Convert numeric priority to frontend string format
+      priority: this.mapApiPriorityToFrontend(apiTask.priority),
+      // Ensure description is a string (not null)
+      description: apiTask.description || '',
+      // Ensure dates are properly formatted
+      createdAt: apiTask.createdAt || new Date().toISOString(),
+      updatedAt: apiTask.updatedAt || new Date().toISOString(),
+      // Convert createdBy to string if it's a number
+      createdBy: apiTask.createdBy ? String(apiTask.createdBy) : '1'
+    };
+  }
+
+  // Map API status enum to frontend status
+  private mapApiStatusToFrontend(apiStatus: string | number): string {
+    if (typeof apiStatus === 'string') {
+      switch (apiStatus) {
+        case 'NotStarted': return 'todo';
+        case 'InProgress': return 'in-progress';
+        case 'Completed': return 'done';
+        default: return 'todo';
+      }
+    } else if (typeof apiStatus === 'number') {
+      switch (apiStatus) {
+        case 0: return 'todo';
+        case 1: return 'in-progress';
+        case 2: return 'done';
+        default: return 'todo';
+      }
+    }
+    return 'todo';
+  }
+
+  // Map API priority enum to frontend priority
+  private mapApiPriorityToFrontend(apiPriority: string | number): string {
+    if (typeof apiPriority === 'number') {
+      switch (apiPriority) {
+        case 0: return 'low';
+        case 1: return 'medium';
+        case 2: return 'high';
+        default: return 'medium';
+      }
+    } else if (typeof apiPriority === 'string') {
+      switch (apiPriority.toLowerCase()) {
+        case 'low': return 'low';
+        case 'medium': return 'medium';
+        case 'high': return 'high';
+        default: return 'medium';
+      }
+    }
+    return 'medium';
+  }
+
   async getTasks(params?: TaskQueryParams): Promise<ApiResponse<Task[]>> {
     if (USE_MOCK_DATA) {
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -329,7 +355,8 @@ class TaskService {
         }
         
         if (params.priority) {
-          filteredTasks = filteredTasks.filter(task => task.priority === params.priority);
+          const priorityString = String(params.priority);
+          filteredTasks = filteredTasks.filter(task => task.priority === priorityString);
         }
         
         if (params.search) {
@@ -365,53 +392,22 @@ class TaskService {
     }
     
     // Get tasks from API
+    console.log('TaskService: Calling API for tasks...');
     const apiResponse = await apiService.get<Task[]>(`/v1/taskitems${queryString ? `?${queryString}` : ''}`);
+    console.log('TaskService: Raw API response:', apiResponse);
     
-    // Try to load any mock tasks from localStorage
-    try {
-      const mockTasksJson = localStorage.getItem('mockTasks');
-      if (mockTasksJson) {
-        const mockTasks = JSON.parse(mockTasksJson) as Task[];
-        
-        // Filter mock tasks based on params
-        let filteredMockTasks = [...mockTasks];
-        if (params) {
-          if (params.status) {
-            filteredMockTasks = filteredMockTasks.filter(task => task.status === params.status);
-          }
-          
-          if (params.priority) {
-            filteredMockTasks = filteredMockTasks.filter(task => task.priority === params.priority);
-          }
-          
-          if (params.search) {
-            const searchLower = String(params.search).toLowerCase();
-            filteredMockTasks = filteredMockTasks.filter(task => 
-              task.title.toLowerCase().includes(searchLower) || 
-              (task.description?.toLowerCase() || '').includes(searchLower)
-            );
-          }
-        }
-        
-        // If API call was successful, merge real and mock tasks
-        if (apiResponse.data) {
-          return {
-            data: [...apiResponse.data, ...filteredMockTasks],
-            status: apiResponse.status
-          };
-        } else {
-          // If API call failed, just return mock tasks
-          return {
-            data: filteredMockTasks,
-            status: 200
-          };
-        }
-      }
-    } catch (e) {
-      console.error("Error loading mock tasks:", e);
+    // Normalize the API response to match frontend expectations
+    if (apiResponse.data && Array.isArray(apiResponse.data)) {
+      const normalizedTasks = apiResponse.data.map(task => this.normalizeApiTask(task));
+      console.log('TaskService: Normalized tasks:', normalizedTasks);
+      
+      return {
+        ...apiResponse,
+        data: normalizedTasks
+      };
     }
     
-    // If no mock tasks or error loading them, return the API response as is
+    console.log('TaskService: No data to normalize, returning API response as is');
     return apiResponse;
   }
 
@@ -543,49 +539,33 @@ class TaskService {
       
       // Create a sanitized task with proper casing and numeric enum values
       const apiTaskData = createSanitizedTask(task);
-      console.log("Using sanitized task data:", apiTaskData);
+      console.log("TaskService: Creating task with sanitized data:", apiTaskData);
       
-      try {
-        // Send the properly formatted task data to the API
-        const response = await apiService.post('/v1/taskitems', apiTaskData);
-        
-        if (response.status === 201 || response.status === 200) {
-          return {
-            data: response.data as Task,
-            status: response.status
-          };
-        } else if (response.status === 500) {
-          // For 500 errors (like encryption problems), generate a mock task
-          console.warn("Server error (500) - Falling back to mock task creation", response);
-          const mockTask = this.createMockTask(task);
-          return {
-            data: mockTask,
-            status: 200, // Return success status to avoid breaking the UI
-            details: { wasServerError: true, originalStatus: 500 }
-          };
-        } else {
-          console.error("Error creating task:", response.data && typeof response.data === 'object' ? 
-            (response.data as any).message || "Unknown error" : "Unknown error");
-          
-          // Return error response
-          return {
-            error: response.data && typeof response.data === 'object' ? 
-              (response.data as any).message || "Failed to create task" : "Failed to create task",
-            status: response.status
-          };
-        }
-      } catch (apiError) {
-        // Network or other API error - fallback to mock task
-        console.warn("API error - Falling back to mock task creation", apiError);
-        const mockTask = this.createMockTask(task);
+      // Send the properly formatted task data to the API
+      const response = await apiService.post('/v1/taskitems', apiTaskData);
+      console.log("TaskService: Create task API response:", response);
+      
+      if (response.status === 201 || response.status === 200) {
+        console.log("TaskService: Task created successfully via API");
+        const normalizedTask = this.normalizeApiTask(response.data);
+        console.log("TaskService: Normalized created task:", normalizedTask);
         return {
-          data: mockTask,
-          status: 200, // Return success status to avoid breaking the UI
-          details: { wasServerError: true, originalError: String(apiError) }
+          data: normalizedTask,
+          status: response.status
+        };
+      } else {
+        console.error("TaskService: Error creating task:", response.data && typeof response.data === 'object' ? 
+          (response.data as any).message || "Unknown error" : "Unknown error");
+        
+        // Return error response - NO MOCK FALLBACK
+        return {
+          error: response.data && typeof response.data === 'object' ? 
+            (response.data as any).message || "Failed to create task" : "Failed to create task",
+          status: response.status
         };
       }
     } catch (error) {
-      console.error("Error in createTask:", error);
+      console.error("TaskService: Error in createTask:", error);
       return { 
         error: error instanceof Error ? error.message : "An unexpected error occurred",
         status: 500
@@ -1005,7 +985,7 @@ class TaskService {
     return apiService.get<Task[]>('/v1/taskitems?due=today');
   }
 
-  async getTaskStatistics(): Promise<ApiResponse<any>> {
+  async getTaskStatistics(): Promise<ApiResponse<Record<string, unknown>>> {
     if (USE_MOCK_DATA) {
       await new Promise(resolve => setTimeout(resolve, 300));
       

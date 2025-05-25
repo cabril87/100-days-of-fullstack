@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Trophy, 
   Star, 
@@ -16,34 +16,16 @@ import {
 import Link from 'next/link';
 import { gamificationService } from '@/lib/services/gamificationService';
 import { useToast } from '@/lib/hooks/useToast';
-
-interface AchievementUI {
-  id: number;
-  name: string;
-  description: string;
-  pointValue: number;
-  category: string;
-  iconUrl?: string;
-  tier?: string;
-  rarity?: string;
-  isUnlocked?: boolean;
-  unlockedAt?: string;
-  progress?: number;
-  maxProgress?: number;
-}
+import { Achievement, UserAchievement } from '@/lib/types/gamification';
 
 export default function AchievementsPage(): React.ReactElement {
-  const [achievements, setAchievements] = useState<AchievementUI[]>([]);
-  const [userAchievements, setUserAchievements] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchAchievements();
-  }, []);
-
-  const fetchAchievements = async () => {
+  const fetchAchievements = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -55,30 +37,21 @@ export default function AchievementsPage(): React.ReactElement {
 
       // Create a map of user achievements for quick lookup
       const userAchievementMap = new Map(
-        (userAchievementData || []).map((ua: any) => [ua.achievementId || ua.id, ua])
+        (userAchievementData || []).map((ua: UserAchievement) => [ua.achievementId || ua.id, ua])
       );
 
       // Convert and merge achievements
-      const uiAchievements: AchievementUI[] = (availableAchievements || []).map((achievement: any) => {
+      const uiAchievements: Achievement[] = (availableAchievements || []).map((achievement: Achievement) => {
         const userAchievement = userAchievementMap.get(achievement.id);
         return {
-          id: achievement.id,
-          name: achievement.name,
-          description: achievement.description,
-          pointValue: achievement.pointValue || achievement.points || 0,
-          category: achievement.category || 'General',
-          iconUrl: achievement.iconUrl,
-          tier: achievement.tier,
-          rarity: achievement.rarity,
+          ...achievement,
           isUnlocked: !!userAchievement,
-          unlockedAt: userAchievement?.unlockedAt,
-          progress: userAchievement?.progress,
-          maxProgress: achievement.targetValue || achievement.maxProgress
+          unlockedAt: userAchievement?.completedAt,
+          currentProgress: userAchievement?.isCompleted ? achievement.targetValue : 0
         };
       });
 
       setAchievements(uiAchievements);
-      setUserAchievements(userAchievementData || []);
     } catch (error) {
       console.error('Failed to fetch achievements:', error);
       showToast('Failed to load achievements', 'error');
@@ -86,7 +59,11 @@ export default function AchievementsPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchAchievements();
+  }, [fetchAchievements]);
 
   const getRarityColor = (rarity?: string) => {
     switch (rarity?.toLowerCase()) {
@@ -136,7 +113,7 @@ export default function AchievementsPage(): React.ReactElement {
     }
     acc[category].push(achievement);
     return acc;
-  }, {} as Record<string, AchievementUI[]>);
+  }, {} as Record<string, Achievement[]>);
 
   if (loading) {
     return (

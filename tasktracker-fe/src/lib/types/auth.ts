@@ -49,7 +49,7 @@ export interface AuthContextType {
   
   // Auth Actions
   login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: any) => Promise<boolean>;
+  register: (userData: RegisterRequest) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<boolean>;
   clearError: () => void;
@@ -64,7 +64,7 @@ export interface AuthContextType {
 
 export interface AuthActionPayload {
   type: string;
-  payload?: any;
+  payload?: Record<string, unknown>;
 }
 
 export interface LoginRequest {

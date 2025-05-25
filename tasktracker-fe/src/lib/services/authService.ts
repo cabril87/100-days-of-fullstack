@@ -1,5 +1,6 @@
 import { apiService } from './apiService';
-import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/lib/types/user';
+import { User, ProfileUpdateRequest, PasswordChangeRequest } from '@/lib/types/user';
+import { LoginRequest, RegisterRequest, AuthResponse } from '@/lib/types/auth';
 import { ApiResponse } from '@/lib/types/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -20,21 +21,6 @@ const getCsrfToken = (): string => {
   
   return '';
 };
-
-// Add profile update type
-interface ProfileUpdateRequest {
-  username: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  displayName?: string;
-}
-
-// Add password change type
-interface PasswordChangeRequest {
-  currentPassword: string;
-  newPassword: string;
-}
 
 class AuthService {
   private currentUser: User | null = null;
@@ -64,7 +50,7 @@ class AuthService {
     const csrfToken = await this.fetchCsrfToken();
     
     const loginData = {
-      emailOrUsername: credentials.email, 
+      emailOrUsername: credentials.emailOrUsername, 
       password: credentials.password,
       csrfToken 
     };

@@ -1,6 +1,6 @@
-const CACHE_NAME = 'tasktracker-v1.0.0';
-const STATIC_CACHE_NAME = 'tasktracker-static-v1.0.0';
-const DYNAMIC_CACHE_NAME = 'tasktracker-dynamic-v1.0.0';
+const CACHE_NAME = 'tasktracker-v1.0.1';
+const STATIC_CACHE_NAME = 'tasktracker-static-v1.0.1';
+const DYNAMIC_CACHE_NAME = 'tasktracker-dynamic-v1.0.1';
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
@@ -14,8 +14,7 @@ const STATIC_ASSETS = [
   '/gamification/analytics',
   '/gamification/social',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/favicon.ico'
 ];
 
 // API endpoints to cache

@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Gift, 
   Star, 
-  Crown, 
   ArrowLeft,
   ShoppingBag,
-  Sparkles,
   CheckCircle,
   Lock,
   Coins
@@ -37,16 +35,15 @@ export default function RewardsPage(): React.ReactElement {
   const [userPoints, setUserPoints] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'available' | 'purchased'>('all');
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<{
+    hasToken: boolean;
+    tokenPreview: string;
+    user: { username?: string } | null;
+    timestamp: string;
+  } | null>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchRewards();
-    fetchUserPoints();
-    fetchDebugInfo();
-  }, []);
-
-  const fetchRewards = async () => {
+  const fetchRewards = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching rewards...');
@@ -55,21 +52,24 @@ export default function RewardsPage(): React.ReactElement {
       console.log('Raw rewards data:', availableRewards);
       
       // Convert API rewards to UI format
-      const uiRewards: Reward[] = (availableRewards || []).map((reward: any) => ({
-        id: reward.id,
-        name: reward.name,
-        description: reward.description,
-        pointCost: reward.pointCost || reward.cost || 0,
-        category: reward.category || 'General',
-        rarity: getRewardRarity(reward.category),
-        isAvailable: reward.isAvailable ?? true,
-        isPurchased: reward.isPurchased || false,
-        iconPath: reward.iconPath,
-        imageUrl: reward.imageUrl,
-        minimumLevel: reward.minimumLevel || 1,
-        userLevel: reward.userLevel,
-        userPoints: reward.userPoints
-      }));
+      const uiRewards: Reward[] = (availableRewards || []).map((reward: unknown) => {
+        const rewardData = reward as Record<string, unknown>;
+        return {
+          id: rewardData.id as number,
+          name: rewardData.name as string,
+          description: rewardData.description as string,
+          pointCost: (rewardData.pointCost as number) || (rewardData.cost as number) || 0,
+          category: (rewardData.category as string) || 'General',
+          rarity: getRewardRarity(rewardData.category as string),
+          isAvailable: (rewardData.isAvailable as boolean) ?? true,
+          isPurchased: (rewardData.isPurchased as boolean) || false,
+          iconPath: rewardData.iconPath as string,
+          imageUrl: rewardData.imageUrl as string,
+          minimumLevel: (rewardData.minimumLevel as number) || 1,
+          userLevel: rewardData.userLevel as number,
+          userPoints: rewardData.userPoints as number
+        };
+      });
       
       console.log('Processed rewards:', uiRewards);
       setRewards(uiRewards);
@@ -90,7 +90,7 @@ export default function RewardsPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   const fetchUserPoints = async () => {
     try {
@@ -116,6 +116,12 @@ export default function RewardsPage(): React.ReactElement {
     }
   };
 
+  useEffect(() => {
+    fetchRewards();
+    fetchUserPoints();
+    fetchDebugInfo();
+  }, [fetchRewards]);
+
   const handleRedeemReward = async (rewardId: number, pointCost: number) => {
     if (userPoints < pointCost) {
       showToast('Not enough points to redeem this reward', 'error');
@@ -134,7 +140,11 @@ export default function RewardsPage(): React.ReactElement {
           : reward
       ));
     } catch (error) {
-      showToast('Failed to redeem reward', 'error');
+      if (error instanceof Error) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('Failed to redeem reward', 'error');
+      }
     }
   };
 

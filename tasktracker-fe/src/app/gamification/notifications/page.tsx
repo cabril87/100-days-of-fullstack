@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell, 
   Star, 
@@ -8,11 +8,9 @@ import {
   ArrowLeft,
   CheckCircle,
   Clock,
-  Filter,
   Settings,
   Trash2,
   Eye,
-  EyeOff,
   Crown,
   Gift,
   Target,
@@ -32,7 +30,18 @@ interface GamificationNotification {
   message: string;
   isRead: boolean;
   createdAt: string;
-  data?: any; // Additional data specific to notification type
+  data?: {
+    achievementId?: number;
+    challengeId?: number;
+    rewardId?: number;
+    badgeId?: number;
+    familyId?: number;
+    pointsEarned?: number;
+    pointsSpent?: number;
+    newLevel?: number;
+    streakLength?: number;
+    bonusPoints?: number;
+  }; // Additional data specific to notification type
   priority: 'low' | 'medium' | 'high';
 }
 
@@ -69,12 +78,7 @@ export default function NotificationsPage(): React.ReactElement {
   const [showPreferences, setShowPreferences] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchNotifications();
-    loadPreferences();
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -159,7 +163,12 @@ export default function NotificationsPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchNotifications();
+    loadPreferences();
+  }, [fetchNotifications]);
 
   const loadPreferences = () => {
     const saved = localStorage.getItem('gamificationNotificationPreferences');

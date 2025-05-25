@@ -22,19 +22,32 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
   const { showToast } = useToast();
   
   useEffect(() => {
+    // Check if user is authenticated
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+
+    // Check if SignalR is enabled (default is enabled when authenticated)
+    const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
+    if (!signalREnabled) {
+      return;
+    }
+
     const handleConnection = () => {
       setIsConnected(true);
       setReconnectAttempts(0);
-      console.log('SignalR connected');
     };
 
     const handleDisconnection = () => {
       setIsConnected(false);
-      console.log('SignalR disconnected');
     };
 
     const handleError = (error: Error) => {
-      console.error('SignalR error:', error);
       setIsConnected(false);
     };
 

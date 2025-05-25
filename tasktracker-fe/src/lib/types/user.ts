@@ -14,24 +14,7 @@ export interface User {
   updatedAt?: string;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
-}
+// Note: LoginRequest, RegisterRequest, and AuthResponse are defined in auth.ts
 
 export interface ProfileUpdateRequest {
   username: string;
@@ -44,4 +27,17 @@ export interface ProfileUpdateRequest {
 export interface PasswordChangeRequest {
   currentPassword: string;
   newPassword: string;
+}
+
+// Additional user-related types that were in services
+export interface UserDTO {
+  id: number;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
 } 

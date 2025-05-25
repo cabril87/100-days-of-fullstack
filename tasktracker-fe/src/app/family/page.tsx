@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useFamily } from '@/lib/providers/FamilyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Users, PlusCircle, LogIn, CheckCircle, Clock, FileText, BarChart3, Settings, UserPlus, Shield, UserCog, UserX, Trash2, PencilLine, Bell, ArrowLeft, ClipboardList, Home, AlertTriangle, RefreshCw, Search, CheckCircle2, CircleDashed, CircleX, Hourglass, Activity, Star, ListChecks, ArrowUpRight, Focus, Timer, Play, Pause, XCircle, Brain } from 'lucide-react';
+import { Users, PlusCircle, LogIn, CheckCircle, Clock, FileText, Settings, AlertTriangle, RefreshCw, Search, CheckCircle2, CircleDashed, CircleX, Hourglass, Activity, Star, ListChecks, ArrowUpRight, Play, Pause, XCircle, Brain } from 'lucide-react';
 import Link from 'next/link';
 import { familyService } from '@/lib/services/familyService';
 import { Family } from '@/lib/types/family';
@@ -23,7 +21,7 @@ import { StatsCard } from '@/components/ui/card';
 // Constants for retries
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
-const REFRESH_INTERVAL_MS = 2000; // How often to check for updates
+// const REFRESH_INTERVAL_MS = 2000; // How often to check for updates
 
 // Helper function to get cached families
 const getCachedFamilies = (): Family[] => {
@@ -54,7 +52,7 @@ export default function FamilyDashboard() {
     totalPendingTasks: number;
     userPendingTasks: number;
     activeFamilies: number;
-    tasksByFamily?: Record<string, any[]>;
+    tasksByFamily?: Record<string, unknown[]>;
   }>({
     totalMembers: 0,
     totalCompletedTasks: 0,
@@ -63,11 +61,11 @@ export default function FamilyDashboard() {
     activeFamilies: 0
   });
   const { showToast } = useToast();
-  const router = useRouter();
+  // const router = useRouter();
   const pathname = usePathname();
   
   // Add direct task fetching for more accurate counts
-  const [userFamilyTasks, setUserFamilyTasks] = useState<any[]>([]);
+  const [userFamilyTasks, setUserFamilyTasks] = useState<unknown[]>([]);
   const [loadingUserTasks, setLoadingUserTasks] = useState(false);
 
   // Add Focus Mode state
@@ -133,7 +131,7 @@ export default function FamilyDashboard() {
   };
   
   // Fetch all families with cache busting
-  const fetchFamilies = async (retry = 0, forceCacheBust = false) => {
+  const fetchFamilies = useCallback(async (retry = 0, forceCacheBust = false) => {
     setLoading(true);
     setConnectionError(false);
     
@@ -239,7 +237,7 @@ export default function FamilyDashboard() {
       setLoading(false);
       setLastRefresh(Date.now());
     }
-  };
+  }, [showToast, cacheKey]);
   
   // Initial load and polling setup
   useEffect(() => {
@@ -344,7 +342,7 @@ export default function FamilyDashboard() {
       clearInterval(pollInterval);
       clearTimeout(stopPollingTimeout);
     };
-  }, [pathname]); // Re-run when pathname changes
+  }, [pathname, fetchFamilies]); // Re-run when pathname changes
   
   // Force refresh handler
   const handleForceRefresh = () => {

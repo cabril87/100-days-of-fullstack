@@ -124,7 +124,7 @@ export default function NewTaskPage() {
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => {
-        router.push('/tasks');
+        router.push('/tasks?refresh=true');
       }, 1500);
       
       return () => clearTimeout(timer);

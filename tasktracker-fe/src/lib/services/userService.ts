@@ -1,13 +1,6 @@
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  displayName?: string;
-  avatarUrl?: string;
-}
+import { User } from '@/lib/types/user';
 
 export const userService = {
   async searchUsers(query: string): Promise<ApiResponse<User[]>> {

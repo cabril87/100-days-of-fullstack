@@ -1,46 +1,6 @@
-import { Family, FamilyMember } from '@/lib/types/family';
+import { Family, FamilyMember, FamilyDTO } from '@/lib/types/family';
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
-
-interface FamilyDTO {
-  id: number;
-  name: string;
-  description?: string;
-  createdAt: string;
-  updatedAt?: string;
-  createdBy: {
-    id: number;
-    username: string;
-    email: string;
-  } | null;
-  members: Array<{
-    id: number;
-    familyId: number;
-    name: string;
-    email: string | null;
-    avatarUrl: string | null;
-    relationship: string;
-    user: {
-      id: number;
-      username: string;
-      email: string;
-      firstName: string;
-      lastName: string;
-      displayName: string;
-      avatarUrl: string | null;
-      createdAt: string;
-    };
-    role: {
-      id: number;
-      name: string;
-      description: string;
-      permissions: string[];
-      isDefault: boolean;
-      createdAt: string;
-    };
-    joinedAt: string;
-  }>;
-}
 
 interface ApiOptions {
   suppressAuthError?: boolean;

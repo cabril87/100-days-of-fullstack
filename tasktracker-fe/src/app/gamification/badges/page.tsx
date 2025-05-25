@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Trophy, 
   Star, 
@@ -12,7 +12,6 @@ import {
   Eye,
   EyeOff,
   Pin,
-  PinOff,
   RefreshCw,
   Filter,
   Grid,
@@ -33,7 +32,7 @@ interface BadgeUI extends Badge {
 
 export default function BadgesPage(): React.ReactElement {
   const [badges, setBadges] = useState<BadgeUI[]>([]);
-  const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'earned' | 'unearned'>('all');
@@ -41,11 +40,7 @@ export default function BadgesPage(): React.ReactElement {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchBadges();
-  }, []);
-
-  const fetchBadges = async () => {
+  const fetchBadges = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -174,7 +169,6 @@ export default function BadgesPage(): React.ReactElement {
       });
 
       setBadges(combinedBadges);
-      setUserBadges(userBadgeData || []);
     } catch (error) {
       console.error('Failed to fetch badges:', error);
       showToast('Failed to load badges', 'error');
@@ -182,7 +176,11 @@ export default function BadgesPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchBadges();
+  }, [fetchBadges]);
 
   const handleToggleDisplay = async (badgeId: number, userBadgeId: number, currentDisplay: boolean) => {
     try {
@@ -198,9 +196,10 @@ export default function BadgesPage(): React.ReactElement {
       );
       
       await fetchBadges(); // Refresh data
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to toggle badge display:', error);
-      showToast(error.message || 'Failed to update badge display', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update badge display';
+      showToast(errorMessage, 'error');
     } finally {
       setActionLoading(null);
     }
@@ -479,7 +478,7 @@ export default function BadgesPage(): React.ReactElement {
                         <p className="text-gray-600 text-sm mb-3">{badge.description}</p>
 
                         {badge.criteria && (
-                          <p className="text-xs text-gray-500 mb-3 italic">"{badge.criteria}"</p>
+                          <p className="text-xs text-gray-500 mb-3 italic">&ldquo;{badge.criteria}&rdquo;</p>
                         )}
 
                         {badge.isEarned && badge.awardedAt && (

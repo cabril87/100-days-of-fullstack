@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ArrowLeft,
   TrendingUp,
@@ -8,7 +8,6 @@ import {
   Calendar,
   Filter,
   Search,
-  Download,
   RefreshCw,
   Star,
   Trophy,
@@ -21,18 +20,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { gamificationService } from '@/lib/services/gamificationService';
-import { useToast } from '@/lib/hooks/useToast';
-
-interface PointTransaction {
-  id: number;
-  userId: number;
-  points: number;
-  transactionType: string;
-  description: string;
-  createdAt: string;
-  referenceId?: number;
-  referenceType?: string;
-}
+import { PointTransaction } from '@/lib/types/gamification';
 
 interface TransactionFilters {
   type: 'all' | 'earned' | 'spent';
@@ -52,19 +40,14 @@ export default function PointHistoryPage(): React.ReactElement {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [expandedTransaction, setExpandedTransaction] = useState<number | null>(null);
-  const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [filters]);
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
       
-      // For now, we'll use the user progress endpoint and generate some sample data
+      // For now, we'll generate some sample data
       // In a real implementation, there would be a specific transactions endpoint
-      const userProgress = await gamificationService.getUserProgress();
+      await gamificationService.getUserProgress(); // Just to simulate API call
       
       // Generate sample transaction data based on user progress
       const sampleTransactions: PointTransaction[] = [
@@ -75,7 +58,6 @@ export default function PointHistoryPage(): React.ReactElement {
           transactionType: 'daily_login',
           description: 'Daily login reward',
           createdAt: new Date().toISOString(),
-          referenceType: 'login'
         },
         {
           id: 2,
@@ -84,8 +66,7 @@ export default function PointHistoryPage(): React.ReactElement {
           transactionType: 'task_completion',
           description: 'Completed task: Update project documentation',
           createdAt: new Date(Date.now() - 86400000).toISOString(),
-          referenceType: 'task',
-          referenceId: 123
+          relatedEntityId: 123
         },
         {
           id: 3,
@@ -94,8 +75,7 @@ export default function PointHistoryPage(): React.ReactElement {
           transactionType: 'reward_purchase',
           description: 'Redeemed: Extra Break Time',
           createdAt: new Date(Date.now() - 172800000).toISOString(),
-          referenceType: 'reward',
-          referenceId: 456
+          relatedEntityId: 456
         },
         {
           id: 4,
@@ -104,8 +84,7 @@ export default function PointHistoryPage(): React.ReactElement {
           transactionType: 'achievement_unlock',
           description: 'Achievement unlocked: Task Master',
           createdAt: new Date(Date.now() - 259200000).toISOString(),
-          referenceType: 'achievement',
-          referenceId: 789
+          relatedEntityId: 789
         },
         {
           id: 5,
@@ -114,20 +93,22 @@ export default function PointHistoryPage(): React.ReactElement {
           transactionType: 'challenge_completion',
           description: 'Challenge completed: 7-Day Productivity Sprint',
           createdAt: new Date(Date.now() - 604800000).toISOString(),
-          referenceType: 'challenge',
-          referenceId: 101
+          relatedEntityId: 101
         }
       ];
       
       setTransactions(sampleTransactions);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
-      showToast('Failed to load transaction history', 'error');
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -286,7 +267,7 @@ export default function PointHistoryPage(): React.ReactElement {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
                   <select
                     value={filters.type}
-                    onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as any }))}
+                    onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as TransactionFilters['type'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Transactions</option>
@@ -299,7 +280,7 @@ export default function PointHistoryPage(): React.ReactElement {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <select
                     value={filters.category}
-                    onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value as any }))}
+                    onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value as TransactionFilters['category'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Categories</option>
@@ -315,7 +296,7 @@ export default function PointHistoryPage(): React.ReactElement {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
                   <select
                     value={filters.dateRange}
-                    onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as any }))}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as TransactionFilters['dateRange'] }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Time</option>

@@ -1,22 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface LoginData {
-  email: string;
-  password: string;
-}
-
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-}
+import { User } from '@/lib/types/user';
+import { LoginRequest, RegisterRequest } from '@/lib/types/auth';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -55,7 +40,7 @@ export function useAuth() {
     fetchUser();
   }, [fetchUser]);
 
-  const login = async (data: LoginData) => {
+  const login = async (data: LoginRequest) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -86,7 +71,7 @@ export function useAuth() {
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterRequest) => {
     try {
       setIsLoading(true);
       setError(null);

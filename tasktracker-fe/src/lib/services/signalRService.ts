@@ -11,20 +11,7 @@
 
 import React from 'react';
 import * as signalR from '@microsoft/signalr';
-
-interface GamificationEvent {
-  type: 'points_earned' | 'achievement_unlocked' | 'level_up' | 'streak_updated' | 'challenge_progress' | 'badge_earned' | 'reward_redeemed';
-  data: any;
-  userId: number;
-  timestamp: string;
-}
-
-export interface SignalREvents {
-  onGamificationUpdate: (update: GamificationEvent) => void;
-  onConnected: () => void;
-  onDisconnected: () => void;
-  onError: (error: Error) => void;
-}
+import { GamificationEvent, SignalREvents } from '@/lib/types/signalr';
 
 class SignalRService {
   private connection: signalR.HubConnection | null = null;
@@ -34,10 +21,7 @@ class SignalRService {
   private eventHandlers: Map<string, Function[]> = new Map();
 
   constructor() {
-    // Only initialize on client side
-    if (typeof window !== 'undefined') {
-      this.initializeConnection();
-    }
+    // Don't auto-initialize - let components explicitly start connection when needed
   }
 
   private async initializeConnection() {
@@ -47,13 +31,25 @@ class SignalRService {
         return;
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      // Check if user is authenticated
+      const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (!authToken) {
+        return;
+      }
+
+      // SignalR is enabled by default when user is authenticated
+      const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
+      if (!signalREnabled) {
+        return;
+      }
+
+      // Use absolute URL for SignalR connection
+      const signalRUrl = `http://localhost:5000/hubs/gamification?access_token=${encodeURIComponent(authToken)}`;
+      
+      console.log('SignalR: Using hardcoded URL for testing:', signalRUrl);
       
       this.connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${baseUrl}/gamificationHub`, {
-          accessTokenFactory: () => {
-            return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-          },
+        .withUrl(signalRUrl, {
           transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
           })
         .withAutomaticReconnect({
@@ -68,10 +64,9 @@ class SignalRService {
         // Set up event handlers
       this.setupEventHandlers();
 
-      // Start connection
-      await this.startConnection();
+      // Don't auto-start connection - let components explicitly start when needed
     } catch (error) {
-      console.error('SignalR: Failed to initialize connection', error);
+      console.error('SignalR initialization failed:', error);
     }
   }
 
@@ -180,14 +175,27 @@ class SignalRService {
   }
   
   private async handleReconnection() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      this.eventHandlers.get('onError')?.forEach(handler => handler(new Error('Failed to reconnect to real-time updates')));
+    // Don't attempt reconnection if user is not authenticated
+    if (typeof window === 'undefined') {
       return;
-  }
+    }
+
+    const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!authToken) {
+      return;
+    }
+
+    // Don't attempt reconnection if SignalR is disabled
+    const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
+    if (!signalREnabled) {
+      return;
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      return;
+    }
   
     this.reconnectAttempts++;
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
     setTimeout(() => {
       this.startConnection();
@@ -206,23 +214,46 @@ class SignalRService {
   }
 
   public async startConnection(): Promise<boolean> {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    // Check if user is authenticated by looking for token
+    const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!authToken) {
+      console.log('SignalR: User not authenticated, skipping connection');
+      return false;
+    }
+
+    // SignalR is enabled by default when user is authenticated
+    // Can be disabled by setting NEXT_PUBLIC_SIGNALR_ENABLED=false
+    const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
+    if (!signalREnabled) {
+      console.log('SignalR: Disabled via environment variable');
+      return false;
+    }
+
     if (!this.connection) {
       await this.initializeConnection();
     }
 
-    if (this.connection?.state === signalR.HubConnectionState.Connected) {
+    if (!this.connection) {
+      return false;
+    }
+
+    if (this.connection.state === signalR.HubConnectionState.Connected) {
       return true;
     }
 
     try {
-      await this.connection?.start();
+      await this.connection.start();
       console.log('SignalR connected successfully');
       this.reconnectAttempts = 0;
       this.eventHandlers.get('onConnected')?.forEach(handler => handler());
       return true;
     } catch (error) {
-      console.error('Failed to connect to SignalR:', error);
-      this.eventHandlers.get('onError')?.forEach(handler => handler(error as Error));
+      console.log('SignalR connection failed:', error);
       return false;
     }
   }

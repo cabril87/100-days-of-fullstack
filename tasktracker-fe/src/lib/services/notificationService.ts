@@ -1,44 +1,11 @@
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
 import { signalRService } from './signalRService';
-
-export interface Notification {
-  id: string;
-  type: 'invitation' | 'role_change' | 'task_assignment' | 'task_completion' | 'family_update';
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  data?: {
-    invitationId?: string;
-    familyId?: string;
-    familyName?: string;
-    memberId?: string;
-    taskId?: string;
-    token?: string;
-    invitedBy?: string;
-  };
-}
-
-export interface NotificationPreferenceSummary {
-  enableGlobalNotifications: boolean;
-  enableTaskNotifications: boolean;
-  enableFamilyNotifications: boolean;
-  enableSystemNotifications: boolean;
-  enableEmailNotifications: boolean;
-  enablePushNotifications: boolean;
-}
-
-export interface NotificationPreference {
-  id: number;
-  notificationType: string;
-  enabled: boolean;
-  priority: 'Low' | 'Normal' | 'High' | 'Urgent';
-  familyId?: number;
-  familyName?: string;
-  enableEmailNotifications: boolean;
-  enablePushNotifications: boolean;
-}
+import { 
+  Notification, 
+  NotificationPreferenceSummary, 
+  NotificationPreference 
+} from '@/lib/types/notification';
 
 // Enhanced notification methods
 
@@ -47,9 +14,9 @@ export interface NotificationPreference {
  */
 export async function initializeRealTimeNotifications(): Promise<void> {
   try {
-    await signalRService.connect();
+    await signalRService.startConnection();
   } catch (error) {
-    console.error('Failed to connect to notification hub:', error);
+    // Silently handle connection failures since SignalR may not be enabled
   }
 }
 
@@ -57,32 +24,32 @@ export async function initializeRealTimeNotifications(): Promise<void> {
  * Register a callback for new notifications
  */
 export function onNewNotification(callback: (notification: any) => void): () => void {
-  signalRService.on('notification', callback);
-  return () => signalRService.off('notification', callback);
+  signalRService.on('ReceiveNotification', callback);
+  return () => signalRService.off('ReceiveNotification');
 }
 
 /**
- * Register a callback for unread count updates
+ * Register a callback for notification read events
  */
-export function onUnreadCountUpdate(callback: (count: number) => void): () => void {
-  signalRService.on('unreadCountUpdate', callback);
-  return () => signalRService.off('unreadCountUpdate', callback);
+export function onNotificationRead(callback: (notificationId: string) => void): () => void {
+  signalRService.on('NotificationRead', callback);
+  return () => signalRService.off('NotificationRead');
 }
 
 /**
- * Register a callback for notification action results
+ * Register a callback for notification deleted events
  */
-export function onNotificationActionResult(callback: (result: any) => void): () => void {
-  signalRService.on('actionResult', callback);
-  return () => signalRService.off('actionResult', callback);
+export function onNotificationDeleted(callback: (notificationId: string) => void): () => void {
+  signalRService.on('NotificationDeleted', callback);
+  return () => signalRService.off('NotificationDeleted');
 }
 
 /**
  * Join a family notification group
  */
 export async function joinFamilyNotificationGroup(familyId: number): Promise<void> {
-  if (signalRService.isConnected) {
-    await signalRService.sendMessage('JoinFamilyGroup', familyId);
+  if (signalRService.isConnected()) {
+    await signalRService.joinFamilyGroup(familyId);
   }
 }
 
@@ -90,8 +57,8 @@ export async function joinFamilyNotificationGroup(familyId: number): Promise<voi
  * Leave a family notification group
  */
 export async function leaveFamilyNotificationGroup(familyId: number): Promise<void> {
-  if (signalRService.isConnected) {
-    await signalRService.sendMessage('LeaveFamilyGroup', familyId);
+  if (signalRService.isConnected()) {
+    await signalRService.leaveFamilyGroup(familyId);
   }
 }
 

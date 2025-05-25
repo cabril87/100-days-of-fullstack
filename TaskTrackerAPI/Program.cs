@@ -232,6 +232,9 @@ public class Program
         // Add notification preference service
         builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
         
+        // Add real-time services
+        builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
+        
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
@@ -408,9 +411,23 @@ public class Program
                     options.RequireHttpsMetadata = true;
                 }
                 
-                // Add events for additional security checks
+                // Add events for additional security checks and SignalR support
                 options.Events = new JwtBearerEvents
                 {
+                    // Handle SignalR authentication - extract token from query parameters
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        
+                        // If the request is for our SignalR hub...
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            // Read the token out of the query string
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async context =>
                     {
                         // Additional validation if needed, e.g. check if user still exists and is active
@@ -637,6 +654,7 @@ public class Program
         // Map SignalR hubs
         app.MapHub<TaskHub>("/hubs/tasks");
         app.MapHub<NotificationHub>("/hubs/notifications");
+        app.MapHub<GamificationHub>("/hubs/gamification");
 
         // Add health check endpoint for Docker
         app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));

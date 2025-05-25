@@ -34,6 +34,11 @@ export interface Achievement {
   isSecret: boolean;
   relatedAchievementIds: number[];
   unlockMessage: string;
+  // Additional properties for UI
+  rarity?: string;
+  tier?: string;
+  progress?: number;
+  maxProgress?: number;
 }
 
 export interface UserAchievement {
@@ -122,6 +127,8 @@ export interface PointTransaction {
   transactionType: string;
   description: string;
   relatedEntityId?: number;
+  referenceId?: number;
+  referenceType?: string;
   createdAt: string;
 }
 

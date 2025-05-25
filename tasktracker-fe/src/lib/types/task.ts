@@ -9,9 +9,18 @@ export enum TaskStatus {
 }
 
 export enum TaskPriority {
+  Low = 0,
+  Medium = 1,
+  High = 2,
+  Critical = 3
+}
+
+// String-based priority enum for frontend display
+export enum TaskPriorityString {
   Low = 'low',
   Medium = 'medium',
-  High = 'high'
+  High = 'high',
+  Critical = 'critical'
 }
 
 // Backend API uses different numeric values for priority
@@ -217,4 +226,45 @@ export interface TemplateSummary {
   isPublic: boolean;
   isDefault: boolean;
   timesUsed?: number; // Stats on template usage
+}
+
+// Task Priority Management Types
+export interface PriorityAdjustment {
+  taskId: number;
+  taskTitle: string;
+  previousPriority: TaskPriority;
+  newPriority: TaskPriority;
+  adjustmentReason: string;
+}
+
+export interface PriorityAdjustmentSummary {
+  totalTasksEvaluated: number;
+  tasksAdjusted: number;
+  upgradedTasks: number;
+  downgradedTasks: number;
+  adjustmentTimestamp: string;
+  adjustments: PriorityAdjustment[];
+}
+
+export interface PrioritizedTask {
+  id: number;
+  title: string;
+  description?: string;
+  priority: string;
+  dueDate?: string;
+  status: string;
+  priorityScore: number;
+}
+
+// Task Assignment and Approval Types
+export interface TaskAssignmentDTO {
+  taskId: number;
+  assignToUserId: string;
+  requiresApproval: boolean;
+}
+
+export interface TaskApprovalDTO {
+  taskId: number;
+  approved: boolean;
+  feedback: string;
 } 

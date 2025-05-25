@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { 
   initializeRealTimeNotifications, 
   onNewNotification, 
-  onUnreadCountUpdate 
+  onNotificationRead 
 } from '@/lib/services/notificationService';
 import NotificationActions from './NotificationActions';
 import {
@@ -17,18 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  notificationType: string;
-  isImportant: boolean;
-  relatedEntityId?: number;
-  relatedEntityType?: string;
-}
+import { Notification } from '@/lib/types/notification';
 
 export default function NavbarNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -36,13 +25,24 @@ export default function NavbarNotifications() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Initialize SignalR connection
+    // Check if user is authenticated
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+
+    // Initialize SignalR connection for authenticated users
     const initializeConnection = async () => {
       try {
         await initializeRealTimeNotifications();
         setIsConnected(true);
       } catch (error) {
-        console.error('Failed to connect to SignalR:', error);
+        // Silently handle connection failures since SignalR may not be enabled
+        setIsConnected(false);
       }
     };
 
@@ -54,9 +54,12 @@ export default function NavbarNotifications() {
       setUnreadCount(prev => prev + 1);
     });
     
-    // Subscribe to unread count updates
-    const unreadCountUnsubscribe = onUnreadCountUpdate((count) => {
-      setUnreadCount(count);
+    // Subscribe to notification read events
+    const notificationReadUnsubscribe = onNotificationRead((notificationId) => {
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, isRead: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
     });
     
     // Load initial notifications
@@ -72,7 +75,7 @@ export default function NavbarNotifications() {
     // Cleanup subscriptions on unmount
     return () => {
       newNotificationUnsubscribe();
-      unreadCountUnsubscribe();
+      notificationReadUnsubscribe();
     };
   }, []);
 
@@ -101,6 +104,10 @@ export default function NavbarNotifications() {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return 'Yesterday';
     return `${diffDays}d ago`;
+  };
+
+  const isImportantNotification = (notification: Notification): boolean => {
+    return notification.type === 'invitation' || notification.type === 'role_change';
   };
 
   return (
@@ -155,7 +162,7 @@ export default function NavbarNotifications() {
                     <span className="text-xs text-muted-foreground">
                       {getNotificationTime(notification.createdAt)}
                     </span>
-                    {notification.isImportant && (
+                    {isImportantNotification(notification) && (
                       <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
                         Important
                       </Badge>
@@ -169,10 +176,11 @@ export default function NavbarNotifications() {
                   </p>
                   
                   <NotificationActions 
-                    notificationId={notification.id}
+                    notificationId={parseInt(notification.id)}
                     isRead={notification.isRead}
-                    relatedEntityType={notification.relatedEntityType}
-                    relatedEntityId={notification.relatedEntityId}
+                    relatedEntityType={notification.type}
+                    relatedEntityId={notification.data?.taskId ? parseInt(notification.data.taskId) : 
+                                   notification.data?.familyId ? parseInt(notification.data.familyId) : undefined}
                     onActionComplete={handleActionComplete}
                   />
                 </div>

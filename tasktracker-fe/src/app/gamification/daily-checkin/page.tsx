@@ -1,23 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Flame, 
   Star, 
   Crown, 
   ArrowLeft,
-  Trophy,
   CheckCircle,
   Gift,
-  Clock,
-  TrendingUp,
-  Award,
-  Target,
-  Zap,
-  RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  Target,
+  Trophy
 } from 'lucide-react';
 import Link from 'next/link';
 import { gamificationService } from '@/lib/services/gamificationService';
@@ -58,12 +54,7 @@ export default function DailyCheckinPage(): React.ReactElement {
   const [showAnimation, setShowAnimation] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchDailyStatus();
-    generateCalendar();
-  }, [currentMonth]);
-
-  const fetchDailyStatus = async () => {
+  const fetchDailyStatus = useCallback(async () => {
     try {
       setLoading(true);
       const status = await gamificationService.getDailyLoginStatus();
@@ -74,9 +65,9 @@ export default function DailyCheckinPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const generateCalendar = () => {
+  const generateCalendar = useCallback(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const today = new Date();
@@ -126,7 +117,7 @@ export default function DailyCheckinPage(): React.ReactElement {
     }
     
     setCalendarDays(days);
-  };
+  }, [currentMonth, dailyStatus]);
 
   const simulateCheckinStatus = (date: Date) => {
     const today = new Date();
@@ -176,9 +167,13 @@ export default function DailyCheckinPage(): React.ReactElement {
       generateCalendar();
       
       setTimeout(() => setShowAnimation(false), 2000);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to claim daily reward:', error);
-      showToast(error.message || 'Failed to claim daily reward', 'error');
+      if (error instanceof Error) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('Failed to claim daily reward', 'error');
+      }
     } finally {
       setClaiming(false);
     }
@@ -230,6 +225,11 @@ export default function DailyCheckinPage(): React.ReactElement {
       return newMonth;
     });
   };
+
+  useEffect(() => {
+    fetchDailyStatus();
+    generateCalendar();
+  }, [currentMonth, fetchDailyStatus, generateCalendar]);
 
   if (loading) {
     return (
@@ -380,7 +380,7 @@ export default function DailyCheckinPage(): React.ReactElement {
               </div>
               <div>
                 <div className="text-2xl font-bold text-gray-900">{dailyStatus?.todayReward || 12}</div>
-                <div className="text-sm text-gray-600">Today's Reward</div>
+                <div className="text-sm text-gray-600">Today&apos;s Reward</div>
               </div>
             </div>
           </div>

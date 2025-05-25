@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { Task, TaskFormData, TaskQueryParams } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
 import { useAuth } from './AuthContext';
@@ -46,7 +46,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     setError(null);
     
     try {
+      console.log('TaskProvider: Fetching tasks...');
       const response = await taskService.getTasks(params);
+      console.log('TaskProvider: getTasks response:', response);
       
       // Handle unauthorized errors gracefully
       if (response.status === 401) {
@@ -58,17 +60,20 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       }
       
       if (response.data && Array.isArray(response.data)) {
+        console.log('TaskProvider: Setting tasks:', response.data.length, 'tasks');
         setTasks(response.data);
       } else if (response.error) {
+        console.log('TaskProvider: Error from service:', response.error);
         setError(response.error);
         setTasks([]);
       } else {
         // If response.data exists but isn't an array
+        console.log('TaskProvider: Unexpected response format:', response.data);
         setTasks([]);
         console.error('Expected tasks array but received:', response.data);
       }
     } catch (e) {
-      console.error('Error fetching tasks:', e);
+      console.error('TaskProvider: Error fetching tasks:', e);
       setError('Failed to load tasks. Please try again later.');
       setTasks([]);
     } finally {
@@ -106,39 +111,61 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       console.log('TaskProvider: Creating task with data:', task);
       const response = await taskService.createTask(task);
       
-      // Response is directly a Task object
-      if (response && typeof response === 'object' && 'id' in response) {
+      // Check if response is an ApiResponse with data
+      if (response && typeof response === 'object' && 'data' in response && response.data) {
+        console.log('TaskProvider: Task created successfully:', response.data);
+        const newTask = response.data as Task;
+        setTasks(prev => {
+          console.log('TaskProvider: Adding task to list. Previous count:', prev.length);
+          const updated = [...prev, newTask];
+          console.log('TaskProvider: New task list count:', updated.length);
+          return updated;
+        });
+        return newTask;
+      }
+      
+      // Check if response is directly a Task object
+      if (response && typeof response === 'object' && 'id' in response && 'title' in response) {
         console.log('TaskProvider: Task created successfully:', response);
-        setTasks(prev => [...prev, response as Task]);
-        return response as Task;
+        const task = response as unknown as Task;
+        setTasks(prev => [...prev, task]);
+        return task;
       }
       
       // Response is a standard API response
-      if ('status' in response) {
-        if (response.status === 401) {
+      if (response && typeof response === 'object' && 'status' in response) {
+        const apiResponse = response as { status?: number; data?: Task; error?: string; details?: unknown };
+        
+        if (apiResponse.status === 401) {
           console.log("User not authenticated or session expired");
           setError('Authentication error: Please log in again');
           return null;
         }
         
-        if (response.data) {
-          console.log('TaskProvider: Task created successfully:', response.data);
+        if (apiResponse.data) {
+          console.log('TaskProvider: Task created successfully:', apiResponse.data);
           // Add the new task to the tasks array
-          setTasks(prev => [...prev, response.data!]);
-          return response.data;
-        } else if (response.error) {
-          console.error('TaskProvider: Error creating task:', response.error, response.details);
+          const newTask = apiResponse.data;
+          setTasks(prev => {
+            console.log('TaskProvider: Adding task to list (API response). Previous count:', prev.length);
+            const updated = [...prev, newTask];
+            console.log('TaskProvider: New task list count:', updated.length);
+            return updated;
+          });
+          return newTask;
+        } else if (apiResponse.error) {
+          console.error('TaskProvider: Error creating task:', apiResponse.error, apiResponse.details);
           // Provide more detailed error information
-          let errorMsg = response.error;
-          if (response.details) {
+          let errorMsg = apiResponse.error;
+          if (apiResponse.details) {
             try {
               // Try to format validation errors
-              if (typeof response.details === 'object') {
-                errorMsg += ': ' + Object.entries(response.details)
+              if (typeof apiResponse.details === 'object') {
+                errorMsg += ': ' + Object.entries(apiResponse.details as Record<string, unknown>)
                   .map(([field, msgs]) => `${field} - ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
                   .join('; ');
-              } else if (typeof response.details === 'string') {
-                errorMsg += ': ' + response.details;
+              } else if (typeof apiResponse.details === 'string') {
+                errorMsg += ': ' + apiResponse.details;
               }
             } catch (e) {
               console.error('Error formatting validation details:', e);
@@ -161,29 +188,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, []);
-
-  // Helper function to normalize task data
-  const normalizeTaskData = (task: Task): Task => {
-    // Normalize status values
-    let normalizedStatus = task.status;
-    if (task.status === 'NotStarted' as any) normalizedStatus = 'todo';
-    else if (task.status === 'InProgress' as any) normalizedStatus = 'in-progress';
-    else if (task.status === 'Completed' as any) normalizedStatus = 'done';
-    
-    // Normalize priority values
-    let normalizedPriority = task.priority;
-    if (typeof task.priority === 'number') {
-      normalizedPriority = task.priority === 0 ? 'low' : 
-                          task.priority === 1 ? 'medium' : 
-                          task.priority === 2 ? 'high' : 'medium';
-    }
-    
-    return {
-      ...task,
-      status: normalizedStatus as any,
-      priority: normalizedPriority as any
-    };
-  };
 
   // Update an existing task
   const updateTask = useCallback(async (id: string, task: Partial<TaskFormData>): Promise<Task | null> => {
@@ -214,7 +218,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       
       // Only log once we're about to make the API call
       console.log('TaskProvider: Sending update to API...');
-      const response = await taskService.updateTask(Number(id), task as any);
+      const response = await taskService.updateTask(Number(id), task as TaskFormData);
       
       // Log results after receiving the response
       console.log('TaskProvider: Update task response status:', response.status);

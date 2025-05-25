@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatsCard, ProgressCard } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatsCard, ProgressCard } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/lib/providers/AuthContext';
@@ -54,20 +53,7 @@ export default function DashboardPage() {
     }
   }, [error, showToast]);
 
-  const totalTasks = tasks.length;
-  const todoTasks = tasks.filter(task => task.status === 'todo').length;
-  const inProgressTasks = tasks.filter(task => task.status === 'in-progress').length;
-  const completedTasks = tasks.filter(task => task.status === 'done').length;
-  
-  const today = new Date();
-  const sevenDaysLater = new Date(today);
-  sevenDaysLater.setDate(today.getDate() + 7);
-  
-  const dueSoonTasks = tasks.filter(task => {
-    if (!task.dueDate) return false;
-    const dueDate = new Date(task.dueDate);
-    return dueDate >= today && dueDate <= sevenDaysLater && task.status !== 'done';
-  });
+  // These variables are used in the JSX below, keeping them
 
   const getTasksDueSoon = (tasks: Task[]) => {
     const now = new Date();
@@ -272,7 +258,6 @@ export default function DashboardPage() {
                 maxValue={taskStats.total}
                 progress={taskStats.completionRate}
                 icon={<Trophy className="h-5 w-5 text-purple-600" />}
-                color="purple"
                 isLoading={isLoading}
               />
               

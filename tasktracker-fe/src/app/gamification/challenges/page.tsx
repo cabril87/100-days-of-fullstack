@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Trophy, 
   Target, 
   Clock, 
   Users, 
@@ -10,11 +9,6 @@ import {
   Calendar,
   CheckCircle,
   ArrowLeft,
-  Flame,
-  Award,
-  Zap,
-  Timer,
-  BarChart3,
   Plus,
   Minus,
   RefreshCw
@@ -30,15 +24,15 @@ export default function ChallengesPage(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<{
+    hasToken: boolean;
+    tokenPreview: string;
+    user: { username?: string } | null;
+    timestamp: string;
+  } | null>(null);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchChallenges();
-    fetchDebugInfo();
-  }, []);
-
-  const fetchChallenges = async () => {
+  const fetchChallenges = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching challenges...');
@@ -72,9 +66,14 @@ export default function ChallengesPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const fetchDebugInfo = () => {
+  useEffect(() => {
+    fetchChallenges();
+    fetchDebugInfo();
+  }, [fetchChallenges]);
+
+  const fetchDebugInfo = useCallback(() => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
       const user = localStorage.getItem('user');
@@ -86,7 +85,7 @@ export default function ChallengesPage(): React.ReactElement {
         timestamp: new Date().toISOString()
       });
     }
-  };
+  }, []);
 
   const testApi = async () => {
     try {

@@ -13,7 +13,7 @@ type RequestMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 interface FetchOptions extends RequestInit {
   method: RequestMethod;
   headers?: Record<string, string>;
-  data?: any;
+  data?: unknown;
   requiresAuth?: boolean;
   timeout?: number;
 }
@@ -145,26 +145,27 @@ class FetchClient {
         try {
           // Queue this request for retry after token refresh
           const retryPromise = new Promise<Response>((resolve) => {
-            requestQueue.push(async () => {
+            requestQueue.push(() => {
+              return new Promise<Response>(async (innerResolve) => {
               const newToken = localStorage.getItem('token');
               
               if (newToken) {
-                headers['Authorization'] = `Bearer ${newToken}`;
-                this.accessToken = newToken;
-                
+                  this.setToken(newToken);
                 const retryResponse = await fetch(`${API_URL}${url}`, {
                   ...fetchOptions,
                   headers: {
                     ...fetchOptions.headers,
-                    'Authorization': `Bearer ${newToken}`,
-                  },
+                      'Authorization': `Bearer ${newToken}`
+                    }
                 });
-                
+                  innerResolve(retryResponse);
                 resolve(retryResponse);
               } else {
-                // No token after refresh, still return the original 401
+                  // If no token available, resolve with the original 401 response
+                  innerResolve(response);
                 resolve(response);
               }
+              });
             });
           });
           
@@ -297,7 +298,7 @@ class FetchClient {
   }
   
   // Convenience methods for common HTTP methods
-  async get<T>(url: string, params?: Record<string, any>, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
+  async get<T>(url: string, params?: Record<string, string | number | boolean>, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
     let queryUrl = url;
     
     if (params) {
@@ -320,7 +321,7 @@ class FetchClient {
     });
   }
   
-  async post<T>(url: string, data?: any, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
+  async post<T>(url: string, data?: unknown, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
     return this.fetch<T>(url, {
       method: 'POST',
       data,
@@ -328,7 +329,7 @@ class FetchClient {
     });
   }
   
-  async put<T>(url: string, data?: any, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
+  async put<T>(url: string, data?: unknown, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
     return this.fetch<T>(url, {
       method: 'PUT',
       data,

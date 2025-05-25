@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -110,14 +109,14 @@ export default function Home() {
               <div className="flex flex-col md:flex-row gap-8 justify-center">
                 <div className="bg-white bg-opacity-70 backdrop-blur-sm p-6 rounded-2xl shadow-sm flex-1 max-w-md dark:bg-white/10 border border-white/50">
                   <p className="italic text-gray-700 dark:text-gray-200 mb-4">
-                    "TaskTracker has completely transformed how I manage my daily tasks. The interface is intuitive and beautiful."
+                    &ldquo;TaskTracker has completely transformed how I manage my daily tasks. The interface is intuitive and beautiful.&rdquo;
                   </p>
                   <p className="font-semibold text-gray-800 dark:text-gray-100">Sarah J., Designer</p>
                 </div>
                 
                 <div className="bg-white bg-opacity-70 backdrop-blur-sm p-6 rounded-2xl shadow-sm flex-1 max-w-md dark:bg-white/10 border border-white/50">
                   <p className="italic text-gray-700 dark:text-gray-200 mb-4">
-                    "The dashboard gives me a perfect overview of what needs to be done. I've never been more productive."
+                    &ldquo;The dashboard gives me a perfect overview of what needs to be done. I&apos;ve never been more productive.&rdquo;
                   </p>
                   <p className="font-semibold text-gray-800 dark:text-gray-100">Michael T., Developer</p>
                 </div>

@@ -3,29 +3,29 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Trophy, 
-  Award, 
   Star, 
-  Zap, 
+  ArrowUp,
+  Award,
+  CheckCircle,
+  Calendar,
   Target,
   Flame,
-  Calendar,
-  CheckCircle,
-  ArrowUp,
-  Crown,
+  Zap,
+  Settings,
+  RefreshCw,
+  Shield,
   BarChart3,
   Activity,
-  Settings,
   ChevronRight,
+  Plus,
   PlayCircle,
-  RefreshCw,
   AlertCircle,
-  ExternalLink,
-  Shield,
-  Plus
+  ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthDebug from '@/components/debug/AuthDebug';
+import Image from 'next/image';
 
 // Import your existing types and service
 import type { 
@@ -257,7 +257,7 @@ const LeaderboardEntryComponent: React.FC<LeaderboardEntryProps> = ({ entry }) =
       </div>
       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold text-sm mr-4">
         {entry.avatarUrl ? (
-          <img src={entry.avatarUrl} alt={entry.username} className="w-full h-full rounded-full object-cover" />
+          <Image src={entry.avatarUrl} alt={entry.username} width={40} height={40} className="w-full h-full rounded-full object-cover" />
         ) : (
           getInitials(entry.username)
         )}
@@ -726,9 +726,10 @@ export default function GamificationDashboard(): React.ReactElement {
             const pointsEarned = result?.points || dashboardData.dailyLoginStatus?.todayReward || 12;
             showToast(`Daily login reward claimed! +${pointsEarned} points`, 'success');
             fetchDashboardData(true);
-          } catch (error: any) {
+          } catch (error: unknown) {
             // Log differently based on error type for better debugging
-            if (error.message && error.message.toLowerCase().includes('already claimed')) {
+            const errorObj = error as { message?: string; response?: { data?: { message?: string } } };
+            if (errorObj.message && errorObj.message.toLowerCase().includes('already claimed')) {
               console.log('Daily check-in: Already claimed today');
             } else {
               console.error('Daily check-in error:', error);
@@ -738,12 +739,12 @@ export default function GamificationDashboard(): React.ReactElement {
             let errorMessage = 'Unable to claim daily reward';
             
             // Check if error has response data with message (from API)
-            if (error.response && error.response.data && error.response.data.message) {
-              errorMessage = error.response.data.message;
+            if (errorObj.response && errorObj.response.data && errorObj.response.data.message) {
+              errorMessage = errorObj.response.data.message;
             }
             // Check if error has message property directly
-            else if (error.message) {
-              errorMessage = error.message;
+            else if (errorObj.message) {
+              errorMessage = errorObj.message;
             }
             // Check if error is a string
             else if (typeof error === 'string') {
@@ -809,19 +810,20 @@ export default function GamificationDashboard(): React.ReactElement {
           router.push('/gamification/social');
           break;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Quick action failed:', err);
       
       // Handle different error response structures
       let errorMessage = 'Action failed. Please try again.';
+      const errorObj = err as { message?: string; response?: { data?: { message?: string } } };
       
       // Check if error has response data with message (from API)
-      if (err.response && err.response.data && err.response.data.message) {
-        errorMessage = err.response.data.message;
+      if (errorObj.response && errorObj.response.data && errorObj.response.data.message) {
+        errorMessage = errorObj.response.data.message;
       }
       // Check if error has message property directly
-      else if (err.message) {
-        errorMessage = err.message;
+      else if (errorObj.message) {
+        errorMessage = errorObj.message;
       }
       // Check if error is a string
       else if (typeof err === 'string') {
@@ -876,7 +878,7 @@ export default function GamificationDashboard(): React.ReactElement {
   // Transform family members leaderboard data (backend already includes all members)
   const getDisplayLeaderboard = () => {
     // Frontend safety deduplication (keep highest scoring entry for each user)
-    const userMap = new Map<number, any>();
+    const userMap = new Map<number, LeaderboardEntryType>();
     dashboardData.familyMembersLeaderboard.forEach((entry) => {
       const existingEntry = userMap.get(entry.userId);
       if (!existingEntry || entry.value > (existingEntry.value || 0)) {

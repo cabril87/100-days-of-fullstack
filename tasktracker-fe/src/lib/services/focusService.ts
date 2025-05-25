@@ -1,48 +1,15 @@
 import { apiClient } from '@/lib/services/apiClient';
 import { ApiResponse } from '@/lib/types/api';
 import { Task } from '@/lib/types/task';
+import { 
+  FocusSession, 
+  FocusStatistics, 
+  Distraction, 
+  DistractionCreate, 
+  FocusRequest 
+} from '@/lib/types/focus';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-export interface FocusSession {
-  id: number;
-  taskId: number;
-  startTime: string;
-  endTime?: string;
-  durationMinutes: number;
-  isCompleted: boolean;
-  notes?: string;
-  status: 'InProgress' | 'Completed' | 'Interrupted' | 'Paused';
-  task?: Task;
-}
-
-export interface FocusStatistics {
-  totalMinutesFocused: number;
-  sessionCount: number;
-  distractionCount: number;
-  distractionsByCategory: Record<string, number>;
-  averageSessionLength: number;
-  dailyFocusMinutes: Record<string, number>;
-}
-
-export interface Distraction {
-  id: number;
-  sessionId: number;
-  timestamp: string;
-  description: string;
-  category: string;
-}
-
-export interface DistractionCreate {
-  sessionId: number;
-  description: string;
-  category: string;
-}
-
-export interface FocusRequest {
-  taskId: number;
-  notes?: string;
-}
 
 class FocusService {
   async getCurrentFocusSession(): Promise<ApiResponse<FocusSession>> {

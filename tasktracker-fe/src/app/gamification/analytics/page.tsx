@@ -1,24 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BarChart, 
   LineChart, 
-  PieChart, 
   TrendingUp, 
   Calendar,
-  Clock,
   ArrowLeft,
   Download,
-  Filter,
   Eye,
   Target,
   Zap,
-  Trophy,
-  Star
+  Trophy
 } from 'lucide-react';
 import Link from 'next/link';
-import { gamificationService } from '@/lib/services/gamificationService';
 import { useToast } from '@/lib/hooks/useToast';
 import {
   LineChart as RechartsLineChart,
@@ -80,11 +75,7 @@ export default function AnalyticsPage(): React.ReactElement {
     { label: '1 Year', value: '1y', days: 365 }
   ];
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [timeRange]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -128,7 +119,11 @@ export default function AnalyticsPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange, showToast]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   const generatePointsOverTime = () => {
     const days = timeRanges.find(r => r.value === timeRange)?.days || 30;
@@ -387,7 +382,7 @@ export default function AnalyticsPage(): React.ReactElement {
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip 
                       labelFormatter={(value) => `Date: ${new Date(value).toLocaleDateString()}`}
-                      formatter={(value: any, name: string) => [
+                      formatter={(value: number, name: string) => [
                         `${value} points`, 
                         name === 'points' ? 'Daily Points' : 'Total Points'
                       ]}

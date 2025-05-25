@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BarChart3, 
   Crown, 
   Users, 
-  Calendar,
   Trophy,
   Medal,
   ArrowLeft,
   RefreshCw,
   TrendingUp,
   Star,
-  ChevronDown,
   Filter,
   Globe,
   Home,
@@ -21,15 +19,12 @@ import {
   Award
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { gamificationService } from '@/lib/services/gamificationService';
 import { useToast } from '@/lib/hooks/useToast';
+import { LeaderboardEntry as BaseLeaderboardEntry } from '@/lib/types/gamification';
 
-interface LeaderboardEntry {
-  userId: number;
-  username: string;
-  rank: number;
-  value: number;
-  avatarUrl?: string;
+interface LeaderboardEntry extends BaseLeaderboardEntry {
   isCurrentUser?: boolean;
   familyName?: string;
   level?: number;
@@ -54,11 +49,7 @@ export default function LeaderboardPage(): React.ReactElement {
   const [showFilters, setShowFilters] = useState(false);
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchLeaderboardData();
-  }, [activeType, activeMetric, activeTimeFrame]);
-
-  const fetchLeaderboardData = async (isRefresh = false) => {
+  const fetchLeaderboardData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -66,7 +57,7 @@ export default function LeaderboardPage(): React.ReactElement {
         setLoading(true);
       }
 
-      let data: any[] = [];
+      let data: BaseLeaderboardEntry[] = [];
       
       // Fetch appropriate leaderboard data based on type
       switch (activeType) {
@@ -108,7 +99,11 @@ export default function LeaderboardPage(): React.ReactElement {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [activeType, activeMetric, showToast]);
+
+  useEffect(() => {
+    fetchLeaderboardData();
+  }, [fetchLeaderboardData]);
 
   const handleRefresh = () => {
     fetchLeaderboardData(true);
@@ -373,7 +368,13 @@ export default function LeaderboardPage(): React.ReactElement {
                     {/* Avatar */}
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold">
                       {entry.avatarUrl ? (
-                        <img src={entry.avatarUrl} alt={entry.username} className="w-full h-full rounded-full object-cover" />
+                        <Image 
+                          src={entry.avatarUrl} 
+                          alt={entry.username} 
+                          width={48}
+                          height={48}
+                          className="w-full h-full rounded-full object-cover" 
+                        />
                       ) : (
                         getInitials(entry.username)
                       )}

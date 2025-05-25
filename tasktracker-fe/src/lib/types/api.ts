@@ -1,8 +1,8 @@
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   status?: number;
-  details?: any; 
+  details?: Record<string, unknown>; 
   headers?: Headers;
   cached?: boolean;
   originalError?: string;

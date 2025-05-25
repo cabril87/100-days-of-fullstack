@@ -1,17 +1,4 @@
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[];
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed';
-    platform: string;
-  }>;
-  prompt(): Promise<void>;
-}
-
-interface PWAInstallPrompt {
-  canInstall: boolean;
-  install: () => Promise<boolean>;
-  dismiss: () => void;
-}
+import { BeforeInstallPromptEvent, PWAInstallPrompt } from '@/lib/types/pwa';
 
 class PWAService {
   private deferredPrompt: BeforeInstallPromptEvent | null = null;

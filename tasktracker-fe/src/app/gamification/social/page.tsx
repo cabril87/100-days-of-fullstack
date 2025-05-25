@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Users, 
-  UserPlus, 
   Heart, 
   MessageCircle, 
   Share2,
@@ -12,16 +10,14 @@ import {
   Star,
   ArrowLeft,
   Search,
-  Filter,
   Send,
-  ThumbsUp,
   Gift,
-  Calendar,
   Target,
   Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/lib/hooks/useToast';
+import Image from 'next/image';
 
 interface Friend {
   id: number;
@@ -35,6 +31,14 @@ interface Friend {
   status: 'friend' | 'pending' | 'request' | 'none';
 }
 
+interface PostMetadata {
+  achievementId?: number;
+  pointsEarned?: number;
+  newLevel?: number;
+  streakLength?: number;
+  bonusPoints?: number;
+}
+
 interface SocialPost {
   id: number;
   userId: number;
@@ -42,7 +46,7 @@ interface SocialPost {
   avatar?: string;
   type: 'achievement' | 'level_up' | 'streak' | 'challenge_complete';
   content: string;
-  metadata: any;
+  metadata: PostMetadata;
   likes: number;
   comments: number;
   isLiked: boolean;
@@ -69,11 +73,8 @@ export default function SocialPage(): React.ReactElement {
   const [newComment, setNewComment] = useState('');
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchSocialData();
-  }, []);
-
-  const fetchSocialData = async () => {
+  
+  const fetchSocialData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -158,8 +159,12 @@ export default function SocialPage(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
+  useEffect(() => {
+    fetchSocialData();
+  }, [fetchSocialData]);
+  
   const handleLike = (postId: number) => {
     setSocialFeed(prev => prev.map(post => 
       post.id === postId 
@@ -326,7 +331,7 @@ export default function SocialPage(): React.ReactElement {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold">
                     {post.avatar ? (
-                      <img src={post.avatar} alt={post.username} className="w-full h-full rounded-full object-cover" />
+                      <Image src={post.avatar} alt={post.username} className="w-full h-full rounded-full object-cover" width={40} height={40} />
                     ) : (
                       getInitials(post.username)
                     )}
@@ -404,7 +409,7 @@ export default function SocialPage(): React.ReactElement {
                         <div key={comment.id} className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold">
                             {comment.avatar ? (
-                              <img src={comment.avatar} alt={comment.username} className="w-full h-full rounded-full object-cover" />
+                              <Image src={comment.avatar} alt={comment.username} className="w-full h-full rounded-full object-cover" width={32} height={32} />
                             ) : (
                               getInitials(comment.username)
                             )}
@@ -461,7 +466,7 @@ export default function SocialPage(): React.ReactElement {
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-semibold">
                           {friend.avatar ? (
-                            <img src={friend.avatar} alt={friend.username} className="w-full h-full rounded-full object-cover" />
+                            <Image src={friend.avatar} alt={friend.username} className="w-full h-full rounded-full object-cover" width={48} height={48} />
                           ) : (
                             getInitials(friend.username)
                           )}
@@ -523,7 +528,7 @@ export default function SocialPage(): React.ReactElement {
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white font-semibold">
                         {friend.avatar ? (
-                          <img src={friend.avatar} alt={friend.username} className="w-full h-full rounded-full object-cover" />
+                          <Image src={friend.avatar} alt={friend.username} className="w-full h-full rounded-full object-cover" width={48} height={48} />
                         ) : (
                           getInitials(friend.username)
                         )}

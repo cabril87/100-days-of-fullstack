@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { signalRService, SignalREvents } from '@/lib/services/signalRService';
+import { signalRService } from '@/lib/services/signalRService';
+import { SignalREvents } from '@/lib/types/signalr';
 
 interface UseSignalRReturn {
   isConnected: boolean;
@@ -13,10 +14,25 @@ export const useSignalR = (): UseSignalRReturn => {
   const [isConnected, setIsConnected] = useState(signalRService.isConnected());
 
   useEffect(() => {
+    // Check if user is authenticated
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+      return;
+    }
+
+    // Check if SignalR is enabled (default is enabled when authenticated)
+    const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
+    if (!signalREnabled) {
+      return;
+    }
+
     const handleConnection = () => setIsConnected(true);
     const handleDisconnection = () => setIsConnected(false);
     const handleError = (error: Error) => {
-      console.error('SignalR error:', error);
       setIsConnected(false);
     };
 
@@ -27,7 +43,7 @@ export const useSignalR = (): UseSignalRReturn => {
     
     // Connect if not already connected
     if (!signalRService.isConnected()) {
-      signalRService.startConnection().catch(console.error);
+      signalRService.startConnection();
     } else {
       setIsConnected(true);
     }
