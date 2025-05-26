@@ -26,10 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Notification,
-  notificationService
-} from '@/lib/services/notificationService';
+import { Notification } from '@/lib/types/notification';
+import { notificationService } from '@/lib/services/notificationService';
 import { familyService } from '@/lib/services/familyService';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/useToast';
@@ -308,12 +306,16 @@ export default function NotificationCenter() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80" align="end" sideOffset={8}>
-        <DropdownMenuLabel className="flex justify-between items-center">
-          <span>Notifications</span>
+      <DropdownMenuContent className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-2xl rounded-2xl relative overflow-hidden z-[9999]" align="end" sideOffset={8}>
+        {/* Enhanced decorative gradient bars */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 opacity-50"></div>
+        
+        <DropdownMenuLabel className="flex justify-between items-center p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20">
+          <span className="font-bold always-visible-text">🔔 Notifications</span>
           {loading && <Spinner size="sm" className="ml-2" />}
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="border-gray-200/50 dark:border-gray-700/50" />
         <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
           {combinedItems.length === 0 ? (
             <div className="py-4 px-2 text-center text-sm text-gray-500">
@@ -322,40 +324,42 @@ export default function NotificationCenter() {
           ) : (
             <DropdownMenuGroup>
               {combinedItems.map((notification) => (
-                <DropdownMenuItem key={notification.id} className={`px-3 py-2 ${!notification.isRead ? 'bg-blue-50' : ''}`}>
+                <DropdownMenuItem key={notification.id} className={`px-3 py-2 rounded-lg mx-2 mb-1 transition-all duration-200 ${!notification.isRead ? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200/30 dark:border-blue-700/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}>
                   {renderNotificationContent(notification)}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuGroup>
           )}
         </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="justify-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full text-xs text-blue-600 hover:text-blue-700"
-            onClick={() => {
-              loadNotifications();
-              loadPendingInvitations();
-            }}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Spinner size="xs" className="mr-2 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              'Refresh Notifications'
-            )}
-          </Button>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="cursor-pointer">
-          <a href="/notifications" className="flex justify-center items-center py-2">
-            View all notifications
-          </a>
-        </DropdownMenuItem>
+        <DropdownMenuSeparator className="border-gray-200/50 dark:border-gray-700/50" />
+        <div className="p-2 space-y-1">
+          <DropdownMenuItem asChild className="justify-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-xs bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border border-blue-200/30 dark:border-blue-700/30 rounded-lg transition-all duration-200"
+              onClick={() => {
+                loadNotifications();
+                loadPendingInvitations();
+              }}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Spinner size="xs" className="mr-2 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                '🔄 Refresh Notifications'
+              )}
+            </Button>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <a href="/notifications" className="flex justify-center items-center py-2 text-xs bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 border border-purple-200/30 dark:border-purple-700/30 rounded-lg transition-all duration-200">
+              📋 View all notifications
+            </a>
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

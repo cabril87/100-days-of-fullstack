@@ -6,14 +6,16 @@ import { TaskProvider } from "@/lib/providers/TaskProvider";
 import { ToastProvider } from "@/lib/providers/ToastProvider";
 import { FocusProvider } from "@/lib/providers/FocusContext";
 import { GamificationProvider } from "@/lib/providers/GamificationProvider";
-import { Navbar } from "@/components/layout/Navbar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FamilyProvider } from '@/lib/providers/FamilyContext';
 import { TemplateProvider } from '@/lib/providers/TemplateProvider';
 import { PWAProvider } from '@/lib/providers/PWAProvider';
+import { SidebarProvider } from '@/lib/providers/SidebarContext';
+import { AppLayout } from '@/components/layout/AppLayout';
 import FetchInterceptor from '@/components/FetchInterceptor';
 import DeletionOverlay from '@/components/DeletionOverlay';
 import SignalRManager from '@/components/SignalRManager';
+import RealTimeNotificationWidget from '@/components/notifications/RealTimeNotificationWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -79,27 +81,29 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <TaskProvider>
-              <ToastProvider>
-                <FocusProvider>
-                  <FamilyProvider>
-                    <TemplateProvider>
-                      <PWAProvider>
-                      <GamificationProvider>
-                    <FetchInterceptor />
-                    <DeletionOverlay />
-                    <SignalRManager />
-                    <Navbar />
-                    <main className="container mx-auto px-4 py-6">
-                      {children}
-                    </main>
-                      </GamificationProvider>
-                      </PWAProvider>
-                    </TemplateProvider>
-                  </FamilyProvider>
-                </FocusProvider>
-              </ToastProvider>
-            </TaskProvider>
+            <SidebarProvider>
+              <TaskProvider>
+                <ToastProvider>
+                  <FocusProvider>
+                    <FamilyProvider>
+                      <TemplateProvider>
+                        <PWAProvider>
+                        <GamificationProvider>
+                          <FetchInterceptor />
+                          <DeletionOverlay />
+                          <SignalRManager />
+                          <RealTimeNotificationWidget />
+                          <AppLayout>
+                            {children}
+                          </AppLayout>
+                        </GamificationProvider>
+                        </PWAProvider>
+                      </TemplateProvider>
+                    </FamilyProvider>
+                  </FocusProvider>
+                </ToastProvider>
+              </TaskProvider>
+            </SidebarProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

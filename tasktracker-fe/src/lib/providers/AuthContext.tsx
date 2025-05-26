@@ -65,10 +65,10 @@ function authReducer(state: AuthState, action: AuthActionPayload): AuthState {
       return {
         ...state,
         isAuthenticated: true,
-        user: action.payload.user,
-        accessToken: action.payload.accessToken,
-        refreshToken: action.payload.refreshToken,
-        tokenExpiry: new Date(action.payload.expiration),
+        user: (action.payload as any)?.user || null,
+        accessToken: (action.payload as any)?.accessToken || null,
+        refreshToken: (action.payload as any)?.refreshToken || null,
+        tokenExpiry: (action.payload as any)?.expiration ? new Date((action.payload as any).expiration) : null,
         isLoading: false,
         error: null,
         lastAuthenticated: Date.now(),
@@ -81,7 +81,7 @@ function authReducer(state: AuthState, action: AuthActionPayload): AuthState {
       return {
         ...state,
         isLoading: false,
-        error: action.payload,
+        error: typeof action.payload === 'string' ? action.payload : (action.payload as any)?.message || 'An error occurred',
       };
     
     case AUTH_ACTIONS.LOGOUT:
@@ -93,7 +93,7 @@ function authReducer(state: AuthState, action: AuthActionPayload): AuthState {
     case AUTH_ACTIONS.UPDATE_USER:
       return {
         ...state,
-        user: action.payload,
+        user: (action.payload as any) || null,
       };
     
     case AUTH_ACTIONS.CLEAR_ERROR:
@@ -212,6 +212,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadAuthFromStorage();
   }, []);
   
+  // Create stable updateUserActivity function
+  const updateUserActivity = useCallback(() => {
+    dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
+  }, []);
+
   // Set up activity tracking
   useEffect(() => {
     if (typeof window !== 'undefined' && state.isAuthenticated) {
@@ -231,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       };
     }
-  }, [state.isAuthenticated]);
+  }, [state.isAuthenticated, updateUserActivity]);
   
   // Automatic token refresh
   useEffect(() => {
@@ -266,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(activityInterval);
     };
-  }, [state.isAuthenticated, state.tokenExpiry, state.lastActivity]);
+  }, [state.isAuthenticated, state.tokenExpiry]);
   
   // Fetch CSRF token
   const fetchCsrfToken = async (): Promise<string> => {
@@ -355,7 +360,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Login error:', error);
       dispatch({
         type: AUTH_ACTIONS.LOGIN_FAILURE,
-        payload: 'An unexpected error occurred',
+        payload: { message: 'An unexpected error occurred' },
       });
       return false;
     }
@@ -418,7 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Registration error:', error);
       dispatch({
         type: AUTH_ACTIONS.REGISTER_FAILURE,
-        payload: 'An unexpected error occurred',
+        payload: { message: 'An unexpected error occurred' },
       });
       return false;
     }
@@ -441,7 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (!currentRefreshToken) {
       clearAuthStorage();
-      dispatch({ type: AUTH_ACTIONS.REFRESH_TOKEN_FAILURE, payload: 'No refresh token available' });
+      dispatch({ type: AUTH_ACTIONS.REFRESH_TOKEN_FAILURE, payload: { message: 'No refresh token available' } });
       return false;
     }
     
@@ -521,7 +526,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearAuthStorage();
       dispatch({
         type: AUTH_ACTIONS.REFRESH_TOKEN_FAILURE,
-        payload: 'An unexpected error occurred during token refresh',
+        payload: { message: 'An unexpected error occurred during token refresh' },
       });
       
       isRefreshingToken = false;
@@ -575,10 +580,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const clearError = () => {
     dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
-  };
-  
-  const updateUserActivity = () => {
-    dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
   };
   
   const getAccessToken = (): string | null => {

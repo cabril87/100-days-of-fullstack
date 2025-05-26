@@ -75,6 +75,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         
         // Transaction
         Task<PointTransactionDTO> GetTransactionAsync(int transactionId);
+        Task<List<PointTransactionDTO>> GetUserPointTransactionsAsync(int userId, int limit = 100);
         
         // Point Calculation Methods
         Task<int> CalculateTaskCompletionPointsAsync(int userId, int taskId, string difficulty = "Medium", string priority = "Medium", DateTime? dueDate = null, bool isCollaborative = false);

@@ -74,9 +74,34 @@ body {
   letter-spacing: -0.015em;
 }
 
-/* Global heading and form styles */
-h1, h2, h3, h4, h5, h6 {
+/* Global heading and form styles - only apply to main content, not components */
+.main-content h1, 
+.main-content h2, 
+.main-content h3, 
+.main-content h4, 
+.main-content h5, 
+.main-content h6,
+.content-area h1,
+.content-area h2,
+.content-area h3,
+.content-area h4,
+.content-area h5,
+.content-area h6 {
   color: var(--heading-color) !important;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5em;
+  line-height: 1.2;
+}
+
+/* Fallback for headings not in specific containers */
+h1:not([class*="text-"]):not(.no-global-style), 
+h2:not([class*="text-"]):not(.no-global-style), 
+h3:not([class*="text-"]):not(.no-global-style), 
+h4:not([class*="text-"]):not(.no-global-style), 
+h5:not([class*="text-"]):not(.no-global-style), 
+h6:not([class*="text-"]):not(.no-global-style) {
+  color: var(--heading-color);
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-bottom: 0.5em;
@@ -456,4 +481,228 @@ table th {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Safari and Chrome */
+}
+
+/* Comprehensive Theme System */
+/* Text color utilities that override global styles */
+.theme-text-primary {
+  color: var(--foreground) !important;
+}
+
+.theme-text-secondary {
+  color: var(--foreground) !important;
+  opacity: 0.8;
+}
+
+.theme-text-muted {
+  color: var(--foreground) !important;
+  opacity: 0.6;
+}
+
+.theme-text-heading {
+  color: var(--heading-color) !important;
+}
+
+.theme-text-white {
+  color: white !important;
+}
+
+.theme-text-inherit {
+  color: inherit !important;
+}
+
+/* Background utilities */
+.theme-bg-primary {
+  background-color: var(--background) !important;
+}
+
+.theme-bg-card {
+  background-color: var(--card-background) !important;
+}
+
+.theme-bg-accent {
+  background-color: var(--accent-color) !important;
+}
+
+/* Border utilities */
+.theme-border {
+  border-color: var(--border-light) !important;
+}
+
+.theme-border-medium {
+  border-color: var(--border-medium) !important;
+}
+
+/* Component-specific overrides */
+.sidebar-text {
+  color: white !important;
+}
+
+.dark .sidebar-text {
+  color: white !important;
+}
+
+.navbar-text {
+  color: var(--foreground) !important;
+}
+
+.dropdown-text {
+  color: var(--foreground) !important;
+}
+
+.dark .dropdown-text {
+  color: var(--cream) !important;
+}
+
+/* Ensure buttons and interactive elements maintain proper contrast */
+button:not(.no-theme-override) {
+  color: inherit;
+}
+
+/* Specific fixes for common components */
+.lucide {
+  color: inherit !important;
+}
+
+/* Override for specific component text that should always be visible */
+.always-visible-text {
+  color: var(--foreground) !important;
+}
+
+.dark .always-visible-text {
+  color: var(--cream) !important;
+}
+
+/* Ensure dropdown menu items are visible */
+[role="menuitem"] {
+  color: var(--foreground) !important;
+}
+
+.dark [role="menuitem"] {
+  color: var(--cream) !important;
+}
+
+/* Fix for theme toggle dropdown specifically */
+.theme-toggle-dropdown {
+  color: var(--foreground) !important;
+}
+
+.dark .theme-toggle-dropdown {
+  color: var(--cream) !important;
+}
+
+/* Ensure all text in dropdowns is visible */
+[data-radix-popper-content-wrapper] * {
+  color: inherit !important;
+}
+
+/* Fix for sidebar headings specifically */
+.sidebar-heading {
+  color: white !important;
+}
+
+.dark .sidebar-heading {
+  color: white !important;
+}
+
+/* Navbar and Sidebar Consistent Styling - Always Dark with White Text */
+/* These components should look the same regardless of light/dark mode */
+
+/* Navbar specific styling - always dark gradient with white text */
+.navbar-container {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .navbar-container {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* All text in navbar should be white on dark gradient background */
+.navbar-text,
+.navbar-container *:not(.theme-toggle-dropdown):not([data-radix-popper-content-wrapper] *) {
+  color: white !important;
+}
+
+.navbar-container h1,
+.navbar-container h2,
+.navbar-container h3,
+.navbar-container h4,
+.navbar-container h5,
+.navbar-container h6 {
+  color: white !important;
+}
+
+/* Navbar links and buttons */
+.navbar-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.3s ease;
+}
+
+.navbar-link:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.navbar-button {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.navbar-button:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Sidebar specific styling - always dark gradient with white text */
+.sidebar-container {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%) !important;
+  backdrop-filter: blur(12px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* All text in sidebar should be white */
+.sidebar-container,
+.sidebar-container *:not(.theme-toggle-dropdown):not([data-radix-popper-content-wrapper] *) {
+  color: white !important;
+}
+
+.sidebar-container h1,
+.sidebar-container h2,
+.sidebar-container h3,
+.sidebar-container h4,
+.sidebar-container h5,
+.sidebar-container h6 {
+  color: white !important;
+}
+
+/* Sidebar links */
+.sidebar-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.3s ease;
+}
+
+.sidebar-link:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Sidebar buttons */
+.sidebar-button {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.sidebar-button:hover {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Override any conflicting styles for navbar and sidebar */
+.navbar-container .text-gray-800,
+.navbar-container .dark\:text-gray-200,
+.sidebar-container .text-gray-700,
+.sidebar-container .dark\:text-gray-300 {
+  color: white !important;
 }

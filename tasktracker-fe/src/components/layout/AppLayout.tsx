@@ -1,48 +1,56 @@
 'use client';
 
-import React, { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/hooks/useAuth';
-import Header from './Header';
-import Footer from './Footer';
-import { useEffect } from 'react';
-import { Spinner } from '@/components/ui/spinner';
+import React, { useState, useCallback } from 'react';
+import { useAuth } from '@/lib/providers/AuthContext';
+import { useSidebar } from '@/lib/providers/SidebarContext';
+import { Navbar } from './Navbar';
+import { Sidebar } from './Sidebar';
+import { Footer } from './Footer';
+import RealTimeNotificationWidget from '@/components/notifications/RealTimeNotificationWidget';
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  requireAuth?: boolean;
 }
 
-export default function AppLayout({ children, requireAuth = true }: AppLayoutProps) {
-  const { user, isLoading } = useAuth();
-  const router = useRouter();
+export const AppLayout = React.memo(function AppLayout({ children }: AppLayoutProps) {
+  const { user } = useAuth();
+  const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
 
-  useEffect(() => {
-    if (!isLoading && requireAuth && !user) {
-      router.push('/auth/login');
-    }
-  }, [user, isLoading, requireAuth, router]);
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Spinner size="lg" />
-        <p className="mt-4 text-gray-600">Loading...</p>
-      </div>
-    );
-  }
-
-  if (requireAuth && !user) {
-    return null;
-  }
+  const handleDropdownToggle = useCallback((isOpen: boolean) => {
+    console.log('🔽 AppLayout: handleDropdownToggle called with:', isOpen);
+    // No longer hiding sidebar when dropdown opens - let them coexist
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
-      <main className="flex-grow max-w-7xl w-full mx-auto py-6 sm:px-6 lg:px-8">
-        {children}
-      </main>
+    <div className="min-h-screen bg-gray-50 dark:bg-navy-dark">
+      {/* Navbar */}
+      <Navbar 
+        onToggleSidebar={toggleSidebar} 
+        onDropdownToggle={handleDropdownToggle} 
+        isSidebarOpen={isSidebarOpen}
+      />
+
+      <div className="flex relative">
+        {/* Sidebar - only show for authenticated users */}
+        {user && (
+          <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+        )}
+
+        {/* Main content */}
+        <main className={`flex-1 min-h-[calc(100vh-4rem)] transition-all duration-300 ${
+          user && isSidebarOpen ? 'lg:ml-80' : ''
+        }`}>
+          <div className="container mx-auto px-4 py-6">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      {/* Footer */}
       <Footer />
+
+      {/* Real-time Notification Widget - only show for authenticated users */}
+      {user && <RealTimeNotificationWidget />}
     </div>
   );
-} 
+}); 

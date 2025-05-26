@@ -4,11 +4,12 @@
 
 export interface Notification {
   id: string;
-  type: 'invitation' | 'role_change' | 'task_assignment' | 'task_completion' | 'family_update';
+  type: 'invitation' | 'role_change' | 'task_assignment' | 'task_completion' | 'family_update' | 'achievement' | 'reward' | 'challenge' | 'streak' | 'level_up' | 'badge' | 'daily_login' | 'reminder';
   title: string;
   message: string;
   isRead: boolean;
   createdAt: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   data?: {
     invitationId?: string;
     familyId?: string;
@@ -17,6 +18,16 @@ export interface Notification {
     taskId?: string;
     token?: string;
     invitedBy?: string;
+    achievementId?: number;
+    challengeId?: number;
+    rewardId?: number;
+    badgeId?: number;
+    pointsEarned?: number;
+    pointsSpent?: number;
+    newLevel?: number;
+    streakLength?: number;
+    bonusPoints?: number;
+    reminderId?: string;
   };
 }
 

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { 
   initializeRealTimeNotifications, 
   onNewNotification, 
-  onNotificationRead 
+  onNotificationRead,
+  onUnreadCountUpdated
 } from '@/lib/services/notificationService';
 import NotificationActions from './NotificationActions';
 import {
@@ -61,6 +62,11 @@ export default function NavbarNotifications() {
       ));
       setUnreadCount(prev => Math.max(0, prev - 1));
     });
+
+    // Subscribe to unread count updates
+    const unreadCountUnsubscribe = onUnreadCountUpdated((count) => {
+      setUnreadCount(count);
+    });
     
     // Load initial notifications
     fetch('/api/v1/notifications?take=5')
@@ -76,6 +82,7 @@ export default function NavbarNotifications() {
     return () => {
       newNotificationUnsubscribe();
       notificationReadUnsubscribe();
+      unreadCountUnsubscribe();
     };
   }, []);
 

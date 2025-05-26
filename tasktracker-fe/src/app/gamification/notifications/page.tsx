@@ -82,84 +82,38 @@ export default function NotificationsPage(): React.ReactElement {
     try {
       setLoading(true);
       
-      // Simulate notifications data since we don't have a backend endpoint yet
-      const sampleNotifications: GamificationNotification[] = [
-        {
-          id: 1,
-          type: 'achievement',
-          title: 'Achievement Unlocked!',
-          message: 'You completed the "Task Master" achievement by finishing 25 tasks.',
-          isRead: false,
-          createdAt: new Date().toISOString(),
-          data: { achievementId: 1, pointsEarned: 100 },
-          priority: 'high'
-        },
-        {
-          id: 2,
-          type: 'level_up',
-          title: 'Level Up!',
-          message: 'Congratulations! You\'ve reached Level 5 and unlocked new rewards.',
-          isRead: false,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          data: { newLevel: 5, pointsEarned: 200 },
-          priority: 'high'
-        },
-        {
-          id: 3,
-          type: 'daily_login',
-          title: 'Daily Check-in Streak',
-          message: 'Amazing! You\'ve maintained a 7-day login streak. Keep it up!',
-          isRead: true,
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          data: { streakLength: 7, bonusPoints: 50 },
-          priority: 'medium'
-        },
-        {
-          id: 4,
-          type: 'challenge',
-          title: 'Challenge Completed',
-          message: 'You successfully completed the "7-Day Productivity Sprint" challenge!',
-          isRead: true,
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-          data: { challengeId: 101, pointsEarned: 300 },
-          priority: 'high'
-        },
-        {
-          id: 5,
-          type: 'reward',
-          title: 'Reward Redeemed',
-          message: 'You redeemed "Extra Break Time" for 200 points.',
-          isRead: false,
-          createdAt: new Date(Date.now() - 172800000).toISOString(),
-          data: { rewardId: 456, pointsSpent: 200 },
-          priority: 'low'
-        },
-        {
-          id: 6,
-          type: 'badge',
-          title: 'New Badge Earned',
-          message: 'You earned the "Fire Starter" badge for maintaining a streak!',
-          isRead: true,
-          createdAt: new Date(Date.now() - 259200000).toISOString(),
-          data: { badgeId: 17, pointsEarned: 100 },
-          priority: 'medium'
-        },
-        {
-          id: 7,
-          type: 'family',
-          title: 'Family Milestone',
-          message: 'Your family reached 1,000 total points! Everyone gets a bonus.',
-          isRead: false,
-          createdAt: new Date(Date.now() - 345600000).toISOString(),
-          data: { familyId: 1, bonusPoints: 50 },
-          priority: 'medium'
-        }
-      ];
+      // Fetch gamification notifications from the general notification service
+      // Filter for gamification-related types
+      const response = await fetch('/api/v1/notifications');
       
-      setNotifications(sampleNotifications);
+      if (response.ok) {
+        const allNotifications = await response.json();
+        
+        // Filter for gamification-related notifications
+        const gamificationTypes = ['achievement', 'level_up', 'daily_login', 'challenge', 'reward', 'badge', 'family'];
+        const gamificationNotifications = allNotifications
+          .filter((notif: any) => gamificationTypes.includes(notif.type))
+          .map((notif: any) => ({
+            id: parseInt(notif.id) || Date.now(),
+            type: notif.type,
+            title: notif.title,
+            message: notif.message,
+            isRead: notif.isRead,
+            createdAt: notif.createdAt,
+            data: notif.data || {},
+            priority: notif.priority || 'medium'
+          }));
+        
+        setNotifications(gamificationNotifications);
+      } else {
+        // If API fails, show empty state
+        setNotifications([]);
+        console.warn('Gamification notifications API not available');
+      }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      showToast('Failed to load notifications', 'error');
+      console.error('Failed to fetch gamification notifications:', error);
+      setNotifications([]);
+      showToast('Unable to load notifications. Please check your connection.', 'warning');
     } finally {
       setLoading(false);
     }

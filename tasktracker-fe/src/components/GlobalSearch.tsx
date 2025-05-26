@@ -289,7 +289,7 @@ export default function GlobalSearch() {
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-3xl max-h-[80vh] p-0 overflow-hidden bg-white/95 backdrop-blur-lg border-gray-200 shadow-xl">
+      <DialogContent className="max-w-3xl max-h-[80vh] p-0 overflow-hidden bg-white/95 backdrop-blur-lg border-gray-200 shadow-xl z-[9999]">
         <DialogHeader className="py-4 px-6 border-b">
           <DialogTitle className="sr-only">Global Search</DialogTitle>
           <DialogDescription className="sr-only">

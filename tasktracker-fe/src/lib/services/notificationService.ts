@@ -1,6 +1,13 @@
 import { apiClient } from './apiClient';
 import { ApiResponse } from '@/lib/types/api';
-import { signalRService } from './signalRService';
+import { 
+  notificationSignalRService,
+  onNewNotification as onNewNotificationSignalR,
+  onNotificationRead as onNotificationReadSignalR,
+  onNotificationDeleted as onNotificationDeletedSignalR,
+  onUnreadCountUpdated as onUnreadCountUpdatedSignalR,
+  initializeNotificationSignalR
+} from './notificationSignalRService';
 import { 
   Notification, 
   NotificationPreferenceSummary, 
@@ -14,7 +21,7 @@ import {
  */
 export async function initializeRealTimeNotifications(): Promise<void> {
   try {
-    await signalRService.startConnection();
+    await initializeNotificationSignalR();
   } catch (error) {
     // Silently handle connection failures since SignalR may not be enabled
   }
@@ -24,32 +31,36 @@ export async function initializeRealTimeNotifications(): Promise<void> {
  * Register a callback for new notifications
  */
 export function onNewNotification(callback: (notification: any) => void): () => void {
-  signalRService.on('ReceiveNotification', callback);
-  return () => signalRService.off('ReceiveNotification');
+  return onNewNotificationSignalR(callback);
 }
 
 /**
  * Register a callback for notification read events
  */
 export function onNotificationRead(callback: (notificationId: string) => void): () => void {
-  signalRService.on('NotificationRead', callback);
-  return () => signalRService.off('NotificationRead');
+  return onNotificationReadSignalR(callback);
 }
 
 /**
  * Register a callback for notification deleted events
  */
 export function onNotificationDeleted(callback: (notificationId: string) => void): () => void {
-  signalRService.on('NotificationDeleted', callback);
-  return () => signalRService.off('NotificationDeleted');
+  return onNotificationDeletedSignalR(callback);
+}
+
+/**
+ * Register a callback for unread count updates
+ */
+export function onUnreadCountUpdated(callback: (count: number) => void): () => void {
+  return onUnreadCountUpdatedSignalR(callback);
 }
 
 /**
  * Join a family notification group
  */
 export async function joinFamilyNotificationGroup(familyId: number): Promise<void> {
-  if (signalRService.isConnected()) {
-    await signalRService.joinFamilyGroup(familyId);
+  if (notificationSignalRService.isConnected()) {
+    await notificationSignalRService.joinFamilyNotificationGroup(familyId);
   }
 }
 
@@ -57,8 +68,8 @@ export async function joinFamilyNotificationGroup(familyId: number): Promise<voi
  * Leave a family notification group
  */
 export async function leaveFamilyNotificationGroup(familyId: number): Promise<void> {
-  if (signalRService.isConnected()) {
-    await signalRService.leaveFamilyGroup(familyId);
+  if (notificationSignalRService.isConnected()) {
+    await notificationSignalRService.leaveFamilyNotificationGroup(familyId);
   }
 }
 
@@ -88,53 +99,29 @@ export async function deleteNotification(notificationId: number): Promise<boolea
   }
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'invitation',
-    title: 'Family Invitation',
-    message: 'You have been invited to join the Smith Family',
-    isRead: false,
-    createdAt: new Date().toISOString(),
-    data: {
-      invitationId: '123',
-      familyId: '1',
-      familyName: 'Smith Family',
-      token: 'abc123',
-      invitedBy: 'john_smith'
-    }
-  },
-  {
-    id: '2',
-    type: 'task_assignment',
-    title: 'New Task Assigned',
-    message: 'You have been assigned a new task: Clean the garage',
-    isRead: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    data: {
-      taskId: '456',
-      familyId: '1',
-      familyName: 'Smith Family'
-    }
-  }
-];
+// Mock data removed - using real API data only
 
 export const notificationService = {
   async getNotifications(): Promise<ApiResponse<Notification[]>> {
     console.log('[notificationService] Getting notifications');
     try {
-      // Use real API instead of mock data
       const response = await apiClient.get<Notification[]>('/v1/notifications');
       
+      // Ensure we always return an array, even if the API returns null/undefined
+      const notifications = Array.isArray(response.data) ? response.data : [];
+      
       return { 
-        data: response.data,
+        data: notifications,
         status: response.status
       };
     } catch (error) {
       console.error('[notificationService] Error getting notifications:', error);
+      
+      // Return empty array instead of error to prevent UI crashes
       return {
-        error: error instanceof Error ? error.message : 'Failed to get notifications',
-        status: 500
+        data: [],
+        status: 200,
+        error: error instanceof Error ? error.message : 'Failed to get notifications'
       };
     }
   },

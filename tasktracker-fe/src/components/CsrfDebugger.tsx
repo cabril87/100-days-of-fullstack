@@ -53,7 +53,7 @@ export default function CsrfDebugger() {
     return (
       <button 
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded text-xs"
+        className="fixed bottom-4 right-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white px-3 py-2 rounded text-xs transition-colors duration-200"
       >
         Debug CSRF
       </button>

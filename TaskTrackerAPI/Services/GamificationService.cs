@@ -1408,6 +1408,17 @@ namespace TaskTrackerAPI.Services
             return _mapper.Map<PointTransactionDTO>(transaction);
         }
 
+        public async Task<List<PointTransactionDTO>> GetUserPointTransactionsAsync(int userId, int limit = 100)
+        {
+            List<PointTransaction> transactions = await _context.PointTransactions
+                .Where(pt => pt.UserId == userId)
+                .OrderByDescending(pt => pt.CreatedAt)
+                .Take(limit)
+                .ToListAsync();
+            
+            return _mapper.Map<List<PointTransactionDTO>>(transactions);
+        }
+
         private async Task<double> CalculateConsistencyScoreAsync(int userId)
         {
             DateTime now = DateTime.UtcNow;

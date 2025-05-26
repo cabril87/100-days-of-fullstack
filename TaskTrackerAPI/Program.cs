@@ -240,6 +240,7 @@ public class Program
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
         
         builder.Services.AddScoped<IGamificationService, GamificationService>();
+        builder.Services.AddScoped<IUserActivityService, UserActivityService>();
         builder.Services.AddScoped<IFocusService, FocusService>();
         builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
         builder.Services.AddScoped<ITaskPriorityService, TaskPriorityService>();
