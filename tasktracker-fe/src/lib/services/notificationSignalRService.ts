@@ -27,6 +27,7 @@ class NotificationSignalRService {
   private maxReconnectAttempts = 5;
   private eventHandlers: Map<string, Function[]> = new Map();
   private isInitialized = false;
+  private hasLoggedConnectedState = false;
 
   constructor() {
     // Initialize event handler maps
@@ -50,7 +51,8 @@ class NotificationSignalRService {
       }
 
       // Use environment variable or fallback to localhost
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      // Note: SignalR hubs are mapped directly without /api prefix
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
       const signalRUrl = `${baseUrl}/hubs/notifications?access_token=${encodeURIComponent(authToken)}`;
       
       console.log('NotificationSignalR: Connecting to:', signalRUrl);
@@ -191,7 +193,11 @@ class NotificationSignalRService {
       }
 
       if (this.connection.state === signalR.HubConnectionState.Connected) {
+        // Only log this once per session to avoid spam
+        if (!this.hasLoggedConnectedState) {
         console.log('NotificationSignalR: Already connected');
+          this.hasLoggedConnectedState = true;
+        }
         return true;
       }
 
@@ -199,11 +205,13 @@ class NotificationSignalRService {
         console.log('NotificationSignalR: Already connecting, waiting...');
         // Wait for connection to complete
         let attempts = 0;
-        while (this.connection.state === signalR.HubConnectionState.Connecting && attempts < 10) {
+        const maxAttempts = 10;
+        while (this.connection.state === signalR.HubConnectionState.Connecting && attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 500));
           attempts++;
         }
-        return this.connection.state === signalR.HubConnectionState.Connected;
+        // Return true only if connected, false for any other state
+        return this.isConnected();
       }
 
       console.log('NotificationSignalR: Starting connection...');
@@ -211,6 +219,7 @@ class NotificationSignalRService {
       console.log('NotificationSignalR: Connected successfully');
       
       this.reconnectAttempts = 0;
+      this.hasLoggedConnectedState = false; // Reset for next connection cycle
       this.eventHandlers.get('onConnected')?.forEach(handler => handler());
       
       return true;

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # SQL Server Database
   sqlserver:
@@ -49,19 +47,22 @@ services:
       - tasktracker-network
     restart: unless-stopped
   
-  # Next.js Frontend (commented out until ready)
-  # tasktracker-fe:
-  #   build:
-  #     context: ./tasktracker-fe
-  #     dockerfile: Dockerfile
-  #   container_name: tasktracker-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - tasktracker-api
-  #   networks:
-  #     - tasktracker-network
-  #   restart: unless-stopped
+  # Next.js Frontend
+  tasktracker-fe:
+    build:
+      context: ./tasktracker-fe
+      dockerfile: Dockerfile
+    container_name: tasktracker-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tasktracker-api
+    environment:
+      - NEXT_PUBLIC_API_URL=http://tasktracker-api:8080/api
+      - NODE_ENV=production
+    networks:
+      - tasktracker-network
+    restart: unless-stopped
 
 volumes:
   sqlserver-data:

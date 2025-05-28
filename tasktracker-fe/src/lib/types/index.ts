@@ -25,4 +25,5 @@ export * from './gamification';
 
 // Technical types
 export * from './signalr';
-export * from './pwa'; 
+export * from './pwa';
+export * from './security'; 

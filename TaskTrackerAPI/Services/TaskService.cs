@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace TaskTrackerAPI.Services
 {
@@ -30,6 +31,7 @@ namespace TaskTrackerAPI.Services
         private readonly IChecklistItemRepository _checklistItemRepository;
         private readonly ITaskSyncService _taskSyncService;
         private readonly IGamificationService _gamificationService;
+        private readonly ILogger<TaskService> _logger;
         
         public TaskService(
             ITaskItemRepository taskRepository, 
@@ -37,7 +39,8 @@ namespace TaskTrackerAPI.Services
             ICategoryRepository categoryRepository,
             IChecklistItemRepository checklistItemRepository,
             ITaskSyncService taskSyncService,
-            IGamificationService gamificationService)
+            IGamificationService gamificationService,
+            ILogger<TaskService> logger)
         {
             _taskRepository = taskRepository;
             _mapper = mapper;
@@ -45,6 +48,7 @@ namespace TaskTrackerAPI.Services
             _checklistItemRepository = checklistItemRepository;
             _taskSyncService = taskSyncService;
             _gamificationService = gamificationService;
+            _logger = logger;
         }
         
         public async Task<IEnumerable<TaskItemDTO>> GetAllTasksAsync(int userId)
@@ -132,10 +136,10 @@ namespace TaskTrackerAPI.Services
                     // Process any challenge progress related to task creation
                     await _gamificationService.ProcessChallengeProgressAsync(userId, "task_creation", result.Id);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Log the error but don't fail the task creation
-                    // _logger.LogError(ex, "Error processing gamification for task creation");
+                    _logger.LogError(ex, "Error processing gamification for task creation");
                 }
                 
                 return resultDto;
@@ -457,8 +461,7 @@ namespace TaskTrackerAPI.Services
                 catch (Exception ex)
                 {
                     // Log the error but don't fail the task update
-                    // You might want to inject a logger here
-                    // _logger.LogError(ex, "Error processing gamification for task completion");
+                    _logger.LogError(ex, "Error processing gamification for task completion");
                 }
             }
             // If task is being uncompleted (was completed, now isn't), clear completion data
@@ -654,10 +657,10 @@ namespace TaskTrackerAPI.Services
                             // Process any challenge progress related to task completion
                             await _gamificationService.ProcessChallengeProgressAsync(userId, "task_completion", taskId);
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
                             // Log the error but don't fail the batch operation
-                            // _logger.LogError(ex, "Error processing gamification for task completion in batch");
+                            _logger.LogError(ex, "Error processing gamification for task completion in batch");
                         }
                     }
                     // If moving from completed to something else, clear completed date

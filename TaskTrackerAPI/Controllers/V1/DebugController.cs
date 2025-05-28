@@ -491,7 +491,7 @@ modelBuilder.Entity<User>().HasData(
             try
             {
                 // Attempt to authenticate
-                var result = await authService.LoginAsync(loginDto, "127.0.0.1");
+                var result = await authService.LoginAsync(loginDto, "127.0.0.1", "DebugController/1.0");
                 
                 // If successful, return details
                 return Ok(new {

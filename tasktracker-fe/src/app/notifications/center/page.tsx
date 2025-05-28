@@ -292,7 +292,7 @@ export default function NotificationCenterPage(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-8xl">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">

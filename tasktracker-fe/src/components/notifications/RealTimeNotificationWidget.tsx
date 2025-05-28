@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, AlertCircle, Info, X, Wifi, WifiOff } from 'lucide-react';
+import { Bell, CheckCircle, AlertCircle, Info, X, Wifi, WifiOff, Zap, Shield, Activity } from 'lucide-react';
 import { 
   initializeRealTimeNotifications, 
   onNewNotification, 
@@ -10,6 +10,7 @@ import {
 } from '@/lib/services/notificationService';
 import { notificationSignalRService } from '@/lib/services/notificationSignalRService';
 import { Notification } from '@/lib/types/notification';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface RealTimeNotificationWidgetProps {
   className?: string;
@@ -19,7 +20,9 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
   const [isConnected, setIsConnected] = useState(false);
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showWidget, setShowWidget] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [lastConnectionTime, setLastConnectionTime] = useState<Date | null>(null);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -32,14 +35,29 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
       return;
     }
 
+    let isMounted = true;
+    let connectionCheckInterval: NodeJS.Timeout;
+
     // Initialize SignalR connection
     const initializeConnection = async () => {
       try {
+        if (!isMounted) return;
+        
+        setConnectionAttempts(prev => prev + 1);
         await initializeRealTimeNotifications();
-        setIsConnected(notificationSignalRService.isConnected());
+        
+        if (!isMounted) return;
+        
+        const connected = notificationSignalRService.isConnected();
+        setIsConnected(connected);
+        if (connected) {
+          setLastConnectionTime(new Date());
+        }
       } catch (error) {
         console.error('Failed to initialize real-time notifications:', error);
+        if (isMounted) {
         setIsConnected(false);
+        }
       }
     };
 
@@ -47,17 +65,21 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
 
     // Subscribe to real-time events
     const newNotificationUnsubscribe = onNewNotification((notification) => {
+      if (!isMounted) return;
       console.log('RealTimeWidget: New notification received:', notification);
       setRecentNotifications(prev => [notification, ...prev.slice(0, 4)]);
-      setShowWidget(true);
+      setShowNotifications(true);
       
-      // Auto-hide after 5 seconds
+      // Auto-hide after 8 seconds
       setTimeout(() => {
-        setShowWidget(false);
-      }, 5000);
+        if (isMounted) {
+        setShowNotifications(false);
+        }
+      }, 8000);
     });
 
     const notificationReadUnsubscribe = onNotificationRead((notificationId) => {
+      if (!isMounted) return;
       console.log('RealTimeWidget: Notification read:', notificationId);
       setRecentNotifications(prev => prev.map(n => 
         n.id === notificationId ? { ...n, isRead: true } : n
@@ -65,23 +87,29 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
     });
 
     const unreadCountUnsubscribe = onUnreadCountUpdated((count) => {
+      if (!isMounted) return;
       console.log('RealTimeWidget: Unread count updated:', count);
       setUnreadCount(count);
     });
 
     // Monitor connection status
-    const connectionCheckInterval = setInterval(() => {
-      setIsConnected(notificationSignalRService.isConnected());
-    }, 5000);
+    connectionCheckInterval = setInterval(() => {
+      if (!isMounted) return;
+      const connected = notificationSignalRService.isConnected();
+      setIsConnected(connected);
+    }, 3000);
 
     // Cleanup
     return () => {
+      isMounted = false;
       newNotificationUnsubscribe();
       notificationReadUnsubscribe();
       unreadCountUnsubscribe();
+      if (connectionCheckInterval) {
       clearInterval(connectionCheckInterval);
+      }
     };
-  }, []);
+  }, []); // Remove lastConnectionTime dependency to prevent infinite loop
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -91,6 +119,10 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
         return <AlertCircle className="w-5 h-5 text-yellow-500" />;
       case 'error':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
+      case 'security':
+        return <Shield className="w-5 h-5 text-purple-500" />;
+      case 'achievement':
+        return <Zap className="w-5 h-5 text-amber-500" />;
       default:
         return <Info className="w-5 h-5 text-blue-500" />;
     }
@@ -115,109 +147,178 @@ export default function RealTimeNotificationWidget({ className = '' }: RealTimeN
     }
   };
 
+  const getConnectionStatusColor = () => {
+    if (isConnected) return 'from-green-500 to-emerald-600';
+    return 'from-red-500 to-rose-600';
+  };
+
+  const getConnectionStatusText = () => {
+    if (isConnected) return 'Real-time Active';
+    return 'Offline Mode';
+  };
+
+  const getConnectionIcon = () => {
+    if (isConnected) return <Wifi className="w-4 h-4" />;
+    return <WifiOff className="w-4 h-4" />;
+  };
+
   return (
-    <div className={`fixed top-4 right-4 z-[9999] ${className}`}>
-      {/* Connection Status Indicator */}
-      <div className="mb-2 flex justify-end">
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 ${
-          isConnected 
-            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-        }`}>
-          {isConnected ? (
-            <>
-              <Wifi className="w-3 h-3" />
-              <span>Real-time Connected</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="w-3 h-3" />
-              <span>Offline Mode</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Notification Widget */}
-      {showWidget && recentNotifications.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden max-w-sm animate-in slide-in-from-right-5 duration-300">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-purple-500 to-blue-600 px-4 py-3 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
-                <span className="font-semibold">Live Updates</span>
+    <div className={`fixed bottom-4 right-4 z-[9999] ${className}`}>
+      <AnimatePresence mode="wait">
+        {/* Show notifications when available, otherwise show connection status */}
+        {showNotifications && recentNotifications.length > 0 ? (
+          <motion.div
+            key="notifications"
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden max-w-sm backdrop-blur-xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
+            {/* Gamification Header */}
+            <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 px-4 py-3 text-white relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 to-blue-400/20 animate-pulse"></div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <span className="font-bold text-sm">Live Updates</span>
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full animate-bounce">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/20 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowWidget(false)}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
-          </div>
 
-          {/* Notifications List */}
-          <div className="max-h-80 overflow-y-auto">
-            {recentNotifications.slice(0, 3).map((notification) => (
-              <div
-                key={notification.id}
-                className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-all duration-200 ${
-                  !notification.isRead 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' 
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {getNotificationIcon(notification.type)}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm line-clamp-2">
-                      {notification.title}
-                    </h4>
-                    <p className="text-gray-600 dark:text-gray-400 text-xs mt-1 line-clamp-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatTimeAgo(notification.createdAt)}
-                      </span>
-                      {!notification.isRead && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                          New
+            {/* Notifications List */}
+            <div className="max-h-80 overflow-y-auto">
+              {recentNotifications.slice(0, 3).map((notification, index) => (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-all duration-200 ${
+                    !notification.isRead 
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-l-4 border-l-blue-500' 
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-1.5 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 rounded-lg">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm line-clamp-2">
+                        {notification.title}
+                      </h4>
+                      <p className="text-gray-600 dark:text-gray-400 text-xs mt-1 line-clamp-2">
+                        {notification.message}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                          {formatTimeAgo(notification.createdAt)}
                         </span>
-                      )}
+                        {!notification.isRead && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-sm">
+                            NEW
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Footer with Stats */}
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 px-4 py-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400 font-medium">
+                  {unreadCount} unread • {recentNotifications.length} recent
+                </span>
+                <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                  <Activity className="w-3 h-3" />
+                  <span className="font-bold">LIVE</span>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Footer */}
-          {unreadCount > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-700/50 px-4 py-2 text-center">
-              <span className="text-xs text-gray-600 dark:text-gray-400">
-                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
-              </span>
             </div>
-          )}
-        </div>
-      )}
+          </motion.div>
+        ) : (
+          /* Connection Status Widget */
+          <motion.div
+            key="connection"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="relative"
+          >
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border transition-all duration-500 backdrop-blur-xl ${
+              isConnected 
+                ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700' 
+                : 'bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 border-red-200 dark:border-red-700'
+            }`}>
+              {/* Animated Connection Icon */}
+              <div className={`p-2 rounded-xl bg-gradient-to-r ${getConnectionStatusColor()} text-white shadow-lg`}>
+                <motion.div
+                  animate={isConnected ? { rotate: [0, 10, -10, 0] } : { opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  {getConnectionIcon()}
+                </motion.div>
+              </div>
 
-      {/* Floating Action Button for Manual Toggle */}
-      {!showWidget && recentNotifications.length > 0 && (
-        <button
-          onClick={() => setShowWidget(true)}
-          className="bg-gradient-to-r from-purple-500 to-blue-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-        >
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-      )}
+              {/* Status Text */}
+              <div className="flex-1">
+                <div className={`text-sm font-bold ${
+                  isConnected ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+                }`}>
+                  {getConnectionStatusText()}
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  {isConnected 
+                    ? `Connected ${lastConnectionTime ? formatTimeAgo(lastConnectionTime.toISOString()) : ''}`
+                    : `Attempts: ${connectionAttempts}`
+                  }
+                </div>
+              </div>
+
+              {/* Pulse Animation for Connected State */}
+              {isConnected && (
+                <motion.div
+                  className="w-3 h-3 bg-green-500 rounded-full"
+                  animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              )}
+            </div>
+
+            {/* Gamification Enhancement - XP Bar for Connection Quality */}
+            {isConnected && (
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 1, delay: 0.5 }}
+                className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500 rounded-b-2xl"
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 } 

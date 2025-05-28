@@ -279,15 +279,22 @@ namespace TaskTrackerAPI.Middleware
             return false;
         }
 
-        private Task LogRequestInfoAsync(HttpContext context, string? requestBody, bool potentialThreat)
+        private async Task LogRequestInfoAsync(HttpContext context, string? requestBody, bool potentialThreat)
         {
             // Get user ID if authenticated
             string? userId = context.User.Identity?.IsAuthenticated == true
                 ? context.User.FindFirstValue(ClaimTypes.NameIdentifier)
                 : null;
             
+            string? username = context.User.Identity?.IsAuthenticated == true
+                ? context.User.FindFirstValue(ClaimTypes.Name)
+                : null;
+            
             // Get client IP
             string clientIp = GetClientIp(context);
+            
+            // Get user agent
+            string userAgent = context.Request.Headers["User-Agent"].ToString();
             
             // Redact sensitive information from the request body
             string? redactedBody = RedactSensitiveInformation(requestBody);
@@ -315,21 +322,65 @@ namespace TaskTrackerAPI.Middleware
                     userId ?? "anonymous");
             }
             
-            return Task.CompletedTask;
+            // Log to database for admin dashboard
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var securityMonitoringService = scope.ServiceProvider.GetRequiredService<ISecurityMonitoringService>();
+                
+                int? userIdInt = null;
+                if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int parsedUserId))
+                {
+                    userIdInt = parsedUserId;
+                }
+                
+                string eventType = potentialThreat ? "SECURITY_THREAT" : "USER_REQUEST";
+                string action = $"{context.Request.Method} {context.Request.Path}";
+                string severity = potentialThreat ? "HIGH" : "INFO";
+                string? details = potentialThreat ? $"Potential threat detected. Body: {redactedBody}" : null;
+                
+                await securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: eventType,
+                    action: action,
+                    ipAddress: clientIp,
+                    userAgent: userAgent,
+                    userId: userIdInt,
+                    username: username,
+                    resource: context.Request.Path,
+                    severity: severity,
+                    details: details,
+                    isSuccessful: true,
+                    isSuspicious: potentialThreat
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log security audit to database");
+            }
         }
 
-        private Task LogResponseInfoAsync(HttpContext context, long elapsedMs, bool potentialThreat)
+        private async Task LogResponseInfoAsync(HttpContext context, long elapsedMs, bool potentialThreat)
         {
             // Get user ID if authenticated
             string? userId = context.User.Identity?.IsAuthenticated == true
                 ? context.User.FindFirstValue(ClaimTypes.NameIdentifier)
                 : null;
             
+            string? username = context.User.Identity?.IsAuthenticated == true
+                ? context.User.FindFirstValue(ClaimTypes.Name)
+                : null;
+            
             // Get client IP
             string clientIp = GetClientIp(context);
             
+            // Get user agent
+            string userAgent = context.Request.Headers["User-Agent"].ToString();
+            
+            bool isSuccessful = context.Response.StatusCode < 400;
+            bool isError = context.Response.StatusCode >= 400;
+            
             // Log response details
-            if (potentialThreat || context.Response.StatusCode >= 400)
+            if (potentialThreat || isError)
             {
                 // For potential threats or error responses, log more detailed information
                 _logger.LogWarning(
@@ -351,7 +402,145 @@ namespace TaskTrackerAPI.Middleware
                     elapsedMs);
             }
             
-            return Task.CompletedTask;
+            // Log response to database for admin dashboard
+            // Log all requests for performance metrics, but with different detail levels
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var securityMonitoringService = scope.ServiceProvider.GetRequiredService<ISecurityMonitoringService>();
+                
+                int? userIdInt = null;
+                if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int parsedUserId))
+                {
+                    userIdInt = parsedUserId;
+                }
+                
+                string eventType;
+                string severity;
+                
+                if (potentialThreat)
+                {
+                    eventType = "SECURITY_THREAT_RESPONSE";
+                    severity = "HIGH";
+                }
+                else if (isError)
+                {
+                    eventType = "ERROR_RESPONSE";
+                    severity = "MEDIUM";
+                }
+                else
+                {
+                    eventType = "API_REQUEST";
+                    severity = "INFO";
+                }
+                
+                string action = $"{context.Request.Method} {context.Request.Path} -> {context.Response.StatusCode}";
+                string details = $"Response: {context.Response.StatusCode}, Elapsed: {elapsedMs}ms";
+                
+                // Add user agent for performance tracking
+                if (!string.IsNullOrEmpty(userAgent))
+                {
+                    details += $", UserAgent: {userAgent.Substring(0, Math.Min(userAgent.Length, 100))}";
+                }
+                
+                await securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: eventType,
+                    action: action,
+                    ipAddress: clientIp,
+                    userAgent: userAgent,
+                    userId: userIdInt,
+                    username: username,
+                    resource: context.Request.Path,
+                    severity: severity,
+                    details: details,
+                    isSuccessful: isSuccessful,
+                    isSuspicious: potentialThreat
+                );
+
+                // Generate SecurityMetrics based on the type of event
+                await GenerateSecurityMetricsAsync(securityMonitoringService, context, potentialThreat, isError, isSuccessful, userIdInt);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to log response audit to database");
+            }
+        }
+
+        private async Task GenerateSecurityMetricsAsync(ISecurityMonitoringService securityMonitoringService, HttpContext context, bool potentialThreat, bool isError, bool isSuccessful, int? userId)
+        {
+            try
+            {
+                // Generate SecurityMetrics based on different event types
+                if (potentialThreat)
+                {
+                    // Log threat detection metrics
+                    await securityMonitoringService.LogSecurityMetricAsync(
+                        metricType: "Threat Detection",
+                        metricName: "Suspicious IP Activity",
+                        value: 1,
+                        description: "Suspicious activity from unknown IP addresses",
+                        source: "Security Monitor",
+                        severity: "High"
+                    );
+                }
+                else if (isError)
+                {
+                    if (context.Response.StatusCode == 401 || context.Response.StatusCode == 403)
+                    {
+                        // Log access control violations
+                        await securityMonitoringService.LogSecurityMetricAsync(
+                            metricType: "Access Control",
+                            metricName: "Permission Violations",
+                            value: 1,
+                            description: "Attempts to access unauthorized resources",
+                            source: "Security Monitor",
+                            severity: "High"
+                        );
+                    }
+                    else if (context.Response.StatusCode == 429)
+                    {
+                        // Log blocked requests (rate limiting)
+                        await securityMonitoringService.LogSecurityMetricAsync(
+                            metricType: "Threat Detection",
+                            metricName: "Blocked Requests",
+                            value: 1,
+                            description: "Number of malicious requests blocked",
+                            source: "Security Monitor",
+                            severity: "Medium"
+                        );
+                    }
+                }
+                else if (isSuccessful && userId.HasValue)
+                {
+                    // Log successful authentications (only for authenticated users)
+                    await securityMonitoringService.LogSecurityMetricAsync(
+                        metricType: "Access Control",
+                        metricName: "Successful Authentications",
+                        value: 1,
+                        description: "Number of successful user authentications",
+                        source: "Security Monitor",
+                        severity: "Info"
+                    );
+                }
+
+                // Periodically generate system security score (every 50th request)
+                if (Random.Shared.Next(1, 51) == 1)
+                {
+                    double securityScore = await securityMonitoringService.CalculateSecurityScoreAsync();
+                    await securityMonitoringService.LogSecurityMetricAsync(
+                        metricType: "System Security",
+                        metricName: "Security Score",
+                        value: securityScore,
+                        description: "Overall system security score",
+                        source: "Security Monitor",
+                        severity: "Info"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate security metrics");
+            }
         }
 
         private string GetClientIp(HttpContext context)

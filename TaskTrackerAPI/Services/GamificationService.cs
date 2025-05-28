@@ -2390,7 +2390,7 @@ namespace TaskTrackerAPI.Services
         {
             int uniqueTagsUsed = await _context.TaskTags
                 .Include(tt => tt.Task)
-                .Where(tt => tt.Task.UserId == userId)
+                .Where(tt => tt.Task!.UserId == userId)
                 .Select(tt => tt.TagId)
                 .Distinct()
                 .CountAsync();
@@ -2411,7 +2411,7 @@ namespace TaskTrackerAPI.Services
                            t.CompletedAt.Value >= today && 
                            t.CompletedAt.Value < tomorrow &&
                            t.CategoryId.HasValue)
-                .Select(t => t.CategoryId.Value)
+                .Select(t => t.CategoryId!.Value)
                 .Distinct()
                 .CountAsync();
                 
@@ -2420,7 +2420,7 @@ namespace TaskTrackerAPI.Services
             // Skill Builder - Complete tasks in 10 different categories (ID 93)
             int totalCategoriesUsed = await _context.Tasks
                 .Where(t => t.UserId == userId && t.IsCompleted && t.CategoryId.HasValue)
-                .Select(t => t.CategoryId.Value)
+                .Select(t => t.CategoryId!.Value)
                 .Distinct()
                 .CountAsync();
                 
@@ -2580,12 +2580,12 @@ namespace TaskTrackerAPI.Services
                            t.CompletedAt.HasValue && 
                            t.CompletedAt.Value >= today.AddDays(-7) &&
                            t.CategoryId.HasValue)
-                .GroupBy(t => t.CategoryId.Value)
+                .GroupBy(t => t.CategoryId!.Value)
                 .ToListAsync();
             
             foreach (var group in categoryGroups)
             {
-                var tasksByDay = group.GroupBy(t => t.CompletedAt.Value.Date).ToList();
+                var tasksByDay = group.GroupBy(t => t.CompletedAt!.Value.Date).ToList();
                 if (tasksByDay.Count >= 7)
                 {
                     await CheckAndUnlockSingleAchievement(userId, 50); // Habit Builder
@@ -2640,7 +2640,7 @@ namespace TaskTrackerAPI.Services
             
             if (userProgress?.LastActivityDate.HasValue == true)
             {
-                var daysSinceLastActivity = (DateTime.UtcNow - userProgress.LastActivityDate.Value).Days;
+                int daysSinceLastActivity = (DateTime.UtcNow - userProgress.LastActivityDate!.Value).Days;
                 if (daysSinceLastActivity >= 7)
                 {
                     // Check if they have activity today

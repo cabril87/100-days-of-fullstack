@@ -17,7 +17,7 @@ export default function Home() {
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 animate-pulse dark:block hidden"></div>
         <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 opacity-50 dark:block hidden"></div>
         
-        <div className="max-w-6xl mx-auto relative z-10">
+        <div className="max-w-8xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <div className="flex items-center justify-center gap-4 mb-8">
               <h1 className="text-7xl font-black text-gray-900 dark:bg-gradient-to-r dark:from-blue-300 dark:via-purple-300 dark:to-indigo-300 dark:bg-clip-text dark:text-transparent drop-shadow-lg">
@@ -450,7 +450,7 @@ export default function Home() {
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-purple-600/8 to-blue-600/8 rounded-full blur-3xl animate-pulse dark:block hidden"></div>
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-600/8 to-indigo-600/8 rounded-full blur-3xl animate-pulse delay-1000 dark:block hidden"></div>
 
-        <div className="max-w-6xl mx-auto text-center relative z-10">
+        <div className="max-w-8xl mx-auto text-center relative z-10">
           <div className="bg-white dark:bg-gradient-to-br dark:from-gray-800/95 dark:via-purple-900/30 dark:to-blue-900/40 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700/50 relative overflow-hidden p-16">
             {/* Complex decorative background - only visible in dark mode */}
             <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-purple-600/5 to-blue-600/5 rounded-full blur-3xl dark:block hidden"></div>

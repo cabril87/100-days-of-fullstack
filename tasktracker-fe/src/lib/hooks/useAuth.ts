@@ -14,12 +14,19 @@ export function useAuth() {
   const fetchUser = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/auth/me`, {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_URL}/v1/auth/profile`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (response.ok) {
@@ -107,18 +114,30 @@ export function useAuth() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_URL}/auth/logout`, {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_URL}/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Logout failed');
       }
+
+      // Clear local storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
 
       setUser(null);
       router.push('/login');

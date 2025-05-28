@@ -33,8 +33,9 @@ export const useAuthenticatedSignalR = () => {
         setIsConnected(connected);
         
         if (connected && user.id) {
-          // Join user-specific group for gamification updates
-          await signalRService.joinUserGroup(parseInt(user.id));
+          // User is automatically added to their own group when connecting to the hub
+          // No need to manually join the user group
+          console.log('SignalR connected for user:', user.id);
         }
       } catch (error) {
         console.error('Failed to connect to SignalR:', error);

@@ -135,13 +135,11 @@ export default function FamilyDashboard() {
     setLoading(true);
     setConnectionError(false);
     
-    // Generate a new cache key if force cache busting is requested
-    if (forceCacheBust) {
-      setCacheKey(Date.now().toString());
-    }
+    // Use a local cache key instead of state to avoid infinite loops
+    const currentCacheKey = forceCacheBust ? Date.now().toString() : cacheKey;
     
     try {
-      console.log(`[DEBUG] Fetching all families for dashboard (cache key: ${cacheKey})`);
+      console.log(`[DEBUG] Fetching all families for dashboard (cache key: ${currentCacheKey})`);
       
       // Standard API call - no fancy options
       const response = await familyService.getAllFamilies();
@@ -237,7 +235,7 @@ export default function FamilyDashboard() {
       setLoading(false);
       setLastRefresh(Date.now());
     }
-  }, [showToast, cacheKey]);
+  }, [showToast]);
   
   // Initial load and polling setup
   useEffect(() => {
@@ -323,13 +321,121 @@ export default function FamilyDashboard() {
     
     // Initial fetch
     console.log('[DEBUG] Starting initial families fetch');
-    fetchFamilies(0, true);
+    
+    // Create a local version of fetchFamilies to avoid dependency issues
+    const localFetchFamilies = async (retry = 0, forceCacheBust = false) => {
+      setLoading(true);
+      setConnectionError(false);
+      
+      // Use a local cache key instead of state to avoid infinite loops
+      const currentCacheKey = forceCacheBust ? Date.now().toString() : cacheKey;
+      
+      try {
+        console.log(`[DEBUG] Fetching all families for dashboard (cache key: ${currentCacheKey})`);
+        
+        // Standard API call - no fancy options
+        const response = await familyService.getAllFamilies();
+        console.log("[DEBUG] Families API response:", response);
+        
+        if (response.data && Array.isArray(response.data)) {
+          console.log(`[DEBUG] Got ${response.data.length} families from server`);
+          
+          // Check for recently deleted families that might still appear
+          const filteredFamilies = response.data.filter(family => {
+            // Check if this family was recently deleted
+            const wasRecent = localStorage.getItem(`recently_deleted_family_${family.id}`);
+            if (wasRecent) {
+              console.log(`[DEBUG] Filtering out recently deleted family: ${family.id}`);
+              return false;
+            }
+            return true;
+          });
+          
+          if (filteredFamilies.length !== response.data.length) {
+            console.log(`[DEBUG] Filtered out ${response.data.length - filteredFamilies.length} recently deleted families`);
+          }
+          
+          // Process families data
+          setFamilies(filteredFamilies);
+          
+          // Calculate stats with unique member counting
+          const uniqueMembers = new Set();
+          let totalCompletedTasks = 0;
+          let totalPendingTasks = 0;
+          
+          if (response.data && Array.isArray(response.data)) {
+            response.data.forEach(family => {
+              if (family.members && Array.isArray(family.members)) {
+                family.members.forEach(member => {
+                  // Use userId as the unique identifier
+                  if (member.userId) {
+                    uniqueMembers.add(member.userId.toString());
+                  } else if (member.user && member.user.id) {
+                    uniqueMembers.add(member.user.id.toString());
+                  }
+                  
+                  // Continue counting tasks
+                  totalCompletedTasks += (member.completedTasks || 0);
+                  totalPendingTasks += (member.pendingTasks || 0);
+                });
+              }
+            });
+          }
+          
+          // Set stats with unique member count
+          setStats(prevStats => ({
+            ...prevStats,
+            totalMembers: uniqueMembers.size,
+            totalCompletedTasks,
+            totalPendingTasks,
+            activeFamilies: response.data?.length || 0
+          }));
+          
+          console.log(`[DEBUG] Found ${uniqueMembers.size} unique members across all families`);
+          
+          // Reset error states
+          setConnectionError(false);
+          setUsingCachedData(false);
+        } else if (response.error) {
+          console.error("Error fetching families:", response.error);
+          setConnectionError(true);
+          
+          // Use cached data as fallback
+          const cachedFamilies = getCachedFamilies();
+          if (cachedFamilies.length > 0) {
+            setFamilies(cachedFamilies);
+            setUsingCachedData(true);
+          }
+        }
+      } catch (error) {
+        console.error("Exception in fetchFamilies:", error);
+        setConnectionError(true);
+        
+        // Use cached data as fallback
+        const cachedFamilies = getCachedFamilies();
+        if (cachedFamilies.length > 0) {
+          setFamilies(cachedFamilies);
+          setUsingCachedData(true);
+        }
+        
+        // Auto-retry logic
+        if (retry < MAX_RETRIES) {
+          setRetryCount(retry + 1);
+          setTimeout(() => localFetchFamilies(retry + 1), RETRY_DELAY_MS * (retry + 1));
+        }
+      } finally {
+        setLoading(false);
+        setLastRefresh(Date.now());
+      }
+    };
+    
+    localFetchFamilies(0, true);
     
     // Set up polling to check for updates
     // This helps when families are created/deleted in other tabs or after redirection
     const pollInterval = setInterval(() => {
       console.log("[DEBUG] Polling for family updates...");
-      fetchFamilies(0, true);
+      localFetchFamilies(0, true);
     }, 3000); // Poll every 3 seconds
     
     // Stop polling after 15 seconds to conserve resources
@@ -342,7 +448,7 @@ export default function FamilyDashboard() {
       clearInterval(pollInterval);
       clearTimeout(stopPollingTimeout);
     };
-  }, [pathname, fetchFamilies]); // Re-run when pathname changes
+  }, [pathname]); // Re-run when pathname changes
   
   // Force refresh handler
   const handleForceRefresh = () => {

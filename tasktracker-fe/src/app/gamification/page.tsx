@@ -42,6 +42,7 @@ import type {
 } from '@/lib/types/gamification';
 import { gamificationService } from '@/lib/services/gamificationService';
 import { useToast } from '@/lib/hooks/useToast';
+import { useAuth } from '@/lib/providers/AuthContext';
 
 // Component-specific interfaces
 interface LevelProgressProps {
@@ -553,6 +554,7 @@ export default function GamificationDashboard(): React.ReactElement {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const { showToast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
 
   // Admin detection state
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -642,7 +644,6 @@ export default function GamificationDashboard(): React.ReactElement {
   // Initialization
   useEffect(() => {
     fetchDashboardData();
-    checkAdminStatus();
   }, []);
 
   // Add a page visibility change listener to refresh data when user returns to the page
@@ -669,29 +670,16 @@ export default function GamificationDashboard(): React.ReactElement {
     };
   }, []);
 
-  // Check if current user is admin
-  const checkAdminStatus = async () => {
-    try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-      if (!token) {
-        setCheckingAdmin(false);
-        return;
-      }
-
-      // Use the backend API URL instead of relative frontend URL
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${API_URL}/admin/gamification/status`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      setIsAdmin(response.ok);
-    } catch (error) {
-      console.error('Error checking admin status:', error);
+  // Check admin status based on user role from auth context
+  useEffect(() => {
+    if (user) {
+      const userIsAdmin = user?.email === 'admin@tasktracker.com' || user?.role === 'Admin';
+      setIsAdmin(userIsAdmin);
+    } else {
       setIsAdmin(false);
-    } finally {
-      setCheckingAdmin(false);
     }
-  };
+    setCheckingAdmin(false);
+  }, [user]);
 
   // Handle refresh
   const handleRefresh = () => {
@@ -1038,7 +1026,7 @@ export default function GamificationDashboard(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-8xl">
         {/* Header Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
@@ -1079,8 +1067,8 @@ export default function GamificationDashboard(): React.ReactElement {
             </div>
           </div>
           
-          {/* Temporary Auth Debug Panel */}
-          {process.env.NODE_ENV === 'development' && (
+          {/* Temporary Auth Debug Panel - Admin Only */}
+          {process.env.NODE_ENV === 'development' && isAdmin && !checkingAdmin && (
             <div className="mb-4">
               <AuthDebug />
             </div>
@@ -1450,7 +1438,7 @@ export default function GamificationDashboard(): React.ReactElement {
                     <p className="text-gray-600 text-sm">
                       {dashboardData.activeChallenges.length}/2 challenge slots used
                     </p>
-                    {process.env.NODE_ENV === 'development' && (
+                    {process.env.NODE_ENV === 'development' && isAdmin && !checkingAdmin && (
                       <div className="text-xs text-red-500 space-y-1">
                         <p>Debug: {JSON.stringify(dashboardData.activeChallenges.length)} challenges loaded</p>
                         <p>Debug: Data timestamp: {new Date().toLocaleTimeString()}</p>

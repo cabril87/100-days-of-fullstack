@@ -212,22 +212,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadAuthFromStorage();
   }, []);
   
-  // Create stable updateUserActivity function
-  const updateUserActivity = useCallback(() => {
-    dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
-  }, []);
-
-  // Set up activity tracking
+  // Set up activity tracking with throttling to prevent infinite loops
   useEffect(() => {
     if (typeof window !== 'undefined' && state.isAuthenticated) {
       const events = ['mousedown', 'keypress', 'scroll', 'touchstart', 'mousemove'];
+      let lastActivityUpdate = 0;
+      const throttleDelay = 5000; // Only update activity every 5 seconds
       
       const activityHandler = () => {
-        updateUserActivity();
+        const now = Date.now();
+        if (now - lastActivityUpdate > throttleDelay) {
+          lastActivityUpdate = now;
+          dispatch({ type: AUTH_ACTIONS.UPDATE_ACTIVITY });
+        }
       };
       
       events.forEach(event => {
-        window.addEventListener(event, activityHandler);
+        window.addEventListener(event, activityHandler, { passive: true });
       });
       
       return () => {
@@ -236,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       };
     }
-  }, [state.isAuthenticated, updateUserActivity]);
+  }, [state.isAuthenticated]); // Removed updateUserActivity from dependencies
   
   // Automatic token refresh
   useEffect(() => {
@@ -271,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(activityInterval);
     };
-  }, [state.isAuthenticated, state.tokenExpiry]);
+  }, [state.isAuthenticated, state.tokenExpiry, state.lastActivity]); // Added state.lastActivity to dependencies
   
   // Fetch CSRF token
   const fetchCsrfToken = async (): Promise<string> => {
@@ -613,7 +614,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearError,
     getAccessToken,
     getTokenExpiry,
-    updateUserActivity,
     isTokenExpired,
     clearAllStorage,
   }), [state]);

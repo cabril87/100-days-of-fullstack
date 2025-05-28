@@ -12,7 +12,7 @@ export function CalendarModal({ isOpen, onClose, familyId }: CalendarModalProps)
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) onClose();
     }}>
-      <DialogContent className="max-w-6xl h-[80vh]">
+      <DialogContent className="max-w-8xl h-[80vh]">
         <DialogHeader>
           <DialogTitle>Family Calendar</DialogTitle>
           <DialogDescription>

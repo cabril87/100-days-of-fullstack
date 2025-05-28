@@ -118,7 +118,7 @@ export default function AchievementsPage(): React.ReactElement {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <div className="container mx-auto p-4 max-w-6xl">
+        <div className="container mx-auto p-4 max-w-8xl">
           <div className="animate-pulse space-y-6">
             <div className="h-8 w-48 bg-gray-300 rounded"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -134,7 +134,7 @@ export default function AchievementsPage(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-8xl">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">

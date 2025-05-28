@@ -30,15 +30,18 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly AuthHelper _authHelper;
     private readonly ILogger<AuthService> _logger;
+    private readonly ISessionManagementService _sessionManagementService;
 
     public AuthService(
         IUserRepository userRepository,
         AuthHelper authHelper,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        ISessionManagementService sessionManagementService)
     {
         _userRepository = userRepository;
         _authHelper = authHelper;
         _logger = logger;
+        _sessionManagementService = sessionManagementService;
     }
 
     public async Task<UserDTO> RegisterUserAsync(UserCreateDTO userDto)
@@ -117,7 +120,7 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress)
+    public async Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress, string? userAgent = null)
     {
         try
         {
@@ -201,6 +204,18 @@ public class AuthService : IAuthService
             // Update last login time
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateUserAsync(user);
+
+            // Create session tracking entry
+            try
+            {
+                string sessionToken = await _sessionManagementService.CreateSessionAsync(user.Id, ipAddress, userAgent);
+                _logger.LogInformation("Session created for user {UserId}: {SessionToken}", user.Id, sessionToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create session tracking for user {UserId}, but login will continue", user.Id);
+                // Don't fail the login if session creation fails
+            }
 
             // Create response
             TokensResponseDTO response = new TokensResponseDTO

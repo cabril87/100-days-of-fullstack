@@ -22,7 +22,7 @@ public interface IAuthService
 {
     // Authentication methods
     Task<UserDTO> RegisterUserAsync(UserCreateDTO userDto);
-    Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress);
+    Task<TokensResponseDTO> LoginAsync(UserLoginDTO loginDto, string ipAddress, string? userAgent = null);
     Task<TokensResponseDTO> RefreshTokenAsync(string refreshToken, string ipAddress);
     Task LogoutAsync(int userId, string refreshToken, string ipAddress);
 

@@ -25,6 +25,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
     tasks: true,
     family: true,
     gamification: true,
+    admin: true,
   });
 
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
@@ -208,7 +209,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 className="sidebar-button flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors"
               >
                 <span className="flex items-center gap-2">
-                  📊 Dashboard
+                  📊 Main Menu
                 </span>
                 <svg
                   className={`w-4 h-4 transform transition-transform ${expandedSections.dashboard ? 'rotate-180' : ''}`}
@@ -221,20 +222,22 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               </button>
               {expandedSections.dashboard && (
                 <div className="space-y-1 ml-4">
-                  <Link
-                    href="/"
-                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/') && pathname === '/'
-                        ? 'bg-blue-500/20 border-l-4 border-blue-400'
-                        : ''
-                    }`}
-                  >
-                    🏠 Home
-                  </Link>
+                 
                   <Link
                     href="/dashboard"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActiveLink('/dashboard')
+                        ? 'bg-purple-500/20 border-l-4 border-blue-400'
+                        : ''
+                    }`}
+                  >
+                    🏠 Dashboard
+                  </Link>
+
+                  <Link
+                    href="/analytics"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/analytics')
                         ? 'bg-purple-500/20 border-l-4 border-purple-400'
                         : ''
                     }`}
@@ -417,6 +420,63 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 </div>
               )}
             </div>
+
+            {/* Admin Section - Only for Admins */}
+            {(user?.email === 'admin@tasktracker.com' || user?.role === 'Admin') && (
+              <div>
+                <button
+                  onClick={() => toggleSection('admin')}
+                  className="sidebar-button flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    🛡️ Admin Panel
+                    <span className="w-2 h-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-full animate-pulse"></span>
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transform transition-transform ${expandedSections.admin ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {expandedSections.admin && (
+                  <div className="space-y-1 ml-4">
+                    <Link
+                      href="/admin"
+                      className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin')
+                          ? 'bg-red-500/20 border-l-4 border-red-400'
+                          : ''
+                      }`}
+                    >
+                      📊 Security Dashboard
+                    </Link>
+                    <Link
+                      href="/admin/users"
+                      className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/users')
+                          ? 'bg-orange-500/20 border-l-4 border-orange-400'
+                          : ''
+                      }`}
+                    >
+                      👥 User Management
+                    </Link>
+                    <Link
+                      href="/admin/settings"
+                      className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/settings')
+                          ? 'bg-yellow-500/20 border-l-4 border-yellow-400'
+                          : ''
+                      }`}
+                    >
+                      ⚙️ System Settings
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quick Actions */}
             <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">

@@ -50,9 +50,7 @@ function getAuthToken(options: { suppressAuthError?: boolean } = {}): string | n
   // Try localStorage first
   const localToken = localStorage.getItem('token');
   if (localToken) {
-    if (!options.suppressAuthError) {
-      console.log('[apiClient] Found token in localStorage');
-    }
+    // Suppress token found logging to reduce console spam
     return localToken;
   }
   
@@ -232,7 +230,8 @@ export async function apiRequest<T = any>(
     // Add auth token if available
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
-      if (!options.suppressAuthError) {
+      // Only log auth token addition for non-GET requests to reduce console spam
+      if (!options.suppressAuthError && method !== 'GET') {
         console.log('[apiClient] Added auth token to headers');
       }
     }

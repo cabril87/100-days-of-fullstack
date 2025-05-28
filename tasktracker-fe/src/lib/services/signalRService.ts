@@ -28,34 +28,43 @@ class SignalRService {
     try {
       // Only run on client side
       if (typeof window === 'undefined') {
+        console.log('SignalR: Skipping initialization on server side');
         return;
       }
 
       // Check if user is authenticated
       const authToken = localStorage.getItem('token') || sessionStorage.getItem('token');
       if (!authToken) {
+        console.log('SignalR: No auth token found, skipping connection');
         return;
       }
 
       // SignalR is enabled by default when user is authenticated
       const signalREnabled = process.env.NEXT_PUBLIC_SIGNALR_ENABLED !== 'false';
       if (!signalREnabled) {
+        console.log('SignalR: Disabled via environment variable');
         return;
       }
 
-      // Use absolute URL for SignalR connection
-      const signalRUrl = `http://localhost:5000/hubs/gamification?access_token=${encodeURIComponent(authToken)}`;
+      // Use environment variable for SignalR URL or fallback to localhost
+      // Note: SignalR hubs are mapped directly without /api prefix
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+      const signalRUrl = `${baseUrl}/hubs/gamification?access_token=${encodeURIComponent(authToken)}`;
       
-      console.log('SignalR: Using hardcoded URL for testing:', signalRUrl);
+      console.log('SignalR: Initializing connection to:', signalRUrl);
       
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(signalRUrl, {
-          transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
+          transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+          skipNegotiation: false,
+          withCredentials: false
           })
         .withAutomaticReconnect({
           nextRetryDelayInMilliseconds: (retryContext) => {
             // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-            return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 16000);
+            const delay = Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 16000);
+            console.log(`SignalR: Retry attempt ${retryContext.previousRetryCount + 1}, delay: ${delay}ms`);
+            return delay;
           }
         })
         .configureLogging(signalR.LogLevel.Information)
@@ -64,9 +73,10 @@ class SignalRService {
         // Set up event handlers
       this.setupEventHandlers();
 
-      // Don't auto-start connection - let components explicitly start when needed
+      console.log('SignalR: Connection initialized successfully');
     } catch (error) {
       console.error('SignalR initialization failed:', error);
+      this.eventHandlers.get('onError')?.forEach(handler => handler(error));
     }
   }
 
@@ -216,6 +226,7 @@ class SignalRService {
   public async startConnection(): Promise<boolean> {
     // Only run on client side
     if (typeof window === 'undefined') {
+      console.log('SignalR: Skipping connection on server side');
       return false;
     }
 
@@ -235,25 +246,58 @@ class SignalRService {
     }
 
     if (!this.connection) {
+      console.log('SignalR: Initializing connection...');
       await this.initializeConnection();
     }
 
     if (!this.connection) {
+      console.error('SignalR: Failed to initialize connection');
       return false;
     }
 
-    if (this.connection.state === signalR.HubConnectionState.Connected) {
+    // Check current connection state
+    const currentState = this.connection.state;
+    console.log(`SignalR: Current connection state: ${currentState}`);
+    
+    if (currentState === signalR.HubConnectionState.Connected) {
+      console.log('SignalR: Already connected');
       return true;
     }
 
+    // If already connecting, wait for it to complete
+    if (currentState === signalR.HubConnectionState.Connecting) {
+      console.log('SignalR: Connection already in progress, waiting...');
+      return false;
+    }
+
+    // Only start if disconnected
+    if (currentState !== signalR.HubConnectionState.Disconnected) {
+      console.log(`SignalR: Cannot start connection in state: ${currentState}`);
+      return false;
+    }
+
     try {
+      console.log('SignalR: Starting connection...');
       await this.connection.start();
-      console.log('SignalR connected successfully');
+      console.log('SignalR: Connected successfully');
       this.reconnectAttempts = 0;
       this.eventHandlers.get('onConnected')?.forEach(handler => handler());
       return true;
     } catch (error) {
-      console.log('SignalR connection failed:', error);
+      console.error('SignalR: Connection failed:', error);
+      
+      // Check if it's a network error or authentication error
+      if (error instanceof Error) {
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+          console.error('SignalR: Authentication failed - token may be invalid');
+        } else if (error.message.includes('404') || error.message.includes('Not Found')) {
+          console.error('SignalR: Hub endpoint not found - check server configuration');
+        } else if (error.message.includes('ECONNREFUSED') || error.message.includes('Network')) {
+          console.error('SignalR: Network connection failed - server may be down');
+        }
+      }
+      
+      this.eventHandlers.get('onError')?.forEach(handler => handler(error));
       return false;
     }
   }

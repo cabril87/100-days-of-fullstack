@@ -309,6 +309,22 @@ public class Program
 
         // Register SecurityService
         builder.Services.AddScoped<ISecurityService, SecurityService>();
+        
+        // Register Security Monitoring Service
+        builder.Services.AddScoped<ISecurityMonitoringService, SecurityMonitoringService>();
+
+        // Register Failed Login Service
+        builder.Services.AddScoped<IFailedLoginService, FailedLoginService>();
+
+        // Register Geolocation Service
+        builder.Services.AddScoped<IGeolocationService, GeolocationService>();
+
+        // Register Session Management Service
+        builder.Services.AddScoped<ISessionManagementService, SessionManagementService>();
+
+        // Register Advanced Security Services
+        builder.Services.AddScoped<IThreatIntelligenceService, ThreatIntelligenceService>();
+        builder.Services.AddScoped<IBehavioralAnalyticsService, BehavioralAnalyticsService>();
 
         // Add response compression
         builder.Services.AddResponseCompression(options =>
@@ -614,23 +630,9 @@ public class Program
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
         
-        // Remove SecurityAudit middleware since it's causing issues
-        /* 
         // Add security audit middleware AFTER rate limiting but before other middleware
-        // Only enable it if not running in Docker (which is causing the infinite loop)
-        bool disableSecurityAudit = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
-
-        if (!disableSecurityAudit)
-        {
             app.UseSecurityAudit();
             Console.WriteLine("Security Audit Middleware enabled");
-        }
-        else
-        {
-            Console.WriteLine("Security Audit Middleware disabled in Docker environment to prevent infinite loops");
-        }
-        */
-        Console.WriteLine("Security Audit Middleware has been disabled");
 
         // Add security headers middleware
         app.UseMiddleware<SecurityHeadersMiddleware>();

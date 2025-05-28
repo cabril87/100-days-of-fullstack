@@ -82,6 +82,45 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BehavioralAnalytics",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    Username = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IPAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
+                    UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ActionType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ResourceAccessed = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    SessionDuration = table.Column<TimeSpan>(type: "time", nullable: false),
+                    ActionsPerMinute = table.Column<int>(type: "int", nullable: false),
+                    DataVolumeAccessed = table.Column<int>(type: "int", nullable: false),
+                    Country = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    DeviceType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Browser = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    OperatingSystem = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    IsAnomalous = table.Column<bool>(type: "bit", nullable: false),
+                    AnomalyScore = table.Column<double>(type: "float", nullable: false),
+                    RiskLevel = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    AnomalyReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    IsNewLocation = table.Column<bool>(type: "bit", nullable: false),
+                    IsNewDevice = table.Column<bool>(type: "bit", nullable: false),
+                    IsOffHours = table.Column<bool>(type: "bit", nullable: false),
+                    IsHighVelocity = table.Column<bool>(type: "bit", nullable: false),
+                    DeviationFromBaseline = table.Column<double>(type: "float", nullable: false),
+                    IsOutsideNormalPattern = table.Column<bool>(type: "bit", nullable: false),
+                    BehaviorMetadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BehavioralAnalytics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Challenges",
                 columns: table => new
                 {
@@ -105,6 +144,31 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Challenges", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FailedLoginAttempts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EmailOrUsername = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
+                    UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    AttemptTime = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    FailureReason = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Country = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CountryCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Latitude = table.Column<double>(type: "float", nullable: true),
+                    Longitude = table.Column<double>(type: "float", nullable: true),
+                    IsSuspicious = table.Column<bool>(type: "bit", nullable: false),
+                    RiskFactors = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FailedLoginAttempts", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -161,6 +225,26 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SecurityMetrics",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    MetricType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    MetricName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Value = table.Column<double>(type: "float", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Source = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Severity = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SecurityMetrics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "SubscriptionTiers",
                 columns: table => new
                 {
@@ -182,6 +266,58 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_SubscriptionTiers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SystemHealthMetrics",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    MetricName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Value = table.Column<double>(type: "float", nullable: false),
+                    Unit = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    IsHealthy = table.Column<bool>(type: "bit", nullable: false),
+                    ThresholdWarning = table.Column<double>(type: "float", nullable: true),
+                    ThresholdCritical = table.Column<double>(type: "float", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SystemHealthMetrics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ThreatIntelligence",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IPAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
+                    ThreatType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Severity = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    ThreatSource = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ConfidenceScore = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    FirstSeen = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    LastSeen = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    Country = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ISP = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ReportCount = table.Column<int>(type: "int", nullable: false),
+                    IsWhitelisted = table.Column<bool>(type: "bit", nullable: false),
+                    IsBlacklisted = table.Column<bool>(type: "bit", nullable: false),
+                    AdditionalMetadata = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ThreatIntelligence", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -678,6 +814,37 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "SecurityAuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    EventType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Action = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: true),
+                    UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true),
+                    Username = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Resource = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Severity = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    Details = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsSuccessful = table.Column<bool>(type: "bit", nullable: false),
+                    IsSuspicious = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SecurityAuditLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SecurityAuditLogs_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Tags",
                 columns: table => new
                 {
@@ -855,11 +1022,11 @@ namespace TaskTrackerAPI.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     DeviceId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DeviceToken = table.Column<string>(type: "nvarchar(1024)", nullable: false, comment: "Encrypted field (highly sensitive) - DeviceToken"),
+                    DeviceToken = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DeviceType = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     DeviceName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsVerified = table.Column<bool>(type: "bit", nullable: false),
-                    VerificationCode = table.Column<string>(type: "nvarchar(1024)", nullable: true, comment: "Encrypted field - Security"),
+                    VerificationCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
                     LastActiveAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -930,6 +1097,44 @@ namespace TaskTrackerAPI.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_UserRewards_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserSessions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    SessionToken = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
+                    UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    LastActivity = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    Country = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CountryCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    Latitude = table.Column<double>(type: "float", nullable: true),
+                    Longitude = table.Column<double>(type: "float", nullable: true),
+                    DeviceType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    Browser = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    OperatingSystem = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    IsSuspicious = table.Column<bool>(type: "bit", nullable: false),
+                    SecurityNotes = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    TerminatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TerminationReason = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserSessions_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -1781,6 +1986,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_SecurityAuditLogs_UserId",
+                table: "SecurityAuditLogs",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Tags_UserId",
                 table: "Tags",
                 column: "UserId");
@@ -1896,9 +2106,26 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Users_Email_Unique",
+                table: "Users",
+                column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_PrimaryFamilyId",
                 table: "Users",
                 column: "PrimaryFamilyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Username_Unique",
+                table: "Users",
+                column: "Username",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_UserId",
+                table: "UserSessions",
+                column: "UserId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_Boards_Users_UserId",
@@ -1967,6 +2194,9 @@ namespace TaskTrackerAPI.Migrations
                 name: "AuditLogs");
 
             migrationBuilder.DropTable(
+                name: "BehavioralAnalytics");
+
+            migrationBuilder.DropTable(
                 name: "ChallengeProgresses");
 
             migrationBuilder.DropTable(
@@ -1977,6 +2207,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "Distractions");
+
+            migrationBuilder.DropTable(
+                name: "FailedLoginAttempts");
 
             migrationBuilder.DropTable(
                 name: "FamilyAchievementMembers");
@@ -2024,7 +2257,19 @@ namespace TaskTrackerAPI.Migrations
                 name: "Reminders");
 
             migrationBuilder.DropTable(
+                name: "SecurityAuditLogs");
+
+            migrationBuilder.DropTable(
+                name: "SecurityMetrics");
+
+            migrationBuilder.DropTable(
+                name: "SystemHealthMetrics");
+
+            migrationBuilder.DropTable(
                 name: "TaskTags");
+
+            migrationBuilder.DropTable(
+                name: "ThreatIntelligence");
 
             migrationBuilder.DropTable(
                 name: "UserAchievements");
@@ -2046,6 +2291,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "UserRewards");
+
+            migrationBuilder.DropTable(
+                name: "UserSessions");
 
             migrationBuilder.DropTable(
                 name: "TaskTemplates");

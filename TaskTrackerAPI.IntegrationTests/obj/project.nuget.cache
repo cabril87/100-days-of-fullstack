@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "dgSpecHash": "eo3EsJfIhn0=",
-  "success": false,
+  "dgSpecHash": "XoX2s1Vuah4=",
+  "success": true,
   "projectFilePath": "C:\\Users\\Abril\\Documents\\coding-projects\\100-days-of-fullstack\\TaskTrackerAPI.IntegrationTests\\TaskTrackerAPI.IntegrationTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Abril\\.nuget\\packages\\automapper\\14.0.0\\automapper.14.0.0.nupkg.sha512",
@@ -56,7 +56,7 @@
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore\\9.0.5\\microsoft.entityframeworkcore.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\9.0.5\\microsoft.entityframeworkcore.abstractions.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\9.0.5\\microsoft.entityframeworkcore.analyzers.9.0.5.nupkg.sha512",
-    "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.inmemory\\9.0.4\\microsoft.entityframeworkcore.inmemory.9.0.4.nupkg.sha512",
+    "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.inmemory\\9.0.5\\microsoft.entityframeworkcore.inmemory.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\9.0.5\\microsoft.entityframeworkcore.relational.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite\\9.0.4\\microsoft.entityframeworkcore.sqlite.9.0.4.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.entityframeworkcore.sqlite.core\\9.0.4\\microsoft.entityframeworkcore.sqlite.core.9.0.4.nupkg.sha512",
@@ -72,7 +72,7 @@
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.configuration.fileextensions\\9.0.4\\microsoft.extensions.configuration.fileextensions.9.0.4.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.configuration.json\\9.0.4\\microsoft.extensions.configuration.json.9.0.4.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.configuration.usersecrets\\9.0.4\\microsoft.extensions.configuration.usersecrets.9.0.4.nupkg.sha512",
-    "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.4\\microsoft.extensions.dependencyinjection.9.0.4.nupkg.sha512",
+    "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.5\\microsoft.extensions.dependencyinjection.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.5\\microsoft.extensions.dependencyinjection.abstractions.9.0.5.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.dependencymodel\\9.0.4\\microsoft.extensions.dependencymodel.9.0.4.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\microsoft.extensions.diagnostics\\9.0.4\\microsoft.extensions.diagnostics.9.0.4.nupkg.sha512",
@@ -159,15 +159,5 @@
     "C:\\Users\\Abril\\.nuget\\packages\\xunit.extensibility.execution\\2.9.2\\xunit.extensibility.execution.2.9.2.nupkg.sha512",
     "C:\\Users\\Abril\\.nuget\\packages\\xunit.runner.visualstudio\\2.8.2\\xunit.runner.visualstudio.2.8.2.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: Microsoft.Extensions.DependencyInjection from 9.0.5 to 9.0.4. Reference the package directly from the project to select a different version. \r\n TaskTrackerAPI.IntegrationTests -> Microsoft.EntityFrameworkCore.InMemory 9.0.4 -> Microsoft.Extensions.Logging 9.0.5 -> Microsoft.Extensions.DependencyInjection (>= 9.0.5) \r\n TaskTrackerAPI.IntegrationTests -> Microsoft.Extensions.DependencyInjection (>= 9.0.4)",
-      "libraryId": "Microsoft.Extensions.DependencyInjection",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  "logs": []
 }

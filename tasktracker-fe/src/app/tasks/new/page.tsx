@@ -7,7 +7,7 @@ import { useTemplates } from '@/lib/providers/TemplateProvider';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskFormData } from '@/lib/types/task';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { ArrowLeft, Clock, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/lib/hooks/useToast';
@@ -19,7 +19,7 @@ const sanitizeBasic = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9 ]/g, '');
 };
 
-export default function NewTaskPage() {
+function NewTaskForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get('templateId');
@@ -202,57 +202,70 @@ export default function NewTaskPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="mb-6 flex justify-between items-center">
-        <Button variant="ghost" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 -ml-3 gap-2" asChild>
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-4">
           <Link href="/tasks">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Tasks
-        </Link>
-        </Button>
-        
-        {templateId && (
-          <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">Created from template</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs gap-1"
-              onClick={() => router.replace('/tasks/new')}
-            >
-              <RefreshCw className="h-3 w-3" />
-              Clear template
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Tasks
             </Button>
-          </div>
-        )}
+          </Link>
+          
+          {templateId && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="h-4 w-4" />
+              Creating from template
+            </div>
+          )}
+        </div>
+        
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Create New Task
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          {templateId ? 'Creating a new task from template' : 'Fill out the form below to create a new task'}
+        </p>
       </div>
-      
-      <div className="bg-white shadow-md hover:shadow-lg transition-all duration-300 rounded-lg border border-gray-200 overflow-hidden">
-        <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-4">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">Create New Task</h1>
-        </div>
-        
-        <div className="p-6">
-        {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6 flex items-start">
-              <AlertTriangle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
           </div>
-        )}
-        
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6 flex items-center">
-            <Clock className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
-          <p className="text-sm">For best results, use simple alphanumeric characters in your task title and description.</p>
         </div>
-        
-        <TaskForm 
-          onSubmit={handleSubmit} 
-          onCancel={() => router.push('/tasks')} 
-            initialData={initialFormData}
-            isSubmitting={isSubmitting}
-        />
-        </div>
-      </div>
+      )}
+
+             {/* Task Form */}
+       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+         <TaskForm
+           onSubmit={handleSubmit}
+           onCancel={() => router.push('/tasks')}
+           isSubmitting={isSubmitting}
+           initialData={initialFormData}
+         />
+       </div>
     </div>
+  );
+}
+
+export default function NewTaskPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="flex flex-col items-center">
+          <Spinner size="lg" />
+          <p className="text-brand-navy-dark dark:text-brand-cream text-sm mt-4">
+            Loading...
+          </p>
+        </div>
+      </div>
+    }>
+      <NewTaskForm />
+    </Suspense>
   );
 } 

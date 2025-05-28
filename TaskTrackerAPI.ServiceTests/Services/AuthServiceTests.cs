@@ -10,6 +10,7 @@ using TaskTrackerAPI.Helpers;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services;
+using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.ServiceTests.Helpers;
 using Xunit;
 
@@ -27,11 +28,13 @@ namespace TaskTrackerAPI.ServiceTests.Services
             _mockUserRepository = new Mock<IUserRepository>();
             _authHelper = new AuthHelperMock();
             _mockLogger = new Mock<ILogger<AuthService>>();
+            var mockSessionManagementService = new Mock<ISessionManagementService>();
             
             _authService = new AuthService(
                 _mockUserRepository.Object,
                 _authHelper,
-                _mockLogger.Object
+                _mockLogger.Object,
+                mockSessionManagementService.Object
             );
         }
         
@@ -82,7 +85,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
             string ipAddress = "127.0.0.1";
             UserLoginDTO loginDto = new UserLoginDTO
             {
-                Email = "test@example.com",
+                EmailOrUsername = "test@example.com",
                 Password = "Password123!"
             };
             
@@ -100,7 +103,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
                 IsActive = true
             };
             
-            _mockUserRepository.Setup(repo => repo.GetUserByEmailAsync(loginDto.Email))
+            _mockUserRepository.Setup(repo => repo.GetUserByEmailAsync(loginDto.EmailOrUsername))
                 .ReturnsAsync(user);
                 
             _mockUserRepository.Setup(repo => repo.CheckPasswordAsync(user, loginDto.Password))

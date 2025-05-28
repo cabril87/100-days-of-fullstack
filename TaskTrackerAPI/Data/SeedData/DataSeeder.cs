@@ -34,14 +34,18 @@ public class DataSeeder
             // Seed subscription tiers
             await SubscriptionTierSeed.SeedSubscriptionTiersAsync(context, logger as Microsoft.Extensions.Logging.ILogger);
 
-            // Check specifically for admin user
-            bool adminExists = await context.Users.AnyAsync(u => u.Email == "admin@tasktracker.com");
+            // Check specifically for admin user (only check username since email is encrypted)
+            bool adminExists = await context.Users.AnyAsync(u => u.Username == "admin");
             
             // Seed admin user if not found
             if (!adminExists && authHelper != null)
             {
                 logger.LogInformation("Admin user not found, creating admin user...");
                 await SeedAdminUserAsync(context, logger, authHelper);
+            }
+            else if (adminExists)
+            {
+                logger.LogInformation("Admin user already exists, skipping admin user creation.");
             }
             
             // Seed family roles
@@ -67,50 +71,54 @@ public class DataSeeder
     {
         try
         {
-            // Check if admin exists
-            var adminUser = await context.Users
-                .FirstOrDefaultAsync(u => u.Email == "admin@tasktracker.com" && u.Username == "admin");
+            // Double-check if admin exists (only check username since email is encrypted)
+            var adminByUsername = await context.Users
+                .FirstOrDefaultAsync(u => u.Username == "admin");
 
-            if (adminUser == null)
+            if (adminByUsername != null)
             {
-                logger.LogInformation("Admin user not found, creating admin user...");
-                
-                // Generate a simple password hash directly that will match our test controller
-                // NOTE: This is ONLY for development/testing purposes
-                
-                // Use the exact same hash generation method as in debug controller
-                // so we're guaranteed they match for testing
-                var passwordDebugHelper = new PasswordDebugHelper(authHelper._configuration);
-                var (passwordHash, salt) = passwordDebugHelper.GeneratePasswordHashForSeed("password");
-                
-                logger.LogInformation("Seeding admin user...");
-                
-                // Create admin user
-                User admin = new User
-                {
-                    Username = "admin",
-                    Email = "admin@tasktracker.com",
-                    FirstName = "Admin",
-                    LastName = "User",
-                    PasswordHash = passwordHash,
-                    Salt = salt,
-                    Role = "Admin",
-                    IsActive = true,
-                    CreatedAt = DateTime.Now
-                };
-                
-                await context.Users.AddAsync(admin);
-                await context.SaveChangesAsync();
-                logger.LogInformation("Admin user created with ID: {AdminId}", admin.Id);
+                logger.LogInformation("User with username 'admin' already exists with ID: {AdminId}", adminByUsername.Id);
+                return;
             }
-            else
+
+            logger.LogInformation("Admin user not found, creating admin user...");
+            
+            // Generate a simple password hash directly that will match our test controller
+            // NOTE: This is ONLY for development/testing purposes
+            
+            // Use the exact same hash generation method as in debug controller
+            // so we're guaranteed they match for testing
+            var passwordDebugHelper = new PasswordDebugHelper(authHelper._configuration);
+            var (passwordHash, salt) = passwordDebugHelper.GeneratePasswordHashForSeed("password");
+            
+            logger.LogInformation("Seeding admin user...");
+            
+            // Create admin user
+            User admin = new User
             {
-                logger.LogInformation("Admin user already exists with ID: {AdminId}", adminUser.Id);
-            }
+                Username = "admin",
+                Email = "admin@tasktracker.com",
+                FirstName = "Admin",
+                LastName = "User",
+                PasswordHash = passwordHash,
+                Salt = salt,
+                Role = "Admin",
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+            
+            await context.Users.AddAsync(admin);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Admin user created with ID: {AdminId}", admin.Id);
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message?.Contains("duplicate key") == true)
+        {
+            logger.LogWarning("Admin user already exists (duplicate key constraint), skipping creation.");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error seeding admin user");
+            throw; // Re-throw non-duplicate key errors
         }
     }
     

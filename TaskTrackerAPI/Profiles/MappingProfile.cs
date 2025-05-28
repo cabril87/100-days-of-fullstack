@@ -8,12 +8,15 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
+using System;
 using AutoMapper;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Security;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Categories;
 using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.DTOs.Security;
 
 namespace TaskTrackerAPI.Profiles
 {
@@ -60,6 +63,23 @@ namespace TaskTrackerAPI.Profiles
                     src.Family != null ? src.Family.Name : null))
                 .ForMember(dest => dest.IsApproved, opt => opt.MapFrom(src => 
                     src.ApprovedByUserId.HasValue));
+
+            // Security-related mappings
+            CreateMap<SecurityMetrics, SecurityMetricDTO>();
+            CreateMap<SecurityAuditLog, SecurityAuditLogDTO>();
+            
+            // Enhanced security mappings
+            CreateMap<FailedLoginAttempt, FailedLoginAttemptDTO>();
+            CreateMap<UserSession, UserSessionDTO>()
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User != null ? src.User.Username : "Unknown"))
+                .ForMember(dest => dest.SessionDuration, opt => opt.MapFrom(src => 
+                    src.IsActive ? DateTime.UtcNow - src.CreatedAt : 
+                    (src.TerminatedAt ?? DateTime.UtcNow) - src.CreatedAt))
+                .ForMember(dest => dest.IsCurrentSession, opt => opt.Ignore());
+            
+            // Advanced security mappings
+            CreateMap<ThreatIntelligence, ThreatIntelligenceDTO>();
+            CreateMap<BehavioralAnalytics, BehavioralAnalyticsDTO>();
         }
 
         private int ConvertPriorityToInt(string priority)

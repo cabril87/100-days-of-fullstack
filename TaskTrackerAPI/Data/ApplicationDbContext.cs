@@ -11,6 +11,7 @@
 // Data/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Models.Security;
 using GamificationModels = TaskTrackerAPI.Models.Gamification;
 using System;
 using Microsoft.Extensions.Configuration;
@@ -25,21 +26,10 @@ public class ApplicationDbContext : DbContext
     private readonly IConfiguration? _configuration;
     private readonly IDataProtectionService? _dataProtectionService;
 
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
-    }
-
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
-        : base(options)
-    {
-        _configuration = configuration;
-    }
-    
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options, 
-        IConfiguration configuration,
-        IDataProtectionService dataProtectionService)
+        IConfiguration? configuration = null,
+        IDataProtectionService? dataProtectionService = null)
         : base(options)
     {
         _configuration = configuration;
@@ -119,6 +109,19 @@ public class ApplicationDbContext : DbContext
     
     // Add notification preferences
     public DbSet<NotificationPreference> NotificationPreferences { get; set; } = null!;
+    
+    // Security monitoring entities
+    public DbSet<SecurityMetrics> SecurityMetrics { get; set; } = null!;
+    public DbSet<SecurityAuditLog> SecurityAuditLogs { get; set; } = null!;
+    public DbSet<SystemHealthMetrics> SystemHealthMetrics { get; set; } = null!;
+    
+    // Enhanced security entities
+    public DbSet<FailedLoginAttempt> FailedLoginAttempts { get; set; } = null!;
+    public DbSet<UserSession> UserSessions { get; set; } = null!;
+    
+    // Advanced security entities
+    public DbSet<ThreatIntelligence> ThreatIntelligence { get; set; } = null!;
+    public DbSet<BehavioralAnalytics> BehavioralAnalytics { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -163,6 +166,17 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(u => u.LastName)
             .HasComment("Encrypted field - PII");
+        
+        // Configure unique constraints for User entity
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique()
+            .HasDatabaseName("IX_Users_Email_Unique");
+
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Username)
+            .IsUnique()
+            .HasDatabaseName("IX_Users_Username_Unique");
         
         // Configure entity properties with value generators to use hardcoded values for snapshot generation
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())

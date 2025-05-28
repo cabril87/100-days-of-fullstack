@@ -11,7 +11,8 @@ const protectedRoutes = [
   '/reminders',
   '/gamification',
   '/family',
-  '/profile'
+  '/profile',
+  '/admin'
 ];
 
 // Define public routes that should redirect to dashboard if authenticated

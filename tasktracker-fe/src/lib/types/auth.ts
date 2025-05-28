@@ -58,7 +58,6 @@ export interface AuthContextType {
   // Token Management
   getAccessToken: () => string | null;
   getTokenExpiry: () => Date | null;
-  updateUserActivity: () => void;
   isTokenExpired: () => boolean;
 }
 

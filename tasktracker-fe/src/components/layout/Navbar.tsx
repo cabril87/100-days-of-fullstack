@@ -149,6 +149,16 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                   👨‍👩‍👧‍👦
                   {family && <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse"></span>}
                 </Link>
+                {(user?.email === 'admin@tasktracker.com' || user?.role === 'Admin') && (
+                  <Link
+                    href="/admin"
+                    className="navbar-link inline-flex items-center px-3 py-2 rounded-lg border-2 border-transparent hover:border-red-500/20 transition-all duration-300 text-xl relative"
+                    title="Admin Dashboard"
+                  >
+                    🛡️
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-red-500 to-pink-500 rounded-full animate-pulse"></span>
+                  </Link>
+                )}
 
               </>
             ) : (
@@ -326,6 +336,19 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                           >
                             ➕ Create Family
                           </Link>
+                          {(user?.email === 'admin@tasktracker.com' || user?.role === 'Admin') && (
+                            <>
+                              <div className="border-t border-gray-200/50 dark:border-gray-700/50 my-2"></div>
+                              <Link
+                                href="/admin"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-red-50/50 dark:text-gray-200 dark:hover:bg-red-900/20 rounded-lg mx-2 transition-all duration-200 font-medium"
+                                role="menuitem"
+                                onClick={() => setIsProfileMenuOpen(false)}
+                              >
+                                🛡️ Admin Dashboard
+                              </Link>
+                            </>
+                          )}
                           <div className="border-t border-gray-200/50 dark:border-gray-700/50 my-2"></div>
                           <button
                             onClick={() => {

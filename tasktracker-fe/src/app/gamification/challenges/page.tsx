@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { gamificationService } from '@/lib/services/gamificationService';
 import { useToast } from '@/lib/hooks/useToast';
+import { useAuth } from '@/lib/providers/AuthContext';
 import type { Challenge, UserActiveChallenge } from '@/lib/types/gamification';
 
 export default function ChallengesPage(): React.ReactElement {
@@ -31,6 +32,10 @@ export default function ChallengesPage(): React.ReactElement {
     timestamp: string;
   } | null>(null);
   const { showToast } = useToast();
+  const { user } = useAuth();
+
+  // Check if user is admin
+  const isAdmin = user?.email === 'admin@tasktracker.com' || user?.role === 'Admin';
 
   const fetchChallenges = useCallback(async () => {
     try {
@@ -257,7 +262,7 @@ export default function ChallengesPage(): React.ReactElement {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <div className="container mx-auto p-4 max-w-6xl">
+        <div className="container mx-auto p-4 max-w-8xl">
           <div className="animate-pulse space-y-6">
             <div className="h-8 w-48 bg-gray-300 rounded"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -273,7 +278,7 @@ export default function ChallengesPage(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto p-4 max-w-6xl">
+      <div className="container mx-auto p-4 max-w-8xl">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-4">
@@ -349,8 +354,8 @@ export default function ChallengesPage(): React.ReactElement {
             ))}
           </div>
 
-          {/* Debug Info (development only) */}
-          {process.env.NODE_ENV === 'development' && debugInfo && (
+          {/* Debug Info (development only - admin only) */}
+          {process.env.NODE_ENV === 'development' && isAdmin && debugInfo && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <h4 className="font-medium text-yellow-800 mb-2">Debug Information</h4>
               <div className="text-sm text-yellow-700 space-y-1">
