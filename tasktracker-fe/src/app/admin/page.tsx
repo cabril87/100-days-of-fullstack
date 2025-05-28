@@ -18,10 +18,8 @@ import {
   XCircle,
   Bell,
   Eye,
-  Settings,
   RefreshCw,
   Download,
-  Filter
 } from 'lucide-react';
 import { securityService } from '@/lib/services/securityService';
 import { SecurityDashboard as SecurityDashboardType } from '@/lib/types/security';
@@ -31,7 +29,6 @@ import { useToast } from '@/lib/hooks/useToast';
 import { SecurityOverview } from '@/components/admin/SecurityOverview';
 import { SecurityMetrics } from '@/components/admin/SecurityMetrics';
 import { RateLimitStatus } from '@/components/admin/RateLimitStatus';
-import { SystemHealth } from '@/components/admin/SystemHealth';
 import { PerformanceMetrics } from '@/components/admin/PerformanceMetrics';
 import { SecurityAuditLogs } from '@/components/admin/SecurityAuditLogs';
 import { SecurityAlerts } from '@/components/admin/SecurityAlerts';

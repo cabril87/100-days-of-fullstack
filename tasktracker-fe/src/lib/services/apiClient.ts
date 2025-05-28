@@ -1,12 +1,12 @@
 /**
- * API Client
+ * API Client with Request Throttling
  * 
- * A modern API client that uses our method override utilities
- * to ensure compatibility with various backends.
+ * A modern API client that includes throttling to prevent 429 errors
  */
 
 import { ApiResponse } from '@/lib/types/api';
-import { applyMethodOverride, toPascalCase } from './apiMethodOverride';
+import { applyMethodOverride, toPascalCase } from '@/lib/services/apiMethodOverride';
+import { apiThrottler } from '@/lib/utils/apiThrottler';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -50,7 +50,6 @@ function getAuthToken(options: { suppressAuthError?: boolean } = {}): string | n
   // Try localStorage first
   const localToken = localStorage.getItem('token');
   if (localToken) {
-    // Suppress token found logging to reduce console spam
     return localToken;
   }
   
@@ -175,11 +174,47 @@ async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>>
 }
 
 /**
- * Generic API request function with method override support
+ * Generic API request function with throttling and method override support
  */
 export async function apiRequest<T = any>(
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
+  data?: any,
+  options: {
+    requiresAuth?: boolean,
+    useMethodOverride?: boolean,
+    usePascalCase?: boolean,
+    useFormData?: boolean,
+    suppressAuthError?: boolean,
+    extraHeaders?: Record<string, string>,
+    skipThrottle?: boolean
+  } = {}
+): Promise<ApiResponse<T>> {
+  const throttleKey = `${method}:${endpoint}`;
+
+  // Apply throttling for sensitive endpoints
+  const shouldThrottle = !options.skipThrottle && (
+    endpoint.includes('/statistics') ||
+    endpoint.includes('/analytics') ||
+    endpoint.includes('/insights') ||
+    method !== 'GET'
+  );
+
+  if (shouldThrottle) {
+    return apiThrottler.throttledRequest(throttleKey, async () => {
+      return makeRequest<T>(endpoint, method, data, options);
+    });
+  }
+
+  return makeRequest<T>(endpoint, method, data, options);
+}
+
+/**
+ * Internal function to make the actual request
+ */
+async function makeRequest<T>(
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   data?: any,
   options: {
     requiresAuth?: boolean,
@@ -240,7 +275,6 @@ export async function apiRequest<T = any>(
     if (method !== 'GET' && csrfToken) {
       headers['X-CSRF-TOKEN'] = csrfToken;
       headers['X-XSRF-TOKEN'] = csrfToken;
-      console.log(`[apiClient] Added CSRF token to headers: ${csrfToken}`);
     }
 
     // Add any extra headers
@@ -297,6 +331,12 @@ export async function apiRequest<T = any>(
     return handleApiResponse<T>(response);
   } catch (error) {
     console.error(`[apiClient] Error in ${method} request to ${endpoint}:`, error);
+    
+    // If it's a 429 error, throw it so throttler can handle retries
+    if (error instanceof Error && error.message.includes('429')) {
+      throw error;
+    }
+    
     return {
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
       status: 500
@@ -304,9 +344,12 @@ export async function apiRequest<T = any>(
   }
 }
 
-// Export specific HTTP method functions
+// Export specific HTTP method functions with throttling
 export const apiClient = {
-  async get<T = any>(endpoint: string, options: { suppressAuthError?: boolean } = {}): Promise<ApiResponse<T>> {
+  async get<T = any>(endpoint: string, options: { 
+    suppressAuthError?: boolean;
+    skipThrottle?: boolean;
+  } = {}): Promise<ApiResponse<T>> {
     return apiRequest<T>(endpoint, 'GET', undefined, options);
   },
 
@@ -315,6 +358,7 @@ export const apiClient = {
     data?: any,
     options: {
       extraHeaders?: Record<string, string>;
+      skipThrottle?: boolean;
     } = {}
   ): Promise<ApiResponse<T>> {
     // Special handling for calendar event creation to improve success rate
@@ -350,6 +394,7 @@ export const apiClient = {
     usePascalCase?: boolean; 
     useFormData?: boolean; 
     extraHeaders?: Record<string, string>;
+    skipThrottle?: boolean;
   } = {}): Promise<ApiResponse<T>> {
     return apiRequest<T>(endpoint, 'PUT', data, options);
   },
@@ -359,6 +404,7 @@ export const apiClient = {
     usePascalCase?: boolean; 
     useFormData?: boolean; 
     extraHeaders?: Record<string, string>;
+    skipThrottle?: boolean;
   } = {}): Promise<ApiResponse<T>> {
     return apiRequest<T>(endpoint, 'PATCH', data, options);
   },
@@ -366,6 +412,7 @@ export const apiClient = {
   async delete<T = any>(endpoint: string, options: { 
     suppressAuthError?: boolean;
     extraHeaders?: Record<string, string>;
+    skipThrottle?: boolean;
   } = {}): Promise<ApiResponse<T>> {
     return apiRequest<T>(endpoint, 'DELETE', undefined, options);
   },
@@ -382,7 +429,7 @@ export const apiClient = {
       `/v1/taskitems/${id}`, 
       'PUT',
       data,
-      { useMethodOverride: true, usePascalCase: true }
+      { useMethodOverride: true, usePascalCase: true, skipThrottle: true }
     );
     
     if (putResult.status === 200 || putResult.status === 204) {
@@ -396,7 +443,7 @@ export const apiClient = {
       `/v1/taskitems/${id}?_method=PUT`, 
       'POST',
       data,
-      { useMethodOverride: false, usePascalCase: true }
+      { useMethodOverride: false, usePascalCase: true, skipThrottle: true }
     );
     
     if (postResult.status === 200 || postResult.status === 204) {
@@ -410,7 +457,7 @@ export const apiClient = {
       `/v1/taskitems/${id}`, 
       'PUT',
       data,
-      { useFormData: true, usePascalCase: true }
+      { useFormData: true, usePascalCase: true, skipThrottle: true }
     );
     
     if (formDataResult.status === 200 || formDataResult.status === 204) {
@@ -418,72 +465,8 @@ export const apiClient = {
       return formDataResult;
     }
     
-    // Approach 4: Try a very direct approach with fetch
-    console.log('[apiClient] updateTask: Trying direct fetch approach');
-    
-    try {
-      // Convert data to PascalCase and handle enums
-      const directData: Record<string, any> = {};
-      Object.entries(data).forEach(([key, value]) => {
-        if (value === undefined || value === null) return;
-        
-        // Convert status from string to number
-        if (key === 'status') {
-          const statusMap: Record<string, number> = {
-            'todo': 0,
-            'in-progress': 1,
-            'done': 2
-          };
-          directData.Status = statusMap[value as string] ?? 0;
-        } 
-        // Convert priority from string to number
-        else if (key === 'priority') {
-          const priorityMap: Record<string, number> = {
-            'low': 0,
-            'medium': 1,
-            'high': 2
-          };
-          directData.Priority = priorityMap[value as string] ?? 1;
-        }
-        // Direct conversion for title and other fields
-        else {
-          const pascalKey = key.charAt(0).toUpperCase() + key.slice(1);
-          directData[pascalKey] = value;
-        }
-      });
-      
-      // Add Id property explicitly
-      directData.Id = id;
-      
-      // Get token from localStorage
-      const token = localStorage.getItem('token') || '';
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      
-      console.log('[apiClient] updateTask: Making direct fetch to', `${API_URL}/v1/taskitems/${id}`);
-      console.log('[apiClient] updateTask: With data', directData);
-      
-      const response = await fetch(`${API_URL}/v1/taskitems/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(directData),
-        credentials: 'include'
-      });
-      
-      console.log('[apiClient] updateTask: Direct fetch response status:', response.status);
-      
-      if (response.ok) {
-        return { status: response.status };
-      }
-    } catch (error) {
-      console.error('[apiClient] updateTask: Direct fetch error:', error);
-    }
-    
     // All approaches failed, return the last error
     console.log('[apiClient] updateTask: All approaches failed');
     return formDataResult;
   }
-}; 
+};

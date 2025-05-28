@@ -5,13 +5,11 @@ import {
   Task, 
   TaskStatus, 
   TaskPriority, 
-  CreateTaskRequest, 
-  UpdateTaskRequest, 
   TaskQueryParams,
   ApiTaskStatus,
   ApiTaskPriority,
-  QuickTaskDTO,
-  ApiCreateTaskRequest
+  TaskAssignmentDTO,
+  TaskApprovalDTO
 } from '@/lib/types/task';
 import { TaskFormData } from '../types/task';
 import { mockTasks } from './mockData';
@@ -24,14 +22,6 @@ const DISABLE_ALL_MOCK_DATA = true; // Force disable all mock data fallbacks
 
 let mockTasksData = [...mockTasks];
 
-// Basic sanitize function for simple strings
-const sanitizeBasicString = (str: string): string => {
-  if (!str) return '';
-  // Replace all non-alphanumeric characters except spaces with ''
-  return str.replace(/[^a-zA-Z0-9 ]/g, '');
-};
-
-// Removed unused sanitizeData function
 
 // Debug helper function to track network activity
 const logNetworkActivity = (method: string, url: string, requestData?: unknown, responseStatus?: number, responseData?: unknown) => {
@@ -111,36 +101,6 @@ async function diagnoseApiIssues(): Promise<void> {
   console.log("=== API DIAGNOSTIC END ===");
 }
 
-// Add a function to test authentication status
-async function testServerAuth(): Promise<boolean> {
-  try {
-    // Simple GET request to check authentication status
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/v1/auth/status`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token') || ''}`,
-        'Accept': 'application/json'
-      },
-      credentials: 'include'
-    });
-    
-    console.log("Auth test status:", response.status);
-    
-    if (response.status === 200) {
-      try {
-        const data = await response.json();
-        console.log("Auth test response:", data);
-        return true;
-      } catch (e) {
-        console.error("Error parsing auth test response:", e);
-      }
-    }
-  } catch (e) {
-    console.error("Auth test error:", e);
-  }
-  
-  return false;
-}
 
 // Function to create a task in the format the API expects
 function createSanitizedTask(task: TaskFormData): Record<string, unknown> {
@@ -204,32 +164,6 @@ function createSanitizedTask(task: TaskFormData): Record<string, unknown> {
   return result;
 }
 
-// Function to create an extremely safe task format for overly sensitive backends
-function createUltraSafeTask(task: TaskFormData): any {
-  // Create task with absolutely minimal properties and only letters and numbers
-  // Use PascalCase for C# backend and static values to avoid detection issues
-  return {
-    Title: task.title.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20),
-    Description: task.description ? 
-                 task.description.replace(/[^a-zA-Z0-9]/g, '').substring(0, 50) : 
-                 'Task',
-    Status: 0,
-    Priority: 1
-  };
-}
-
-// Function for ultra strict SQL injection prevention
-function createSqlSafeTask(): any {
-  // Use only hardcoded values with no user input to avoid SQL injection detection
-  return {
-    Title: "NewTask" + Math.floor(Math.random() * 1000),
-    Description: "A simple task created on " + new Date().toLocaleDateString(),
-    Status: 0,
-    Priority: 1
-  };
-}
-
-import { TaskAssignmentDTO, TaskApprovalDTO } from '@/lib/types/task';
 
 class TaskService {
   // Runs the diagnostic before any task operations
@@ -573,38 +507,6 @@ class TaskService {
     }
   }
   
-  // Create a client-side mock task when the API fails
-  private createMockTask(task: TaskFormData): Task {
-    console.log("Creating client-side mock task");
-    const now = new Date().toISOString();
-    
-    // Generate a random ID that's unlikely to conflict with server IDs
-    const mockId = Math.floor(Math.random() * 100000) + 10000;
-    
-    // Create a mock task with the user's data
-    const mockTask: Task = {
-      id: mockId,
-      title: task.title,
-      description: task.description || '',
-      status: task.status || 'todo',
-      priority: task.priority || 'medium',
-      dueDate: task.dueDate || undefined,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: '1'
-    };
-    
-    // Optionally store in localStorage for persistence until the API works
-    try {
-      const existingTasks = JSON.parse(localStorage.getItem('mockTasks') || '[]');
-      existingTasks.push(mockTask);
-      localStorage.setItem('mockTasks', JSON.stringify(existingTasks));
-    } catch (e) {
-      console.error("Error storing mock task in localStorage:", e);
-    }
-    
-    return mockTask;
-  }
 
   async updateTask(id: number, taskData: Partial<TaskFormData>): Promise<ApiResponse<Task>> {
     console.log('TaskService: --------- UPDATE TASK START ---------');

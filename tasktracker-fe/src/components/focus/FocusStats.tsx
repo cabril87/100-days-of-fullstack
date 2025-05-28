@@ -1,274 +1,358 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { useFocus } from '@/lib/providers/FocusContext';
-import { FocusStatistics } from '@/lib/services/focusService';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Spinner } from '@/components/ui/spinner';
-
-interface DateRange {
-  startDate: Date;
-  endDate: Date;
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { Clock, Target, TrendingUp, BarChart3, Timer, Brain, Zap } from 'lucide-react';
+import { FocusStatistics } from '@/lib/types/focus';
 
 export function FocusStats() {
-  const { fetchStatistics, isLoading } = useFocus();
-  const [statistics, setStatistics] = useState<FocusStatistics | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
-    endDate: new Date()
-  });
+  const { fetchStatistics, isLoading, statistics: contextStatistics } = useFocus();
+  const [statistics, setStatistics] = useState<FocusStatistics | null>(contextStatistics);
 
+  // Load statistics from API - NO FALLBACKS
   useEffect(() => {
+    let mounted = true;
+    
     const loadStatistics = async () => {
-      const stats = await fetchStatistics(dateRange.startDate, dateRange.endDate);
-      if (stats) {
-        setStatistics(stats);
+      try {
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+        
+        console.log('[FocusStats] Fetching API statistics...');
+        const stats = await fetchStatistics(startDate, endDate);
+        
+        if (mounted) {
+          if (stats) {
+            console.log('[FocusStats] API returned:', stats);
+            setStatistics(stats);
+          } else {
+            console.log('[FocusStats] API returned no data');
+            setStatistics(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+        if (mounted) {
+          setStatistics(null);
+        }
       }
     };
 
-    loadStatistics();
-  }, [fetchStatistics, dateRange]);
-
-  // Function to format minutes into hours and minutes
-  const formatMinutes = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
+    // Only fetch if we don't have context statistics
+    if (contextStatistics) {
+      setStatistics(contextStatistics);
+    } else {
+      loadStatistics();
     }
-    return `${mins}m`;
-  };
-
-  // Prepare data for daily focus chart
-  const prepareDailyFocusData = () => {
-    if (!statistics || !statistics.dailyFocusMinutes) return [];
     
-    return Object.entries(statistics.dailyFocusMinutes).map(([date, minutes]) => ({
-      date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      minutes: minutes,
-      hours: +(minutes / 60).toFixed(1)
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  };
-
-  // Prepare data for distractions pie chart
-  const prepareDistractionsData = () => {
-    if (!statistics || !statistics.distractionsByCategory) return [];
-    
-    return Object.entries(statistics.distractionsByCategory).map(([category, count]) => ({
-      name: category,
-      value: count,
-      color: getColorForCategory(category)
-    }));
-  };
-
-  // Get a color for a distraction category
-  const getColorForCategory = (category: string): string => {
-    const colors: Record<string, string> = {
-      'Social Media': '#3E5879',
-      'Notification': '#D8C4B6',
-      'Phone': '#213555',
-      'Person': '#4F709C',
-      'Hunger': '#E5D283',
-      'Tiredness': '#8294C4',
-      'Other': '#ACB1D6'
+    return () => {
+      mounted = false;
     };
-    
-    return colors[category] || '#ACB1D6';
+  }, [fetchStatistics]);
+
+  // Update when context statistics change
+  useEffect(() => {
+    if (contextStatistics) {
+      setStatistics(contextStatistics);
+    }
+  }, [contextStatistics]);
+
+  // Process ONLY real API data for charts - NO MOCK DATA
+  const processChartData = () => {
+    if (!statistics) {
+      return { daily: [], distractions: [] };
+    }
+
+    // Daily focus data - ONLY from API
+    const daily = statistics.dailyFocusMinutes && Object.keys(statistics.dailyFocusMinutes).length > 0
+      ? Object.entries(statistics.dailyFocusMinutes).map(([date, minutes]) => ({
+          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          minutes: minutes
+        }))
+      : [];
+
+    // Distraction data - ONLY from API
+    const distractions = statistics.distractionsByCategory && Object.keys(statistics.distractionsByCategory).length > 0
+      ? Object.entries(statistics.distractionsByCategory).map(([category, count]) => ({
+          category: category.charAt(0).toUpperCase() + category.slice(1),
+          count: count,
+          percentage: statistics.distractionCount > 0 
+            ? Math.round((count / statistics.distractionCount) * 100) 
+            : 0
+        }))
+      : [];
+
+    return { daily, distractions };
   };
+
+  const chartData = processChartData();
 
   if (isLoading) {
     return (
-      <div className="flex justify-center p-6">
-        <Spinner size="lg" />
+      <div className="min-h-[400px] bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-t-xl"></div>
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+        
+        <div className="flex justify-center items-center p-8 relative z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">Loading API data...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Total Focus Time</CardTitle>
-            <CardDescription>Time spent in focus sessions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-brand-navy-dark">
-              {statistics ? formatMinutes(statistics.totalMinutesFocused) : '0m'}
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Total Minutes Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="p-3 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+              <Timer className="h-6 w-6" />
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              {statistics?.sessionCount || 0} sessions completed
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Average Session</CardTitle>
-            <CardDescription>Average focus session duration</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-brand-navy-dark">
-              {statistics ? formatMinutes(statistics.averageSessionLength) : '0m'}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              per focus session
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Distractions</CardTitle>
-            <CardDescription>Total recorded distractions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-brand-navy-dark">
-              {statistics?.distractionCount || 0}
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              across all sessions
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Daily Focus Time</CardTitle>
-            <CardDescription>Minutes spent focusing each day</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={prepareDailyFocusData()}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <XAxis dataKey="date" />
-                  <YAxis label={{ value: 'Minutes', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip formatter={(value) => [`${value} min`, 'Focus Time']} />
-                  <Bar dataKey="minutes" name="Focus Minutes" fill="#3E5879" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Distraction Sources</CardTitle>
-            <CardDescription>What interrupts your focus</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              {statistics && statistics.distractionCount > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={prepareDistractionsData()}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {prepareDistractionsData().map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500 text-center">
-                    No distractions recorded yet.<br />
-                    Great focus!
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Focus Streaks</CardTitle>
-          <CardDescription>Your consistency metrics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Daily Goal Progress</span>
-                <span className="text-sm font-medium">
-                  {statistics && statistics.dailyFocusMinutes && Object.keys(statistics.dailyFocusMinutes).length > 0 
-                    ? `${Object.keys(statistics.dailyFocusMinutes).length} / 7 days`
-                    : '0 / 7 days'}
-                </span>
-              </div>
-              <Progress 
-                value={statistics && statistics.dailyFocusMinutes 
-                  ? (Object.keys(statistics.dailyFocusMinutes).length / 7) * 100 
-                  : 0
-                } 
-                className="h-2"
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Weekly Focus Goal (120 min)</span>
-                <span className="text-sm font-medium">
-                  {statistics ? `${statistics.totalMinutesFocused} / 120 min` : '0 / 120 min'}
-                </span>
-              </div>
-              <Progress 
-                value={statistics ? Math.min((statistics.totalMinutesFocused / 120) * 100, 100) : 0} 
-                className="h-2"
-              />
-            </div>
-            
-            <div className="pt-4 grid grid-cols-7 gap-1">
-              {Array.from({ length: 7 }).map((_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() - 6 + i);
-                const dateStr = date.toISOString().split('T')[0];
-                const hasActivity = statistics?.dailyFocusMinutes && 
-                  Object.keys(statistics.dailyFocusMinutes).some(d => 
-                    new Date(d).toISOString().split('T')[0] === dateStr
-                  );
-                
-                return (
-                  <div key={i} className="flex flex-col items-center">
-                    <div 
-                      className={`h-8 w-8 rounded-full flex items-center justify-center text-xs ${
-                        hasActivity 
-                          ? 'bg-brand-navy text-white' 
-                          : 'bg-gray-100 text-gray-400'
-                      }`}
-                    >
-                      {date.getDate()}
-                    </div>
-                    <span className="text-xs mt-1">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="text-right">
+              <div className="text-3xl font-bold mb-1">{statistics?.totalMinutesFocused || 0}</div>
+              <div className="text-white/80 text-sm font-medium">Total Minutes</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Sessions Card */}
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-6 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="p-3 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+              <Target className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold mb-1">{statistics?.sessionCount || 0}</div>
+              <div className="text-white/80 text-sm font-medium">Sessions</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Average Length Card */}
+        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-6 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="p-3 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+              <TrendingUp className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold mb-1">{statistics ? Math.round(statistics.averageSessionLength) : 0}m</div>
+              <div className="text-white/80 text-sm font-medium">Avg Length</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Distractions Card */}
+        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group relative overflow-hidden">
+          <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full blur-xl"></div>
+          <div className="flex items-center justify-between mb-4 relative z-10">
+            <div className="p-3 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+              <Zap className="h-6 w-6" />
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold mb-1">{statistics?.distractionCount || 0}</div>
+              <div className="text-white/80 text-sm font-medium">Distractions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+          <TabsList className="p-2 bg-transparent w-full">
+            <TabsTrigger 
+              value="overview" 
+              className="flex-1 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 hover:scale-105"
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Daily Trends
+            </TabsTrigger>
+            <TabsTrigger 
+              value="distractions" 
+              className="flex-1 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 hover:scale-105"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Distractions
+            </TabsTrigger>
+            <TabsTrigger 
+              value="raw" 
+              className="flex-1 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-500 data-[state=active]:to-gray-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 hover:scale-105"
+            >
+              <Brain className="h-4 w-4 mr-2" />
+              Raw API Data
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="overview">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-t-xl"></div>
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-600 opacity-[0.05] rounded-full blur-2xl"></div>
+            
+            <div className="relative z-10">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Daily Focus Time (API Data)
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartData.daily.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData.daily}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="date" stroke="#64748b" />
+                      <YAxis stroke="#64748b" />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="minutes" 
+                        stroke="url(#blueGradient)" 
+                        strokeWidth={3}
+                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                      />
+                      <defs>
+                        <linearGradient id="blueGradient" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#8b5cf6" />
+                        </linearGradient>
+                      </defs>
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="text-center">
+                      <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No focus data available</p>
+                      <p className="text-sm">Start some focus sessions to see your progress!</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="distractions">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-red-500 to-pink-600 rounded-t-xl"></div>
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600 opacity-[0.05] rounded-full blur-2xl"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-600 opacity-[0.05] rounded-full blur-2xl"></div>
+            
+            <div className="relative z-10">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
+                    Distraction Analysis (API Data)
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartData.distractions.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData.distractions}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="category" stroke="#64748b" />
+                      <YAxis stroke="#64748b" />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        fill="url(#redGradient)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <defs>
+                        <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" />
+                          <stop offset="100%" stopColor="#dc2626" />
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="text-center">
+                      <Zap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No distraction data available</p>
+                      <p className="text-sm">Great job staying focused!</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="raw">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-gray-500 to-gray-600 rounded-t-xl"></div>
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-gray-600 opacity-[0.05] rounded-full blur-2xl"></div>
+            
+            <div className="relative z-10">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 text-white shadow-lg">
+                    <Brain className="h-5 w-5" />
+                  </div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent">
+                    Raw API Response
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {statistics ? (
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 border border-gray-200">
+                    <pre className="text-sm text-gray-800 overflow-auto max-h-96 font-mono">
+                      {JSON.stringify(statistics, null, 2)}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="text-center">
+                      <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">No API data available</p>
+                      <p className="text-sm">Start using focus mode to generate statistics!</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-} 
+}

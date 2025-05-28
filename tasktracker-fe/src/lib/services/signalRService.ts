@@ -9,7 +9,6 @@
  * - Family member activities
  */
 
-import React from 'react';
 import * as signalR from '@microsoft/signalr';
 import { GamificationEvent, SignalREvents } from '@/lib/types/signalr';
 

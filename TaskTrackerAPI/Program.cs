@@ -326,6 +326,9 @@ public class Program
         builder.Services.AddScoped<IThreatIntelligenceService, ThreatIntelligenceService>();
         builder.Services.AddScoped<IBehavioralAnalyticsService, BehavioralAnalyticsService>();
 
+        // Register ML Analytics Service
+        builder.Services.AddScoped<IMLAnalyticsService, MLAnalyticsService>();
+
         // Add response compression
         builder.Services.AddResponseCompression(options =>
         {

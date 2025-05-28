@@ -12,7 +12,7 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250527225708_InitialCreate")]
+    [Migration("20250528132846_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1604,6 +1604,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("Difficulty")
                         .HasColumnType("int");
 
+                    b.Property<int?>("FamilyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("IconUrl")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -1620,12 +1623,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("PointValue")
                         .HasColumnType("int");
 
+                    b.Property<int>("Scope")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FamilyId");
 
                     b.ToTable("Achievements");
 
@@ -1641,7 +1649,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-first-task.svg",
                             IsDeleted = false,
                             Name = "First Steps",
-                            PointValue = 10
+                            PointValue = 10,
+                            Scope = 0
                         },
                         new
                         {
@@ -1654,7 +1663,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-task-starter.svg",
                             IsDeleted = false,
                             Name = "Task Starter",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -1667,7 +1677,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-getting-started.svg",
                             IsDeleted = false,
                             Name = "Getting Started",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -1680,7 +1691,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-creator.svg",
                             IsDeleted = false,
                             Name = "Creator",
-                            PointValue = 15
+                            PointValue = 15,
+                            Scope = 0
                         },
                         new
                         {
@@ -1693,7 +1705,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-organizer.svg",
                             IsDeleted = false,
                             Name = "Organizer",
-                            PointValue = 10
+                            PointValue = 10,
+                            Scope = 0
                         },
                         new
                         {
@@ -1706,7 +1719,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-early-bird.svg",
                             IsDeleted = false,
                             Name = "Early Bird",
-                            PointValue = 20
+                            PointValue = 20,
+                            Scope = 0
                         },
                         new
                         {
@@ -1719,7 +1733,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-night-owl.svg",
                             IsDeleted = false,
                             Name = "Night Owl",
-                            PointValue = 15
+                            PointValue = 15,
+                            Scope = 0
                         },
                         new
                         {
@@ -1732,7 +1747,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-weekend-warrior.svg",
                             IsDeleted = false,
                             Name = "Weekend Warrior",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -1745,7 +1761,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-lunch-hero.svg",
                             IsDeleted = false,
                             Name = "Lunch Break Hero",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -1758,7 +1775,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-on-time.svg",
                             IsDeleted = false,
                             Name = "On Time",
-                            PointValue = 40
+                            PointValue = 40,
+                            Scope = 0
                         },
                         new
                         {
@@ -1771,7 +1789,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-speed-runner.svg",
                             IsDeleted = false,
                             Name = "Speed Runner",
-                            PointValue = 15
+                            PointValue = 15,
+                            Scope = 0
                         },
                         new
                         {
@@ -1784,7 +1803,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-quick-draw.svg",
                             IsDeleted = false,
                             Name = "Quick Draw",
-                            PointValue = 35
+                            PointValue = 35,
+                            Scope = 0
                         },
                         new
                         {
@@ -1797,7 +1817,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-flash.svg",
                             IsDeleted = false,
                             Name = "Flash",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -1810,7 +1831,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-streak-start.svg",
                             IsDeleted = false,
                             Name = "Streak Starter",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -1823,7 +1845,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-daily-dose.svg",
                             IsDeleted = false,
                             Name = "Daily Dose",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -1836,7 +1859,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-morning-routine.svg",
                             IsDeleted = false,
                             Name = "Morning Routine",
-                            PointValue = 45
+                            PointValue = 45,
+                            Scope = 0
                         },
                         new
                         {
@@ -1849,7 +1873,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-team-player.svg",
                             IsDeleted = false,
                             Name = "Team Player",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -1862,7 +1887,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-helpful.svg",
                             IsDeleted = false,
                             Name = "Helpful",
-                            PointValue = 35
+                            PointValue = 35,
+                            Scope = 0
                         },
                         new
                         {
@@ -1875,7 +1901,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-event-organizer.svg",
                             IsDeleted = false,
                             Name = "Event Organizer",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -1888,7 +1915,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-experimenter.svg",
                             IsDeleted = false,
                             Name = "Experimenter",
-                            PointValue = 20
+                            PointValue = 20,
+                            Scope = 0
                         },
                         new
                         {
@@ -1901,7 +1929,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-focused.svg",
                             IsDeleted = false,
                             Name = "Focused",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -1914,7 +1943,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-zen-master.svg",
                             IsDeleted = false,
                             Name = "Zen Master",
-                            PointValue = 75
+                            PointValue = 75,
+                            Scope = 0
                         },
                         new
                         {
@@ -1927,7 +1957,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-comeback-kid.svg",
                             IsDeleted = false,
                             Name = "Comeback Kid",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -1940,7 +1971,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-perfectionist.svg",
                             IsDeleted = false,
                             Name = "Perfectionist",
-                            PointValue = 60
+                            PointValue = 60,
+                            Scope = 0
                         },
                         new
                         {
@@ -1953,7 +1985,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-multi-tasker.svg",
                             IsDeleted = false,
                             Name = "Multi-tasker",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -1966,7 +1999,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-new-year.svg",
                             IsDeleted = false,
                             Name = "New Year Resolution",
-                            PointValue = 100
+                            PointValue = 100,
+                            Scope = 0
                         },
                         new
                         {
@@ -1979,7 +2013,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-spring-cleaning.svg",
                             IsDeleted = false,
                             Name = "Spring Cleaning",
-                            PointValue = 75
+                            PointValue = 75,
+                            Scope = 0
                         },
                         new
                         {
@@ -1992,7 +2027,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-summer-vibes.svg",
                             IsDeleted = false,
                             Name = "Summer Vibes",
-                            PointValue = 80
+                            PointValue = 80,
+                            Scope = 0
                         },
                         new
                         {
@@ -2005,7 +2041,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-template-master.svg",
                             IsDeleted = false,
                             Name = "Template Master",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -2018,7 +2055,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-automation.svg",
                             IsDeleted = false,
                             Name = "Automation Lover",
-                            PointValue = 45
+                            PointValue = 45,
+                            Scope = 0
                         },
                         new
                         {
@@ -2031,7 +2069,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-first-week.svg",
                             IsDeleted = false,
                             Name = "First Week",
-                            PointValue = 70
+                            PointValue = 70,
+                            Scope = 0
                         },
                         new
                         {
@@ -2044,7 +2083,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-loyal-user.svg",
                             IsDeleted = false,
                             Name = "Loyal User",
-                            PointValue = 150
+                            PointValue = 150,
+                            Scope = 0
                         },
                         new
                         {
@@ -2057,7 +2097,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-power-hour.svg",
                             IsDeleted = false,
                             Name = "Power Hour",
-                            PointValue = 80
+                            PointValue = 80,
+                            Scope = 0
                         },
                         new
                         {
@@ -2070,7 +2111,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-task-destroyer.svg",
                             IsDeleted = false,
                             Name = "Task Destroyer",
-                            PointValue = 100
+                            PointValue = 100,
+                            Scope = 0
                         },
                         new
                         {
@@ -2083,7 +2125,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-priority-pro.svg",
                             IsDeleted = false,
                             Name = "Priority Pro",
-                            PointValue = 75
+                            PointValue = 75,
+                            Scope = 0
                         },
                         new
                         {
@@ -2096,7 +2139,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-critical-thinker.svg",
                             IsDeleted = false,
                             Name = "Critical Thinker",
-                            PointValue = 100
+                            PointValue = 100,
+                            Scope = 0
                         },
                         new
                         {
@@ -2109,7 +2153,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-category-creator.svg",
                             IsDeleted = false,
                             Name = "Category Creator",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -2122,7 +2167,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-tag-master.svg",
                             IsDeleted = false,
                             Name = "Tag Master",
-                            PointValue = 40
+                            PointValue = 40,
+                            Scope = 0
                         },
                         new
                         {
@@ -2135,7 +2181,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-reminder-rookie.svg",
                             IsDeleted = false,
                             Name = "Reminder Rookie",
-                            PointValue = 15
+                            PointValue = 15,
+                            Scope = 0
                         },
                         new
                         {
@@ -2148,7 +2195,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-planner.svg",
                             IsDeleted = false,
                             Name = "Planner",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -2161,7 +2209,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-note-taker.svg",
                             IsDeleted = false,
                             Name = "Note Taker",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -2174,7 +2223,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-detailed.svg",
                             IsDeleted = false,
                             Name = "Detailed",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -2187,7 +2237,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-board-creator.svg",
                             IsDeleted = false,
                             Name = "Board Creator",
-                            PointValue = 30
+                            PointValue = 30,
+                            Scope = 0
                         },
                         new
                         {
@@ -2200,7 +2251,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-visual-organizer.svg",
                             IsDeleted = false,
                             Name = "Visual Organizer",
-                            PointValue = 40
+                            PointValue = 40,
+                            Scope = 0
                         },
                         new
                         {
@@ -2213,7 +2265,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-challenge-accepted.svg",
                             IsDeleted = false,
                             Name = "Challenge Accepted",
-                            PointValue = 25
+                            PointValue = 25,
+                            Scope = 0
                         },
                         new
                         {
@@ -2226,7 +2279,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-point-collector.svg",
                             IsDeleted = false,
                             Name = "Point Collector",
-                            PointValue = 0
+                            PointValue = 0,
+                            Scope = 0
                         },
                         new
                         {
@@ -2239,7 +2293,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-explorer.svg",
                             IsDeleted = false,
                             Name = "Explorer",
-                            PointValue = 100
+                            PointValue = 100,
+                            Scope = 0
                         },
                         new
                         {
@@ -2252,7 +2307,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-feature-hunter.svg",
                             IsDeleted = false,
                             Name = "Feature Hunter",
-                            PointValue = 50
+                            PointValue = 50,
+                            Scope = 0
                         },
                         new
                         {
@@ -2265,7 +2321,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-self-improver.svg",
                             IsDeleted = false,
                             Name = "Self Improver",
-                            PointValue = 75
+                            PointValue = 75,
+                            Scope = 0
                         },
                         new
                         {
@@ -2278,7 +2335,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/bronze-habit-builder.svg",
                             IsDeleted = false,
                             Name = "Habit Builder",
-                            PointValue = 80
+                            PointValue = 80,
+                            Scope = 0
                         },
                         new
                         {
@@ -2291,7 +2349,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-task-warrior.svg",
                             IsDeleted = false,
                             Name = "Task Warrior",
-                            PointValue = 150
+                            PointValue = 150,
+                            Scope = 0
                         },
                         new
                         {
@@ -2304,7 +2363,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-productive.svg",
                             IsDeleted = false,
                             Name = "Productive",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2317,7 +2377,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-task-machine.svg",
                             IsDeleted = false,
                             Name = "Task Machine",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2330,7 +2391,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-lightning-fast.svg",
                             IsDeleted = false,
                             Name = "Lightning Fast",
-                            PointValue = 150
+                            PointValue = 150,
+                            Scope = 0
                         },
                         new
                         {
@@ -2343,7 +2405,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-speed-demon.svg",
                             IsDeleted = false,
                             Name = "Speed Demon",
-                            PointValue = 120
+                            PointValue = 120,
+                            Scope = 0
                         },
                         new
                         {
@@ -2356,7 +2419,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-rapid-fire.svg",
                             IsDeleted = false,
                             Name = "Rapid Fire",
-                            PointValue = 180
+                            PointValue = 180,
+                            Scope = 0
                         },
                         new
                         {
@@ -2369,7 +2433,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-flame-keeper.svg",
                             IsDeleted = false,
                             Name = "Flame Keeper",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2382,7 +2447,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-dedicated.svg",
                             IsDeleted = false,
                             Name = "Dedicated",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2395,7 +2461,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-morning-champion.svg",
                             IsDeleted = false,
                             Name = "Morning Champion",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2408,7 +2475,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-time-master.svg",
                             IsDeleted = false,
                             Name = "Time Master",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2421,7 +2489,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-punctuality-expert.svg",
                             IsDeleted = false,
                             Name = "Punctuality Expert",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2434,7 +2503,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-early-bird-master.svg",
                             IsDeleted = false,
                             Name = "Early Bird Master",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2447,7 +2517,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-team-player.svg",
                             IsDeleted = false,
                             Name = "Team Player",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2460,7 +2531,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-family-hero.svg",
                             IsDeleted = false,
                             Name = "Family Hero",
-                            PointValue = 180
+                            PointValue = 180,
+                            Scope = 0
                         },
                         new
                         {
@@ -2473,7 +2545,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-event-master.svg",
                             IsDeleted = false,
                             Name = "Event Master",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2486,7 +2559,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-community-builder.svg",
                             IsDeleted = false,
                             Name = "Community Builder",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2499,7 +2573,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-quality-control.svg",
                             IsDeleted = false,
                             Name = "Quality Control",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2512,7 +2587,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-attention-detail.svg",
                             IsDeleted = false,
                             Name = "Attention to Detail",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2525,7 +2601,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-reviewer.svg",
                             IsDeleted = false,
                             Name = "Reviewer",
-                            PointValue = 150
+                            PointValue = 150,
+                            Scope = 0
                         },
                         new
                         {
@@ -2538,7 +2615,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-innovator.svg",
                             IsDeleted = false,
                             Name = "Innovator",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2551,7 +2629,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-template-creator.svg",
                             IsDeleted = false,
                             Name = "Template Creator",
-                            PointValue = 180
+                            PointValue = 180,
+                            Scope = 0
                         },
                         new
                         {
@@ -2564,7 +2643,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-system-builder.svg",
                             IsDeleted = false,
                             Name = "System Builder",
-                            PointValue = 220
+                            PointValue = 220,
+                            Scope = 0
                         },
                         new
                         {
@@ -2577,7 +2657,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-focus-master.svg",
                             IsDeleted = false,
                             Name = "Focus Master",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2590,7 +2671,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-deep-work.svg",
                             IsDeleted = false,
                             Name = "Deep Work",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2603,7 +2685,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-concentration-champion.svg",
                             IsDeleted = false,
                             Name = "Concentration Champion",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -2616,7 +2699,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-spring-productivity.svg",
                             IsDeleted = false,
                             Name = "Spring Productivity",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2629,7 +2713,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-summer-consistency.svg",
                             IsDeleted = false,
                             Name = "Summer Consistency",
-                            PointValue = 350
+                            PointValue = 350,
+                            Scope = 0
                         },
                         new
                         {
@@ -2642,7 +2727,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-autumn-organizer.svg",
                             IsDeleted = false,
                             Name = "Autumn Organizer",
-                            PointValue = 275
+                            PointValue = 275,
+                            Scope = 0
                         },
                         new
                         {
@@ -2655,7 +2741,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-winter-warrior.svg",
                             IsDeleted = false,
                             Name = "Winter Warrior",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -2668,7 +2755,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-priority-master.svg",
                             IsDeleted = false,
                             Name = "Priority Master",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2681,7 +2769,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-strategic-thinker.svg",
                             IsDeleted = false,
                             Name = "Strategic Thinker",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2694,7 +2783,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-crisis-manager.svg",
                             IsDeleted = false,
                             Name = "Crisis Manager",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -2707,7 +2797,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-automation-expert.svg",
                             IsDeleted = false,
                             Name = "Automation Expert",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2720,7 +2811,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-efficiency-master.svg",
                             IsDeleted = false,
                             Name = "Efficiency Master",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2733,7 +2825,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-time-saver.svg",
                             IsDeleted = false,
                             Name = "Time Saver",
-                            PointValue = 500
+                            PointValue = 500,
+                            Scope = 0
                         },
                         new
                         {
@@ -2746,7 +2839,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-regular-user.svg",
                             IsDeleted = false,
                             Name = "Regular User",
-                            PointValue = 450
+                            PointValue = 450,
+                            Scope = 0
                         },
                         new
                         {
@@ -2759,7 +2853,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-dedicated-user.svg",
                             IsDeleted = false,
                             Name = "Dedicated User",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -2772,7 +2867,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-point-accumulator.svg",
                             IsDeleted = false,
                             Name = "Point Accumulator",
-                            PointValue = 0
+                            PointValue = 0,
+                            Scope = 0
                         },
                         new
                         {
@@ -2785,7 +2881,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-challenge-warrior.svg",
                             IsDeleted = false,
                             Name = "Challenge Warrior",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2798,7 +2895,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-competitor.svg",
                             IsDeleted = false,
                             Name = "Competitor",
-                            PointValue = 350
+                            PointValue = 350,
+                            Scope = 0
                         },
                         new
                         {
@@ -2811,7 +2909,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-leaderboard-climber.svg",
                             IsDeleted = false,
                             Name = "Leaderboard Climber",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2824,7 +2923,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-growth-mindset.svg",
                             IsDeleted = false,
                             Name = "Growth Mindset",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2837,7 +2937,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-skill-builder.svg",
                             IsDeleted = false,
                             Name = "Skill Builder",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2850,7 +2951,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-habit-master.svg",
                             IsDeleted = false,
                             Name = "Habit Master",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -2863,7 +2965,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-communicator.svg",
                             IsDeleted = false,
                             Name = "Communicator",
-                            PointValue = 200
+                            PointValue = 200,
+                            Scope = 0
                         },
                         new
                         {
@@ -2876,7 +2979,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-detailed-planner.svg",
                             IsDeleted = false,
                             Name = "Detailed Planner",
-                            PointValue = 150
+                            PointValue = 150,
+                            Scope = 0
                         },
                         new
                         {
@@ -2889,7 +2993,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-knowledge-keeper.svg",
                             IsDeleted = false,
                             Name = "Knowledge Keeper",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2902,7 +3007,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-board-master.svg",
                             IsDeleted = false,
                             Name = "Board Master",
-                            PointValue = 250
+                            PointValue = 250,
+                            Scope = 0
                         },
                         new
                         {
@@ -2915,7 +3021,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-visual-thinker.svg",
                             IsDeleted = false,
                             Name = "Visual Thinker",
-                            PointValue = 300
+                            PointValue = 300,
+                            Scope = 0
                         },
                         new
                         {
@@ -2928,7 +3035,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/silver-workspace-architect.svg",
                             IsDeleted = false,
                             Name = "Workspace Architect",
-                            PointValue = 350
+                            PointValue = 350,
+                            Scope = 0
                         },
                         new
                         {
@@ -2941,7 +3049,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-champion.svg",
                             IsDeleted = false,
                             Name = "Champion",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -2954,7 +3063,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-task-master.svg",
                             IsDeleted = false,
                             Name = "Task Master",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -2967,7 +3077,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-productivity-beast.svg",
                             IsDeleted = false,
                             Name = "Productivity Beast",
-                            PointValue = 500
+                            PointValue = 500,
+                            Scope = 0
                         },
                         new
                         {
@@ -2980,7 +3091,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-marathon-runner.svg",
                             IsDeleted = false,
                             Name = "Marathon Runner",
-                            PointValue = 750
+                            PointValue = 750,
+                            Scope = 0
                         },
                         new
                         {
@@ -2993,7 +3105,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-unstoppable.svg",
                             IsDeleted = false,
                             Name = "Unstoppable",
-                            PointValue = 800
+                            PointValue = 800,
+                            Scope = 0
                         },
                         new
                         {
@@ -3006,7 +3119,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-rocket-speed.svg",
                             IsDeleted = false,
                             Name = "Rocket Speed",
-                            PointValue = 400
+                            PointValue = 400,
+                            Scope = 0
                         },
                         new
                         {
@@ -3019,7 +3133,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-speed-light.svg",
                             IsDeleted = false,
                             Name = "Speed of Light",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -3032,7 +3147,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-time-warp.svg",
                             IsDeleted = false,
                             Name = "Time Warp",
-                            PointValue = 800
+                            PointValue = 800,
+                            Scope = 0
                         },
                         new
                         {
@@ -3045,7 +3161,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-campfire.svg",
                             IsDeleted = false,
                             Name = "Campfire",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -3058,7 +3175,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-bonfire.svg",
                             IsDeleted = false,
                             Name = "Bonfire",
-                            PointValue = 900
+                            PointValue = 900,
+                            Scope = 0
                         },
                         new
                         {
@@ -3071,7 +3189,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-wildfire.svg",
                             IsDeleted = false,
                             Name = "Wildfire",
-                            PointValue = 1200
+                            PointValue = 1200,
+                            Scope = 0
                         },
                         new
                         {
@@ -3084,7 +3203,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-perfectionist.svg",
                             IsDeleted = false,
                             Name = "Perfectionist",
-                            PointValue = 500
+                            PointValue = 500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3097,7 +3217,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-quality-assurance.svg",
                             IsDeleted = false,
                             Name = "Quality Assurance",
-                            PointValue = 700
+                            PointValue = 700,
+                            Scope = 0
                         },
                         new
                         {
@@ -3110,7 +3231,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-craftsman.svg",
                             IsDeleted = false,
                             Name = "Craftsman",
-                            PointValue = 800
+                            PointValue = 800,
+                            Scope = 0
                         },
                         new
                         {
@@ -3123,7 +3245,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-leader.svg",
                             IsDeleted = false,
                             Name = "Leader",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -3136,7 +3259,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-mentor.svg",
                             IsDeleted = false,
                             Name = "Mentor",
-                            PointValue = 700
+                            PointValue = 700,
+                            Scope = 0
                         },
                         new
                         {
@@ -3149,7 +3273,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-community-champion.svg",
                             IsDeleted = false,
                             Name = "Community Champion",
-                            PointValue = 1000
+                            PointValue = 1000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3162,7 +3287,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-master-creator.svg",
                             IsDeleted = false,
                             Name = "Master Creator",
-                            PointValue = 500
+                            PointValue = 500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3175,7 +3301,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-system-architect.svg",
                             IsDeleted = false,
                             Name = "System Architect",
-                            PointValue = 800
+                            PointValue = 800,
+                            Scope = 0
                         },
                         new
                         {
@@ -3188,7 +3315,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-template-wizard.svg",
                             IsDeleted = false,
                             Name = "Template Wizard",
-                            PointValue = 600
+                            PointValue = 600,
+                            Scope = 0
                         },
                         new
                         {
@@ -3201,7 +3329,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-deep-focus.svg",
                             IsDeleted = false,
                             Name = "Deep Focus",
-                            PointValue = 700
+                            PointValue = 700,
+                            Scope = 0
                         },
                         new
                         {
@@ -3214,7 +3343,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-meditation-master.svg",
                             IsDeleted = false,
                             Name = "Meditation Master",
-                            PointValue = 900
+                            PointValue = 900,
+                            Scope = 0
                         },
                         new
                         {
@@ -3227,7 +3357,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-zen-garden.svg",
                             IsDeleted = false,
                             Name = "Zen Garden",
-                            PointValue = 1000
+                            PointValue = 1000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3240,7 +3371,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-time-lord.svg",
                             IsDeleted = false,
                             Name = "Time Lord",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3253,7 +3385,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-chronos.svg",
                             IsDeleted = false,
                             Name = "Chronos",
-                            PointValue = 5000
+                            PointValue = 5000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3266,7 +3399,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-temporal-sovereign.svg",
                             IsDeleted = false,
                             Name = "Temporal Sovereign",
-                            PointValue = 8000
+                            PointValue = 8000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3279,7 +3413,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-champion-champions.svg",
                             IsDeleted = false,
                             Name = "Champion of Champions",
-                            PointValue = 2500
+                            PointValue = 2500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3292,7 +3427,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-undefeated.svg",
                             IsDeleted = false,
                             Name = "Undefeated",
-                            PointValue = 4000
+                            PointValue = 4000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3305,7 +3441,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-god-mode.svg",
                             IsDeleted = false,
                             Name = "God Mode",
-                            PointValue = 7500
+                            PointValue = 7500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3318,7 +3455,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-productivity-sensei.svg",
                             IsDeleted = false,
                             Name = "Productivity Sensei",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3331,7 +3469,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-wisdom-keeper.svg",
                             IsDeleted = false,
                             Name = "Wisdom Keeper",
-                            PointValue = 4500
+                            PointValue = 4500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3344,7 +3483,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/gold-enlightened-one.svg",
                             IsDeleted = false,
                             Name = "Enlightened One",
-                            PointValue = 7500
+                            PointValue = 7500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3357,7 +3497,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-legend.svg",
                             IsDeleted = false,
                             Name = "Legend",
-                            PointValue = 1500
+                            PointValue = 1500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3370,7 +3511,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-myth.svg",
                             IsDeleted = false,
                             Name = "Myth",
-                            PointValue = 2000
+                            PointValue = 2000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3383,7 +3525,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-epic.svg",
                             IsDeleted = false,
                             Name = "Epic",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3396,7 +3539,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-speed-demon.svg",
                             IsDeleted = false,
                             Name = "Speed Demon",
-                            PointValue = 2000
+                            PointValue = 2000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3409,7 +3553,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-velocity.svg",
                             IsDeleted = false,
                             Name = "Velocity",
-                            PointValue = 2500
+                            PointValue = 2500,
+                            Scope = 0
                         },
                         new
                         {
@@ -3422,7 +3567,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-hypersonic.svg",
                             IsDeleted = false,
                             Name = "Hypersonic",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3435,7 +3581,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-eternal-flame.svg",
                             IsDeleted = false,
                             Name = "Eternal Flame",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3448,7 +3595,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-immortal.svg",
                             IsDeleted = false,
                             Name = "Immortal",
-                            PointValue = 5000
+                            PointValue = 5000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3461,7 +3609,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-unbreakable.svg",
                             IsDeleted = false,
                             Name = "Unbreakable",
-                            PointValue = 10000
+                            PointValue = 10000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3474,7 +3623,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-perfectionist.svg",
                             IsDeleted = false,
                             Name = "Platinum Perfectionist",
-                            PointValue = 2000
+                            PointValue = 2000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3487,7 +3637,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-flawless.svg",
                             IsDeleted = false,
                             Name = "Flawless",
-                            PointValue = 3000
+                            PointValue = 3000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3500,7 +3651,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-divine-quality.svg",
                             IsDeleted = false,
                             Name = "Divine Quality",
-                            PointValue = 5000
+                            PointValue = 5000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3513,7 +3665,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-family-emperor.svg",
                             IsDeleted = false,
                             Name = "Family Emperor",
-                            PointValue = 15000
+                            PointValue = 15000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3526,7 +3679,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-global-influence.svg",
                             IsDeleted = false,
                             Name = "Global Influence",
-                            PointValue = 25000
+                            PointValue = 25000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3539,7 +3693,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-civilization-builder.svg",
                             IsDeleted = false,
                             Name = "Civilization Builder",
-                            PointValue = 50000
+                            PointValue = 50000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3552,7 +3707,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-universe-creator.svg",
                             IsDeleted = false,
                             Name = "Universe Creator",
-                            PointValue = 20000
+                            PointValue = 20000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3565,7 +3721,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-reality-architect.svg",
                             IsDeleted = false,
                             Name = "Reality Architect",
-                            PointValue = 40000
+                            PointValue = 40000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3578,7 +3735,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/platinum-multiverse-master.svg",
                             IsDeleted = false,
                             Name = "Multiverse Master",
-                            PointValue = 100000
+                            PointValue = 100000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3591,7 +3749,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/onyx-transcendent.svg",
                             IsDeleted = false,
                             Name = "Transcendent",
-                            PointValue = 100000
+                            PointValue = 100000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3604,7 +3763,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/onyx-source-code.svg",
                             IsDeleted = false,
                             Name = "Source Code",
-                            PointValue = 250000
+                            PointValue = 250000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3617,7 +3777,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/onyx-one.svg",
                             IsDeleted = false,
                             Name = "One",
-                            PointValue = 500000
+                            PointValue = 500000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3630,7 +3791,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/onyx-void-walker.svg",
                             IsDeleted = false,
                             Name = "Void Walker",
-                            PointValue = 750000
+                            PointValue = 750000,
+                            Scope = 0
                         },
                         new
                         {
@@ -3643,7 +3805,8 @@ namespace TaskTrackerAPI.Migrations
                             IconUrl = "/icons/achievements/onyx-absolute.svg",
                             IsDeleted = false,
                             Name = "The Absolute",
-                            PointValue = 1000000
+                            PointValue = 1000000,
+                            Scope = 0
                         });
                 });
 
@@ -6690,6 +6853,15 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("TaskItem");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.Achievement", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.Family", "Family")
+                        .WithMany()
+                        .HasForeignKey("FamilyId");
+
+                    b.Navigation("Family");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.UserAchievement", b =>

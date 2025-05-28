@@ -89,8 +89,22 @@ namespace TaskTrackerAPI.Models.Gamification
         [Required]
         public AchievementDifficulty Difficulty { get; set; } = AchievementDifficulty.Easy;
         
+        /// <summary>
+        /// Scope of the achievement (Individual, Family, Global)
+        /// </summary>
+        [Required]
+        public AchievementScope Scope { get; set; } = AchievementScope.Individual;
+        
+        /// <summary>
+        /// Optional family ID for family-specific achievements
+        /// </summary>
+        public int? FamilyId { get; set; }
+        
         // Navigation property
         public virtual ICollection<UserAchievement>? UserAchievements { get; set; }
+        
+        [ForeignKey("FamilyId")]
+        public virtual Family? Family { get; set; }
     }
     
     
@@ -103,5 +117,26 @@ namespace TaskTrackerAPI.Models.Gamification
         Medium = 2,
         Hard = 3,
         VeryHard = 4
+    }
+    
+    /// <summary>
+    /// Enum representing the scope of achievements
+    /// </summary>
+    public enum AchievementScope
+    {
+        /// <summary>
+        /// Individual user achievements
+        /// </summary>
+        Individual = 0,
+        
+        /// <summary>
+        /// Family-wide achievements
+        /// </summary>
+        Family = 1,
+        
+        /// <summary>
+        /// Global/system-wide achievements
+        /// </summary>
+        Global = 2
     }
 } 
