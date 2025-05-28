@@ -87,5 +87,8 @@ namespace TaskTrackerAPI.Services.Interfaces
         // Admin Testing Methods (Admin only)
         Task<bool> ResetUserGamificationDataAsync(int userId);
         Task<GamificationResetStatsDTO> GetResetStatsAsync(int userId);
+        
+        // Achievement Processing
+        Task ProcessAchievementUnlocksAsync(int userId, string activityType, int relatedEntityId = 0, Dictionary<string, object>? additionalData = null);
     }
 } 

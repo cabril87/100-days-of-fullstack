@@ -6,7 +6,11 @@ import {
   FocusStatistics, 
   Distraction, 
   DistractionCreate, 
-  FocusRequest 
+  FocusRequest,
+  FocusSessionCompleteRequest,
+  TaskProgressUpdate,
+  TaskTimeTracking,
+  ProductivityInsights
 } from '@/lib/types/focus';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -20,12 +24,25 @@ class FocusService {
     return apiClient.post<FocusSession>('/v1/focus/start', request);
   }
 
+  async switchFocusSession(request: FocusRequest): Promise<ApiResponse<FocusSession>> {
+    return apiClient.post<FocusSession>('/v1/focus/switch', request);
+  }
+
   async endFocusSession(sessionId?: number): Promise<ApiResponse<FocusSession>> {
     const endpoint = sessionId 
       ? `/v1/focus/${sessionId}/end` 
       : '/v1/focus/current/end';
     
     return apiClient.post<FocusSession>(endpoint, {});
+  }
+
+  async completeSessionWithDetails(sessionId: number, completion: {
+    sessionQualityRating?: number;
+    completionNotes?: string;
+    taskProgressAfter?: number;
+    taskCompletedDuringSession?: boolean;
+  }): Promise<ApiResponse<FocusSession>> {
+    return apiClient.put<FocusSession>(`/v1/focus/${sessionId}/complete`, completion);
   }
 
   async pauseFocusSession(sessionId?: number): Promise<ApiResponse<FocusSession>> {
@@ -48,26 +65,13 @@ class FocusService {
     return apiClient.post<Distraction>('/v1/focus/distraction', distraction);
   }
 
-  async getFocusStatistics(
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<ApiResponse<FocusStatistics>> {
-    let endpoint = '/v1/focus/statistics';
-    
+  async getFocusStatistics(startDate?: string, endDate?: string): Promise<ApiResponse<FocusStatistics>> {
     const params = new URLSearchParams();
-    if (startDate) {
-      params.append('startDate', startDate.toISOString());
-    }
-    if (endDate) {
-      params.append('endDate', endDate.toISOString());
-    }
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
     
-    const queryString = params.toString();
-    if (queryString) {
-      endpoint += `?${queryString}`;
-    }
-    
-    return apiClient.get<FocusStatistics>(endpoint);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<FocusStatistics>(`/v1/focus/statistics${query}`);
   }
 
   async getFocusHistory(): Promise<ApiResponse<FocusSession[]>> {
@@ -76,6 +80,30 @@ class FocusService {
 
   async getSessionDistractions(sessionId: number): Promise<ApiResponse<Distraction[]>> {
     return apiClient.get<Distraction[]>(`/v1/focus/${sessionId}/distractions`);
+  }
+
+  // Task-related methods
+  async updateTaskProgress(taskId: number, progress: TaskProgressUpdate): Promise<ApiResponse<Task>> {
+    return apiClient.put<Task>(`/v1/tasks/${taskId}/progress`, progress);
+  }
+
+  async completeTask(taskId: number): Promise<ApiResponse<Task>> {
+    return apiClient.post<Task>(`/v1/tasks/${taskId}/complete`, {});
+  }
+
+  async getTaskTimeTracking(taskId: number): Promise<ApiResponse<TaskTimeTracking>> {
+    return apiClient.get<TaskTimeTracking>(`/v1/tasks/${taskId}/time-tracking`);
+  }
+
+  async getProductivityInsights(startDate?: string, endDate?: string): Promise<ApiResponse<ProductivityInsights>> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/v1/focus/insights?${queryString}` : '/v1/focus/insights';
+    
+    return apiClient.get<ProductivityInsights>(url);
   }
 }
 

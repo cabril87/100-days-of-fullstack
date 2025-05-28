@@ -36,6 +36,34 @@ namespace TaskTrackerAPI.Models
 
         public string? Notes { get; set; }
 
+        /// <summary>
+        /// Quality rating of the focus session (1-5 stars)
+        /// </summary>
+        [Range(1, 5)]
+        public int? SessionQualityRating { get; set; }
+
+        /// <summary>
+        /// Notes about what was accomplished during the session
+        /// </summary>
+        public string? CompletionNotes { get; set; }
+
+        /// <summary>
+        /// Task progress percentage before starting the session
+        /// </summary>
+        [Range(0, 100)]
+        public int TaskProgressBefore { get; set; } = 0;
+
+        /// <summary>
+        /// Task progress percentage after completing the session
+        /// </summary>
+        [Range(0, 100)]
+        public int TaskProgressAfter { get; set; } = 0;
+
+        /// <summary>
+        /// Whether the task was marked as completed during this session
+        /// </summary>
+        public bool TaskCompletedDuringSession { get; set; } = false;
+
         public SessionStatus Status { get; set; } = SessionStatus.InProgress;
 
         // Navigation properties

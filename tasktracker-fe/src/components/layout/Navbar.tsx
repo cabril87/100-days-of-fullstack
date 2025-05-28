@@ -4,10 +4,12 @@ import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { useFamily } from '@/lib/providers/FamilyContext';
+import { useFocus } from '@/lib/providers/FocusContext';
 import { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import NotificationCenter from './NotificationCenter';
 import GlobalSearch from '@/components/GlobalSearch';
+import { Timer, Brain, XCircle } from 'lucide-react';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -15,9 +17,94 @@ interface NavbarProps {
   isSidebarOpen?: boolean;
 }
 
+// Focus Mode Indicator Component
+const FocusModeIndicator = () => {
+  const { currentSession, endFocusSession } = useFocus();
+  const [timeElapsed, setTimeElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!currentSession || currentSession.status !== 'InProgress') {
+      setTimeElapsed(0);
+      return;
+    }
+
+    const startTime = new Date(currentSession.startTime).getTime();
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      setTimeElapsed(elapsed);
+    };
+
+    // Update immediately
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentSession]);
+
+  const formatTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleEndSession = async () => {
+    if (currentSession) {
+      await endFocusSession(currentSession.id);
+    }
+  };
+
+  if (!currentSession || currentSession.status !== 'InProgress') {
+    return null;
+  }
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-[200] bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 shadow-lg">
+      <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-white animate-pulse" />
+            <span className="text-sm font-medium">Focus Mode Active</span>
+          </div>
+          <div className="hidden sm:block text-sm text-purple-100">
+            Task: {currentSession.task?.title || 'Untitled Task'}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-1">
+            <Timer className="h-4 w-4" />
+            <span className="font-mono text-sm font-medium">
+              {formatTime(timeElapsed)}
+            </span>
+          </div>
+          
+          <button
+            onClick={handleEndSession}
+            className="flex items-center gap-1 bg-white/20 hover:bg-white/30 rounded-lg px-2 py-1 text-xs transition-colors"
+            title="End Focus Session"
+          >
+            <XCircle className="h-3 w-3" />
+            <span className="hidden sm:inline">End</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownToggle, isSidebarOpen }: NavbarProps) {
   const { user, logout } = useAuth();
   const { family } = useFamily();
+  const { currentSession } = useFocus();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -72,10 +159,14 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
   }, [onDropdownToggle]);
 
   return (
-    <nav className="navbar-container shadow-xl relative z-[100]">
-          {/* Enhanced decorative gradient bars */}
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 animate-pulse"></div>
-          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 opacity-50"></div>
+    <>
+      {/* Focus Mode Indicator - shows at top when active */}
+      <FocusModeIndicator />
+      
+      <nav className={`navbar-container shadow-xl relative z-[100] ${currentSession?.status === 'InProgress' ? 'mt-12' : ''}`}>
+            {/* Enhanced decorative gradient bars */}
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 animate-pulse"></div>
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 opacity-50"></div>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 relative">
           <div className="flex items-center">
@@ -115,10 +206,17 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                 </Link>
                 <Link
                   href="/focus"
-                  className="navbar-link inline-flex items-center px-3 py-2 rounded-lg border-2 border-transparent hover:border-amber-500/20 transition-all duration-300 text-xl"
+                  className={`navbar-link inline-flex items-center px-3 py-2 rounded-lg border-2 transition-all duration-300 text-xl relative ${
+                    currentSession?.status === 'InProgress' 
+                      ? 'border-amber-500/40 bg-amber-500/20 shadow-amber-500/25' 
+                      : 'border-transparent hover:border-amber-500/20'
+                  }`}
                   title="Focus Mode"
                 >
                   🎯
+                  {currentSession?.status === 'InProgress' && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse"></span>
+                  )}
                 </Link>
                 <Link
                   href="/notifications/center"
@@ -616,5 +714,6 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
         </div>
       )}
     </nav>
+    </>
   );
 }); 

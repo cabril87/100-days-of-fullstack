@@ -23,24 +23,24 @@ const mapApiStatusToFormStatus = (status: string): TaskStatus => {
   }
 };
 
-const mapApiPriorityToFormPriority = (priority: string | number | undefined): TaskPriority => {
+const mapApiPriorityToFormPriority = (priority: string | number | undefined): number => {
   // Handle numeric priority values from API
   if (typeof priority === 'number') {
-    switch (priority) {
-      case 0: return TaskPriority.Low;
-      case 1: return TaskPriority.Medium;
-      case 2: return TaskPriority.High;
-      default: return TaskPriority.Medium;
+    // Ensure it's within valid range
+    if (priority >= 0 && priority <= 3) {
+      return priority;
     }
+    return 1; // Default to Medium
   }
   
   // Handle string priority values
   const priorityString = String(priority || '').toLowerCase();
   switch (priorityString) {
-    case 'low': return TaskPriority.Low;
-    case 'high': return TaskPriority.High;
-    case 'medium':
-    default: return TaskPriority.Medium;
+    case 'low': return 0;
+    case 'medium': return 1;
+    case 'high': return 2;
+    case 'critical': return 3;
+    default: return 1; // Default to Medium
   }
 };
 
@@ -107,7 +107,7 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
       status: mapApiStatusToFormStatus(task.status),
       dueDate: dueDateOnly,
       dueTime: dueTime,
-      priority: mapApiPriorityToFormPriority(task.priority),
+      priority: mapApiPriorityToFormPriority(task.priority) || 1, // Ensure it's never null
       categoryId: task.categoryId,
     };
   };
@@ -118,7 +118,7 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
         title: '',
         description: '',
         status: TaskStatus.Todo,
-        priority: TaskPriority.Medium,
+        priority: 1, // Medium priority as number
         dueDate: null,
         dueTime: null
       });
@@ -171,7 +171,7 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
         title: '',
         description: '',
         status: TaskStatus.Todo,
-        priority: TaskPriority.Medium,
+        priority: 1, // Medium priority as number
         dueDate: null,
         dueTime: null
       };
@@ -274,11 +274,10 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
       
       // Map priority string to numeric value
       if (changedData.priority !== undefined) {
-        let priorityValue = 1; // default to Medium
-        switch (changedData.priority) {
-          case TaskPriority.Low: priorityValue = 0; break;
-          case TaskPriority.Medium: priorityValue = 1; break;
-          case TaskPriority.High: priorityValue = 2; break;
+        // Priority is already numeric, just ensure it's valid
+        let priorityValue = changedData.priority;
+        if (priorityValue < 0 || priorityValue > 3) {
+          priorityValue = 1; // Default to Medium
         }
         debugData.Priority = priorityValue;
       }
@@ -402,12 +401,13 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
           </label>
           <select
             id="priority"
-            {...register('priority')}
+            {...register('priority', { valueAsNumber: true })}
             className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-brand-navy dark:focus:ring-brand-beige dark:focus:border-brand-beige transition-colors bg-white/80 dark:bg-white/10 backdrop-blur-sm"
           >
-            <option value={TaskPriority.Low}>Low</option>
-            <option value={TaskPriority.Medium}>Medium</option>
-            <option value={TaskPriority.High}>High</option>
+            <option value={0}>Low</option>
+            <option value={1}>Medium</option>
+            <option value={2}>High</option>
+            <option value={3}>Critical</option>
           </select>
           {errors.priority && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.priority.message}</p>
@@ -451,7 +451,7 @@ export function TaskForm({ task, onSubmit, onCancel, onError, initialData, isSub
             buttonLabel="Manage" 
             buttonSize="sm"
             onCategorySelect={(categoryId) => {
-              setValue('categoryId', categoryId, { shouldDirty: true });
+              setValue('categoryId', categoryId ?? undefined, { shouldDirty: true });
             }}
           />
         </div>

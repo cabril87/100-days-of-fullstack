@@ -14,25 +14,6 @@ namespace TaskTrackerAPI.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "AuditLogs",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    EntityId = table.Column<int>(type: "int", nullable: false),
-                    Action = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
-                    Details = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    IpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
-                    UserId = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AuditLogs", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Badges",
                 columns: table => new
                 {
@@ -164,6 +145,25 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_FamilyRoles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "GeneralAuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EntityType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    EntityId = table.Column<int>(type: "int", nullable: false),
+                    Action = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    Details = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    IpAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GeneralAuditLogs", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1269,6 +1269,8 @@ namespace TaskTrackerAPI.Migrations
                     UserId = table.Column<int>(type: "int", nullable: false),
                     CategoryId = table.Column<int>(type: "int", nullable: true),
                     EstimatedTimeMinutes = table.Column<int>(type: "int", nullable: true),
+                    ProgressPercentage = table.Column<int>(type: "int", nullable: false),
+                    ActualTimeSpentMinutes = table.Column<int>(type: "int", nullable: false),
                     BoardId = table.Column<int>(type: "int", nullable: true),
                     BoardColumn = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     BoardOrder = table.Column<int>(type: "int", nullable: true),
@@ -1347,6 +1349,11 @@ namespace TaskTrackerAPI.Migrations
                     DurationMinutes = table.Column<int>(type: "int", nullable: false),
                     IsCompleted = table.Column<bool>(type: "bit", nullable: false),
                     Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SessionQualityRating = table.Column<int>(type: "int", nullable: true),
+                    CompletionNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TaskProgressBefore = table.Column<int>(type: "int", nullable: false),
+                    TaskProgressAfter = table.Column<int>(type: "int", nullable: false),
+                    TaskCompletedDuringSession = table.Column<bool>(type: "bit", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -2205,9 +2212,6 @@ namespace TaskTrackerAPI.Migrations
                 table: "Users");
 
             migrationBuilder.DropTable(
-                name: "AuditLogs");
-
-            migrationBuilder.DropTable(
                 name: "BehavioralAnalytics");
 
             migrationBuilder.DropTable(
@@ -2242,6 +2246,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "FamilyRolePermissions");
+
+            migrationBuilder.DropTable(
+                name: "GeneralAuditLogs");
 
             migrationBuilder.DropTable(
                 name: "Invitations");

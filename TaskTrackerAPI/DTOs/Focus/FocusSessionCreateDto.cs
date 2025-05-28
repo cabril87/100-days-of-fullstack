@@ -20,5 +20,11 @@ namespace TaskTrackerAPI.DTOs
         public int DurationMinutes { get; set; } = 25; // Default to 25 minutes (Pomodoro)
         
         public string? Notes { get; set; }
+        
+        /// <summary>
+        /// If true, will automatically end any existing active session and start a new one.
+        /// If false (default), will return an error if there's already an active session.
+        /// </summary>
+        public bool ForceStart { get; set; } = false;
     }
 } 

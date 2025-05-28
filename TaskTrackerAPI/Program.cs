@@ -599,6 +599,8 @@ public class Program
             
             // Use developer exception page for detailed error information
             app.UseDeveloperExceptionPage();
+            
+            Console.WriteLine("Using DeveloperExceptionPage for exception handling in development");
         }
         else if (app.Environment.IsStaging())
         {
@@ -611,7 +613,10 @@ public class Program
             // Force HTTPS
             app.UseHttpsRedirection();
             
-            Console.WriteLine("Using staging environment configuration");
+            // Add global exception handling middleware for staging
+            app.UseGlobalExceptionHandling();
+            
+            Console.WriteLine("Using staging environment configuration with custom exception handling");
         }
         else
         {
@@ -624,11 +629,11 @@ public class Program
             // Force HTTPS
             app.UseHttpsRedirection();
             
-            Console.WriteLine("Using production environment configuration");
+            // Add global exception handling middleware for production
+            app.UseGlobalExceptionHandling();
+            
+            Console.WriteLine("Using production environment configuration with custom exception handling");
         }
-
-        // Add global exception handling middleware
-        app.UseGlobalExceptionHandling();
 
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();

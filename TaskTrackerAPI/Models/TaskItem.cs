@@ -52,6 +52,17 @@ public class TaskItem
 
     public int? EstimatedTimeMinutes { get; set; }
 
+    /// <summary>
+    /// Progress percentage of task completion (0-100)
+    /// </summary>
+    [Range(0, 100)]
+    public int ProgressPercentage { get; set; } = 0;
+
+    /// <summary>
+    /// Actual time spent on this task from focus sessions (calculated field)
+    /// </summary>
+    public int ActualTimeSpentMinutes { get; set; } = 0;
+
     public int? BoardId { get; set; }
 
     public string? BoardColumn { get; set; }

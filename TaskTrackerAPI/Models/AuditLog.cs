@@ -10,12 +10,14 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TaskTrackerAPI.Models;
 
 /// <summary>
 /// Represents an audit log entry for tracking operations in the system
 /// </summary>
+[Table("GeneralAuditLogs")]
 public class AuditLog
 {
     public int Id { get; set; }

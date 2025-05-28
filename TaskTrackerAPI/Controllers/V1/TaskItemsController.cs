@@ -23,6 +23,7 @@ using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.Attributes;
 using System.Text.Json;
 using System.Linq;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -38,26 +39,41 @@ public class TaskItemsController : ControllerBase
     private readonly ITaskService _taskService;
     private readonly ILogger<TaskItemsController> _logger;
     private readonly IFamilyMemberService _familyMemberService;
+    private readonly IMapper _mapper;
 
-    public TaskItemsController(ITaskService taskService, ILogger<TaskItemsController> logger, 
-        IFamilyMemberService familyMemberService)
+    public TaskItemsController(
+        ITaskService taskService, 
+        ILogger<TaskItemsController> logger, 
+        IFamilyMemberService familyMemberService,
+        IMapper mapper)
     {
         _taskService = taskService;
         _logger = logger;
         _familyMemberService = familyMemberService;
+        _mapper = mapper;
     }
 
     // GET: api/TaskItems
     [HttpGet]
     [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
-    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasks([FromQuery] string? due = null)
+    [ProducesResponseType(typeof(Utils.ApiResponse<IEnumerable<TaskItemDTO>>), 200)]
+    public async Task<ActionResult<Utils.ApiResponse<IEnumerable<TaskItemDTO>>>> GetTasks(
+        [FromQuery] string? due = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] TaskItemStatus? status = null,
+        [FromQuery] int? categoryId = null,
+        [FromQuery] string? priorityLevel = null,
+        [FromQuery] DateTime? dueDateStart = null,
+        [FromQuery] DateTime? dueDateEnd = null,
+        [FromQuery] string? searchTerm = null)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
             IEnumerable<TaskItemDTO> tasks;
             
-            // Handle different 'due' parameter values
+            // Handle different 'due' parameter values for backward compatibility
             switch (due?.ToLower())
             {
                 case "today":
@@ -71,7 +87,48 @@ public class TaskItemsController : ControllerBase
                     tasks = await _taskService.GetOverdueTasksAsync(userId);
                     break;
                 default:
-                    tasks = await _taskService.GetAllTasksAsync(userId);
+                    // Use pagination if no specific 'due' filter is specified
+                    if (page > 1 || pageSize != 10 || status.HasValue || categoryId.HasValue || !string.IsNullOrEmpty(searchTerm))
+                    {
+                        // Cap page size at 50 to prevent performance issues
+                        pageSize = Math.Min(pageSize, 50);
+                        if (page < 1) page = 1;
+                        if (pageSize < 1) pageSize = 10;
+
+                        PaginationParams paginationParams = new PaginationParams
+                        {
+                            PageNumber = page,
+                            PageSize = pageSize
+                        };
+
+                        PagedResult<TaskItemDTO> pagedTasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
+                        tasks = pagedTasks.Items;
+
+                        // Apply filters (should ideally be in repository layer)
+                        if (status.HasValue)
+                            tasks = tasks.Where(t => t.Status == status.Value);
+                        if (categoryId.HasValue)
+                            tasks = tasks.Where(t => t.CategoryId == categoryId.Value);
+                        if (!string.IsNullOrEmpty(priorityLevel))
+                            tasks = tasks.Where(t => t.Priority.ToString().Equals(priorityLevel, StringComparison.OrdinalIgnoreCase));
+                        if (dueDateStart.HasValue)
+                            tasks = tasks.Where(t => t.DueDate >= dueDateStart.Value);
+                        if (dueDateEnd.HasValue)
+                            tasks = tasks.Where(t => t.DueDate <= dueDateEnd.Value);
+                        if (!string.IsNullOrEmpty(searchTerm))
+                            tasks = tasks.Where(t => t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                                   (t.Description != null && t.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+
+                        // Add pagination headers
+                        Response.Headers["X-Pagination-TotalCount"] = pagedTasks.TotalCount.ToString();
+                        Response.Headers["X-Pagination-PageSize"] = pagedTasks.PageSize.ToString();
+                        Response.Headers["X-Pagination-CurrentPage"] = pagedTasks.PageNumber.ToString();
+                        Response.Headers["X-Pagination-TotalPages"] = pagedTasks.TotalPages.ToString();
+                    }
+                    else
+                    {
+                        tasks = await _taskService.GetAllTasksAsync(userId);
+                    }
                     break;
             }
             
@@ -90,7 +147,9 @@ public class TaskItemsController : ControllerBase
         requirementLevel: SecurityRequirementLevel.Authenticated,
         resourceType: ResourceType.Task,
         requireOwnership: true)]
-    public async Task<ActionResult<TaskItemDTO>> GetTaskItem(int id)
+    [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemDTO>), 200)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 404)]
+    public async Task<ActionResult<Utils.ApiResponse<TaskItemDTO>>> GetTaskItem(int id)
     {
         try
         {
@@ -114,6 +173,8 @@ public class TaskItemsController : ControllerBase
     // POST: api/TaskItems
     [HttpPost]
     [RateLimit(30, 60)] // Limit creation rate to prevent abuse
+    [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemDTO>), 201)]
+    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
     public async Task<ActionResult<TaskItemDTO>> CreateTaskItem([FromBody] object taskData, [FromQuery] bool quick = false)
     {
         try
@@ -134,33 +195,60 @@ public class TaskItemsController : ControllerBase
                     return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid quick task data"));
                 }
                 
-                // Convert QuickTaskDTO to TaskItemDTO with default values
-                TaskItemDTO taskDto = new TaskItemDTO
-                {
-                    Title = quickTaskDto.Title,
-                    Description = quickTaskDto.Description,
-                    DueDate = quickTaskDto.DueDate,
-                    Priority = quickTaskDto.Priority ?? 1,
-                    Status = TaskItemStatus.NotStarted,
-                    IsRecurring = false
-                };
+                // Use AutoMapper to convert QuickTaskDTO to TaskItemDTO
+                TaskItemDTO taskDto = _mapper.Map<TaskItemDTO>(quickTaskDto);
+                taskDto.Status = TaskItemStatus.NotStarted;
+                taskDto.IsRecurring = false;
                 
                 createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
             }
             else
             {
-                // Handle normal task creation
-                TaskItemDTO? taskDto = JsonSerializer.Deserialize<TaskItemDTO>(
-                    taskData.ToString() ?? "", 
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                );
-                
-                if (taskDto == null)
+                // Handle normal task creation - support both V1 and V2 formats
+                try
                 {
-                    return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid task data"));
+                    // Try V2 format first (TaskItemCreateRequestDTO)
+                    TaskItemCreateRequestDTO? createRequest = JsonSerializer.Deserialize<TaskItemCreateRequestDTO>(
+                        taskData.ToString() ?? "", 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                    );
+                    
+                    if (createRequest != null && !string.IsNullOrEmpty(createRequest.Title))
+                    {
+                        // Use AutoMapper to convert to service DTO
+                        TaskItemDTO taskDto = _mapper.Map<TaskItemDTO>(createRequest);
+                        taskDto.UserId = userId;
+                        
+                        createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+                        
+                        // Add tags if provided
+                        if (createRequest.TagIds?.Count > 0)
+                        {
+                            await _taskService.UpdateTaskTagsAsync(userId, createdTask?.Id ?? 0, createRequest.TagIds);
+                            // Refresh to include tags
+                            createdTask = await _taskService.GetTaskByIdAsync(userId, createdTask?.Id ?? 0);
+                        }
+                    }
+                    else
+                    {
+                        throw new JsonException("V2 format parsing failed");
+                    }
                 }
-                
-                createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+                catch
+                {
+                    // Fallback to V1 format (TaskItemDTO)
+                    TaskItemDTO? taskDto = JsonSerializer.Deserialize<TaskItemDTO>(
+                        taskData.ToString() ?? "", 
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                    );
+                    
+                    if (taskDto == null)
+                    {
+                        return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid task data"));
+                    }
+                    
+                    createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
+                }
             }
             
             if (createdTask == null)
@@ -903,6 +991,145 @@ public class TaskItemsController : ControllerBase
         {
             _logger.LogError(ex, "Error retrieving sorted tasks");
             return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+        }
+    }
+
+    // PUT: api/TaskItems/{id}/progress
+    [HttpPut("{id}/progress")]
+    public async Task<IActionResult> UpdateTaskProgress(int id, [FromBody] TaskProgressUpdateDto progressDto)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            var task = await _taskService.GetTaskByIdAsync(userId, id);
+            if (task == null)
+            {
+                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
+            
+            // Update the task progress
+            var updateDto = new TaskItemDTO
+            {
+                Id = id,
+                Title = task.Title,
+                Description = task.Description,
+                Status = task.Status,
+                Priority = task.Priority,
+                DueDate = task.DueDate,
+                CategoryId = task.CategoryId,
+                ProgressPercentage = progressDto.ProgressPercentage,
+                // Copy other existing properties
+                IsRecurring = task.IsRecurring,
+                RecurringPattern = task.RecurringPattern,
+                EstimatedTimeMinutes = task.EstimatedTimeMinutes
+            };
+            
+            var updatedTask = await _taskService.UpdateTaskAsync(userId, id, updateDto);
+            if (updatedTask == null)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to update task progress"));
+            }
+            
+            _logger.LogInformation("Task {TaskId} progress updated to {Progress}% by user {UserId}", 
+                id, progressDto.ProgressPercentage, userId);
+            
+            return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task progress updated successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating task progress for task {TaskId}", id);
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+    
+    // POST: api/TaskItems/{id}/complete
+    [HttpPost("{id}/complete")]
+    public async Task<IActionResult> CompleteTask(int id)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            var task = await _taskService.GetTaskByIdAsync(userId, id);
+            if (task == null)
+            {
+                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
+            
+            // Mark task as completed with 100% progress
+            var updateDto = new TaskItemDTO
+            {
+                Id = id,
+                Title = task.Title,
+                Description = task.Description,
+                Status = TaskItemStatus.Completed,
+                Priority = task.Priority,
+                DueDate = task.DueDate,
+                CategoryId = task.CategoryId,
+                ProgressPercentage = 100,
+                CompletedAt = DateTime.UtcNow,
+                // Copy other existing properties
+                IsRecurring = task.IsRecurring,
+                RecurringPattern = task.RecurringPattern,
+                EstimatedTimeMinutes = task.EstimatedTimeMinutes
+            };
+            
+            var updatedTask = await _taskService.UpdateTaskAsync(userId, id, updateDto);
+            if (updatedTask == null)
+            {
+                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to complete task"));
+            }
+            
+            _logger.LogInformation("Task {TaskId} marked as completed by user {UserId}", id, userId);
+            
+            return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task completed successfully"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing task {TaskId}", id);
+            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+    
+    // GET: api/TaskItems/{id}/time-tracking
+    [HttpGet("{id}/time-tracking")]
+    public async Task<ActionResult<TaskTimeTrackingDto>> GetTaskTimeTracking(int id)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            var task = await _taskService.GetTaskByIdAsync(userId, id);
+            if (task == null)
+            {
+                return NotFound(Utils.ApiResponse<TaskTimeTrackingDto>.NotFoundResponse($"Task with ID {id} not found"));
+            }
+            
+            // This would typically be implemented in a service, but for now I'll create a basic response
+            var timeTracking = new TaskTimeTrackingDto
+            {
+                TaskId = task.Id,
+                Title = task.Title,
+                EstimatedTimeMinutes = task.EstimatedTimeMinutes,
+                ActualTimeSpentMinutes = task.ActualTimeSpentMinutes ?? 0,
+                ProgressPercentage = task.ProgressPercentage ?? 0,
+                IsCompleted = task.Status == TaskItemStatus.Completed,
+                CompletedAt = task.CompletedAt,
+                TotalFocusSessions = 0, // Would be calculated from focus sessions
+                AverageSessionLength = 0, // Would be calculated from focus sessions
+                TimeEfficiencyRating = task.EstimatedTimeMinutes.HasValue && task.ActualTimeSpentMinutes.HasValue && task.EstimatedTimeMinutes > 0 
+                    ? (double)task.ActualTimeSpentMinutes.Value / task.EstimatedTimeMinutes.Value 
+                    : null,
+                FocusSessions = new List<FocusSessionSummaryDto>() // Would be populated from focus sessions
+            };
+            
+            return Ok(Utils.ApiResponse<TaskTimeTrackingDto>.SuccessResponse(timeTracking));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving time tracking for task {TaskId}", id);
+            return StatusCode(500, Utils.ApiResponse<TaskTimeTrackingDto>.ServerErrorResponse());
         }
     }
 } 

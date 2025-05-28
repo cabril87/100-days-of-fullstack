@@ -12,6 +12,7 @@ import {
 import { useToast } from '@/lib/hooks/useToast';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { focusService } from '@/lib/services/focusService';
+import { gamificationService } from '@/lib/services/gamificationService';
 import { 
   FocusSession, 
   FocusStatistics, 
@@ -36,6 +37,7 @@ interface FocusContextType {
   pauseFocusSession: (sessionId?: number) => Promise<boolean>;
   resumeFocusSession: (sessionId: number) => Promise<boolean>;
   recordDistraction: (description: string, category: string) => Promise<boolean>;
+  endCurrentAndStartNew: (taskId: number, notes?: string) => Promise<boolean>;
   
   // Data fetching - ALL API CALLS
   fetchCurrentSession: () => Promise<FocusSession | null>;
@@ -170,9 +172,39 @@ export function FocusProvider({ children }: { children: ReactNode }) {
         const response = await focusService.getCurrentFocusSession();
         
         if (response.data) {
-          console.log('[FocusContext] API Response: Current session found', response.data);
-          setCurrentSession(response.data);
-          return response.data;
+          console.log('[FocusContext] API Response: Data received', response.data);
+          
+          // Validate that this is actually a FocusSession, not a Task
+          const data = response.data;
+          
+          // Check if this looks like a FocusSession (has session-specific fields)
+          // A FocusSession should have these core fields
+          const isFocusSession = data.hasOwnProperty('startTime') && 
+                                data.hasOwnProperty('taskId') &&
+                                (data.hasOwnProperty('status') && 
+                                 ['InProgress', 'Paused', 'Completed', 'Interrupted'].includes(data.status));
+          
+          // Check if this looks like a Task (has task-specific fields but NOT session fields)
+          // A Task object would have title/description but NOT startTime/taskId
+          const isTask = data.hasOwnProperty('title') && 
+                        data.hasOwnProperty('description') &&
+                        data.hasOwnProperty('createdAt') &&
+                        !data.hasOwnProperty('startTime') &&
+                        !data.hasOwnProperty('taskId');
+          
+          if (isFocusSession) {
+            console.log('[FocusContext] API Response: Valid focus session found', data);
+            setCurrentSession(data);
+            return data;
+          } else if (isTask) {
+            console.log('[FocusContext] API Response: Received Task instead of FocusSession, treating as no active session');
+            setCurrentSession(null);
+            return null;
+          } else {
+            console.log('[FocusContext] API Response: Unknown data format, treating as no active session');
+            setCurrentSession(null);
+            return null;
+          }
         } else {
           console.log('[FocusContext] API Response: No current session');
           setCurrentSession(null);
@@ -181,6 +213,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error('[FocusContext] API Error: fetchCurrentSession', err);
         setError('Failed to fetch current focus session');
+        setCurrentSession(null);
         return null;
       } finally {
         setIsLoading(false);
@@ -197,6 +230,17 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(true);
     try {
+      // First, check if there's already an active session
+      console.log('[FocusContext] Checking for existing active session before starting new one');
+      const existingSession = await fetchCurrentSession();
+      
+      if (existingSession) {
+        console.log('[FocusContext] Found existing active session:', existingSession);
+        setError(`You already have an active focus session (ID: ${existingSession.id}). Please end it first before starting a new one.`);
+        setCurrentSession(existingSession); // Ensure UI shows the existing session
+        return false;
+      }
+      
       const request: FocusRequest = { taskId, notes };
       console.log('[FocusContext] API Call: startFocusSession', request);
       
@@ -217,7 +261,23 @@ export function FocusProvider({ children }: { children: ReactNode }) {
         return true;
       } else {
         console.error('[FocusContext] API Error: startFocusSession failed', response.error);
-        setError(response.error || 'Failed to start focus session');
+        
+        // Handle specific error cases
+        if (response.error && response.error.includes('already have an active focus session')) {
+          console.log('[FocusContext] Backend reports active session, refreshing current session');
+          
+          // Force refresh current session to get the active one
+          const refreshedSession = await fetchCurrentSession();
+          if (refreshedSession) {
+            setCurrentSession(refreshedSession);
+            setError(`You already have an active focus session (ID: ${refreshedSession.id}). Please end it first before starting a new one.`);
+          } else {
+            setError('There seems to be an active session on the server. Please refresh the page and try again.');
+          }
+        } else {
+          setError(response.error || 'Failed to start focus session');
+        }
+        
         return false;
       }
     } catch (err) {
@@ -227,7 +287,161 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, showToast]);
+  }, [isAuthenticated, showToast, fetchCurrentSession]);
+
+  // Achievement tracking system
+  const checkAchievements = useCallback(async (session: FocusSession, isCompleted: boolean = false) => {
+    try {
+      const achievements = [];
+      
+      // Use actual database achievement IDs and names
+      
+      // First Focus Achievement (ID: 21) - "Focused" - Complete your first focus session
+      if (history.length === 1 && isCompleted) {
+        achievements.push({
+          id: 21,
+          title: 'Focused',
+          description: 'Complete your first focus session',
+          icon: '🎯',
+          points: 25
+        });
+      }
+      
+      // Deep Work Achievement (ID: 74) - "Deep Work" - Complete 5 focus sessions over 2 hours each  
+      if (isCompleted && session.durationMinutes && session.durationMinutes >= 120) {
+        // Count sessions over 2 hours
+        const deepWorkSessions = history.filter(s => 
+          s.status === 'Completed' && 
+          s.durationMinutes && 
+          s.durationMinutes >= 120
+        ).length + 1; // +1 for current session
+        
+        if (deepWorkSessions === 5) {
+          achievements.push({
+            id: 74,
+            title: 'Deep Work',
+            description: 'Complete 5 focus sessions over 2 hours each',
+            icon: '🧠',
+            points: 300
+          });
+        }
+      }
+      
+      // Quality Focus Achievement using Zen Master (ID: 22) - Complete 5 focus sessions
+      if (isCompleted) {
+        const completedSessions = history.filter(s => s.status === 'Completed').length + 1;
+        
+        if (completedSessions === 5) {
+          achievements.push({
+            id: 22,
+            title: 'Zen Master',
+            description: 'Complete 5 focus sessions',
+            icon: '🧘',
+            points: 75
+          });
+        }
+        
+        // Focus Master (ID: 73) - Complete 25 focus sessions
+        if (completedSessions === 25) {
+          achievements.push({
+            id: 73,
+            title: 'Focus Master',
+            description: 'Complete 25 focus sessions',
+            icon: '🎯',
+            points: 250
+          });
+        }
+        
+        // Deep Focus (ID: 121) - Complete 100 focus sessions
+        if (completedSessions === 100) {
+          achievements.push({
+            id: 121,
+            title: 'Deep Focus',
+            description: 'Complete 100 focus sessions',
+            icon: '🔥',
+            points: 700
+          });
+        }
+      }
+      
+      // Quality rating based achievement - use session quality for milestone rewards
+      if (isCompleted && session.sessionQualityRating === 5) {
+        const qualitySessions = history.filter(s => 
+          s.status === 'Completed' && s.sessionQualityRating === 5
+        ).length + 1;
+        
+        // Custom quality milestone (not in DB but good for user feedback)
+        if (qualitySessions === 1) {
+          achievements.push({
+            id: 'quality-first',
+            title: 'Quality Focus',
+            description: 'Achieved your first 5-star focus session',
+            icon: '⭐',
+            points: 25
+          });
+        }
+      }
+      
+      // Focus Streak Achievement - check for consistent quality sessions
+      const recentQualitySessions = history
+        .filter(s => s.status === 'Completed' && s.sessionQualityRating && s.sessionQualityRating >= 4)
+        .slice(-4); // Last 4 sessions
+      
+      if (recentQualitySessions.length >= 4 && isCompleted && session.sessionQualityRating && session.sessionQualityRating >= 4) {
+        achievements.push({
+          id: 'quality-streak',
+          title: 'Focus Streak',
+          description: '5 consecutive quality focus sessions',
+          icon: '🔥',
+          points: 100
+        });
+      }
+      
+      // Show achievements to user and track with backend
+      if (achievements.length > 0) {
+        for (const achievement of achievements) {
+          // Show toast notification
+          showToast(`🏆 Achievement Unlocked: ${achievement.title}`, 'success');
+          
+          // Track achievement with gamification service if it's a database achievement
+          if (typeof achievement.id === 'number') {
+            try {
+              // Add points for the achievement
+              await gamificationService.addPoints({
+                points: achievement.points,
+                transactionType: 'Achievement',
+                description: `Achievement unlocked: ${achievement.title}`,
+                relatedEntityId: achievement.id
+              });
+              
+              console.log(`[FocusContext] Achievement ${achievement.title} tracked with ${achievement.points} points`);
+            } catch (error) {
+              console.error(`[FocusContext] Failed to track achievement ${achievement.title}:`, error);
+              // Continue with other achievements even if one fails
+            }
+          }
+        }
+        
+        // Store custom achievements in localStorage as backup (non-database achievements)
+        const customAchievements = achievements.filter(a => typeof a.id === 'string');
+        if (customAchievements.length > 0) {
+          const existingAchievements = JSON.parse(localStorage.getItem('focus-achievements') || '[]');
+          const newAchievements = customAchievements.filter(a => 
+            !existingAchievements.some((ea: any) => ea.id === a.id)
+          );
+          
+          if (newAchievements.length > 0) {
+            localStorage.setItem('focus-achievements', 
+              JSON.stringify([...existingAchievements, ...newAchievements])
+            );
+          }
+        }
+      }
+      
+    } catch (err) {
+      console.error('[FocusContext] Error checking achievements:', err);
+    }
+  }, [history, showToast]);
 
   // PURE API CALL - End a focus session
   const endFocusSession = useCallback(async (sessionId?: number): Promise<boolean> => {
@@ -239,23 +453,71 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       console.log('[FocusContext] API Call: endFocusSession', sessionId);
+      
+      // Store current session for achievement checking
+      const sessionToEnd = currentSession;
+      
       const response = await focusService.endFocusSession(sessionId);
       
       if (response.data) {
         console.log('[FocusContext] API Response: Session ended', response.data);
+        
+        // Check for achievements if we have session data
+        if (sessionToEnd) {
+          await checkAchievements(response.data, true);
+        }
+        
+        // Immediately clear current session to update UI
         setCurrentSession(null);
+        
         showToast('Focus session ended successfully', 'success');
         
-        // Clear statistics and history cache to force refresh
-        Object.keys(requestCacheRef.current).forEach(key => {
-          if (key.includes('statistics') || key.includes('history')) {
-            delete requestCacheRef.current[key];
+        // Clear all caches to force refresh of data
+        requestCacheRef.current = {};
+        
+        // Force refresh current session to ensure clean state
+        setTimeout(async () => {
+          try {
+            await fetchCurrentSession();
+          } catch (err) {
+            console.log('[FocusContext] No current session after end - this is expected');
           }
-        });
+        }, 100);
         
         return true;
       } else {
         console.error('[FocusContext] API Error: endFocusSession failed', response.error);
+        
+        // Handle specific error cases
+        if (response.error && response.error.includes('already completed')) {
+          console.log('[FocusContext] Session already completed, cleaning up state');
+          
+          // Check achievements for already completed session
+          if (sessionToEnd) {
+            await checkAchievements(sessionToEnd, true);
+          }
+          
+          // Clear current session since it's already completed
+          setCurrentSession(null);
+          
+          // Clear all caches
+          requestCacheRef.current = {};
+          
+          // Show appropriate message
+          showToast('Session was already completed', 'info');
+          
+          // Force refresh to get clean state
+          setTimeout(async () => {
+            try {
+              await fetchCurrentSession();
+            } catch (err) {
+              console.log('[FocusContext] No current session after cleanup - this is expected');
+            }
+          }, 100);
+          
+          return true; // Treat as success since the goal (no active session) is achieved
+        }
+        
         setError(response.error || 'Failed to end focus session');
         return false;
       }
@@ -266,7 +528,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, showToast]);
+  }, [isAuthenticated, showToast, fetchCurrentSession, currentSession, checkAchievements]);
 
   // PURE API CALL - Pause a focus session
   const pauseFocusSession = useCallback(async (sessionId?: number): Promise<boolean> => {
@@ -275,6 +537,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
+    // Don't clear session state during pause operation
     setIsLoading(true);
     try {
       console.log('[FocusContext] API Call: pauseFocusSession', sessionId);
@@ -282,8 +545,17 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       
       if (response.data) {
         console.log('[FocusContext] API Response: Session paused', response.data);
+        // Immediately update the session state to show paused status
         setCurrentSession(response.data);
         showToast('Focus session paused', 'info');
+        
+        // Clear current session cache but keep the session state
+        Object.keys(requestCacheRef.current).forEach(key => {
+          if (key.includes('current-session')) {
+            delete requestCacheRef.current[key];
+          }
+        });
+        
         return true;
       } else {
         console.error('[FocusContext] API Error: pauseFocusSession failed', response.error);
@@ -306,6 +578,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       return false;
     }
     
+    // Don't clear session state during resume operation
     setIsLoading(true);
     try {
       console.log('[FocusContext] API Call: resumeFocusSession', sessionId);
@@ -313,8 +586,17 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       
       if (response.data) {
         console.log('[FocusContext] API Response: Session resumed', response.data);
+        // Immediately update the session state to show resumed status
         setCurrentSession(response.data);
         showToast('Focus session resumed', 'success');
+        
+        // Clear current session cache but keep the session state
+        Object.keys(requestCacheRef.current).forEach(key => {
+          if (key.includes('current-session')) {
+            delete requestCacheRef.current[key];
+          }
+        });
+        
         return true;
       } else {
         console.error('[FocusContext] API Error: resumeFocusSession failed', response.error);
@@ -374,6 +656,47 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, currentSession, showToast]);
 
+  // HELPER FUNCTION - End current session and start a new one
+  const endCurrentAndStartNew = useCallback(async (taskId: number, notes?: string): Promise<boolean> => {
+    if (!isAuthenticated) {
+      setError('You must be logged in to manage focus sessions');
+      return false;
+    }
+    
+    setIsLoading(true);
+    try {
+      const request: FocusRequest = { taskId, notes };
+      console.log('[FocusContext] API Call: switchFocusSession', request);
+      
+      const response = await focusService.switchFocusSession(request);
+      
+      if (response.data) {
+        console.log('[FocusContext] API Response: Session switched successfully', response.data);
+        setCurrentSession(response.data);
+        showToast('Focus session switched successfully', 'success');
+        
+        // Clear statistics cache to force refresh
+        Object.keys(requestCacheRef.current).forEach(key => {
+          if (key.includes('statistics')) {
+            delete requestCacheRef.current[key];
+          }
+        });
+        
+        return true;
+      } else {
+        console.error('[FocusContext] API Error: switchFocusSession failed', response.error);
+        setError(response.error || 'Failed to switch focus sessions');
+        return false;
+      }
+    } catch (err) {
+      console.error('[FocusContext] Error in endCurrentAndStartNew:', err);
+      setError('Failed to switch focus sessions');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, showToast]);
+
   // PURE API CALL - Fetch focus statistics
   const fetchStatistics = useCallback(async (startDate?: Date, endDate?: Date): Promise<FocusStatistics | null> => {
     if (!isAuthenticated) return null;
@@ -391,7 +714,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       try {
         console.log('[FocusContext] API Call: getFocusStatistics', { startDate, endDate });
         
-        const response = await focusService.getFocusStatistics(startDate, endDate);
+        const response = await focusService.getFocusStatistics(startDate?.toISOString(), endDate?.toISOString());
         
         if (response.data) {
           console.log('[FocusContext] API Response: Statistics received', response.data);
@@ -525,9 +848,86 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   // Check for active session on mount and when auth state changes
   useEffect(() => {
     if (isAuthenticated) {
-      fetchCurrentSession();
+      // Initialize with session recovery
+      initializeWithRecovery();
     }
-  }, [isAuthenticated, fetchCurrentSession]);
+  }, [isAuthenticated]);
+
+  // Session recovery system
+  const initializeWithRecovery = useCallback(async () => {
+    try {
+      // Check for persisted session state
+      const persistedSession = localStorage.getItem('focus-session-backup');
+      
+      // Always fetch current session from server first
+      const currentServerSession = await fetchCurrentSession();
+      
+      if (persistedSession && !currentServerSession) {
+        // We have a local session but no server session - potential recovery case
+        const localSession = JSON.parse(persistedSession);
+        
+        // Check if local session is recent (within last hour)
+        const localSessionTime = new Date(localSession.startTime).getTime();
+        const now = Date.now();
+        const hourInMs = 60 * 60 * 1000;
+        
+        if (now - localSessionTime < hourInMs) {
+          console.log('[FocusContext] Potential session recovery scenario detected');
+          
+          // Show recovery dialog to user
+          const shouldRecover = window.confirm(
+            `It looks like you had an active focus session that may have been interrupted. ` +
+            `Would you like to try to recover it?\n\n` +
+            `Session: Task ${localSession.taskId}\n` +
+            `Started: ${new Date(localSession.startTime).toLocaleTimeString()}`
+          );
+          
+          if (shouldRecover) {
+            try {
+              // Attempt to restart the session
+              const response = await focusService.startFocusSession({
+                taskId: localSession.taskId,
+                notes: localSession.notes || 'Recovered session'
+              });
+              
+              if (response.data) {
+                console.log('[FocusContext] Session recovery successful');
+                setCurrentSession(response.data);
+              }
+            } catch (err) {
+              console.log('[FocusContext] Session recovery failed, continuing normally');
+            }
+          }
+        }
+      }
+      
+      // Clean up old persisted sessions
+      if (persistedSession) {
+        localStorage.removeItem('focus-session-backup');
+      }
+      
+    } catch (err) {
+      console.error('[FocusContext] Error during session recovery:', err);
+    }
+  }, [fetchCurrentSession]);
+
+  // Persist session state for recovery
+  useEffect(() => {
+    if (currentSession && ['InProgress', 'Paused'].includes(currentSession.status)) {
+      // Backup session state to localStorage
+      localStorage.setItem('focus-session-backup', JSON.stringify({
+        id: currentSession.id,
+        taskId: currentSession.taskId,
+        startTime: currentSession.startTime,
+        status: currentSession.status,
+        notes: currentSession.notes,
+        durationMinutes: currentSession.durationMinutes
+      }));
+    } else {
+      // Clear backup when session ends
+      localStorage.removeItem('focus-session-backup');
+    }
+  }, [currentSession]);
 
   // Cleanup cache periodically
   useEffect(() => {
@@ -567,6 +967,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
     pauseFocusSession,
     resumeFocusSession,
     recordDistraction,
+    endCurrentAndStartNew,
     fetchCurrentSession,
     fetchStatistics,
     fetchHistory,

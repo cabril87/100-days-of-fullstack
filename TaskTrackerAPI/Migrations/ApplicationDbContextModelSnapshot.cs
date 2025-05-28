@@ -61,7 +61,7 @@ namespace TaskTrackerAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("AuditLogs");
+                    b.ToTable("GeneralAuditLogs");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Board", b =>
@@ -1535,6 +1535,9 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CompletionNotes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
 
@@ -1547,6 +1550,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("SessionQualityRating")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("StartTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1555,7 +1561,16 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<bool>("TaskCompletedDuringSession")
+                        .HasColumnType("bit");
+
                     b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskProgressAfter")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskProgressBefore")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
@@ -6016,6 +6031,9 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("ActualTimeSpentMinutes")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("datetime2");
 
@@ -6087,6 +6105,9 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("ProgressPercentage")
+                        .HasColumnType("int");
 
                     b.Property<string>("RecurringPattern")
                         .HasColumnType("nvarchar(max)");

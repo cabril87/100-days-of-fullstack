@@ -100,10 +100,34 @@ namespace TaskTrackerAPI.DTOs.Tasks
         
         public int? EstimatedMinutes { get; set; }
 
+        /// <summary>
+        /// Estimated time to complete in minutes (alternative name for compatibility)
+        /// </summary>
+        public int? EstimatedTimeMinutes 
+        { 
+            get => EstimatedMinutes; 
+            set => EstimatedMinutes = value; 
+        }
+
         
         /// Actual time spent in minutes
         
         public int? ActualMinutes { get; set; }
+
+        /// <summary>
+        /// Actual time spent in minutes from focus sessions (alternative name for compatibility)
+        /// </summary>
+        public int? ActualTimeSpentMinutes 
+        { 
+            get => ActualMinutes; 
+            set => ActualMinutes = value; 
+        }
+
+        /// <summary>
+        /// Progress percentage of task completion (0-100)
+        /// </summary>
+        [Range(0, 100)]
+        public int? ProgressPercentage { get; set; } = 0;
 
         
         /// Whether the task is important/starred
@@ -119,6 +143,15 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Recurrence pattern (if recurring)
         
         public string? RecurrencePattern { get; set; }
+
+        /// <summary>
+        /// Recurrence pattern (alternative name for compatibility)
+        /// </summary>
+        public string? RecurringPattern 
+        { 
+            get => RecurrencePattern; 
+            set => RecurrencePattern = value; 
+        }
         
         /// Version number for optimistic concurrency
         

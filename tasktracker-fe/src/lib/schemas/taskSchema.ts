@@ -15,8 +15,12 @@ export const taskSchema = z.object({
     .enum(['todo', 'in-progress', 'done'])
     .default('todo'),
   priority: z
-    .enum(['low', 'medium', 'high'])
-    .default('medium'),
+    .number()
+    .int('Priority must be an integer')
+    .min(0, 'Priority must be at least 0')
+    .max(3, 'Priority must be at most 3')
+    .optional()
+    .default(1), // Default to Medium (1)
   dueDate: z
     .string()
     .optional()

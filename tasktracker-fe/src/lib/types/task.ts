@@ -86,6 +86,9 @@ export interface Task {
   version?: number; // Version for concurrency control
   categoryId?: number; // Reference to category
   templateId?: number; // If created from a template
+  progressPercentage?: number; // Task completion progress (0-100)
+  estimatedTimeMinutes?: number; // Estimated time to complete
+  actualTimeSpentMinutes?: number; // Actual time spent from focus sessions
 }
 
 export interface TaskFormData {
@@ -94,7 +97,7 @@ export interface TaskFormData {
   status: 'todo' | 'in-progress' | 'done';
   dueDate?: string | null;
   dueTime?: string | null;
-  priority?: 'low' | 'medium' | 'high';
+  priority?: number;
   categoryId?: number;
   templateId?: number;
 }
