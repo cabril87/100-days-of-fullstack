@@ -252,42 +252,60 @@ export function FocusModeManager({
   // ===== RENDER HELPERS =====
   
   const renderNoSessionState = () => (
-    <Card className="text-center">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-center gap-2">
-          <Play className="h-5 w-5" />
-          Start Focus Session
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-muted-foreground">
-          Select a task and start focusing to boost your productivity
-        </p>
-        <Button 
-          onClick={() => setShowTaskSelection(true)}
-          size="lg"
-          className="w-full"
-        >
-          <Play className="h-4 w-4 mr-2" />
-          Choose Task & Start
-        </Button>
-        {showKeyboardHelp && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}
-          >
-            <Keyboard className="h-4 w-4 mr-2" />
-            Keyboard Shortcuts
-          </Button>
-        )}
-        {showKeyboardShortcuts && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <KeyboardShortcutsHelp />
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+      {/* Decorative background elements */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      
+      {/* Gradient accent bar */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-xl"></div>
+      
+      <div className="relative z-10 p-8">
+        <div className="text-center space-y-6">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg">
+              <Play className="h-8 w-8" />
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+              Start Focus Session
+            </h2>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          <p className="text-gray-600 text-lg max-w-md mx-auto">
+            Select a task and start focusing to boost your productivity and track your progress
+          </p>
+          
+          <div className="space-y-4 max-w-sm mx-auto">
+            <Button 
+              onClick={() => setShowTaskSelection(true)}
+              size="lg"
+              className="w-full h-14 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg font-medium"
+            >
+              <Play className="h-5 w-5 mr-3" />
+              Choose Task & Start Focus
+            </Button>
+            
+            {showKeyboardHelp && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowKeyboardShortcuts(!showKeyboardShortcuts)}
+                className="w-full border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-all duration-300"
+              >
+                <Keyboard className="h-4 w-4 mr-2" />
+                Keyboard Shortcuts
+              </Button>
+            )}
+          </div>
+          
+          {showKeyboardShortcuts && (
+            <div className="mt-6 p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200 max-w-lg mx-auto">
+              <KeyboardShortcutsHelp />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
   const renderActiveSessionState = () => {
@@ -297,142 +315,198 @@ export function FocusModeManager({
     const isPaused = focusState === 'PAUSED';
     
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Focus Session
-            </CardTitle>
-            <Badge variant={isInProgress ? "default" : "secondary"}>
-              {isInProgress ? 'In Progress' : 'Paused'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Timer Display */}
-          <div className="text-center">
-            <div className="text-4xl font-mono font-bold text-blue-600">
-              {formatTime(sessionTimer)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Total session time
-            </p>
-          </div>
-
-          {/* Progress Bar */}
-          <div>
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Progress</span>
-              <span>{getProgressPercentage().toFixed(0)}%</span>
-            </div>
-            <Progress value={getProgressPercentage()} className="h-2" />
-          </div>
-
-          {/* Task Details */}
-          {showTaskDetails && (
-            <div className="border rounded-lg p-4 bg-gray-50">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4" />
-                <span className="font-medium">Current Task</span>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+        {/* Decorative background elements */}
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-green-600 opacity-[0.05] rounded-full blur-2xl"></div>
+        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+        
+        {/* Dynamic gradient accent based on session state */}
+        <div className={`absolute top-0 left-0 w-full h-1.5 rounded-t-xl ${
+          isInProgress 
+            ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
+            : 'bg-gradient-to-r from-amber-500 to-orange-600'
+        }`}></div>
+        
+        <div className="relative z-10 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-xl text-white shadow-lg ${
+                isInProgress 
+                  ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                  : 'bg-gradient-to-br from-amber-500 to-orange-600'
+              }`}>
+                <Clock className="h-6 w-6" />
               </div>
-              <h4 className="font-medium">{selectedTask.title}</h4>
-              {selectedTask.description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {selectedTask.description}
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                Focus Session
+              </h2>
+            </div>
+            <div className={`px-4 py-2 rounded-xl text-white font-medium shadow-md ${
+              isInProgress 
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
+                : 'bg-gradient-to-r from-amber-500 to-orange-600'
+            }`}>
+              {isInProgress ? '🔥 In Progress' : '⏸️ Paused'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Timer Display */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+              <div className="text-center">
+                <div className={`text-5xl font-mono font-bold mb-2 ${
+                  isInProgress ? 'text-green-600' : 'text-amber-600'
+                }`}>
+                  {formatTime(sessionTimer)}
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Total session time
                 </p>
-              )}
-              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                <span>Priority: {selectedTask.priority}</span>
-                {selectedTask.dueDate && (
-                  <span>Due: {new Date(selectedTask.dueDate).toLocaleDateString()}</span>
-                )}
+                
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>Progress</span>
+                    <span>{getProgressPercentage().toFixed(0)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        isInProgress 
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
+                          : 'bg-gradient-to-r from-amber-500 to-orange-600'
+                      }`}
+                      style={{ width: `${getProgressPercentage()}%` }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+
+            {/* Task Details */}
+            {showTaskDetails && (
+              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-6 border border-purple-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                    <Target className="h-4 w-4" />
+                  </div>
+                  <span className="font-semibold text-gray-800">Current Task</span>
+                </div>
+                <h4 className="font-bold text-lg text-gray-900 mb-2">{selectedTask.title}</h4>
+                {selectedTask.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    {selectedTask.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-4 text-xs">
+                  <span className="px-2 py-1 bg-white rounded-lg shadow-sm border">
+                    Priority: {selectedTask.priority}
+                  </span>
+                  {selectedTask.dueDate && (
+                    <span className="px-2 py-1 bg-white rounded-lg shadow-sm border">
+                      Due: {new Date(selectedTask.dueDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Session Controls */}
-          <div className="flex gap-2">
+          <div className="flex gap-3 mt-6">
             {isInProgress ? (
               <>
                 <Button 
-                  variant="outline" 
                   onClick={handlePauseSession}
-                  className="flex-1"
+                  className="flex-1 h-12 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] font-medium"
                   disabled={isLoading}
                 >
-                  <Pause className="h-4 w-4 mr-2" />
-                  Pause
+                  <Pause className="h-5 w-5 mr-2" />
+                  Pause Session
                 </Button>
                 <Button 
-                  variant="outline" 
                   onClick={() => handleEndSession(true)}
-                  className="flex-1"
+                  className="flex-1 h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] font-medium"
                   disabled={isLoading}
                 >
-                  <Square className="h-4 w-4 mr-2" />
-                  Complete
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Complete Task
                 </Button>
               </>
             ) : (
               <>
                 <Button 
                   onClick={handleResumeSession}
-                  className="flex-1"
+                  className="flex-1 h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] font-medium"
                   disabled={isLoading}
                 >
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume
+                  <Play className="h-5 w-5 mr-2" />
+                  Resume Session
                 </Button>
                 <Button 
-                  variant="outline" 
                   onClick={() => handleEndSession(true)}
-                  className="flex-1"
+                  className="flex-1 h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] font-medium"
                   disabled={isLoading}
                 >
-                  <Square className="h-4 w-4 mr-2" />
-                  End
+                  <Square className="h-5 w-5 mr-2" />
+                  End Session
                 </Button>
               </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
   const renderErrorState = () => (
-    <Card className="border-red-200">
-      <CardContent className="pt-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+    <div className="bg-white rounded-xl shadow-sm border border-red-200 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-red-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      
+      {/* Red gradient accent */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-red-600 rounded-t-xl"></div>
+      
+      <div className="relative z-10 p-6">
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
             {error || 'An error occurred with your focus session.'}
           </AlertDescription>
         </Alert>
         <Button 
           onClick={handleRetry}
-          variant="outline"
-          className="w-full mt-4"
+          className="w-full mt-4 h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Try Again
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   const renderLoadingState = () => (
-    <Card>
-      <CardContent className="pt-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      
+      {/* Blue gradient accent */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-xl"></div>
+      
+      <div className="relative z-10 p-8">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-muted-foreground">
-            {focusState === 'STARTING' ? 'Starting focus session...' : 'Loading...'}
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-white" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">
+            {focusState === 'STARTING' ? 'Starting Focus Session...' : 'Loading...'}
+          </h3>
+          <p className="text-gray-600">
+            {focusState === 'STARTING' ? 'Setting up your productive workspace' : 'Please wait while we load your data'}
           </p>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   // ===== MAIN RENDER =====

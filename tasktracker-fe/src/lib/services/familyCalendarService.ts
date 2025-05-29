@@ -12,6 +12,19 @@ import {
   UpdateMemberAvailability
 } from '@/lib/types/calendar';
 
+// Re-export types for external consumption
+export type {
+  FamilyCalendarEvent,
+  EventAttendee,
+  EventReminder,
+  CreateFamilyCalendarEvent,
+  UpdateFamilyCalendarEvent,
+  UpdateAttendeeResponse,
+  MemberAvailability,
+  CreateMemberAvailability,
+  UpdateMemberAvailability
+};
+
 export const familyCalendarService = {
   // Get all events for a family
   getAllEvents: async (familyId: number): Promise<ApiResponse<FamilyCalendarEvent[]>> => {
@@ -134,14 +147,14 @@ export const familyCalendarService = {
       console.error('[familyCalendarService] Error creating event:', data);
       return {
         error: data.message || 'Failed to create event',
-        details: JSON.stringify(data),
+        details: { message: JSON.stringify(data) },
         status: response.status
       };
     } catch (error) {
       console.error('[familyCalendarService] Exception creating event:', error);
       return {
         error: 'Failed to create event',
-        details: error instanceof Error ? error.message : String(error),
+        details: { message: error instanceof Error ? error.message : String(error) },
         status: 400
       };
     }

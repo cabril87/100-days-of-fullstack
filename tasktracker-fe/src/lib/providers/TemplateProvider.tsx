@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { templateService } from '@/lib/services/templateService';
 import { TaskTemplate, TaskCategory, CreateTemplateInput, SaveAsTemplateInput } from '@/lib/types/task';
+import { useAuth } from '@/lib/providers/AuthContext';
 
 interface TemplateContextType {
   templates: TaskTemplate[];
@@ -45,10 +46,16 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
 
-  // Load templates and categories on mount
+  // Load templates and categories on mount - only when authenticated
   useEffect(() => {
     async function loadInitialData() {
+      if (!isAuthenticated) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -78,7 +85,7 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
     
     loadInitialData();
-  }, []);
+  }, [isAuthenticated]);
   
   // Template methods
   const getTemplates = async (categoryId?: number): Promise<TaskTemplate[]> => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFocus } from '@/lib/providers/FocusContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,28 +8,37 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Calendar, Clock, Target, AlertTriangle, Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Target, AlertTriangle, Search, Filter, ChevronDown, ChevronUp, Star, Brain, FileText, Plus, Bookmark } from 'lucide-react';
 import { FocusSession, Distraction } from '@/lib/types/focus';
+import { useToast } from '@/lib/hooks/useToast';
+import { templateService } from '@/lib/services/templateService';
+import { CreateTemplateModal } from './CreateTemplateModal';
 
 type SortOption = 'date-desc' | 'date-asc' | 'duration-desc' | 'duration-asc';
 type FilterOption = 'all' | 'completed' | 'interrupted' | 'in-progress';
 
 export function FocusHistory() {
   const { 
+    history, 
     fetchHistory, 
     fetchSessionDistractions, 
-    isLoading: contextLoading, 
-    history: contextHistory 
+    isLoading: contextLoading
   } = useFocus();
   
-  const [history, setHistory] = useState<FocusSession[]>(contextHistory || []);
-  const [filteredHistory, setFilteredHistory] = useState<FocusSession[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(false);
+  const { showToast } = useToast();
+  
+  // Local state for filtering and display
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
+  const [filteredHistory, setFilteredHistory] = useState<FocusSession[]>([]);
   const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set());
   const [sessionDistractions, setSessionDistractions] = useState<Record<number, Distraction[]>>({});
+  const [isDataLoading, setIsDataLoading] = useState(false);
+  
+  // Template creation state
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedTaskForTemplate, setSelectedTaskForTemplate] = useState<FocusSession | null>(null);
 
   // Load history data from API
   const loadHistory = useCallback(async () => {
@@ -38,18 +47,9 @@ export function FocusHistory() {
     setIsDataLoading(true);
     try {
       console.log('[FocusHistory] Loading history from API...');
-      const historyData = await fetchHistory();
-      
-      if (historyData) {
-        console.log('[FocusHistory] API returned', historyData.length, 'sessions');
-        setHistory(historyData);
-      } else {
-        console.log('[FocusHistory] API returned no history data');
-        setHistory([]);
-      }
+      await fetchHistory();
     } catch (error) {
       console.error('[FocusHistory] Error loading history:', error);
-      setHistory([]);
     } finally {
       setIsDataLoading(false);
     }
@@ -180,21 +180,59 @@ export function FocusHistory() {
     }
   };
 
+  // Handle saving a task as template
+  const handleSaveAsTemplate = useCallback((session: FocusSession) => {
+    if (!session.task) {
+      showToast('Cannot create template: Task data not available', 'error');
+      return;
+    }
+    
+    setSelectedTaskForTemplate(session);
+    setShowTemplateModal(true);
+  }, [showToast]);
+
+  // Handle template creation completion
+  const handleTemplateCreated = useCallback((templateName: string) => {
+    if (!selectedTaskForTemplate?.task) return;
+
+    const task = selectedTaskForTemplate.task;
+    
+    templateService.saveAsTemplate({
+      taskId: task.id,
+      title: templateName,
+      description: task.description,
+      categoryId: task.categoryId,
+      isPublic: false
+    }).then((response) => {
+      if (response.data) {
+        showToast(`Template "${templateName}" created successfully!`, 'success');
+      } else {
+        showToast('Failed to create template', 'error');
+      }
+    }).catch((error) => {
+      console.error('Error creating template:', error);
+      showToast('Failed to create template', 'error');
+    });
+
+    setShowTemplateModal(false);
+    setSelectedTaskForTemplate(null);
+  }, [selectedTaskForTemplate, showToast]);
+
   // Load data on mount
   useEffect(() => {
-    if (contextHistory && contextHistory.length > 0) {
-      setHistory(contextHistory);
+    if (history && history.length > 0) {
+      setHistory(history);
     } else {
       loadHistory();
     }
-  }, [contextHistory, loadHistory]);
+  }, [history, loadHistory]);
 
   // Update context history changes
   useEffect(() => {
-    if (contextHistory) {
-      setHistory(contextHistory);
+    if (history) {
+      setHistory(history);
     }
-  }, [contextHistory]);
+  }, [history]);
 
   // Apply filters when dependencies change
   useEffect(() => {
@@ -412,6 +450,36 @@ export function FocusHistory() {
                             <p className="text-sm text-gray-500">No distractions recorded</p>
                           )}
                         </div>
+
+                        {/* Actions */}
+                        <div>
+                          <h4 className="font-medium text-sm text-gray-700 mb-2">Actions</h4>
+                          <div className="space-y-2">
+                            {session.status === 'Completed' && session.taskCompletedDuringSession && session.task && (
+                              <Button
+                                onClick={() => handleSaveAsTemplate(session)}
+                                variant="outline"
+                                size="sm"
+                                className="w-full flex items-center gap-2 text-sm border-purple-200 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
+                              >
+                                <Bookmark className="h-3 w-3" />
+                                Save as Template
+                              </Button>
+                            )}
+                            
+                            {session.task && (
+                              <Button
+                                onClick={() => window.open(`/tasks/${session.task!.id}`, '_blank')}
+                                variant="outline"
+                                size="sm"
+                                className="w-full flex items-center gap-2 text-sm"
+                              >
+                                <FileText className="h-3 w-3" />
+                                View Task
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -468,6 +536,22 @@ export function FocusHistory() {
             </details>
           </CardContent>
         </Card>
+      )}
+
+      {/* Template Creation Modal */}
+      {showTemplateModal && selectedTaskForTemplate && (
+        <CreateTemplateModal
+          isOpen={showTemplateModal}
+          onClose={() => {
+            setShowTemplateModal(false);
+            setSelectedTaskForTemplate(null);
+          }}
+          onTemplateCreated={handleTemplateCreated}
+          defaultTitle={selectedTaskForTemplate.task?.title || ''}
+          defaultDescription={selectedTaskForTemplate.task?.description || ''}
+          sourceType="focus-session"
+          sourceSession={selectedTaskForTemplate}
+        />
       )}
     </div>
   );

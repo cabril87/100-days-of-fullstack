@@ -105,7 +105,6 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
   // Memoize fetch functions to prevent recreation on each render
   const fetchEvents = useCallback(async () => {
     try {
-      setIsLoading(true);
       console.log('[DEBUG] Fetching events from API for family:', familyId);
       
       const response = await familyCalendarService.getAllEvents(familyId);
@@ -194,14 +193,11 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
       }
       
       return [];
-    } finally {
-      setIsLoading(false);
     }
   }, [familyId, showToast]);
 
   const fetchTasks = useCallback(async () => {
     try {
-      setIsLoading(true);
       const response = await taskService.getFamilyTasks(familyId.toString());
       if (response.data) {
         setTasks(response.data);
@@ -210,8 +206,6 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
       console.error('Failed to fetch tasks:', error);
       // Don't show error toast - continue without tasks
       setTasks([]);
-    } finally {
-      setIsLoading(false);
     }
   }, [familyId]);
 
@@ -257,29 +251,54 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
     }
   }, [familyId]);
 
-  // Add useEffect to load stored events from localStorage on mount
+  // Load all data when component mounts or familyId changes
   useEffect(() => {
-    const loadStoredEvents = async () => {
-      // Try to load saved events from localStorage
+    console.log('[FamilyCalendar] Component mounted or familyId changed:', familyId);
+    
+    const loadAllData = async () => {
       try {
-        const storedEventsJson = localStorage.getItem(`family-${familyId}-events`);
-        if (storedEventsJson) {
-          const storedEvents = JSON.parse(storedEventsJson) as FamilyCalendarEvent[];
-          console.log('[DEBUG] Loaded stored events from localStorage:', storedEvents.length);
-          setEvents(storedEvents);
-        }
+        setIsLoading(true);
+        console.log('[FamilyCalendar] Starting to load all data...');
+        
+        // Load all data in parallel for better performance
+        await Promise.allSettled([
+          fetchEvents(),
+          fetchTasks(),
+          fetchFamilyDetails()
+        ]);
+        
+        console.log('[FamilyCalendar] All data loading completed');
       } catch (error) {
-        console.error('Error loading stored events:', error);
+        console.error('[FamilyCalendar] Error loading data:', error);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Then fetch from API (if this fails, at least we have local events)
-      fetchEvents().catch(err => {
-        console.error('Failed to fetch events from API:', err);
-      });
     };
 
-    loadStoredEvents();
-  }, [familyId]); // Run only when familyId changes
+    if (familyId) {
+      loadAllData();
+    }
+  }, [familyId, fetchEvents, fetchTasks, fetchFamilyDetails]);
+
+  // Additional effect to handle calendar refresh when events change
+  useEffect(() => {
+    console.log('[FamilyCalendar] Events changed, count:', events.length);
+    
+    // Force re-render when events are loaded
+    if (events.length > 0 && calendarRef.current && calendarRef.current.getApi) {
+      try {
+        const api = calendarRef.current.getApi();
+        if (api) {
+          console.log('[FamilyCalendar] Refreshing calendar view after events change');
+          api.refetchEvents();
+          setTimeout(() => api.render(), 100);
+        }
+      } catch (error) {
+        console.error('[FamilyCalendar] Error refreshing calendar after events change:', error);
+      }
+    }
+  }, [events]);
 
   // Function to save events to localStorage
   const saveEventsToLocalStorage = (eventsToSave: FamilyCalendarEvent[]) => {
@@ -291,48 +310,53 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
     }
   };
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      await Promise.allSettled([
-        fetchEvents(),
-        fetchTasks(),
-        fetchFamilyDetails()
-      ]);
-      setIsLoading(false);
-    };
-    
-    loadData();
-  }, [fetchEvents, fetchTasks, fetchFamilyDetails]);
-
   const handleDateSelect = useCallback((selectInfo: any) => {
     setSelectedDate(selectInfo.start);
     
-    // Filter tasks for the selected date
+    // Use functional state updates to avoid dependency on events/tasks in useCallback
     const selectedDateStr = selectInfo.start.toISOString().split('T')[0];
-    const tasksForDate = tasks.filter(task => {
+    
+    // Filter tasks for the selected date using current state
+    setFilteredTasks(currentTasks => {
+      return currentTasks.filter(task => {
       const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
       return taskDate === selectedDateStr;
+      });
     });
     
-    // Filter events for the selected date
-    const eventsForDate = events.filter(event => {
+    // Filter events for the selected date using current state
+    setFilteredEvents(currentEvents => {
+      return currentEvents.filter(event => {
       const eventStartDate = new Date(event.startTime).toISOString().split('T')[0];
       const eventEndDate = new Date(event.endTime).toISOString().split('T')[0];
       return eventStartDate === selectedDateStr || eventEndDate === selectedDateStr;
     });
+    });
     
-    setFilteredTasks(tasksForDate);
-    setFilteredEvents(eventsForDate);
+    // Check if there are tasks or events for this date using current state values
+    // We'll use a timeout to check the filtered state after it's been updated
+    setTimeout(() => {
+      // Access current events and tasks state at the time of selection
+      const currentTasks = tasks.filter(task => {
+        const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+        return taskDate === selectedDateStr;
+      });
+      
+      const currentEvents = events.filter(event => {
+        const eventStartDate = new Date(event.startTime).toISOString().split('T')[0];
+        const eventEndDate = new Date(event.endTime).toISOString().split('T')[0];
+        return eventStartDate === selectedDateStr || eventEndDate === selectedDateStr;
+      });
     
     // If there are tasks or events for this date, show the detail view
-    if (tasksForDate.length > 0 || eventsForDate.length > 0) {
+      if (currentTasks.length > 0 || currentEvents.length > 0) {
       setIsTaskDetailOpen(true);
     } else {
       // Always show the create dialog
       setIsCreateDialogOpen(true);
     }
-  }, [events, tasks]);
+    }, 0);
+  }, []); // Empty dependency array to prevent infinite loops
 
   const handleEventClick = useCallback((clickInfo: any) => {
     try {
@@ -376,8 +400,10 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
       if (!isNaN(eventId)) {
         console.log('Looking for event with ID:', eventId);
         
+        // Access current events state at the time of click (to avoid dependency issues)
+        setEvents(currentEvents => {
         // Find the matching event in our events array
-        const matchingEvent = events.find(e => e.id === eventId);
+          const matchingEvent = currentEvents.find(e => e.id === eventId);
         
         if (matchingEvent) {
           // Set selected event for editing
@@ -425,11 +451,15 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
           setFilteredTasks([]);
           setIsTaskDetailOpen(true);
         }
+          
+          // Return the current events unchanged
+          return currentEvents;
+        });
       }
     } catch (error) {
       console.error('Error processing event click:', error);
     }
-  }, [events, setActiveTab, familyId]);
+  }, [familyId]); // Only depend on familyId which doesn't change
 
   const handleEventCreate = async (eventData: any) => {
     try {
@@ -450,7 +480,7 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         location: eventData.location || '',
         color: eventData.color || '#3b82f6',
         isRecurring: eventData.isRecurring || false,
-        recurrencePattern: eventData.recurrencePattern || null,
+        recurrencePattern: eventData.recurrencePattern,
         eventType: eventData.eventType || 'General',
         familyId: familyId,
         createdBy: { id: 0, username: 'You' }, // Will be replaced with real data
@@ -697,7 +727,6 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         isRecurring: eventData.isRecurring || false,
         recurrencePattern: eventData.recurrencePattern || null,
         eventType: eventData.eventType || 'General',
-        attendeeIds: normalizedAttendeeIds
       };
       
       // Make API call to update the event
@@ -1167,6 +1196,7 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
   const renderCalendarContent = () => {
     // Ensure we use the latest events array for each render
     console.log('[FamilyCalendar] Rendering calendar content, total events:', events.length);
+    console.log('[FamilyCalendar] Loading state:', isLoading);
     
     return (
       <>
@@ -1182,10 +1212,14 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
         
         <div className="flex-grow">
           {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+              <div className="text-center space-y-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+                <p className="text-gray-600 dark:text-gray-400">Loading family calendar...</p>
+              </div>
             </div>
           ) : (
+            <div className="w-full h-full min-h-[500px]">
             <PerformanceOptimizedCalendar
               events={events}
               tasks={tasks}
@@ -1194,8 +1228,32 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
               onEventClick={handleEventClick}
               isModal={isModal}
               ref={calendarRef}
-              key={`calendar-${events.length}`} // Force remount when events change
-            />
+                key={`calendar-${familyId}-${events.length}`}
+                height={isModal ? "calc(80vh - 100px)" : "500px"}
+              />
+              
+              {/* Show message if no events */}
+              {events.length === 0 && !isLoading && (
+                <div className="mt-4 text-center">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+                    <Calendar className="h-12 w-12 mx-auto text-blue-500 mb-4" />
+                    <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      No Events Yet
+                    </h3>
+                    <p className="text-blue-700 dark:text-blue-300 mb-4">
+                      Your family calendar is ready! Click on any date to create your first event.
+                    </p>
+                    <Button
+                      onClick={() => setIsCreateDialogOpen(true)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Your First Event
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </>
@@ -1416,7 +1474,6 @@ export function FamilyCalendar({ familyId, isModal = false }: FamilyCalendarProp
                 isRecurring: selectedEvent.isRecurring,
                 recurrencePattern: selectedEvent.recurrencePattern,
                 eventType: selectedEvent.eventType,
-                attendeeIds: selectedEvent.attendees?.map(a => a.familyMemberId) || [],
               }}
             />
           )}

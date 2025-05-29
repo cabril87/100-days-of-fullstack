@@ -50,11 +50,6 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
   const [currentView, setCurrentView] = useState('dayGridMonth');
   const { showToast } = useToast();
   
-  // Cache for performance monitoring
-  const [renderCount, setRenderCount] = useState(0);
-  const [lastRenderTime, setLastRenderTime] = useState(0);
-  const [firstLoad, setFirstLoad] = useState(true);
-  
   // Expose the calendar API via ref
   useImperativeHandle(ref, () => ({
     getApi: () => calendarApi,
@@ -65,103 +60,8 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
     }
   }));
 
-  // Log events when they change
-  useEffect(() => {
-    console.log('[Calendar] Events array updated, length:', events.length);
-    
-    // If we have a calendar API, refresh it
-    if (calendarApi) {
-      console.log('[Calendar] Refreshing calendar view');
-      
-      // For more direct control, remove all events and add them again
-      try {
-        // Clear existing events
-        const existingEvents = calendarApi.getEvents();
-        if (existingEvents && existingEvents.length > 0) {
-          console.log('[Calendar] Clearing all calendar events');
-          existingEvents.forEach((event: any) => event.remove());
-        }
-        
-        // Re-add all events from the prop
-        if (events.length > 0) {
-          console.log('[Calendar] Re-adding events from props');
-          
-          // Create a map for quick event lookup
-          const eventMap = new Map();
-          events.forEach(event => {
-            eventMap.set(event.id, event);
-          });
-          
-          // Add each event to the calendar
-          events.forEach((event) => {
-            // Create a calendar event with consistent ID format
-            const calEvent = {
-              id: `event-${event.id}`,
-              title: event.title,
-              start: event.startTime,
-              end: event.endTime,
-              allDay: event.isAllDay,
-              color: event.color || '#3b82f6',
-              extendedProps: {
-                type: 'event',
-                description: event.description,
-                location: event.location,
-                originalId: event.id
-              }
-            };
-            
-            try {
-              // Try to add the event
-              calendarApi.addEvent(calEvent);
-            } catch (addErr) {
-              console.error('[Calendar] Error adding event:', addErr);
-              
-              // If adding fails, try to get and update the existing event
-              try {
-                const existingEvent = calendarApi.getEventById(`event-${event.id}`);
-                if (existingEvent) {
-                  existingEvent.setProp('title', event.title);
-                  existingEvent.setStart(event.startTime);
-                  existingEvent.setEnd(event.endTime);
-                  existingEvent.setAllDay(event.isAllDay);
-                  existingEvent.setProp('backgroundColor', event.color || '#3b82f6');
-                  existingEvent.setExtendedProp('description', event.description);
-                  existingEvent.setExtendedProp('location', event.location);
-                }
-              } catch (updateErr) {
-                console.error('[Calendar] Error updating existing event:', updateErr);
-              }
-            }
-          });
-        }
-        
-        // Do a double render with delay to ensure updates are applied
-        calendarApi.refetchEvents();
-        
-        // Add a small delay before the final render
-        setTimeout(() => {
-          try {
-            calendarApi.render();
-          } catch (renderErr) {
-            console.error('[Calendar] Error during delayed render:', renderErr);
-          }
-        }, 50);
-        
-      } catch (err) {
-        console.error('[Calendar] Error updating events directly:', err);
-      
-        // As a fallback, just call refetchEvents
-        try {
-      calendarApi.refetchEvents();
-        } catch (refetchErr) {
-          console.error('[Calendar] Error during fallback refetch:', refetchErr);
-        }
-      }
-    }
-  }, [events, calendarApi]);
-
-  // Get color based on task priority - Move this function before it's used
-  const getPriorityColor = (priority: string) => {
+  // Get color based on task priority - Make stable with useCallback
+  const getPriorityColor = useCallback((priority: string) => {
     switch (priority) {
       case 'urgent': return '#ef4444'; // Red
       case 'high': return '#f97316'; // Orange
@@ -169,88 +69,56 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
       case 'low': return '#3b82f6'; // Blue
       default: return '#3b82f6'; // Default blue
     }
-  };
+  }, []);
 
   // Memoize the combined events array to prevent unnecessary re-renders
   const combinedEvents = useMemo(() => {
-    // Track render performance
-    if (!firstLoad) {
-      setRenderCount(prev => prev + 1);
-      setLastRenderTime(performance.now());
-    } else {
-      setFirstLoad(false);
-    }
-    
     console.log('[Calendar] Building combinedEvents array');
     console.log('[Calendar] Events count:', events.length);
     console.log('[Calendar] Tasks count:', tasks.length);
     console.log('[Calendar] Conflicts count:', conflicts.length);
     
-    if (events.length > 0) {
-      console.log('[Calendar] First event:', events[0]);
-    }
-    
-    // Keep track of used IDs to avoid duplicates
-    const usedIds = new Set<string>();
-    
-    // Function to ensure ID is unique
-    const getUniqueId = (baseId: string): string => {
-      // If ID is already used, append a random string
-      if (usedIds.has(baseId)) {
-        const uniqueId = `${baseId}-${generateUUID()}`;
-        usedIds.add(uniqueId);
-        return uniqueId;
-      } else {
-        usedIds.add(baseId);
-        return baseId;
-      }
+    // Simple counter for unique IDs
+    let idCounter = 0;
+    const getUniqueId = (prefix: string): string => {
+      return `${prefix}-${Date.now()}-${++idCounter}`;
     };
     
     const result = [
       // Regular events
-      ...events.map(event => {
-        // Ensure we have a valid ID - convert to string if needed
-        const eventIdStr = typeof event.id === 'number' ? event.id.toString() : String(event.id);
-        const eventId = getUniqueId(`event-${eventIdStr}`);
-        
-        return {
-          id: eventId,
+      ...events.map(event => ({
+        id: getUniqueId('event'),
           title: event.title,
           start: event.startTime,
           end: event.endTime,
           allDay: event.isAllDay,
-          color: event.color || '#3b82f6', // Default to blue if no color specified
+        color: event.color || '#3b82f6',
           extendedProps: { 
             type: 'event',
             description: event.description,
             location: event.location,
             createdBy: event.createdBy,
-            originalId: event.id // Keep the original ID for reference
+          originalId: event.id
           },
-          // Add a class to style events differently
           className: 'custom-calendar-event'
-        };
-      }),
+      })),
+      
       // Conflicts
-      ...conflicts.map((conflict, index) => {
-        const conflictId = getUniqueId(`conflict-${index}`);
-        return {
-          id: conflictId,
+      ...conflicts.map((conflict, index) => ({
+        id: getUniqueId('conflict'),
           title: `Conflict: ${conflict.members?.map((m: any) => m.name).join(', ') || 'Multiple members'}`,
           start: conflict.startTime,
           end: conflict.endTime,
-          color: '#ef4444', // Red color
+        color: '#ef4444',
           textColor: 'white',
           extendedProps: { type: 'conflict' },
           className: 'conflict-calendar-event'
-        };
-      }),
+      })),
+      
       // Tasks
-      ...tasks.map(task => {
-        const taskId = getUniqueId(`task-${task.id}`);
-        return {
-          id: taskId,
-          title: `${task.title}`,
+      ...tasks.map(task => ({
+        id: getUniqueId('task'),
+        title: task.title,
           start: task.dueDate,
           allDay: true,
           color: getPriorityColor(task.priority),
@@ -259,20 +127,19 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
             priority: task.priority,
             assignedTo: task.assignedTo,
             isCompleted: task.isCompleted,
-            originalId: task.id // Keep the original ID for reference
+          originalId: task.id
           },
           className: cn(
             'task-calendar-event',
             task.isCompleted ? 'completed-task' : '',
             `priority-${task.priority}`
           )
-        };
-      })
+      }))
     ];
     
     console.log('[Calendar] Final events array length:', result.length);
     return result;
-  }, [events, conflicts, tasks]);
+  }, [events, conflicts, tasks, getPriorityColor]);
 
   // Handle window resizing efficiently with debounce
   useEffect(() => {
@@ -491,12 +358,6 @@ export const PerformanceOptimizedCalendar = forwardRef<any, PerformanceOptimized
           return selectInfo.start >= today;
         }}
       />
-      
-      {renderCount > 0 && process.env.NODE_ENV === 'development' && (
-        <div className="text-xs text-muted-foreground mt-2">
-          <p>Performance: Calendar rendered {renderCount} times. Last render: {lastRenderTime.toFixed(2)}ms</p>
-        </div>
-      )}
     </div>
   );
 });

@@ -215,7 +215,11 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                 >
                   🎯
                   {currentSession?.status === 'InProgress' && (
+                    <>
                     <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse"></span>
+                      {/* Live indicator only when focus session is active */}
+                      <span className="absolute -bottom-0 -right-0 w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse"></span>
+                    </>
                   )}
                 </Link>
                 <Link
@@ -234,10 +238,11 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                 </Link>
                 <Link
                   href="/gamification"
-                  className="navbar-link inline-flex items-center px-3 py-2 rounded-lg border-2 border-transparent hover:border-purple-500/20 transition-all duration-300 text-xl"
+                  className="navbar-link inline-flex items-center px-3 py-2 rounded-lg border-2 border-transparent hover:border-purple-500/20 transition-all duration-300 text-xl relative"
                   title="Gamification"
                 >
                   🎮
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse"></span>
                 </Link>
                 <Link
                   href="/family"
@@ -379,27 +384,32 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                             </Link>
                             <Link
                               href="/focus"
-                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-amber-50/50 dark:text-gray-200 dark:hover:bg-amber-900/20 rounded-lg mx-2 transition-all duration-200 font-medium"
+                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-amber-50/50 dark:text-gray-200 dark:hover:bg-amber-900/20 rounded-lg mx-2 transition-all duration-200 font-medium relative"
                               role="menuitem"
                               onClick={() => setIsProfileMenuOpen(false)}
                             >
                               🎯 Focus Mode
+                              {currentSession?.status === 'InProgress' && (
+                                <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse ml-auto"></span>
+                              )}
                             </Link>
                             <Link
                               href="/gamification"
-                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-purple-50/50 dark:text-gray-200 dark:hover:bg-purple-900/20 rounded-lg mx-2 transition-all duration-200 font-medium"
+                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-purple-50/50 dark:text-gray-200 dark:hover:bg-purple-900/20 rounded-lg mx-2 transition-all duration-200 font-medium relative"
                               role="menuitem"
                               onClick={() => setIsProfileMenuOpen(false)}
                             >
                               🎮 Gamification
+                              <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse ml-auto"></span>
                             </Link>
                             <Link
                               href="/gamification/history"
-                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-indigo-50/50 dark:text-gray-200 dark:hover:bg-indigo-900/20 rounded-lg mx-2 transition-all duration-200 font-medium"
+                              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-indigo-50/50 dark:text-gray-200 dark:hover:bg-indigo-900/20 rounded-lg mx-2 transition-all duration-200 font-medium relative"
                               role="menuitem"
                               onClick={() => setIsProfileMenuOpen(false)}
                             >
                               📈 Recent Activity
+                              <span className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-pulse ml-auto"></span>
                             </Link>
                             <Link
                               href="/notifications/center"

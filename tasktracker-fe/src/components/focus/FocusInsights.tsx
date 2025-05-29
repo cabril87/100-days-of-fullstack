@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import { Brain, TrendingUp, Target, Clock, Calendar, AlertTriangle, Star, Lightbulb, BarChart3 } from 'lucide-react';
+import { Brain, TrendingUp, Target, Clock, Calendar, AlertTriangle, Star, Lightbulb, BarChart3, Trophy } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { FocusSession, FocusStatistics } from '@/lib/types/focus';
 
@@ -458,19 +458,36 @@ export function FocusInsights() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="container mx-auto p-4 space-y-6">
+        {/* Enhanced Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-600 opacity-[0.03] rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-600 opacity-[0.05] rounded-full blur-2xl"></div>
+          
+          {/* Gradient accent bar */}
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-t-xl"></div>
+          
+          <div className="relative z-10 p-6">
       <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg">
+                  <Brain className="h-6 w-6" />
+                </div>
         <div>
-          <h2 className="text-2xl font-bold text-brand-navy-dark">Focus Insights</h2>
-          <p className="text-gray-600">AI-powered insights from your real focus data</p>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    AI Focus Insights
+                  </h2>
+                  <p className="text-gray-600">Smart recommendations from your real focus data</p>
+                </div>
         </div>
         
         <Select 
           value={selectedRange.days.toString()} 
           onValueChange={(value) => setSelectedRange(timeRanges.find(r => r.days === parseInt(value)) || timeRanges[1])}
         >
-          <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -481,45 +498,77 @@ export function FocusInsights() {
             ))}
           </SelectContent>
         </Select>
+            </div>
+          </div>
       </div>
 
       {/* Productivity Score */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Star className="h-5 w-5 mr-2" />
-            Productivity Score
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Overall Performance</span>
-                <span className="text-2xl font-bold text-blue-600">{productivityScore}/100</span>
-              </div>
-              <Progress value={productivityScore} className="h-3" />
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 relative overflow-hidden hover:shadow-lg transition-all duration-300">
+          {/* Decorative elements */}
+          <div className="absolute -top-20 -right-20 w-40 h-40 bg-green-600 opacity-[0.05] rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-emerald-600 opacity-[0.05] rounded-full blur-2xl"></div>
+          
+          {/* Dynamic gradient accent based on score */}
+          <div className={`absolute top-0 left-0 w-full h-1.5 rounded-t-xl ${
+            productivityScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+            productivityScore >= 60 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+            productivityScore >= 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-600' :
+            'bg-gradient-to-r from-red-500 to-red-600'
+          }`}></div>
+          
+          <div className="relative z-10 p-8">
             <div className="text-center">
-              {productivityScore >= 80 && (
-                <Badge variant="default" className="bg-green-100 text-green-800">Excellent</Badge>
-              )}
-              {productivityScore >= 60 && productivityScore < 80 && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">Good</Badge>
-              )}
-              {productivityScore >= 40 && productivityScore < 60 && (
-                <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Fair</Badge>
-              )}
-              {productivityScore < 40 && (
-                <Badge variant="destructive" className="bg-red-100 text-red-800">Needs Work</Badge>
-              )}
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className={`p-4 rounded-xl text-white shadow-lg ${
+                  productivityScore >= 80 ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
+                  productivityScore >= 60 ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+                  productivityScore >= 40 ? 'bg-gradient-to-br from-yellow-500 to-orange-600' :
+                  'bg-gradient-to-br from-red-500 to-red-600'
+                }`}>
+                  <Trophy className="h-8 w-8" />
+                </div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            Productivity Score
+                </h3>
+              </div>
+              
+              <div className={`text-6xl font-bold mb-4 bg-gradient-to-r bg-clip-text text-transparent ${
+                productivityScore >= 80 ? 'from-green-600 to-emerald-600' :
+                productivityScore >= 60 ? 'from-blue-600 to-blue-700' :
+                productivityScore >= 40 ? 'from-yellow-600 to-orange-600' :
+                'from-red-600 to-red-700'
+              }`}>
+                {productivityScore}
+              </div>
+              
+              <div className="max-w-md mx-auto">
+                <div className="w-full bg-gray-200 rounded-full h-4 mb-4 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      productivityScore >= 80 ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                      productivityScore >= 60 ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                      productivityScore >= 40 ? 'bg-gradient-to-r from-yellow-500 to-orange-600' :
+                      'bg-gradient-to-r from-red-500 to-red-600'
+                    }`}
+                    style={{ width: `${productivityScore}%` }}
+                  />
+                </div>
+                
+                <Badge variant="outline" className={`text-sm font-semibold px-4 py-2 ${
+                  productivityScore >= 80 ? 'bg-green-50 text-green-700 border-green-300' :
+                  productivityScore >= 60 ? 'bg-blue-50 text-blue-700 border-blue-300' :
+                  productivityScore >= 40 ? 'bg-yellow-50 text-yellow-700 border-yellow-300' :
+                  'bg-red-50 text-red-700 border-red-300'
+                }`}>
+                  {productivityScore >= 80 ? '🏆 Excellent Performance' :
+                   productivityScore >= 60 ? '⭐ Good Progress' :
+                   productivityScore >= 40 ? '📈 Making Progress' :
+                   '🎯 Getting Started'}
+                </Badge>
+            </div>
             </div>
           </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Based on completion rate, session length, distraction management, and consistency
-          </p>
-        </CardContent>
-      </Card>
+        </div>
 
       <Tabs defaultValue="insights" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -692,6 +741,7 @@ export function FocusInsights() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

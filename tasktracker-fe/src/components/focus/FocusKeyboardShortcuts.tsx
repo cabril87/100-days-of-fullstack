@@ -49,8 +49,22 @@ export function FocusKeyboardShortcuts({ enabled = true }: FocusKeyboardShortcut
               showToast('Focus session resumed via keyboard shortcut', 'success');
             }
           } else {
-            // Would need task selection - show toast instead
-            showToast('Use Ctrl+Shift+N to start a new session with task selection', 'info');
+            // Navigate to focus page to start new session with task selection
+            if (typeof window !== 'undefined') {
+              window.location.href = '/focus';
+            }
+          }
+          break;
+
+        case 'n': // Ctrl/Cmd + Shift + N: Start new session with task selection
+          event.preventDefault();
+          if (currentSession) {
+            showToast('Please end current session before starting a new one', 'warning');
+          } else {
+            // Navigate to focus page to start new session with task selection
+            if (typeof window !== 'undefined') {
+              window.location.href = '/focus';
+            }
           }
           break;
 
@@ -99,6 +113,7 @@ export function FocusKeyboardShortcuts({ enabled = true }: FocusKeyboardShortcut
   const showKeyboardShortcutsHelp = () => {
     const shortcuts = [
       'Ctrl+Shift+S - Start/Stop focus session',
+      'Ctrl+Shift+N - Start new session with task selection',
       'Ctrl+Shift+P - Pause/Resume session',
       'Ctrl+Shift+E - End current session',
       'Ctrl+Shift+H - Show this help'
@@ -106,8 +121,7 @@ export function FocusKeyboardShortcuts({ enabled = true }: FocusKeyboardShortcut
 
     showToast(
       `Keyboard Shortcuts:\n${shortcuts.join('\n')}`,
-      'info',
-      5000
+      'info'
     );
   };
 
@@ -120,6 +134,7 @@ export function useKeyboardShortcuts() {
   const showKeyboardShortcutsHelp = () => {
     const shortcuts = [
       { key: 'Ctrl+Shift+S', action: 'Start/Stop focus session' },
+      { key: 'Ctrl+Shift+N', action: 'Start new session with task selection' },
       { key: 'Ctrl+Shift+P', action: 'Pause/Resume session' },
       { key: 'Ctrl+Shift+E', action: 'End current session' },
       { key: 'Ctrl+Shift+H', action: 'Show keyboard shortcuts' }

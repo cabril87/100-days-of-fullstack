@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Task as TaskType } from '@/lib/types/task';
 import { Badge } from '@/components/ui/badge';
@@ -29,8 +29,13 @@ export function Task({ task, onStatusChange, onDelete, onEdit, showCategories = 
     if (selectionMode && onToggleSelection) {
       onToggleSelection();
     } else {
-      // Navigate to task details
-      router.push(`/tasks/${task.id}`);
+      // Navigate to task details - ensure ID is valid
+      const taskId = Number(task.id);
+      if (!isNaN(taskId) && taskId > 0) {
+        router.push(`/tasks/${taskId}`);
+      } else {
+        console.error('Invalid task ID:', task.id);
+      }
     }
   };
 
@@ -165,21 +170,19 @@ export function Task({ task, onStatusChange, onDelete, onEdit, showCategories = 
             </div>
             {task.priority && (
               <div className="priority-badge bg-white/20 text-white backdrop-blur-sm shadow-sm">
-                {task.priority === 'high' && (
+                {task.priority === 'high' ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
                   </svg>
-                )}
-                {task.priority === 'medium' && (
+                ) : task.priority === 'medium' ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                   </svg>
-                )}
-                {task.priority === 'low' && (
+                ) : task.priority === 'low' ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                )}
+                ) : null}
                 {typeof task.priority === 'string' 
                   ? `${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority`
                   : `${String(task.priority)} Priority`}
@@ -243,19 +246,19 @@ export function Task({ task, onStatusChange, onDelete, onEdit, showCategories = 
             aria-label={task.status === 'done' ? 'Mark as incomplete' : 'Mark as complete'}
           >
             {task.status === 'done' ? (
-              <>
+              <React.Fragment key="incomplete-action">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
                 <span>Incomplete</span>
-              </>
+              </React.Fragment>
             ) : (
-              <>
+              <React.Fragment key="complete-action">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 <span>Complete</span>
-              </>
+              </React.Fragment>
             )}
           </button>
           

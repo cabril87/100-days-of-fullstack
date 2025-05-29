@@ -119,6 +119,15 @@ export default function TaskDetailPage() {
   const refreshTask = async () => {
     if (!id) return;
     
+    // Validate that id is a valid number
+    const taskId = Number(id);
+    if (isNaN(taskId) || taskId <= 0) {
+      console.error('TaskDetailPage: Invalid task ID:', id);
+      setError('Invalid task ID');
+      setLoading(false);
+      return;
+    }
+    
     try {
       console.log('TaskDetailPage: Refreshing task data for id:', id);
       setLoading(true);

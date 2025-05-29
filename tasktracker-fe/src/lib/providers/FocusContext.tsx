@@ -41,7 +41,7 @@ interface FocusContextType {
   
   // Data fetching - ALL API CALLS
   fetchCurrentSession: () => Promise<FocusSession | null>;
-  fetchStatistics: (startDate?: Date, endDate?: Date) => Promise<FocusStatistics | null>;
+  fetchStatistics: (startDate?: Date | string, endDate?: Date | string) => Promise<FocusStatistics | null>;
   fetchHistory: () => Promise<FocusSession[]>;
   fetchSuggestions: (count?: number) => Promise<Task[]>;
   fetchSessionDistractions: (sessionId: number) => Promise<Distraction[]>;
@@ -698,7 +698,7 @@ export function FocusProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, showToast]);
 
   // PURE API CALL - Fetch focus statistics
-  const fetchStatistics = useCallback(async (startDate?: Date, endDate?: Date): Promise<FocusStatistics | null> => {
+  const fetchStatistics = useCallback(async (startDate?: Date | string, endDate?: Date | string): Promise<FocusStatistics | null> => {
     if (!isAuthenticated) return null;
     
     const endpoint = 'statistics';
@@ -714,7 +714,11 @@ export function FocusProvider({ children }: { children: ReactNode }) {
       try {
         console.log('[FocusContext] API Call: getFocusStatistics', { startDate, endDate });
         
-        const response = await focusService.getFocusStatistics(startDate?.toISOString(), endDate?.toISOString());
+        // Convert dates to ISO strings if they are Date objects
+        const startDateStr = startDate instanceof Date ? startDate.toISOString() : startDate;
+        const endDateStr = endDate instanceof Date ? endDate.toISOString() : endDate;
+        
+        const response = await focusService.getFocusStatistics(startDateStr, endDateStr);
         
         if (response.data) {
           console.log('[FocusContext] API Response: Statistics received', response.data);

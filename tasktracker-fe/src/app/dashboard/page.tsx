@@ -9,8 +9,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks/useToast';
 import { useTasks } from '@/lib/providers/TaskProvider';
 import { FocusMode } from '@/components/focus/FocusMode';
-import { FocusStats } from '@/components/focus/FocusStats';
 import { FocusHistory } from '@/components/focus/FocusHistory';
+import { CalendarWidget } from '@/components/dashboard/CalendarWidget';
 import Link from 'next/link';
 import { Task } from '@/lib/types/task';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
@@ -251,6 +251,7 @@ export default function DashboardPage() {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-8">
+          {/* First Row - Task Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <ProgressCard
                 title="Task Completion"
@@ -316,6 +317,41 @@ export default function DashboardPage() {
               </div>
               </div>
                   )}
+                </CardContent>
+              </Card>
+      </div>
+
+          {/* Second Row - Calendar Widget */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <CalendarWidget className="lg:col-span-1 hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm" />
+            
+            {/* Quick Actions */}
+            <Card className="lg:col-span-2 hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <Target className="h-5 w-5 text-green-600" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Link href="/tasks/create" className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                    <CheckSquare className="h-8 w-8 text-blue-600 mb-2" />
+                    <span className="text-sm font-medium text-blue-800">New Task</span>
+                  </Link>
+                  <Link href="/calendar" className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                    <Calendar className="h-8 w-8 text-purple-600 mb-2" />
+                    <span className="text-sm font-medium text-purple-800">Calendar</span>
+                  </Link>
+                  <Link href="/focus" className="flex flex-col items-center p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                    <Brain className="h-8 w-8 text-amber-600 mb-2" />
+                    <span className="text-sm font-medium text-amber-800">Focus Mode</span>
+                  </Link>
+                  <Link href="/analytics" className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                    <TrendingUp className="h-8 w-8 text-green-600 mb-2" />
+                    <span className="text-sm font-medium text-green-800">Analytics</span>
+                  </Link>
+                </div>
                 </CardContent>
               </Card>
       </div>
@@ -417,7 +453,30 @@ export default function DashboardPage() {
         </TabsContent>
         
         <TabsContent value="analytics" className="space-y-6">
-          <FocusStats />
+          <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                Focus Analytics
+              </CardTitle>
+              <CardDescription>
+                Complete focus analytics are now integrated into the Focus Hub
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <BarChart3 className="h-16 w-16 mx-auto text-blue-500 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Analytics moved to Focus Hub</h3>
+                <p className="text-gray-600 mb-4">
+                  All focus analytics, insights, and ML predictions are now unified in the Focus Hub for a better experience.
+                </p>
+                <Link href="/focus" className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300">
+                  <Brain className="h-4 w-4" />
+                  Go to Focus Hub
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
         
         <TabsContent value="history" className="space-y-6">
@@ -425,34 +484,76 @@ export default function DashboardPage() {
         </TabsContent>
         
           <TabsContent value="family" className="space-y-6">
+            {/* Family Calendar Widget */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CalendarWidget className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm" />
+              
+              <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <Users className="h-5 w-5 text-purple-600" />
+                    Family Hub
+                  </CardTitle>
+                  <CardDescription>
+                    Quick access to family features and coordination
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Link href="/family" className="flex flex-col items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+                      <Users className="h-8 w-8 text-orange-600 mb-2" />
+                      <span className="text-sm font-medium text-orange-800">Family Hub</span>
+                    </Link>
+                    <Link href="/calendar" className="flex flex-col items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                      <Calendar className="h-8 w-8 text-blue-600 mb-2" />
+                      <span className="text-sm font-medium text-blue-800">Full Calendar</span>
+                    </Link>
+                    <Link href="/family/create" className="flex flex-col items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+                      <Target className="h-8 w-8 text-green-600 mb-2" />
+                      <span className="text-sm font-medium text-green-800">Create Family</span>
+                    </Link>
+                    <Link href="/family/join" className="flex flex-col items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                      <Users className="h-8 w-8 text-purple-600 mb-2" />
+                      <span className="text-sm font-medium text-purple-800">Join Family</span>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Family Features Info */}
             <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 bg-white/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-gray-900">
-                  <Users className="h-5 w-5 text-purple-600" />
-                  Family Dashboard
+                  <Trophy className="h-5 w-5 text-yellow-600" />
+                  Family Coordination Features
                 </CardTitle>
                 <CardDescription>
-                  Shared tasks and family activities (Coming Soon)
+                  Available family management and scheduling tools
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-r from-purple-100 to-purple-200 rounded-full flex items-center justify-center">
-                    <Users className="h-8 w-8 text-purple-600" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4">
+                    <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                      <Calendar className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Shared Calendar</h3>
+                    <p className="text-sm text-gray-600">Coordinate family schedules and events with smart conflict detection</p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Family Features Coming Soon</h3>
-                    <p className="text-gray-600 max-w-md mx-auto">
-                      Share tasks with family members, create family goals, and track everyone's progress together.
-                    </p>
+                  <div className="text-center p-4">
+                    <div className="w-12 h-12 mx-auto bg-purple-100 rounded-full flex items-center justify-center mb-3">
+                      <Users className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Member Management</h3>
+                    <p className="text-sm text-gray-600">Add family members and manage roles and permissions</p>
                   </div>
-                  <div className="pt-4">
-                    <button 
-                      className="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-                      onClick={() => showToast('Family features coming in the next update!', 'info')}
-                    >
-                      Get Notified
-                    </button>
+                  <div className="text-center p-4">
+                    <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-3">
+                      <Target className="h-6 w-6 text-green-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Smart Scheduling</h3>
+                    <p className="text-sm text-gray-600">AI-powered optimal time suggestions and availability tracking</p>
                   </div>
                 </div>
               </CardContent>

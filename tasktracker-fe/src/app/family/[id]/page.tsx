@@ -45,9 +45,9 @@ import { Task } from '@/lib/types/task';
 
 // Define a specific props interface to ensure we receive the id parameter
 interface FamilyDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
@@ -145,34 +145,34 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
     setLoadingMembers(true);
 
     try {
-      const enhancedMembersData = await Promise.all(
-        members.map(async (member) => {
-          try {
-            // Get detailed data for each member
-            const response = await familyService.getFamilyMemberDetails(member.id.toString());
-            if (response.data) {
+      // Instead of calling the problematic API endpoint, use family member data directly
+      const enhancedMembersData = members.map((member) => {
               return {
                 ...member,
-                // If the detailed response has a user object, use that data
-                username: response.data.user?.username || member.username,
-                email: response.data.user?.email || member.email,
-                user: response.data.user || member.user,
+          // Use existing member data without additional API calls
+          username: member.user?.username || member.username || member.name,
+          email: member.user?.email || member.email,
+          user: member.user || {
+            id: typeof member.userId === 'number' ? member.userId : parseInt(member.userId.toString(), 10),
+            username: member.username || member.name || 'Unknown',
+            email: member.email || '',
+            firstName: '',
+            lastName: '',
+            displayName: member.name || member.username || 'Unknown',
+            avatarUrl: member.avatarUrl || null,
+            createdAt: member.joinedAt || new Date().toISOString()
+          },
                 // Keep existing member data for other fields
                 id: member.id,
                 role: member.role
               };
-            }
-            return member;
-          } catch (error) {
-            console.error(`Error fetching details for member ${member.id}:`, error);
-            return member;
-          }
-        })
-      );
+      });
 
       setEnhancedMembers(enhancedMembersData);
     } catch (error) {
-      console.error("Error fetching enhanced member data:", error);
+      console.error("Error processing member data:", error);
+      // Fallback to original members if processing fails
+      setEnhancedMembers(members);
     } finally {
       setLoadingMembers(false);
     }
@@ -395,7 +395,7 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
             if (!currentUserMemberId) return false;
             
             // Check if the current user is in the attendees list
-            return event.attendees.some(attendee => 
+            return event.attendees.some((attendee: { familyMemberId: string | number }) => 
               attendee.familyMemberId.toString() === currentUserMemberId.toString()
             );
           });
@@ -423,7 +423,7 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
   const filteredEvents = events.filter(event => {
     // Filter by member if selected
     if (selectedMemberFilter !== "all") {
-      const isAttendeeEvent = event.attendees?.some(attendee => 
+      const isAttendeeEvent = event.attendees?.some((attendee: { familyMemberId: string | number }) => 
         attendee.familyMemberId.toString() === selectedMemberFilter
       );
       if (!isAttendeeEvent) return false;
@@ -1684,7 +1684,7 @@ export default function FamilyDetailPage({ params }: FamilyDetailPageProps) {
                 <div className="text-sm font-medium text-gray-500">Attendees</div>
                 {selectedEvent.attendees && selectedEvent.attendees.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedEvent.attendees.map((attendee) => {
+                    {selectedEvent.attendees.map((attendee: { familyMemberId: string | number }) => {
                       const member = family.members.find(m => m.id.toString() === attendee.familyMemberId.toString());
                       return (
                         <Badge key={attendee.familyMemberId} variant="secondary">

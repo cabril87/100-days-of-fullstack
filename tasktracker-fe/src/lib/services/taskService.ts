@@ -111,15 +111,15 @@ function createSanitizedTask(task: TaskFormData): Record<string, unknown> {
                   '';
   
   // Map string status and priority to numeric values for C# backend
-  // NotStarted/Todo = 0, InProgress = 1, Completed/Done = 2
-  let statusValue = 0; // Default is NotStarted/Todo
-  if (task.status === 'in-progress') statusValue = 1;
-  if (task.status === 'done') statusValue = 2;
+  // API enum: NotStarted=0, InProgress=1, OnHold=2, Pending=3, Completed=4, Cancelled=5
+  let statusValue = 0; // Default is NotStarted
+  if (task.status === 'in-progress') statusValue = 1; // InProgress
+  if (task.status === 'done') statusValue = 4; // Completed
   
   // Low = 0, Medium = 1, High = 2
   let priorityValue = 1; // Default is Medium
-  if (task.priority === 'low') priorityValue = 0;
-  if (task.priority === 'high') priorityValue = 2;
+  if (task.priority === 0) priorityValue = 0; // Low
+  if (task.priority === 2) priorityValue = 2; // High
   
   // Create a result object with ONLY fields that exist in the database schema
   // Include only the basic fields known to exist in the C# Task model
@@ -244,13 +244,19 @@ class TaskService {
         case 'NotStarted': return 'todo';
         case 'InProgress': return 'in-progress';
         case 'Completed': return 'done';
+        case 'OnHold': return 'todo'; // Map OnHold to todo for now
+        case 'Pending': return 'todo'; // Map Pending to todo for now
+        case 'Cancelled': return 'todo'; // Map Cancelled to todo for now
         default: return 'todo';
       }
     } else if (typeof apiStatus === 'number') {
       switch (apiStatus) {
-        case 0: return 'todo';
-        case 1: return 'in-progress';
-        case 2: return 'done';
+        case 0: return 'todo'; // NotStarted
+        case 1: return 'in-progress'; // InProgress
+        case 2: return 'todo'; // OnHold - map to todo for now
+        case 3: return 'todo'; // Pending - map to todo for now
+        case 4: return 'done'; // Completed
+        case 5: return 'todo'; // Cancelled - map to todo for now
         default: return 'todo';
       }
     }
@@ -533,6 +539,8 @@ class TaskService {
         // Convert null values to undefined to match Task interface
         description: taskData.description === null ? undefined : taskData.description,
         dueDate: taskData.dueDate === null ? undefined : taskData.dueDate,
+        // Ensure priority is a string to match Task interface
+        priority: taskData.priority !== undefined ? this.mapApiPriorityToFrontend(taskData.priority) : mockTasksData[index].priority,
         updatedAt: new Date().toISOString()
       };
       
@@ -559,6 +567,8 @@ class TaskService {
               // Convert null values to undefined to match Task interface
               description: taskData.description === null ? undefined : taskData.description,
               dueDate: taskData.dueDate === null ? undefined : taskData.dueDate,
+              // Ensure priority is a string to match Task interface
+              priority: taskData.priority !== undefined ? this.mapApiPriorityToFrontend(taskData.priority) : mockTasks[index].priority,
               updatedAt: new Date().toISOString()
             };
             
@@ -595,33 +605,34 @@ class TaskService {
       // Use proper casing since our API expects PascalCase
       const directUpdateData: Record<string, any> = {
         // Include the current version for optimistic concurrency control
-        Version: currentTask.version || 0
+        Version: currentTask.version || 0,
+        // Always include Title as API requires it for validation
+        Title: taskData.title !== undefined ? taskData.title : currentTask.title
       };
       
       // Only include fields that have been provided in the update
-      if (taskData.title !== undefined) directUpdateData.Title = taskData.title;
       if (taskData.description !== undefined) directUpdateData.Description = taskData.description || '';
       
       // Convert the enum string values to numeric values for the API
       if (taskData.status !== undefined) {
         switch(taskData.status) {
-          case 'todo': directUpdateData.Status = 0; break;
-          case 'in-progress': directUpdateData.Status = 1; break;
-          case 'done': directUpdateData.Status = 2; break;
+          case 'todo': directUpdateData.Status = 0; break; // NotStarted
+          case 'in-progress': directUpdateData.Status = 1; break; // InProgress
+          case 'done': directUpdateData.Status = 4; break; // Completed (not 2!)
         }
       } else if (!directUpdateData.Status && currentTask.status) {
           // Convert status string to numeric value
           switch(currentTask.status) {
-            case 'todo': directUpdateData.Status = 0; break;
-            case 'in-progress': directUpdateData.Status = 1; break;
-            case 'done': directUpdateData.Status = 2; break;
+            case 'todo': directUpdateData.Status = 0; break; // NotStarted
+            case 'in-progress': directUpdateData.Status = 1; break; // InProgress
+            case 'done': directUpdateData.Status = 4; break; // Completed
           }
         }
       if (taskData.priority !== undefined) {
         switch(taskData.priority) {
-          case 'low': directUpdateData.Priority = 0; break;
-          case 'medium': directUpdateData.Priority = 1; break;
-          case 'high': directUpdateData.Priority = 2; break;
+          case 0: directUpdateData.Priority = 0; break; // Low
+          case 1: directUpdateData.Priority = 1; break; // Medium  
+          case 2: directUpdateData.Priority = 2; break; // High
         }
       } else if (!directUpdateData.Priority && currentTask.priority) {
           // Convert priority string to numeric value
@@ -939,7 +950,7 @@ class TaskService {
         description: taskData.description === null ? '' : taskData.description 
       }),
       ...(taskData.status !== undefined && { status: taskData.status }),
-      ...(taskData.priority !== undefined && { priority: taskData.priority }),
+      ...(taskData.priority !== undefined && { priority: this.mapApiPriorityToFrontend(taskData.priority) }),
       ...(taskData.dueDate !== undefined && { 
         dueDate: taskData.dueDate === null ? undefined : taskData.dueDate 
       }),

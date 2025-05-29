@@ -1088,31 +1088,31 @@ export default function TasksPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="created">
+                              <SelectItem key="created" value="created">
                                 <div className="flex items-center gap-2">
                                   <Clock className="h-3 w-3" />
                                   Date Created
                                 </div>
                               </SelectItem>
-                              <SelectItem value="due">
+                              <SelectItem key="due" value="due">
                                 <div className="flex items-center gap-2">
                                   <Calendar className="h-3 w-3" />
                                   Due Date
                                 </div>
                               </SelectItem>
-                              <SelectItem value="priority">
+                              <SelectItem key="priority" value="priority">
                                 <div className="flex items-center gap-2">
                                   <ArrowUpRight className="h-3 w-3" />
                                   Priority
                                 </div>
                               </SelectItem>
-                              <SelectItem value="status">
+                              <SelectItem key="status" value="status">
                                 <div className="flex items-center gap-2">
                                   <CheckSquare className="h-3 w-3" />
                                   Status
                                 </div>
                               </SelectItem>
-                              <SelectItem value="title">
+                              <SelectItem key="title" value="title">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-3 w-3" />
                                   Title (A-Z)
@@ -1165,33 +1165,37 @@ export default function TasksPage() {
                               Quick Templates
                             </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {templates.slice(0, 3).map(template => (
-                              <Link
-                                key={template.id}
-                                href={`/tasks/new?templateId=${template.id}`}
-                                className="flex items-center h-[45px] w-full bg-gradient-to-r from-white via-gray-50 to-white text-gray-800 rounded-lg hover:from-purple-50 hover:via-blue-50 hover:to-indigo-50 hover:text-purple-700 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 relative overflow-hidden group border border-gray-200/50 hover:border-purple-200"
-                              >
-                                <div
-                                  className="absolute left-0 top-0 w-1 h-full rounded-l-lg"
-                                  style={{ backgroundColor: getCategoryColor(template.categoryId) }}
-                                />
-                                <div className="flex items-center gap-2 px-3 relative z-10 w-full">
+                            {templates.slice(0, 3).map((template, index) => {
+                              // Ensure unique key with fallback
+                              const templateKey = template.id ? `template-${template.id}` : `template-index-${index}`;
+                              return (
+                                <Link
+                                  key={templateKey}
+                                  href={`/tasks/new?templateId=${template.id}`}
+                                  className="flex items-center h-[45px] w-full bg-gradient-to-r from-white via-gray-50 to-white text-gray-800 rounded-lg hover:from-purple-50 hover:via-blue-50 hover:to-indigo-50 hover:text-purple-700 shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 relative overflow-hidden group border border-gray-200/50 hover:border-purple-200"
+                                >
                                   <div
-                                    className="p-1.5 rounded-lg shadow-sm"
-                                    style={{
-                                      backgroundColor: `${getCategoryColor(template.categoryId)}20`,
-                                      color: getCategoryColor(template.categoryId)
-                                    }}
-                                  >
-                                    <FileText className="h-3 w-3" />
+                                    className="absolute left-0 top-0 w-1 h-full rounded-l-lg"
+                                    style={{ backgroundColor: getCategoryColor(template.categoryId) }}
+                                  />
+                                  <div className="flex items-center gap-2 px-3 relative z-10 w-full">
+                                    <div
+                                      className="p-1.5 rounded-lg shadow-sm"
+                                      style={{
+                                        backgroundColor: `${getCategoryColor(template.categoryId)}20`,
+                                        color: getCategoryColor(template.categoryId)
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-xs font-bold truncate block">{template.title}</span>
+                                    </div>
+                                    <ArrowUpRight className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-bold truncate block">{template.title}</span>
-                                  </div>
-                                  <ArrowUpRight className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                              </Link>
-                            ))}
+                                </Link>
+                              );
+                            })}
                           </div>
                                                         {templates.length > 3 && (
                                 <div className="mt-2 text-center">
@@ -1343,29 +1347,33 @@ export default function TasksPage() {
 
                     {/* Enhanced Task List */}
                     <div className="space-y-3">
-                      {filteredTasks.map((task, index) => (
-                        <div
-                          key={task.id}
-                          className={`transform transition-all duration-300 ${
-                            pageReady ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-                          }`}
-                          style={{ 
-                            transitionDelay: `${Math.min(index * 50, 300)}ms`,
-                            animation: pageReady ? `slideInUp 0.4s ease-out ${Math.min(index * 0.05, 0.3)}s both` : 'none'
-                          }}
-                        >
-                          <TaskComponent
-                            task={task}
-                            onStatusChange={handleStatusChange}
-                            onDelete={handleDelete}
-                            onEdit={handleEdit}
-                            showCategories={true}
-                            selectionMode={selectionMode}
-                            isSelected={selectedTasks.some(t => t.id === task.id)}
-                            onToggleSelection={() => toggleTaskSelection(task)}
-                          />
-                        </div>
-                      ))}
+                      {filteredTasks.map((task, index) => {
+                        // Ensure unique key by combining task.id with index as fallback
+                        const taskKey = task.id ? `task-${task.id}` : `task-index-${index}`;
+                        return (
+                          <div
+                            key={taskKey}
+                            className={`transform transition-all duration-300 ${
+                              pageReady ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                            }`}
+                            style={{ 
+                              transitionDelay: `${Math.min(index * 50, 300)}ms`,
+                              animation: pageReady ? `slideInUp 0.4s ease-out ${Math.min(index * 0.05, 0.3)}s both` : 'none'
+                            }}
+                          >
+                            <TaskComponent
+                              task={task}
+                              onStatusChange={handleStatusChange}
+                              onDelete={handleDelete}
+                              onEdit={handleEdit}
+                              showCategories={true}
+                              selectionMode={selectionMode}
+                              isSelected={selectedTasks.some(t => t.id === task.id)}
+                              onToggleSelection={() => toggleTaskSelection(task)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Task List Footer */}

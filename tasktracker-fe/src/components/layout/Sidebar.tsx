@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthContext';
 import { useFamily } from '@/lib/providers/FamilyContext';
 import { useGamification } from '@/lib/providers/GamificationProvider';
+import { useFocus } from '@/lib/providers/FocusContext';
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -19,6 +20,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
   const { user, logout } = useAuth();
   const { family } = useFamily();
   const { userProgress } = useGamification();
+  const { currentSession } = useFocus();
   const pathname = usePathname();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     dashboard: true,
@@ -235,6 +237,17 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                   </Link>
 
                   <Link
+                    href={family ? `/family/${family.id}/calendar` : "/calendar"}
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/calendar') || isActiveLink(`/family/${family?.id}/calendar`)
+                        ? 'bg-blue-500/20 border-l-4 border-blue-400'
+                        : ''
+                    }`}
+                  >
+                    📅 {family ? 'Family Calendar' : 'Calendar'}
+                  </Link>
+
+                  <Link
                     href="/analytics"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActiveLink('/analytics')
@@ -307,6 +320,9 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     🎯 Focus Mode
+                    {currentSession?.status === 'InProgress' && (
+                      <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse ml-auto"></span>
+                    )}
                   </Link>
                   <Link
                     href="/notifications/center"
@@ -363,6 +379,18 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                   >
                     🏡 Family Hub
                   </Link>
+                  {family && (
+                    <Link
+                      href={`/family/${family.id}/calendar`}
+                      className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink(`/family/${family.id}/calendar`)
+                          ? 'bg-blue-500/20 border-l-4 border-blue-400'
+                          : ''
+                      }`}
+                    >
+                      📅 Family Calendar
+                    </Link>
+                  )}
                   <Link
                     href="/family/create"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -385,6 +413,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               >
                 <span className="flex items-center gap-2">
                   🎮 Gamification
+                  <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse"></span>
                 </span>
                 <svg
                   className={`w-4 h-4 transform transition-transform ${expandedSections.gamification ? 'rotate-180' : ''}`}
@@ -405,7 +434,47 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                         : ''
                     }`}
                   >
-                    🏆 Overview
+                    🎮 Gamification Hub
+                  </Link>
+                  <Link
+                    href="/gamification/achievements"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/gamification/achievements')
+                        ? 'bg-yellow-500/20 border-l-4 border-yellow-400'
+                        : ''
+                    }`}
+                  >
+                    🏆 Achievements
+                  </Link>
+                  <Link
+                    href="/gamification/badges"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/gamification/badges')
+                        ? 'bg-blue-500/20 border-l-4 border-blue-400'
+                        : ''
+                    }`}
+                  >
+                    🎖️ Badges
+                  </Link>
+                  <Link
+                    href="/gamification/leaderboard"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/gamification/leaderboard')
+                        ? 'bg-green-500/20 border-l-4 border-green-400'
+                        : ''
+                    }`}
+                  >
+                    🥇 Leaderboard
+                  </Link>
+                  <Link
+                    href="/gamification/challenges"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/gamification/challenges')
+                        ? 'bg-orange-500/20 border-l-4 border-orange-400'
+                        : ''
+                    }`}
+                  >
+                    🎯 Challenges
                   </Link>
                   <Link
                     href="/gamification/history"

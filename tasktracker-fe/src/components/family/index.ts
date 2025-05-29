@@ -5,4 +5,9 @@ export { default as MembersList } from './MembersList';
 export { default as MemberDetailDialog } from './MemberDetailDialog';
 export { default as UserLookupDialog } from './UserLookupDialog';
 export { default as FamilyTaskList } from './FamilyTaskList';
-export { default as AssignTaskDialog } from './AssignTaskDialog'; 
+export { default as AssignTaskDialog } from './AssignTaskDialog';
+
+// Smart Scheduling Components
+export { default as SmartScheduler } from './SmartScheduler';
+export { default as AvailabilityMatrix } from './AvailabilityMatrix';
+export { default as CalendarBatchOperations } from './CalendarBatchOperations'; 

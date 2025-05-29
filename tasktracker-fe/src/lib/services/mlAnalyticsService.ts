@@ -43,7 +43,7 @@ export interface ModelTrainingResult {
 
 export class MLAnalyticsService {
   private static instance: MLAnalyticsService;
-  private baseUrl = '/api/v1/mlanalytics';
+  private baseUrl = '/v1/mlanalytics';
 
   public static getInstance(): MLAnalyticsService {
     if (!MLAnalyticsService.instance) {

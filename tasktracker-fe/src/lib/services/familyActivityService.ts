@@ -6,6 +6,13 @@ import {
   FamilyActivityPagedResultDTO
 } from '@/lib/types/activity';
 
+// Re-export types for external consumption
+export type {
+  FamilyActivityDTO,
+  FamilyActivityFilterDTO,
+  FamilyActivityPagedResultDTO
+};
+
 export const familyActivityService = {
   /**
    * Get all activities for a family with pagination
