@@ -276,12 +276,13 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task AddAllowedCountryAsync(string countryCode, string addedBy)
+        public Task AddAllowedCountryAsync(string countryCode, string addedBy)
         {
             try
             {
                 // Store in configuration or database
                 _logger.LogInformation($"Country {countryCode} added to allowed list by {addedBy}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -290,11 +291,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task RemoveAllowedCountryAsync(string countryCode, string removedBy)
+        public Task RemoveAllowedCountryAsync(string countryCode, string removedBy)
         {
             try
             {
                 _logger.LogInformation($"Country {countryCode} removed from allowed list by {removedBy}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -303,11 +305,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task AddBlockedCountryAsync(string countryCode, string addedBy)
+        public Task AddBlockedCountryAsync(string countryCode, string addedBy)
         {
             try
             {
                 _logger.LogWarning($"Country {countryCode} added to blocked list by {addedBy}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -316,11 +319,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task RemoveBlockedCountryAsync(string countryCode, string removedBy)
+        public Task RemoveBlockedCountryAsync(string countryCode, string removedBy)
         {
             try
             {
                 _logger.LogInformation($"Country {countryCode} removed from blocked list by {removedBy}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -329,33 +333,33 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task<List<string>> GetAllowedCountriesAsync()
+        public Task<List<string>> GetAllowedCountriesAsync()
         {
             try
             {
                 // For now, return default allowed countries
                 // In production, this would be stored in database or configuration
-                return _defaultAllowedCountries;
+                return Task.FromResult(_defaultAllowedCountries);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting allowed countries");
-                return _defaultAllowedCountries;
+                return Task.FromResult(_defaultAllowedCountries);
             }
         }
 
-        public async Task<List<string>> GetBlockedCountriesAsync()
+        public Task<List<string>> GetBlockedCountriesAsync()
         {
             try
             {
                 // For now, return high-risk countries as blocked
                 // In production, this would be stored in database or configuration
-                return _highRiskCountries;
+                return Task.FromResult(_highRiskCountries);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting blocked countries");
-                return new List<string>();
+                return Task.FromResult(new List<string>());
             }
         }
 
@@ -412,18 +416,18 @@ namespace TaskTrackerAPI.Services
             return false;
         }
 
-        private async Task<GeolocationDTO?> GetCachedLocationAsync(string ipAddress)
+        private Task<GeolocationDTO?> GetCachedLocationAsync(string ipAddress)
         {
             // Implement caching logic here if needed
             // For now, return null to always fetch fresh data
-            return null;
+            return Task.FromResult<GeolocationDTO?>(null);
         }
 
-        private async Task CacheLocationAsync(string ipAddress, GeolocationDTO location)
+        private Task CacheLocationAsync(string ipAddress, GeolocationDTO location)
         {
             // Implement caching logic here if needed
             // For now, do nothing
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         private async Task<bool> IsUnusualLocationForUserAsync(int userId, GeolocationDTO location)

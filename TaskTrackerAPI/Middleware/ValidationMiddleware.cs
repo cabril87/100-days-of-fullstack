@@ -271,9 +271,10 @@ namespace TaskTrackerAPI.Middleware
             switch (token.Type)
             {
                 case JTokenType.Object:
-                    foreach (KeyValuePair<string, JToken> prop in (JObject)token)
+                    JObject jobject = (JObject)token;
+                    foreach (KeyValuePair<string, JToken?> prop in jobject)
                     {
-                        if (!ValidateJsonToken(prop.Value, useReducedValidation))
+                        if (prop.Value != null && !ValidateJsonToken(prop.Value, useReducedValidation))
                         {
                             return false;
                         }
@@ -291,16 +292,14 @@ namespace TaskTrackerAPI.Middleware
                     break;
 
                 case JTokenType.String:
-                    string value = token.Value<string>();
-                    if (string.IsNullOrEmpty(value))
+                    string? value = token.Value<string>();
+                    if (!string.IsNullOrEmpty(value))
                     {
-                        break;
-                    }
-                    
-                    if (CheckIfPotentiallyMalicious(value, useReducedValidation))
-                    {
-                        _logger.LogWarning("Potentially malicious value in JSON body: {Value}", value);
-                        return false;
+                        if (CheckIfPotentiallyMalicious(value, useReducedValidation))
+                        {
+                            _logger.LogWarning("Potentially malicious value in JSON body: {Value}", value);
+                            return false;
+                        }
                     }
                     break;
             }

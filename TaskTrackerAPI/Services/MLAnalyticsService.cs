@@ -25,9 +25,6 @@ namespace TaskTrackerAPI.Services
         
         // Model storage
         private ITransformer? _focusSuccessModel;
-        private ITransformer? _focusDurationModel;
-        private ITransformer? _distractionModel;
-        private ITransformer? _clusteringModel;
         
         public MLAnalyticsService(ApplicationDbContext context, ILogger<MLAnalyticsService> logger)
         {

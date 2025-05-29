@@ -1066,6 +1066,137 @@ public static class GamificationSeedData
                 Category = "Absolute", PointValue = 1000000,
                 IconUrl = "/icons/achievements/onyx-absolute.svg", 
                 Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+
+            // ========== DAY 58: ADVANCED CALENDAR & SCHEDULING ACHIEVEMENTS (20 total) ==========
+            // Smart Scheduling Bronze Tier
+            new Achievement { 
+                Id = 156, Name = "Smart Scheduler", Description = "Use smart scheduling suggestions 5 times", 
+                Category = "Smart Scheduling", PointValue = 50,
+                IconUrl = "/icons/achievements/bronze-smart-scheduler.svg", 
+                Difficulty = AchievementDifficulty.Easy, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 157, Name = "Conflict Resolver", Description = "Resolve your first scheduling conflict", 
+                Category = "Conflict Resolution", PointValue = 40,
+                IconUrl = "/icons/achievements/bronze-conflict-resolver.svg", 
+                Difficulty = AchievementDifficulty.Easy, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 158, Name = "Availability Expert", Description = "Update availability for 7 consecutive days", 
+                Category = "Availability", PointValue = 75,
+                IconUrl = "/icons/achievements/bronze-availability-expert.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 159, Name = "Matrix Navigator", Description = "Use availability matrix to schedule 3 events", 
+                Category = "Availability", PointValue = 60,
+                IconUrl = "/icons/achievements/bronze-matrix-navigator.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 160, Name = "Batch Operator", Description = "Use bulk calendar operations for the first time", 
+                Category = "Efficiency", PointValue = 45,
+                IconUrl = "/icons/achievements/bronze-batch-operator.svg", 
+                Difficulty = AchievementDifficulty.Easy, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+
+            // Coordination Silver Tier
+            new Achievement { 
+                Id = 161, Name = "Perfect Scheduler", Description = "Have zero conflicts for 7 consecutive days", 
+                Category = "Perfect Scheduling", PointValue = 150,
+                IconUrl = "/icons/achievements/silver-perfect-scheduler.svg", 
+                Difficulty = AchievementDifficulty.Hard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 162, Name = "Coordination Champion", Description = "Successfully resolve 10 scheduling conflicts", 
+                Category = "Conflict Resolution", PointValue = 200,
+                IconUrl = "/icons/achievements/silver-coordination-champion.svg", 
+                Difficulty = AchievementDifficulty.Hard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 163, Name = "Batch Master", Description = "Successfully manage 20+ events in bulk operations", 
+                Category = "Efficiency", PointValue = 175,
+                IconUrl = "/icons/achievements/silver-batch-master.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 164, Name = "Optimal Planner", Description = "Select optimal time slots 25 times", 
+                Category = "Smart Scheduling", PointValue = 125,
+                IconUrl = "/icons/achievements/silver-optimal-planner.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 165, Name = "Family Harmonizer", Description = "Coordinate 50 family events without conflicts", 
+                Category = "Family Coordination", PointValue = 250,
+                IconUrl = "/icons/achievements/silver-family-harmonizer.svg", 
+                Difficulty = AchievementDifficulty.Hard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+
+            // Analytics & Insights
+            new Achievement { 
+                Id = 166, Name = "Analytics Explorer", Description = "Use scheduling analytics dashboard 10 times", 
+                Category = "Analytics", PointValue = 80,
+                IconUrl = "/icons/achievements/bronze-analytics-explorer.svg", 
+                Difficulty = AchievementDifficulty.Easy, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 167, Name = "Pattern Master", Description = "Discover and use 5 optimal scheduling patterns", 
+                Category = "Analytics", PointValue = 150,
+                IconUrl = "/icons/achievements/silver-pattern-master.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 168, Name = "Efficiency Guru", Description = "Achieve 95% scheduling efficiency for a month", 
+                Category = "Efficiency", PointValue = 300,
+                IconUrl = "/icons/achievements/gold-efficiency-guru.svg", 
+                Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+
+            // Recurring Events & Advanced Features
+            new Achievement { 
+                Id = 169, Name = "Recurrence Rookie", Description = "Create your first recurring event", 
+                Category = "Recurring Events", PointValue = 35,
+                IconUrl = "/icons/achievements/bronze-recurrence-rookie.svg", 
+                Difficulty = AchievementDifficulty.VeryEasy, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 170, Name = "Series Specialist", Description = "Manage 10 different recurring event series", 
+                Category = "Recurring Events", PointValue = 120,
+                IconUrl = "/icons/achievements/silver-series-specialist.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 171, Name = "Calendar Export Master", Description = "Export family calendar to external systems 5 times", 
+                Category = "Integration", PointValue = 90,
+                IconUrl = "/icons/achievements/silver-export-master.svg", 
+                Difficulty = AchievementDifficulty.Medium, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+
+            // Collaboration & Teamwork Gold Tier
+            new Achievement { 
+                Id = 172, Name = "Scheduling Mastermind", Description = "Coordinate complex multi-family events flawlessly", 
+                Category = "Master Coordination", PointValue = 500,
+                IconUrl = "/icons/achievements/gold-scheduling-mastermind.svg", 
+                Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 173, Name = "Temporal Architect", Description = "Design perfect scheduling systems for 100+ family members", 
+                Category = "System Design", PointValue = 750,
+                IconUrl = "/icons/achievements/gold-temporal-architect.svg", 
+                Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 174, Name = "Harmony Keeper", Description = "Maintain zero conflicts for 90 consecutive days", 
+                Category = "Perfect Harmony", PointValue = 1000,
+                IconUrl = "/icons/achievements/gold-harmony-keeper.svg", 
+                Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
+            },
+            new Achievement { 
+                Id = 175, Name = "Calendar Sage", Description = "Master all advanced calendar features and help others", 
+                Category = "Calendar Mastery", PointValue = 800,
+                IconUrl = "/icons/achievements/gold-calendar-sage.svg", 
+                Difficulty = AchievementDifficulty.VeryHard, CreatedAt = new DateTime(2025, 1, 1) 
             }
         );
     }

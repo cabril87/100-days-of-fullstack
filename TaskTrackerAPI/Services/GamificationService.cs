@@ -1889,6 +1889,25 @@ namespace TaskTrackerAPI.Services
                     case "streak_updated":
                         await ProcessStreakAchievements(userId);
                         break;
+                    // Calendar/Smart Scheduling Activity Types
+                    case "smart_scheduling_used":
+                        await ProcessSmartSchedulingAchievements(userId, relatedEntityId, additionalData);
+                        break;
+                    case "scheduling_conflict_resolved":
+                        await ProcessConflictResolutionAchievements(userId, relatedEntityId, additionalData);
+                        break;
+                    case "optimal_time_selected":
+                        await ProcessOptimalTimeAchievements(userId, relatedEntityId, additionalData);
+                        break;
+                    case "batch_calendar_operation":
+                        await ProcessBatchCalendarAchievements(userId, relatedEntityId, additionalData);
+                        break;
+                    case "availability_updated":
+                        await ProcessAvailabilityUpdateAchievements(userId, relatedEntityId, additionalData);
+                        break;
+                    case "calendar_analytics_viewed":
+                        await ProcessCalendarAnalyticsAchievements(userId, relatedEntityId, additionalData);
+                        break;
                 }
 
                 // Always check milestone and time-based achievements
@@ -2673,75 +2692,278 @@ namespace TaskTrackerAPI.Services
 
         private async Task CheckAdvancedAchievements(int userId)
         {
-            // High-tier achievements for advanced users
-            int totalTasks = await _context.PointTransactions
+            UserProgress userProgress = await GetInternalUserProgressAsync(userId);
+
+            // Deity achievement (ID 135) - 1000 completed tasks
+            int completedTaskCount = await _context.PointTransactions
                 .CountAsync(pt => pt.UserId == userId && pt.TransactionType == "task_completion");
             
-            // Advanced progress achievements
-            if (totalTasks >= 500) await CheckAndUnlockSingleAchievement(userId, 133); // Legend
-            if (totalTasks >= 750) await CheckAndUnlockSingleAchievement(userId, 134); // Myth
-            if (totalTasks >= 1000) await CheckAndUnlockSingleAchievement(userId, 135); // Deity
+            if (completedTaskCount >= 1000)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 135);
+            }
         }
 
         #endregion
 
-        #region Missing Methods from Interface
+        #region Calendar/Smart Scheduling Achievement Processing
+
+        private async Task ProcessSmartSchedulingAchievements(int userId, int familyId, Dictionary<string, object>? additionalData)
+        {
+            // Count smart scheduling usage
+            int smartSchedulingCount = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && pt.TransactionType == "smart_scheduling_used");
+
+            // Smart Scheduler achievement (ID 156) - Use smart scheduling suggestions 5 times
+            if (smartSchedulingCount >= 5)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 156);
+            }
+
+            // Award base points for using smart scheduling
+            await AddPointsAsync(userId, 15, "smart_scheduling_used", "Used smart scheduling suggestions");
+        }
+
+        private async Task ProcessConflictResolutionAchievements(int userId, int familyId, Dictionary<string, object>? additionalData)
+        {
+            // Count conflict resolutions
+            int conflictResolutionCount = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && pt.TransactionType == "scheduling_conflict_resolved");
+
+            // Conflict Resolver achievement (ID 157) - Resolve your first scheduling conflict
+            if (conflictResolutionCount == 1)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 157);
+            }
+
+            // Coordination Champion achievement (ID 162) - Successfully resolve 10 scheduling conflicts
+            if (conflictResolutionCount >= 10)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 162);
+            }
+
+            // Award points for conflict resolution
+            await AddPointsAsync(userId, 20, "scheduling_conflict_resolved", "Resolved scheduling conflict");
+        }
+
+        private async Task ProcessOptimalTimeAchievements(int userId, int eventId, Dictionary<string, object>? additionalData)
+            {
+            // Award bonus points for selecting optimal times
+            await AddPointsAsync(userId, 15, "optimal_time_selected", "Selected optimal meeting time");
+        }
+
+        private async Task ProcessBatchCalendarAchievements(int userId, int familyId, Dictionary<string, object>? additionalData)
+        {
+            if (additionalData != null && additionalData.TryGetValue("operationCount", out var countObj) && countObj is int operationCount)
+            {
+                // Count total batch operations
+                int batchOperationCount = await _context.PointTransactions
+                    .CountAsync(pt => pt.UserId == userId && pt.TransactionType == "batch_calendar_operation");
+
+                // Batch Master achievement (ID 163) - Successfully manage 20+ events in bulk operations
+                if (batchOperationCount >= 20)
+                {
+                    await CheckAndUnlockSingleAchievement(userId, 163);
+                }
+
+                // Award points based on operation count
+                int points = Math.Min(operationCount * 5, 50); // 5 points per operation, max 50
+                await AddPointsAsync(userId, points, "batch_calendar_operation", $"Performed batch operation on {operationCount} events");
+            }
+        }
+
+        private async Task ProcessAvailabilityUpdateAchievements(int userId, int familyId, Dictionary<string, object>? additionalData)
+        {
+            // Count availability updates in the last 7 days
+            DateTime weekAgo = DateTime.UtcNow.AddDays(-7);
+            int recentAvailabilityUpdates = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && 
+                                 pt.TransactionType == "availability_updated" && 
+                                 pt.CreatedAt >= weekAgo);
+
+            // Availability Expert achievement (ID 158) - Update availability for 7 consecutive days
+            if (recentAvailabilityUpdates >= 7)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 158);
+            }
+
+            // Award points for availability update
+            await AddPointsAsync(userId, 5, "availability_updated", "Updated availability");
+        }
+
+        private async Task ProcessCalendarAnalyticsAchievements(int userId, int familyId, Dictionary<string, object>? additionalData)
+        {
+            // Award points for viewing analytics
+            await AddPointsAsync(userId, 10, "calendar_analytics_viewed", "Viewed calendar analytics");
+        }
+
+        private async Task CheckPerfectSchedulerAchievement(int userId, int familyId)
+                    {
+            // This would require checking for conflicts in the family calendar for 7 consecutive days
+            // For now, we'll implement a simplified version based on conflict resolution activity
+            DateTime weekAgo = DateTime.UtcNow.AddDays(-7);
+            int recentConflicts = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && 
+                                 pt.TransactionType == "scheduling_conflict_resolved" && 
+                                 pt.CreatedAt >= weekAgo);
+
+            // If no conflicts resolved in past 7 days, assume no conflicts existed
+            if (recentConflicts == 0)
+            {
+                // Check if they have sufficient calendar activity to qualify
+                int recentCalendarActivity = await _context.PointTransactions
+                    .CountAsync(pt => pt.UserId == userId && 
+                                     (pt.TransactionType == "availability_updated" || 
+                                      pt.TransactionType == "smart_scheduling_used") && 
+                                     pt.CreatedAt >= weekAgo);
+
+                if (recentCalendarActivity >= 5) // Must have some calendar activity
+                {
+                    await CheckAndUnlockSingleAchievement(userId, 161);
+                }
+            }
+        }
+
+        private async Task CheckHarmonyKeeperAchievement(int userId, int familyId)
+        {
+            // Similar to Perfect Scheduler but for 90 days
+            DateTime threeMonthsAgo = DateTime.UtcNow.AddDays(-90);
+            int recentConflicts = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && 
+                                 pt.TransactionType == "scheduling_conflict_resolved" && 
+                                 pt.CreatedAt >= threeMonthsAgo);
+
+            if (recentConflicts == 0)
+                    {
+                // Check if they have sufficient calendar activity over 90 days
+                int recentCalendarActivity = await _context.PointTransactions
+                    .CountAsync(pt => pt.UserId == userId && 
+                                     (pt.TransactionType == "availability_updated" || 
+                                      pt.TransactionType == "smart_scheduling_used") && 
+                                     pt.CreatedAt >= threeMonthsAgo);
+
+                if (recentCalendarActivity >= 30) // Must have consistent activity
+                {
+                    await CheckAndUnlockSingleAchievement(userId, 174);
+                }
+            }
+        }
+
+        private async Task CheckSchedulingEfficiencyAchievements(int userId, int familyId)
+        {
+            // Efficiency Guru achievement (ID 168) - Achieve 95% scheduling efficiency for a month
+            // This would require integration with the actual scheduling efficiency calculations
+            // For now, we'll base it on activity patterns
+
+            DateTime monthAgo = DateTime.UtcNow.AddDays(-30);
+            int monthlyCalendarActivities = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && 
+                                 (pt.TransactionType == "smart_scheduling_used" || 
+                                  pt.TransactionType == "availability_updated" ||
+                                  pt.TransactionType == "optimal_time_selected") && 
+                                 pt.CreatedAt >= monthAgo);
+
+            int monthlyConflicts = await _context.PointTransactions
+                .CountAsync(pt => pt.UserId == userId && 
+                                 pt.TransactionType == "scheduling_conflict_resolved" && 
+                                 pt.CreatedAt >= monthAgo);
+                        
+            // High activity with low conflicts indicates good efficiency
+            if (monthlyCalendarActivities >= 20 && monthlyConflicts <= 1)
+            {
+                await CheckAndUnlockSingleAchievement(userId, 168);
+            }
+        }
+
+        #endregion
+
+        #region Challenge Progress Processing
 
         public async Task ProcessChallengeProgressAsync(int userId, string activityType, int relatedEntityId)
-        {
-            // Get user's active challenges
-            List<ChallengeProgress> challengeProgresses = await _context.ChallengeProgresses
-                .Where(cp => cp.UserId == userId && !cp.IsCompleted)
-                .ToListAsync();
-                
-            foreach (ChallengeProgress challengeProgress in challengeProgresses)
-            {
-                // Get the challenge directly since navigation property is ignored
-                Challenge? challenge = await _context.Challenges.FindAsync(challengeProgress.ChallengeId);
-                
-                // Check if this activity applies to this challenge
-                if (challenge != null && challenge.ActivityType == activityType)
-                {
-                    // For challenges related to specific entities
-                    if (challenge.TargetEntityId.HasValue && challenge.TargetEntityId.Value != relatedEntityId)
-                    {
-                        continue;
-                    }
-                    
-                    // Increment progress
-                    challengeProgress.CurrentProgress++;
-                    
-                    // Check if challenge is completed
-                    if (challengeProgress.CurrentProgress >= challenge.TargetCount)
-                    {
-                        challengeProgress.IsCompleted = true;
-                        challengeProgress.CompletedAt = DateTime.UtcNow;
-                        
-                        // Award points for completing challenge
-                        await AddPointsAsync(userId, challenge.PointReward, "challenge", $"Completed challenge: {challenge.Name}");
-                        
-                        // Check if there's a badge reward
-                        if (challenge.RewardBadgeId.HasValue)
                         {
                             try
                             {
-                                await AwardBadgeAsync(userId, challenge.RewardBadgeId.Value);
-                            }
-                            catch (InvalidOperationException)
+                // Get all active challenges for the user
+                var activeUserChallenges = await _context.ChallengeProgresses
+                    .Include(cp => cp.Challenge)
+                    .Where(cp => cp.UserId == userId && 
+                                !cp.IsCompleted &&
+                                cp.Challenge != null &&
+                                cp.Challenge.IsActive &&
+                                cp.Challenge.StartDate <= DateTime.UtcNow &&
+                                (cp.Challenge.EndDate == null || cp.Challenge.EndDate > DateTime.UtcNow))
+                    .ToListAsync();
+
+                foreach (var userChallenge in activeUserChallenges)
+                {
+                    if (userChallenge.Challenge == null) continue;
+
+                    // Check if this activity type is relevant to the challenge
+                    bool progressUpdated = false;
+                    
+                    switch (activityType)
+                    {
+                        case "task_completion":
+                            if (userChallenge.Challenge.ActivityType == "TaskCompletion" || 
+                                userChallenge.Challenge.ActivityType == "DailyTaskGoal")
                             {
-                                // Badge already awarded, ignore
+                                userChallenge.CurrentProgress++;
+                                progressUpdated = true;
                             }
-                        }
+                            break;
+                            
+                        case "focus_session":
+                            if (userChallenge.Challenge.ActivityType == "FocusChallenge")
+                            {
+                                userChallenge.CurrentProgress++;
+                                progressUpdated = true;
+                            }
+                            break;
+                            
+                        case "daily_login":
+                            if (userChallenge.Challenge.ActivityType == "LoginStreak")
+                            {
+                                userChallenge.CurrentProgress++;
+                                progressUpdated = true;
+                            }
+                            break;
+                            
+                        case "smart_scheduling_used":
+                        case "scheduling_conflict_resolved":
+                        case "availability_updated":
+                            if (userChallenge.Challenge.ActivityType == "SchedulingChallenge")
+                            {
+                                userChallenge.CurrentProgress++;
+                                progressUpdated = true;
+                            }
+                            break;
+                    }
+
+                    if (progressUpdated)
+                            {
+                        // Check if challenge is completed
+                        if (userChallenge.CurrentProgress >= userChallenge.Challenge.TargetCount && !userChallenge.IsCompleted)
+                        {
+                            userChallenge.IsCompleted = true;
+                            userChallenge.CompletedAt = DateTime.UtcNow;
+                            
+                            // Award challenge completion points
+                            await AddPointsAsync(userId, userChallenge.Challenge.PointReward, 
+                                "challenge_completion", 
+                                $"Completed challenge: {userChallenge.Challenge.Name}");
+                            
+                            _logger.LogInformation("User {UserId} completed challenge {ChallengeId}: {ChallengeName}", 
+                                userId, userChallenge.Challenge.Id, userChallenge.Challenge.Name);
                     }
                 }
             }
             
             await _context.SaveChangesAsync();
-            
-            // Check for task-related achievements
-            if (activityType == "task_completion" || activityType == "task_creation")
+            }
+            catch (Exception ex)
             {
-                await CheckAndUnlockTaskAchievements(userId, activityType, relatedEntityId);
+                _logger.LogError(ex, "Error processing challenge progress for user {UserId}, activity {ActivityType}", 
+                    userId, activityType);
             }
         }
 

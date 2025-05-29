@@ -787,6 +787,12 @@ public class SecurityMonitoringController : ControllerBase
 
             IGeolocationService geolocationService = HttpContext.RequestServices.GetRequiredService<IGeolocationService>();
             GeolocationDTO? geolocation = await geolocationService.GetLocationAsync(ipAddress);
+            
+            if (geolocation == null)
+            {
+                return NotFound(ApiResponse<GeolocationDTO>.NotFoundResponse("Geolocation data not found for the specified IP address"));
+            }
+            
             return Ok(ApiResponse<GeolocationDTO>.SuccessResponse(geolocation));
         }
         catch (Exception ex)

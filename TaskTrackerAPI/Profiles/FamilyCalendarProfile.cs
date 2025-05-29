@@ -13,6 +13,8 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TaskTrackerAPI.Profiles;
 
@@ -63,5 +65,44 @@ public class FamilyCalendarProfile : Profile
         CreateMap<UpdateFamilyMemberAvailabilityDTO, FamilyMemberAvailability>()
             .ForAllMembers(opts => opts
                 .Condition((src, dest, srcMember) => srcMember != null));
+
+        // Smart Scheduling Mappings
+        CreateMap<FamilyMember, FamilyMemberSummaryDTO>()
+            .ForMember(dest => dest.MemberId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User != null ? src.User.Username : string.Empty))
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
+            .ForMember(dest => dest.AvailabilityScore, opt => opt.MapFrom(src => 85.0)); // Default score, would be calculated
+
+        CreateMap<FamilyMember, AvailableMemberDTO>()
+            .ForMember(dest => dest.MemberId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.MemberName, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.AvailabilityStatus, opt => opt.MapFrom(src => "Available")); // Default status
+
+        CreateMap<FamilyCalendarEvent, ConflictingEventDTO>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.StartTime))
+            .ForMember(dest => dest.EndTime, opt => opt.MapFrom(src => src.EndTime))
+            .ForMember(dest => dest.AttendeeIds, opt => opt.MapFrom(src => src.Attendees.Select(a => a.FamilyMemberId)));
+
+        // Member efficiency mappings
+        CreateMap<FamilyMember, MemberEfficiencyDTO>()
+            .ForMember(dest => dest.MemberId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.MemberName, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.PersonalEfficiency, opt => opt.MapFrom(src => 85.0)) // Would be calculated
+            .ForMember(dest => dest.ConflictFreeStreak, opt => opt.MapFrom(src => 0)) // Would be calculated
+            .ForMember(dest => dest.LastConflict, opt => opt.MapFrom(src => (DateTime?)null)); // Would be calculated
+
+        // Member scheduling pattern mappings
+        CreateMap<FamilyMember, MemberSchedulingPatternDTO>()
+            .ForMember(dest => dest.MemberId, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.MemberName, opt => opt.MapFrom(src => src.Name))
+            .ForMember(dest => dest.AvailabilityScore, opt => opt.MapFrom(src => 85.0)) // Default, would be calculated
+            .ForMember(dest => dest.EventsCreated, opt => opt.MapFrom(src => 0)) // Would be calculated
+            .ForMember(dest => dest.ConflictsGenerated, opt => opt.MapFrom(src => 0)) // Would be calculated
+            .ForMember(dest => dest.ResponseRate, opt => opt.MapFrom(src => 100.0)) // Default, would be calculated
+            .ForMember(dest => dest.PreferredTimes, opt => opt.MapFrom(src => new List<TimeRangeDTO>()))
+            .ForMember(dest => dest.BusyPatterns, opt => opt.MapFrom(src => new List<string>()));
     }
 } 

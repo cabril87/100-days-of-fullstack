@@ -384,6 +384,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             // Get filtered logs for performance calculations (excluding WebSocket connections)
             List<SecurityAuditLog> apiAuditLogs = await _context.SecurityAuditLogs
                 .Where(log => log.Timestamp >= yesterday &&
+                             log.Resource != null &&
                              !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
                              !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
                              log.EventType == "API_REQUEST") // Only include normal API requests
@@ -810,18 +811,18 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         }
     }
 
-    private async Task<List<CircuitBreakerStatusDTO>> GetEnhancedCircuitBreakerStatus()
+    private Task<List<CircuitBreakerStatusDTO>> GetEnhancedCircuitBreakerStatus()
     {
         try
         {
             // Get actual circuit breaker data only
-            List<CircuitBreakerStatusDTO> circuitBreakers =GetCircuitBreakerStatus();
-            return circuitBreakers;
+            List<CircuitBreakerStatusDTO> circuitBreakers = GetCircuitBreakerStatus();
+            return Task.FromResult(circuitBreakers);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting enhanced circuit breaker status");
-            return new List<CircuitBreakerStatusDTO>();
+            return Task.FromResult(new List<CircuitBreakerStatusDTO>());
         }
     }
 
@@ -867,6 +868,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 .Where(log => log.Timestamp >= yesterday && 
                              log.Details != null && 
                              log.Details.Contains("Elapsed:") &&
+                             log.Resource != null &&
                              !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
                              !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
                              log.EventType != "SECURITY_THREAT" && // Exclude threat logs
@@ -1003,6 +1005,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 .Where(log => log.Timestamp >= yesterday && 
                              log.Details != null && 
                              log.Details.Contains("Elapsed:") &&
+                             log.Resource != null &&
                              !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
                              !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
                              log.EventType == "API_REQUEST") // Only include normal API requests

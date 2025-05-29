@@ -237,6 +237,7 @@ public class Program
         
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
+        builder.Services.AddScoped<ISmartSchedulingService, SmartSchedulingService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
         
         builder.Services.AddScoped<IGamificationService, GamificationService>();
@@ -266,6 +267,9 @@ public class Program
         
         // Register notification real-time service
         builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
+        
+        // Register calendar real-time service
+        builder.Services.AddScoped<ICalendarRealTimeService, CalendarRealTimeService>();
         
         // Register task synchronization service
         builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
@@ -666,6 +670,7 @@ public class Program
         app.MapHub<TaskHub>("/hubs/tasks");
         app.MapHub<NotificationHub>("/hubs/notifications");
         app.MapHub<GamificationHub>("/hubs/gamification");
+        app.MapHub<CalendarHub>("/hubs/calendar");
 
         // Add health check endpoint for Docker
         app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));

@@ -876,7 +876,7 @@ namespace TaskTrackerAPI.Controllers.V1
 
             try
             {
-                // Get focus sessions for the date range
+                // Get focus sessions for the date range with all necessary includes
                 var sessions = await _context.FocusSessions
                     .Where(fs => fs.UserId == userId && 
                                  fs.StartTime >= start && 
@@ -884,6 +884,7 @@ namespace TaskTrackerAPI.Controllers.V1
                                  fs.EndTime.HasValue)
                     .Include(fs => fs.TaskItem)
                         .ThenInclude(t => t != null ? t.Category : null)
+                    .Include(fs => fs.Distractions) // Include distractions for correlation analysis
                     .OrderBy(fs => fs.StartTime)
                     .ToListAsync();
 
@@ -896,6 +897,8 @@ namespace TaskTrackerAPI.Controllers.V1
                         {
                             HourlyQualityRatings = new Dictionary<int, double>(),
                             HourlySessionCounts = new Dictionary<int, int>(),
+                            HourlyAverageLength = new Dictionary<int, double>(),
+                            HourlyCompletionRates = new Dictionary<int, double>(),
                             BestFocusHour = 9, // Default suggestion
                             WorstFocusHour = 15,
                             BestHourQuality = 0,
@@ -946,7 +949,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting productivity insights for user {UserId}", userId);
+                _logger.LogError(ex, "Error getting productivity insights for user {UserId}. Start: {StartDate}, End: {EndDate}", userId, start, end);
                 return ApiServerError<ProductivityInsightsDto>("Failed to retrieve productivity insights");
             }
         }
@@ -1054,12 +1057,15 @@ namespace TaskTrackerAPI.Controllers.V1
             // Calculate productivity impact
             if (sessions.Count >= 10)
             {
-                var avgQuality = sessions.Where(s => s.SessionQualityRating.HasValue)
-                                       .Average(s => s.SessionQualityRating.Value);
-                var avgLength = sessions.Average(s => s.DurationMinutes);
-                
-                // Simple productivity impact calculation
-                streakData.StreakImpactOnProductivity = (avgQuality - 3) * 10 + (avgLength - 25) * 0.5;
+                var sessionsWithQuality = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
+                if (sessionsWithQuality.Any())
+                {
+                    var avgQuality = sessionsWithQuality.Average(s => s.SessionQualityRating!.Value);
+                    var avgLength = sessions.Average(s => s.DurationMinutes);
+                    
+                    // Simple productivity impact calculation
+                    streakData.StreakImpactOnProductivity = (avgQuality - 3) * 10 + (avgLength - 25) * 0.5;
+                }
             }
 
             return streakData;
@@ -1075,11 +1081,11 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 // Session length vs quality correlation
                 var lengths = qualitySessions.Select(s => (double)s.DurationMinutes).ToArray();
-                var qualities = qualitySessions.Select(s => (double)s.SessionQualityRating.Value).ToArray();
+                var qualities = qualitySessions.Select(s => (double)s.SessionQualityRating!.Value).ToArray();
                 insights.SessionLengthQualityCorrelation = CalculateCorrelation(lengths, qualities);
 
-                // Distractions vs quality correlation
-                var distractionCounts = qualitySessions.Select(s => (double)s.Distractions.Count).ToArray();
+                // Distractions vs quality correlation - handle potential null collections
+                var distractionCounts = qualitySessions.Select(s => (double)(s.Distractions?.Count ?? 0)).ToArray();
                 insights.DistractionQualityCorrelation = CalculateCorrelation(distractionCounts, qualities);
 
                 // Task progress vs quality correlation
@@ -1091,7 +1097,7 @@ namespace TaskTrackerAPI.Controllers.V1
                         .ToArray();
                     
                     var progressQualities = progressSessions
-                        .Select(s => (double)s.SessionQualityRating.Value)
+                        .Select(s => (double)s.SessionQualityRating!.Value)
                         .ToArray();
                     
                     insights.TaskProgressSessionQualityCorrelation = CalculateCorrelation(progressChanges, progressQualities);
@@ -1123,12 +1129,16 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             var insights = new TaskTypeFocusInsights();
             
-            var taskSessions = sessions.Where(s => s.TaskItem != null && s.TaskItem.Category != null && !string.IsNullOrEmpty(s.TaskItem.Category.Name)).ToList();
+            // Filter sessions with valid task items and categories, handling nulls safely
+            var taskSessions = sessions.Where(s => 
+                s.TaskItem?.Category?.Name != null && 
+                !string.IsNullOrWhiteSpace(s.TaskItem.Category.Name)
+            ).ToList();
             
             if (taskSessions.Any())
             {
                 var categoryData = taskSessions
-                    .GroupBy(s => s.TaskItem.Category.Name)
+                    .GroupBy(s => s.TaskItem!.Category!.Name!)
                     .ToDictionary(g => g.Key, g => new {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue)
@@ -1149,9 +1159,21 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (categoryData.Any())
                 {
-                    insights.MostFocusedCategory = categoryData.OrderByDescending(kv => kv.Value.Count).First().Key;
-                    insights.HighestQualityCategory = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First().Key;
+                    var mostFocused = categoryData.OrderByDescending(kv => kv.Value.Count).First();
+                    var highestQuality = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                    
+                    insights.MostFocusedCategory = mostFocused.Key;
+                    insights.HighestQualityCategory = highestQuality.Key;
                 }
+            }
+            else
+            {
+                // Ensure all properties are initialized even when no data is available
+                insights.CategorySessionCounts = new Dictionary<string, int>();
+                insights.CategoryAverageQuality = new Dictionary<string, double>();
+                insights.CategoryEffectiveness = new Dictionary<string, double>();
+                insights.MostFocusedCategory = string.Empty;
+                insights.HighestQualityCategory = string.Empty;
             }
 
             return insights;
@@ -1161,90 +1183,138 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             var recommendations = new List<ProductivityRecommendation>();
 
+            if (!sessions.Any()) return recommendations;
+
+            // Calculate time of day insights for best time recommendation
+            var hourlyData = sessions
+                .GroupBy(s => s.StartTime.Hour)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new {
+                        Count = g.Count(),
+                        AvgQuality = g.Where(s => s.SessionQualityRating.HasValue).DefaultIfEmpty()
+                                   .Average(s => s?.SessionQualityRating ?? 0)
+                    });
+
             // Best time recommendation
-            if (sessions.Any())
+            if (hourlyData.Any())
             {
-                var bestHour = sessions.First().StartTime.Hour;
+                var bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
                 recommendations.Add(new ProductivityRecommendation
                 {
                     Id = "best-time",
                     Title = "Optimal Focus Time",
-                    Description = $"Schedule your most important tasks around {bestHour}:00. This is when your focus quality peaks at {sessions.First().SessionQualityRating:F1}/5.",
+                    Description = $"Schedule your most important tasks around {bestHour.Key}:00. This is when your focus quality peaks at {bestHour.Value.AvgQuality:F1}/5.",
                     Category = "Timing",
-                    Priority = 1
+                    Priority = 1,
+                    Data = new Dictionary<string, object> { { "bestHour", bestHour.Key }, { "avgQuality", bestHour.Value.AvgQuality } }
                 });
             }
 
             // Streak building recommendation
-            if (sessions.Count < 7)
+            var uniqueDays = sessions.Select(s => s.StartTime.Date).Distinct().Count();
+            if (uniqueDays < 7)
             {
                 recommendations.Add(new ProductivityRecommendation
                 {
                     Id = "build-streak",
                     Title = "Build Your Focus Streak",
-                    Description = $"You're at {sessions.Count} days. Aim for daily focus sessions to build momentum and improve productivity.",
+                    Description = $"You're at {uniqueDays} days. Aim for daily focus sessions to build momentum and improve productivity.",
                     Category = "Habits",
-                    Priority = 2
+                    Priority = 2,
+                    Data = new Dictionary<string, object> { { "currentDays", uniqueDays }, { "targetDays", 7 } }
                 });
             }
 
             // Session length optimization
-            if (sessions.Any())
-            {
                 var avgLength = sessions.Average(s => s.DurationMinutes);
-                if (avgLength < 25)
+            var qualitySessions = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
+            
+            if (qualitySessions.Any())
+            {
+                var avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
+                
+                if (avgLength < 25 && avgQuality >= 3.5)
+                {
+                    recommendations.Add(new ProductivityRecommendation
+                    {
+                        Id = "extend-sessions",
+                        Title = "Try Longer Sessions",
+                        Description = "Your short sessions have good quality. Consider extending to 25-45 minutes for even better productivity.",
+                        Category = "Duration",
+                        Priority = 2,
+                        Data = new Dictionary<string, object> { { "currentAvgLength", avgLength }, { "suggestedLength", 30 } }
+                    });
+                }
+                else if (avgLength > 60 && avgQuality < 3.0)
                 {
                     recommendations.Add(new ProductivityRecommendation
                     {
                         Id = "shorter-sessions",
                         Title = "Try Shorter Sessions",
-                        Description = "Your data shows that shorter sessions tend to have higher quality. Consider 25-45 minute focused sessions.",
+                        Description = "Your longer sessions tend to have lower quality. Consider shorter, more focused 25-45 minute sessions.",
                         Category = "Duration",
-                        Priority = 2
-                    });
-                }
-                else if (avgLength > 60)
-                {
-                    recommendations.Add(new ProductivityRecommendation
-                    {
-                        Id = "longer-sessions",
-                        Title = "Extend Your Sessions",
-                        Description = "You perform better in longer sessions. Consider extending your focus time to 60-90 minutes.",
-                        Category = "Duration",
-                        Priority = 2
+                        Priority = 2,
+                        Data = new Dictionary<string, object> { { "currentAvgLength", avgLength }, { "suggestedLength", 30 } }
                     });
                 }
             }
 
             // Distraction management
-            if (sessions.Any())
-            {
-                var avgDistractions = sessions.Average(s => s.Distractions.Count);
-                if (avgDistractions > 5)
+            var avgDistractions = sessions.Average(s => s.Distractions?.Count ?? 0);
+            if (avgDistractions > 3)
                 {
                     recommendations.Add(new ProductivityRecommendation
                     {
                         Id = "reduce-distractions",
                         Title = "Minimize Distractions",
-                        Description = "Distractions significantly impact your focus quality. Try using Do Not Disturb mode or working in a quieter environment.",
+                    Description = $"You average {avgDistractions:F1} distractions per session. Try using Do Not Disturb mode or working in a quieter environment.",
                         Category = "Environment",
-                        Priority = 1
+                    Priority = 1,
+                    Data = new Dictionary<string, object> { { "avgDistractions", avgDistractions } }
+                    });
+            }
+
+            // Category-based recommendations
+            var taskSessions = sessions.Where(s => s.TaskItem?.Category?.Name != null).ToList();
+            if (taskSessions.Any())
+            {
+                var categoryPerformance = taskSessions
+                    .Where(s => s.SessionQualityRating.HasValue)
+                    .GroupBy(s => s.TaskItem!.Category!.Name)
+                    .ToDictionary(g => g.Key, g => g.Average(s => s.SessionQualityRating!.Value));
+
+                if (categoryPerformance.Any())
+                {
+                    var bestCategory = categoryPerformance.OrderByDescending(kv => kv.Value).First();
+                    recommendations.Add(new ProductivityRecommendation
+                    {
+                        Id = "focus-category",
+                        Title = "Leverage Your Strengths",
+                        Description = $"You're most effective with {bestCategory.Key} tasks (avg quality: {bestCategory.Value:F1}/5). Consider scheduling these during your peak focus times.",
+                        Category = "Task Planning",
+                        Priority = 3,
+                        Data = new Dictionary<string, object> { { "bestCategory", bestCategory.Key }, { "avgQuality", bestCategory.Value } }
                     });
                 }
             }
 
-            // Category-based recommendations
-            if (sessions.Any())
+            // Quality improvement recommendation
+            if (qualitySessions.Any())
             {
-                var bestCategory = sessions.First().TaskItem.Category.Name;
-                recommendations.Add(new ProductivityRecommendation
+                var avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
+                if (avgQuality < 3.0)
                 {
-                    Id = "focus-category",
-                    Title = "Leverage Your Strengths",
-                    Description = $"You're most effective with {bestCategory} tasks. Consider scheduling these during your peak focus times.",
-                    Category = "Task Planning",
-                    Priority = 3
-                });
+                    recommendations.Add(new ProductivityRecommendation
+                    {
+                        Id = "improve-quality",
+                        Title = "Focus on Session Quality",
+                        Description = "Your average session quality is below 3.0. Try preparing better before sessions and eliminating distractions.",
+                        Category = "Quality",
+                        Priority = 1,
+                        Data = new Dictionary<string, object> { { "avgQuality", avgQuality } }
+                    });
+                }
             }
 
             return recommendations.OrderBy(r => r.Priority).ToList();

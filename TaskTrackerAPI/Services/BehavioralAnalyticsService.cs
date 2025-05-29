@@ -310,7 +310,7 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task<bool> UpdateUserBaselineAsync(int userId)
+        public Task<bool> UpdateUserBaselineAsync(int userId)
         {
             try
             {
@@ -323,12 +323,12 @@ namespace TaskTrackerAPI.Services
                 // 2. Store it in a UserBaseline table
                 // 3. Use it for future anomaly detection
                 
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating user baseline for user {UserId}", userId);
-                return false;
+                return Task.FromResult(false);
             }
         }
 
@@ -899,7 +899,7 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        private async Task<(string Country, string City)> GetLocationAsync(string ipAddress)
+        private Task<(string Country, string City)> GetLocationAsync(string ipAddress)
         {
             try
             {
@@ -911,17 +911,17 @@ namespace TaskTrackerAPI.Services
                     ipAddress.StartsWith("172.16.") || ipAddress.StartsWith("127.") ||
                     ipAddress == "::1" || ipAddress == "localhost")
                 {
-                    return ("Local", "Local");
+                    return Task.FromResult(("Local", "Local"));
                 }
                 
                 // For demonstration, return a default location
                 // In production, integrate with ip-api.com, MaxMind, or similar service
-                return ("Unknown", "Unknown");
+                return Task.FromResult(("Unknown", "Unknown"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting location for IP {IPAddress}", ipAddress);
-                return ("Unknown", "Unknown");
+                return Task.FromResult(("Unknown", "Unknown"));
             }
         }
     }

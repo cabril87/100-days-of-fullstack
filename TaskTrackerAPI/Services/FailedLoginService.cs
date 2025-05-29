@@ -260,11 +260,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task LockAccountAsync(string emailOrUsername, string reason)
+        public Task LockAccountAsync(string emailOrUsername, string reason)
         {
             try
             {
                 _logger.LogWarning($"Account {emailOrUsername} locked. Reason: {reason}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -320,11 +321,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task BlockIPAsync(string ipAddress, string reason, string blockedBy)
+        public Task BlockIPAsync(string ipAddress, string reason, string blockedBy)
         {
             try
             {
                 _logger.LogWarning($"IP {ipAddress} blocked by {blockedBy}. Reason: {reason}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -333,11 +335,12 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        public async Task UnblockIPAsync(string ipAddress, string unblockedBy)
+        public Task UnblockIPAsync(string ipAddress, string unblockedBy)
         {
             try
             {
                 _logger.LogInformation($"IP {ipAddress} unblocked by {unblockedBy}");
+                return Task.CompletedTask;
             }
             catch (Exception ex)
             {
