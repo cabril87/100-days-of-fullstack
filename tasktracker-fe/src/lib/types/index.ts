@@ -22,6 +22,7 @@ export * from './calendar';
 export * from './focus';
 export * from './notification';
 export * from './gamification';
+export * from './analytics';
 
 // Technical types
 export * from './signalr';

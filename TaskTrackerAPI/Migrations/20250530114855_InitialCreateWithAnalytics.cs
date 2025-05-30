@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskTrackerAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateWithAnalytics : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -374,6 +374,24 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AnalyticsQueries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    QueryName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    QueryType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Parameters = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ExecutionTime = table.Column<double>(type: "float", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AnalyticsQueries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Boards",
                 columns: table => new
                 {
@@ -467,6 +485,46 @@ namespace TaskTrackerAPI.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ChecklistTemplateItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DashboardWidgets",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    WidgetType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Position = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Configuration = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DashboardWidgets", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DataExportRequests",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    ExportType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    DateRange = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Filters = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    FilePath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DataExportRequests", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -809,6 +867,31 @@ namespace TaskTrackerAPI.Migrations
                     table.PrimaryKey("PK_RefreshTokens", x => x.Id);
                     table.ForeignKey(
                         name: "FK_RefreshTokens_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SavedFilters",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    FilterCriteria = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    QueryType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    IsPublic = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SavedFilters", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SavedFilters_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -1656,7 +1739,27 @@ namespace TaskTrackerAPI.Migrations
                     { 152, "Origin", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Become the source of all productivity", 4, null, "/icons/achievements/onyx-source-code.svg", false, "Source Code", 250000, 0 },
                     { 153, "Unity", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Achieve unity with productivity itself", 4, null, "/icons/achievements/onyx-one.svg", false, "One", 500000, 0 },
                     { 154, "Transcendence", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Walk between realities", 4, null, "/icons/achievements/onyx-void-walker.svg", false, "Void Walker", 750000, 0 },
-                    { 155, "Absolute", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Become the absolute form of productivity", 4, null, "/icons/achievements/onyx-absolute.svg", false, "The Absolute", 1000000, 0 }
+                    { 155, "Absolute", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Become the absolute form of productivity", 4, null, "/icons/achievements/onyx-absolute.svg", false, "The Absolute", 1000000, 0 },
+                    { 156, "Smart Scheduling", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Use smart scheduling suggestions 5 times", 1, null, "/icons/achievements/bronze-smart-scheduler.svg", false, "Smart Scheduler", 50, 0 },
+                    { 157, "Conflict Resolution", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Resolve your first scheduling conflict", 1, null, "/icons/achievements/bronze-conflict-resolver.svg", false, "Conflict Resolver", 40, 0 },
+                    { 158, "Availability", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Update availability for 7 consecutive days", 2, null, "/icons/achievements/bronze-availability-expert.svg", false, "Availability Expert", 75, 0 },
+                    { 159, "Availability", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Use availability matrix to schedule 3 events", 2, null, "/icons/achievements/bronze-matrix-navigator.svg", false, "Matrix Navigator", 60, 0 },
+                    { 160, "Efficiency", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Use bulk calendar operations for the first time", 1, null, "/icons/achievements/bronze-batch-operator.svg", false, "Batch Operator", 45, 0 },
+                    { 161, "Perfect Scheduling", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Have zero conflicts for 7 consecutive days", 3, null, "/icons/achievements/silver-perfect-scheduler.svg", false, "Perfect Scheduler", 150, 0 },
+                    { 162, "Conflict Resolution", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Successfully resolve 10 scheduling conflicts", 3, null, "/icons/achievements/silver-coordination-champion.svg", false, "Coordination Champion", 200, 0 },
+                    { 163, "Efficiency", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Successfully manage 20+ events in bulk operations", 2, null, "/icons/achievements/silver-batch-master.svg", false, "Batch Master", 175, 0 },
+                    { 164, "Smart Scheduling", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Select optimal time slots 25 times", 2, null, "/icons/achievements/silver-optimal-planner.svg", false, "Optimal Planner", 125, 0 },
+                    { 165, "Family Coordination", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Coordinate 50 family events without conflicts", 3, null, "/icons/achievements/silver-family-harmonizer.svg", false, "Family Harmonizer", 250, 0 },
+                    { 166, "Analytics", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Use scheduling analytics dashboard 10 times", 1, null, "/icons/achievements/bronze-analytics-explorer.svg", false, "Analytics Explorer", 80, 0 },
+                    { 167, "Analytics", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Discover and use 5 optimal scheduling patterns", 2, null, "/icons/achievements/silver-pattern-master.svg", false, "Pattern Master", 150, 0 },
+                    { 168, "Efficiency", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Achieve 95% scheduling efficiency for a month", 4, null, "/icons/achievements/gold-efficiency-guru.svg", false, "Efficiency Guru", 300, 0 },
+                    { 169, "Recurring Events", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Create your first recurring event", 0, null, "/icons/achievements/bronze-recurrence-rookie.svg", false, "Recurrence Rookie", 35, 0 },
+                    { 170, "Recurring Events", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Manage 10 different recurring event series", 2, null, "/icons/achievements/silver-series-specialist.svg", false, "Series Specialist", 120, 0 },
+                    { 171, "Integration", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Export family calendar to external systems 5 times", 2, null, "/icons/achievements/silver-export-master.svg", false, "Calendar Export Master", 90, 0 },
+                    { 172, "Master Coordination", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Coordinate complex multi-family events flawlessly", 4, null, "/icons/achievements/gold-scheduling-mastermind.svg", false, "Scheduling Mastermind", 500, 0 },
+                    { 173, "System Design", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Design perfect scheduling systems for 100+ family members", 4, null, "/icons/achievements/gold-temporal-architect.svg", false, "Temporal Architect", 750, 0 },
+                    { 174, "Perfect Harmony", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Maintain zero conflicts for 90 consecutive days", 4, null, "/icons/achievements/gold-harmony-keeper.svg", false, "Harmony Keeper", 1000, 0 },
+                    { 175, "Calendar Mastery", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "", "Master all advanced calendar features and help others", 4, null, "/icons/achievements/gold-calendar-sage.svg", false, "Calendar Sage", 800, 0 }
                 });
 
             migrationBuilder.InsertData(
@@ -1795,6 +1898,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "FamilyId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AnalyticsQueries_UserId",
+                table: "AnalyticsQueries",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Boards_UserId",
                 table: "Boards",
                 column: "UserId");
@@ -1823,6 +1931,16 @@ namespace TaskTrackerAPI.Migrations
                 name: "IX_ChecklistTemplateItems_TaskTemplateId",
                 table: "ChecklistTemplateItems",
                 column: "TaskTemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DashboardWidgets_UserId",
+                table: "DashboardWidgets",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DataExportRequests_UserId",
+                table: "DataExportRequests",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Distractions_FocusSessionId",
@@ -2000,6 +2118,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_SavedFilters_UserId",
+                table: "SavedFilters",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_SecurityAuditLogs_UserId",
                 table: "SecurityAuditLogs",
                 column: "UserId");
@@ -2149,6 +2272,14 @@ namespace TaskTrackerAPI.Migrations
                 principalColumn: "Id");
 
             migrationBuilder.AddForeignKey(
+                name: "FK_AnalyticsQueries_Users_UserId",
+                table: "AnalyticsQueries",
+                column: "UserId",
+                principalTable: "Users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
                 name: "FK_Boards_Users_UserId",
                 table: "Boards",
                 column: "UserId",
@@ -2188,6 +2319,22 @@ namespace TaskTrackerAPI.Migrations
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
+                name: "FK_DashboardWidgets_Users_UserId",
+                table: "DashboardWidgets",
+                column: "UserId",
+                principalTable: "Users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_DataExportRequests_Users_UserId",
+                table: "DataExportRequests",
+                column: "UserId",
+                principalTable: "Users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
                 name: "FK_Distractions_FocusSessions_FocusSessionId",
                 table: "Distractions",
                 column: "FocusSessionId",
@@ -2212,6 +2359,9 @@ namespace TaskTrackerAPI.Migrations
                 table: "Users");
 
             migrationBuilder.DropTable(
+                name: "AnalyticsQueries");
+
+            migrationBuilder.DropTable(
                 name: "BehavioralAnalytics");
 
             migrationBuilder.DropTable(
@@ -2222,6 +2372,12 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "ChecklistTemplateItems");
+
+            migrationBuilder.DropTable(
+                name: "DashboardWidgets");
+
+            migrationBuilder.DropTable(
+                name: "DataExportRequests");
 
             migrationBuilder.DropTable(
                 name: "Distractions");
@@ -2276,6 +2432,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "Reminders");
+
+            migrationBuilder.DropTable(
+                name: "SavedFilters");
 
             migrationBuilder.DropTable(
                 name: "SecurityAuditLogs");

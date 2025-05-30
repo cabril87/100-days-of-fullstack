@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250528215325_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250530114855_InitialCreateWithAnalytics")]
+    partial class InitialCreateWithAnalytics
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,187 @@ namespace TaskTrackerAPI.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.AnalyticsQuery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<double>("ExecutionTime")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QueryName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("QueryType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AnalyticsQueries");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.DashboardWidget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Configuration")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WidgetType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DashboardWidgets");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.DataExportRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("DateRange")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ExportType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("FilePath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Filters")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DataExportRequests");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.SavedFilter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("FilterCriteria")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("QueryType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SavedFilters");
+                });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.AuditLog", b =>
                 {
@@ -3822,6 +4003,286 @@ namespace TaskTrackerAPI.Migrations
                             Name = "The Absolute",
                             PointValue = 1000000,
                             Scope = 0
+                        },
+                        new
+                        {
+                            Id = 156,
+                            Category = "Smart Scheduling",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Use smart scheduling suggestions 5 times",
+                            Difficulty = 1,
+                            IconUrl = "/icons/achievements/bronze-smart-scheduler.svg",
+                            IsDeleted = false,
+                            Name = "Smart Scheduler",
+                            PointValue = 50,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 157,
+                            Category = "Conflict Resolution",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Resolve your first scheduling conflict",
+                            Difficulty = 1,
+                            IconUrl = "/icons/achievements/bronze-conflict-resolver.svg",
+                            IsDeleted = false,
+                            Name = "Conflict Resolver",
+                            PointValue = 40,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 158,
+                            Category = "Availability",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Update availability for 7 consecutive days",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/bronze-availability-expert.svg",
+                            IsDeleted = false,
+                            Name = "Availability Expert",
+                            PointValue = 75,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 159,
+                            Category = "Availability",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Use availability matrix to schedule 3 events",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/bronze-matrix-navigator.svg",
+                            IsDeleted = false,
+                            Name = "Matrix Navigator",
+                            PointValue = 60,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 160,
+                            Category = "Efficiency",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Use bulk calendar operations for the first time",
+                            Difficulty = 1,
+                            IconUrl = "/icons/achievements/bronze-batch-operator.svg",
+                            IsDeleted = false,
+                            Name = "Batch Operator",
+                            PointValue = 45,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 161,
+                            Category = "Perfect Scheduling",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Have zero conflicts for 7 consecutive days",
+                            Difficulty = 3,
+                            IconUrl = "/icons/achievements/silver-perfect-scheduler.svg",
+                            IsDeleted = false,
+                            Name = "Perfect Scheduler",
+                            PointValue = 150,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 162,
+                            Category = "Conflict Resolution",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Successfully resolve 10 scheduling conflicts",
+                            Difficulty = 3,
+                            IconUrl = "/icons/achievements/silver-coordination-champion.svg",
+                            IsDeleted = false,
+                            Name = "Coordination Champion",
+                            PointValue = 200,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 163,
+                            Category = "Efficiency",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Successfully manage 20+ events in bulk operations",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/silver-batch-master.svg",
+                            IsDeleted = false,
+                            Name = "Batch Master",
+                            PointValue = 175,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 164,
+                            Category = "Smart Scheduling",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Select optimal time slots 25 times",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/silver-optimal-planner.svg",
+                            IsDeleted = false,
+                            Name = "Optimal Planner",
+                            PointValue = 125,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 165,
+                            Category = "Family Coordination",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Coordinate 50 family events without conflicts",
+                            Difficulty = 3,
+                            IconUrl = "/icons/achievements/silver-family-harmonizer.svg",
+                            IsDeleted = false,
+                            Name = "Family Harmonizer",
+                            PointValue = 250,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 166,
+                            Category = "Analytics",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Use scheduling analytics dashboard 10 times",
+                            Difficulty = 1,
+                            IconUrl = "/icons/achievements/bronze-analytics-explorer.svg",
+                            IsDeleted = false,
+                            Name = "Analytics Explorer",
+                            PointValue = 80,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 167,
+                            Category = "Analytics",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Discover and use 5 optimal scheduling patterns",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/silver-pattern-master.svg",
+                            IsDeleted = false,
+                            Name = "Pattern Master",
+                            PointValue = 150,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 168,
+                            Category = "Efficiency",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Achieve 95% scheduling efficiency for a month",
+                            Difficulty = 4,
+                            IconUrl = "/icons/achievements/gold-efficiency-guru.svg",
+                            IsDeleted = false,
+                            Name = "Efficiency Guru",
+                            PointValue = 300,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 169,
+                            Category = "Recurring Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Create your first recurring event",
+                            Difficulty = 0,
+                            IconUrl = "/icons/achievements/bronze-recurrence-rookie.svg",
+                            IsDeleted = false,
+                            Name = "Recurrence Rookie",
+                            PointValue = 35,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 170,
+                            Category = "Recurring Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Manage 10 different recurring event series",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/silver-series-specialist.svg",
+                            IsDeleted = false,
+                            Name = "Series Specialist",
+                            PointValue = 120,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 171,
+                            Category = "Integration",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Export family calendar to external systems 5 times",
+                            Difficulty = 2,
+                            IconUrl = "/icons/achievements/silver-export-master.svg",
+                            IsDeleted = false,
+                            Name = "Calendar Export Master",
+                            PointValue = 90,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 172,
+                            Category = "Master Coordination",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Coordinate complex multi-family events flawlessly",
+                            Difficulty = 4,
+                            IconUrl = "/icons/achievements/gold-scheduling-mastermind.svg",
+                            IsDeleted = false,
+                            Name = "Scheduling Mastermind",
+                            PointValue = 500,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 173,
+                            Category = "System Design",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Design perfect scheduling systems for 100+ family members",
+                            Difficulty = 4,
+                            IconUrl = "/icons/achievements/gold-temporal-architect.svg",
+                            IsDeleted = false,
+                            Name = "Temporal Architect",
+                            PointValue = 750,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 174,
+                            Category = "Perfect Harmony",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Maintain zero conflicts for 90 consecutive days",
+                            Difficulty = 4,
+                            IconUrl = "/icons/achievements/gold-harmony-keeper.svg",
+                            IsDeleted = false,
+                            Name = "Harmony Keeper",
+                            PointValue = 1000,
+                            Scope = 0
+                        },
+                        new
+                        {
+                            Id = 175,
+                            Category = "Calendar Mastery",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Criteria = "",
+                            Description = "Master all advanced calendar features and help others",
+                            Difficulty = 4,
+                            IconUrl = "/icons/achievements/gold-calendar-sage.svg",
+                            IsDeleted = false,
+                            Name = "Calendar Sage",
+                            PointValue = 800,
+                            Scope = 0
                         });
                 });
 
@@ -6621,6 +7082,50 @@ namespace TaskTrackerAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserSessions");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.AnalyticsQuery", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.DashboardWidget", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.DataExportRequest", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.SavedFilter", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Board", b =>

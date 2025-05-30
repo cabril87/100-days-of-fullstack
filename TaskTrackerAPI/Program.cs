@@ -53,6 +53,7 @@ using System;
 using System.Net.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.ResponseCompression;
 
 namespace TaskTrackerAPI;
 
@@ -333,22 +334,33 @@ public class Program
         // Register ML Analytics Service
         builder.Services.AddScoped<IMLAnalyticsService, MLAnalyticsService>();
 
+        // Register Advanced Analytics Service (Day 59)
+        builder.Services.AddScoped<IAdvancedAnalyticsService, TaskTrackerAPI.Services.Analytics.AdvancedAnalyticsService>();
+
+        // Register Analytics repositories and services (Day 59)
+        builder.Services.AddScoped<ISavedFilterRepository, SavedFilterRepository>();
+        builder.Services.AddScoped<ISavedFilterService, SavedFilterService>();
+        builder.Services.AddScoped<IDataExportRepository, DataExportRepository>();
+        builder.Services.AddScoped<IDataExportService, DataExportService>();
+        builder.Services.AddScoped<IDashboardWidgetRepository, DashboardWidgetRepository>();
+        builder.Services.AddScoped<IDataVisualizationService, DataVisualizationService>();
+
         // Add response compression
         builder.Services.AddResponseCompression(options =>
         {
             options.EnableForHttps = true;
-            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
-            options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
         });
 
         // Configure Brotli compression level
-        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(options =>
+        builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
         {
             options.Level = System.IO.Compression.CompressionLevel.Optimal;
         });
 
         // Configure Gzip compression level
-        builder.Services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(options =>
+        builder.Services.Configure<GzipCompressionProviderOptions>(options =>
         {
             options.Level = System.IO.Compression.CompressionLevel.Optimal;
         });

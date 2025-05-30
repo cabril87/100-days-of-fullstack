@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore.Metadata;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Models.Analytics;
 
 namespace TaskTrackerAPI.Data;
 
@@ -122,6 +123,12 @@ public class ApplicationDbContext : DbContext
     // Advanced security entities
     public DbSet<ThreatIntelligence> ThreatIntelligence { get; set; } = null!;
     public DbSet<BehavioralAnalytics> BehavioralAnalytics { get; set; } = null!;
+
+    // Analytics entities (Day 59)
+    public DbSet<SavedFilter> SavedFilters { get; set; } = null!;
+    public DbSet<AnalyticsQuery> AnalyticsQueries { get; set; } = null!;
+    public DbSet<DataExportRequest> DataExportRequests { get; set; } = null!;
+    public DbSet<DashboardWidget> DashboardWidgets { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
