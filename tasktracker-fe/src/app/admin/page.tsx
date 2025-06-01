@@ -47,7 +47,7 @@ function AdminDashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false); // Disabled by default to avoid annoying refreshes
-  const [refreshInterval, setRefreshInterval] = useState(30000); // 30 seconds when enabled
+  const refreshInterval = 30000; // 30 seconds when enabled
 
   // Debug logging
   useEffect(() => {
@@ -142,7 +142,7 @@ function AdminDashboardContent() {
       URL.revokeObjectURL(url);
       
       showToast('Dashboard data exported successfully', 'success');
-    } catch (err) {
+    } catch {
       showToast('Failed to export dashboard data', 'error');
     }
   };
@@ -205,7 +205,7 @@ function AdminDashboardContent() {
               Access Denied
             </CardTitle>
             <CardDescription>
-              You don't have permission to access the admin dashboard.
+              You don&apos;t have permission to access the admin dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent>

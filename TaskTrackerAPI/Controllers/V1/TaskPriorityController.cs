@@ -18,6 +18,7 @@ using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using System;
 using System.Threading.Tasks;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {

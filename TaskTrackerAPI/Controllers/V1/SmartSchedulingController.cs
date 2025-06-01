@@ -13,13 +13,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Family;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Linq;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -28,7 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/smart-scheduling")]
     [Route("api/family/{familyId}/smart-scheduling")]
-    public class SmartSchedulingController : ControllerBase
+    public class SmartSchedulingController : BaseApiController
     {
         private readonly ISmartSchedulingService _smartSchedulingService;
         private readonly ILogger<SmartSchedulingController> _logger;
@@ -63,7 +63,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 // Parse attendee IDs
-                var attendeeIds = requiredAttendeeIds.Split(',')
+                List<int> attendeeIds = requiredAttendeeIds.Split(',')
                     .Where(id => int.TryParse(id.Trim(), out _))
                     .Select(id => int.Parse(id.Trim()))
                     .ToList();
@@ -74,9 +74,9 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var duration = TimeSpan.FromMinutes(durationMinutes);
+                TimeSpan duration = TimeSpan.FromMinutes(durationMinutes);
                 
-                var optimalSlots = await _smartSchedulingService.GetOptimalMeetingTimesAsync(
+                IEnumerable<OptimalTimeSlotDTO> optimalSlots = await _smartSchedulingService.GetOptimalMeetingTimesAsync(
                     familyId, userId, duration, attendeeIds, preferredStartDate, preferredEndDate);
 
                 return Ok(ApiResponse<IEnumerable<OptimalTimeSlotDTO>>.SuccessResponse(optimalSlots));
@@ -98,14 +98,14 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 if (!ModelState.IsValid)
                 {
-                    var errors = string.Join("; ", ModelState.Values
+                    string errors = string.Join("; ", ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage));
                     return BadRequest(ApiResponse<object>.BadRequestResponse($"Invalid input: {errors}"));
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var suggestions = await _smartSchedulingService.GetSchedulingSuggestionsAsync(familyId, userId, preferences);
+                IEnumerable<SmartSchedulingSuggestionDTO> suggestions = await _smartSchedulingService.GetSchedulingSuggestionsAsync(familyId, userId, preferences);
 
                 return Ok(ApiResponse<IEnumerable<SmartSchedulingSuggestionDTO>>.SuccessResponse(suggestions));
             }
@@ -131,7 +131,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var conflicts = await _smartSchedulingService.DetectSchedulingConflictsAsync(familyId, userId, startDate, endDate);
+                IEnumerable<SchedulingConflictDTO> conflicts = await _smartSchedulingService.DetectSchedulingConflictsAsync(familyId, userId, startDate, endDate);
 
                 return Ok(ApiResponse<IEnumerable<SchedulingConflictDTO>>.SuccessResponse(conflicts));
             }
@@ -151,7 +151,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var resolutions = await _smartSchedulingService.GetConflictResolutionsAsync(familyId, userId, conflictId);
+                IEnumerable<ConflictResolutionDTO> resolutions = await _smartSchedulingService.GetConflictResolutionsAsync(familyId, userId, conflictId);
 
                 return Ok(ApiResponse<IEnumerable<ConflictResolutionDTO>>.SuccessResponse(resolutions));
             }
@@ -173,7 +173,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 if (!ModelState.IsValid)
                 {
-                    var errors = string.Join("; ", ModelState.Values
+                    string errors = string.Join("; ", ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage));
                     return BadRequest(ApiResponse<object>.BadRequestResponse($"Invalid input: {errors}"));
@@ -217,9 +217,9 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var granularity = TimeSpan.FromMinutes(granularityMinutes);
+                TimeSpan granularity = TimeSpan.FromMinutes(granularityMinutes);
                 
-                var matrix = await _smartSchedulingService.GetAvailabilityMatrixAsync(familyId, userId, startDate, endDate, granularity);
+                AvailabilityMatrixDTO matrix = await _smartSchedulingService.GetAvailabilityMatrixAsync(familyId, userId, startDate, endDate, granularity);
 
                 return Ok(ApiResponse<AvailabilityMatrixDTO>.SuccessResponse(matrix));
             }
@@ -249,7 +249,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var result = await _smartSchedulingService.BulkCreateEventsAsync(familyId, userId, events);
+                BatchCalendarOperationResultDTO result = await _smartSchedulingService.BulkCreateEventsAsync(familyId, userId, events);
 
                 return Ok(ApiResponse<BatchCalendarOperationResultDTO>.SuccessResponse(result));
             }
@@ -279,7 +279,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var result = await _smartSchedulingService.BulkUpdateEventsAsync(familyId, userId, updates);
+                BatchCalendarOperationResultDTO result = await _smartSchedulingService.BulkUpdateEventsAsync(familyId, userId, updates);
 
                 return Ok(ApiResponse<BatchCalendarOperationResultDTO>.SuccessResponse(result));
             }
@@ -303,7 +303,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     return BadRequest(ApiResponse<object>.BadRequestResponse("Event IDs must be provided"));
                 }
 
-                var ids = eventIds.Split(',')
+                List<int> ids = eventIds.Split(',')
                     .Where(id => int.TryParse(id.Trim(), out _))
                     .Select(id => int.Parse(id.Trim()))
                     .ToList();
@@ -319,7 +319,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var result = await _smartSchedulingService.BulkDeleteEventsAsync(familyId, userId, ids);
+                BatchCalendarOperationResultDTO result = await _smartSchedulingService.BulkDeleteEventsAsync(familyId, userId, ids);
 
                 return Ok(ApiResponse<BatchCalendarOperationResultDTO>.SuccessResponse(result));
             }
@@ -340,7 +340,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 if (!ModelState.IsValid)
                 {
-                    var errors = string.Join("; ", ModelState.Values
+                    string errors = string.Join("; ", ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage));
                     return BadRequest(ApiResponse<object>.BadRequestResponse($"Invalid input: {errors}"));
@@ -352,7 +352,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var result = await _smartSchedulingService.BulkRescheduleEventsAsync(familyId, userId, request);
+                BatchCalendarOperationResultDTO result = await _smartSchedulingService.BulkRescheduleEventsAsync(familyId, userId, request);
 
                 return Ok(ApiResponse<BatchCalendarOperationResultDTO>.SuccessResponse(result));
             }
@@ -378,7 +378,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var analytics = await _smartSchedulingService.GetSchedulingAnalyticsAsync(familyId, userId, startDate, endDate);
+                SchedulingAnalyticsDTO analytics = await _smartSchedulingService.GetSchedulingAnalyticsAsync(familyId, userId, startDate, endDate);
 
                 return Ok(ApiResponse<SchedulingAnalyticsDTO>.SuccessResponse(analytics));
             }
@@ -404,7 +404,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var efficiency = await _smartSchedulingService.CalculateSchedulingEfficiencyAsync(familyId, userId, startDate, endDate);
+                SchedulingEfficiencyDTO efficiency = await _smartSchedulingService.CalculateSchedulingEfficiencyAsync(familyId, userId, startDate, endDate);
 
                 return Ok(ApiResponse<SchedulingEfficiencyDTO>.SuccessResponse(efficiency));
             }
@@ -422,7 +422,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var patterns = await _smartSchedulingService.GetMemberSchedulingPatternsAsync(familyId, userId);
+                IEnumerable<MemberSchedulingPatternDTO> patterns = await _smartSchedulingService.GetMemberSchedulingPatternsAsync(familyId, userId);
 
                 return Ok(ApiResponse<IEnumerable<MemberSchedulingPatternDTO>>.SuccessResponse(patterns));
             }
@@ -443,14 +443,14 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 if (!ModelState.IsValid)
                 {
-                    var errors = string.Join("; ", ModelState.Values
+                    string errors = string.Join("; ", ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage));
                     return BadRequest(ApiResponse<object>.BadRequestResponse($"Invalid input: {errors}"));
                 }
 
                 int userId = User.GetUserIdAsInt();
-                var result = await _smartSchedulingService.OptimizeScheduleAsync(familyId, userId, request);
+                ScheduleOptimizationResultDTO result = await _smartSchedulingService.OptimizeScheduleAsync(familyId, userId, request);
 
                 return Ok(ApiResponse<ScheduleOptimizationResultDTO>.SuccessResponse(result));
             }
@@ -471,7 +471,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var prediction = await _smartSchedulingService.PredictAvailabilityAsync(familyId, memberId, userId, targetDate);
+                AvailabilityPredictionDTO prediction = await _smartSchedulingService.PredictAvailabilityAsync(familyId, memberId, userId, targetDate);
 
                 return Ok(ApiResponse<AvailabilityPredictionDTO>.SuccessResponse(prediction));
             }

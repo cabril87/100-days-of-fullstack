@@ -16,9 +16,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using Microsoft.AspNetCore.Http;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -30,7 +31,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class BoardsController : ControllerBase
+    public class BoardsController : BaseApiController
     {
         private readonly ILogger<BoardsController> _logger;
         private readonly IBoardService _boardService;
@@ -61,12 +62,12 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 IEnumerable<BoardDTO> boards = await _boardService.GetAllBoardsAsync(userId);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<BoardDTO>>.SuccessResponse(boards));
+                return Ok(ApiResponse<IEnumerable<BoardDTO>>.SuccessResponse(boards));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving boards");
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<IEnumerable<BoardDTO>>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<IEnumerable<BoardDTO>>.ServerErrorResponse());
             }
         }
 
@@ -89,15 +90,15 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (board == null)
                 {
-                    return NotFound(Utils.ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} not found"));
+                    return NotFound(ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} not found"));
                 }
 
-                return Ok(Utils.ApiResponse<BoardDTO>.SuccessResponse(board));
+                return Ok(ApiResponse<BoardDTO>.SuccessResponse(board));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving board with ID {BoardId}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<BoardDTO>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<BoardDTO>.ServerErrorResponse());
             }
         }
 
@@ -120,15 +121,15 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (boardDetail == null)
                 {
-                    return NotFound(Utils.ApiResponse<BoardDetailDTO>.NotFoundResponse($"Board with ID {id} not found"));
+                    return NotFound(ApiResponse<BoardDetailDTO>.NotFoundResponse($"Board with ID {id} not found"));
                 }
 
-                return Ok(Utils.ApiResponse<BoardDetailDTO>.SuccessResponse(boardDetail));
+                return Ok(ApiResponse<BoardDetailDTO>.SuccessResponse(boardDetail));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving board with tasks for ID {BoardId}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<BoardDetailDTO>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<BoardDetailDTO>.ServerErrorResponse());
             }
         }
 
@@ -145,7 +146,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(Utils.ApiResponse<BoardDTO>.BadRequestResponse("Invalid board data"));
+                return BadRequest(ApiResponse<BoardDTO>.BadRequestResponse("Invalid board data"));
             }
             
             try
@@ -156,15 +157,15 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (createdBoard == null)
                 {
-                    return BadRequest(Utils.ApiResponse<BoardDTO>.BadRequestResponse("Failed to create board"));
+                    return BadRequest(ApiResponse<BoardDTO>.BadRequestResponse("Failed to create board"));
                 }
 
-                return CreatedAtAction(nameof(GetBoardById), new { id = createdBoard.Id }, Utils.ApiResponse<BoardDTO>.SuccessResponse(createdBoard));
+                return CreatedAtAction(nameof(GetBoardById), new { id = createdBoard.Id }, ApiResponse<BoardDTO>.SuccessResponse(createdBoard));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating board");
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<BoardDTO>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<BoardDTO>.ServerErrorResponse());
             }
         }
 
@@ -182,7 +183,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(Utils.ApiResponse<BoardDTO>.BadRequestResponse("Invalid board data"));
+                return BadRequest(ApiResponse<BoardDTO>.BadRequestResponse("Invalid board data"));
             }
             
             try
@@ -193,15 +194,15 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (updatedBoard == null)
                 {
-                    return NotFound(Utils.ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} not found"));
+                    return NotFound(ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} not found"));
                 }
 
-                return Ok(Utils.ApiResponse<BoardDTO>.SuccessResponse(updatedBoard));
+                return Ok(ApiResponse<BoardDTO>.SuccessResponse(updatedBoard));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating board with ID {BoardId}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<BoardDTO>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<BoardDTO>.ServerErrorResponse());
             }
         }
 
@@ -227,12 +228,12 @@ namespace TaskTrackerAPI.Controllers.V1
             catch (ArgumentException ex)
             {
                 _logger.LogWarning(ex, "Board not found or access denied for ID {BoardId}", id);
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse(ex.Message));
+                return NotFound(ApiResponse<object>.NotFoundResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting board with ID {BoardId}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -251,7 +252,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(Utils.ApiResponse<BoardDTO>.BadRequestResponse("Invalid reordering data"));
+                return BadRequest(ApiResponse<BoardDTO>.BadRequestResponse("Invalid reordering data"));
             }
             
             try
@@ -262,20 +263,20 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (updatedBoard == null)
                 {
-                    return NotFound(Utils.ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} or task not found"));
+                    return NotFound(ApiResponse<BoardDTO>.NotFoundResponse($"Board with ID {id} or task not found"));
                 }
 
-                return Ok(Utils.ApiResponse<BoardDTO>.SuccessResponse(updatedBoard));
+                return Ok(ApiResponse<BoardDTO>.SuccessResponse(updatedBoard));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to reorder a task they don't own");
-                return StatusCode(StatusCodes.Status403Forbidden, Utils.ApiResponse<BoardDTO>.ForbiddenResponse("You don't have permission to reorder this task"));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<BoardDTO>.ForbiddenResponse("You don't have permission to reorder this task"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reordering task in board with ID {BoardId}", id);
-                return StatusCode(StatusCodes.Status500InternalServerError, Utils.ApiResponse<BoardDTO>.ServerErrorResponse());
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse<BoardDTO>.ServerErrorResponse());
             }
         }
     }

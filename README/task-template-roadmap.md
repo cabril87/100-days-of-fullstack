@@ -15,13 +15,13 @@ This document outlines the implementation plan for the advanced task template sy
 - [ ] Implement `TaskTemplateRepository`
 - [ ] Implement `TaskTemplateService`
 - [ ] Create `TaskTemplateController` with basic endpoints:
-  - [ ] GET /api/v1/task-templates
-  - [ ] POST /api/v1/task-templates
-  - [ ] GET /api/v1/task-templates/{id}
-  - [ ] PUT /api/v1/task-templates/{id}
-  - [ ] DELETE /api/v1/task-templates/{id}
+  - [ ] GET /api/v1/taskTemplates
+  - [ ] POST /api/v1/taskTemplates
+  - [ ] GET /api/v1/taskTemplates/{id}
+  - [ ] PUT /api/v1/taskTemplates/{id}
+  - [ ] DELETE /api/v1/taskTemplates/{id}
 - [ ] Implement template instantiation endpoint:
-  - [ ] POST /api/v1/task-templates/{id}/instance
+  - [ ] POST /api/v1/taskTemplates/{id}/instance
 
 ### Phase 3: Template Categories & Organization
 - [ ] Add `TemplateCategory` model

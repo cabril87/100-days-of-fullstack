@@ -25,7 +25,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Bell,
-  Focus
+  Focus,
+  Pause,
+  Play
 } from 'lucide-react';
 import { format, subDays, subWeeks, subMonths } from 'date-fns';
 import { apiService } from '@/lib/services/apiService';
@@ -322,62 +324,75 @@ export default function CalendarAnalyticsDashboard({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header and Controls */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-6 w-6" />
-                Calendar Analytics Dashboard
-              </CardTitle>
-              <CardDescription>
-                Real-time insights into family calendar efficiency and patterns
-              </CardDescription>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="container mx-auto p-4 space-y-6">
+        {/* Header and Controls */}
+        <Card className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden">
+          {/* Decorative background elements */}
+          <div className="absolute -top-36 -right-36 w-96 h-96 bg-purple-600 opacity-[0.03] rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-36 -left-36 w-96 h-96 bg-blue-600 opacity-[0.05] rounded-full blur-3xl"></div>
+          
+          {/* Gradient accent bar */}
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-t-xl"></div>
+          
+          <CardHeader className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl font-semibold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  <BarChart3 className="h-6 w-6 text-purple-600" />
+                  Calendar Analytics Dashboard
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Real-time insights into family calendar efficiency and patterns
+                </CardDescription>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {realTimeEnabled && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Live Updates
+                  </div>
+                )}
+                
+                <Select value={timeRange} onValueChange={(value: 'week' | 'month' | 'quarter') => setTimeRange(value)}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="week">Last Week</SelectItem>
+                    <SelectItem value="month">Last Month</SelectItem>
+                    <SelectItem value="quarter">Last Quarter</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  onClick={fetchAnalytics}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white hover:bg-gray-50 border-gray-300 hover:border-gray-400 transition-all duration-300"
+                >
+                  {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+                
+                <Button
+                  onClick={() => setRealTimeEnabled(!realTimeEnabled)}
+                  variant={realTimeEnabled ? "default" : "outline"}
+                  size="sm"
+                  className={realTimeEnabled 
+                    ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105"
+                    : "bg-white hover:bg-gray-50 border-gray-300 hover:border-gray-400 transition-all duration-300"
+                  }
+                >
+                  {realTimeEnabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  {realTimeEnabled ? 'Pause' : 'Enable'} Live
+                </Button>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-              {realTimeEnabled && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  Live Updates
-                </div>
-              )}
-              
-              <Select value={timeRange} onValueChange={(value: 'week' | 'month' | 'quarter') => setTimeRange(value)}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">Last Week</SelectItem>
-                  <SelectItem value="month">Last Month</SelectItem>
-                  <SelectItem value="quarter">Last Quarter</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button
-                onClick={fetchAnalytics}
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              </Button>
-              
-              <Button
-                onClick={exportAnalytics}
-                disabled={!analytics}
-                variant="outline"
-                size="sm"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        
+          </CardHeader>
+        </Card>
+
         {error && (
           <CardContent>
             <Alert variant="destructive">
@@ -386,376 +401,380 @@ export default function CalendarAnalyticsDashboard({
             </Alert>
           </CardContent>
         )}
-      </Card>
 
-      {analytics && (
-        <>
-          {/* Real-time Metrics Bar */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="flex items-center gap-2">
-                  <Focus className="h-5 w-5 text-blue-500" />
-                  <div>
-                    <div className="text-lg font-semibold">{analytics.realTimeMetrics.activeFocusSessions}</div>
-                    <div className="text-xs text-gray-500">Active Focus</div>
+        {analytics && (
+          <>
+            {/* Real-time Metrics Bar */}
+            <Card className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all relative overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-600 opacity-[0.05] rounded-full blur-2xl"></div>
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+              
+              <CardContent className="pt-4 relative z-10">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                        <Calendar className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold mb-1">{analytics.realTimeMetrics.ongoingEvents}</div>
+                    <div className="text-blue-100 text-sm">Active Events</div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-green-500" />
-                  <div>
-                    <div className="text-lg font-semibold">{analytics.realTimeMetrics.ongoingEvents}</div>
-                    <div className="text-xs text-gray-500">Ongoing</div>
+                  
+                  <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                        <Clock className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold mb-1">{analytics.realTimeMetrics.upcomingEvents}</div>
+                    <div className="text-orange-100 text-sm">Upcoming</div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-orange-500" />
-                  <div>
-                    <div className="text-lg font-semibold">{analytics.realTimeMetrics.upcomingEvents}</div>
-                    <div className="text-xs text-gray-500">Upcoming</div>
+                  
+                  <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold mb-1">{analytics.realTimeMetrics.pendingConflicts}</div>
+                    <div className="text-red-100 text-sm">Conflicts</div>
                   </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  <div>
-                    <div className="text-lg font-semibold">{analytics.realTimeMetrics.pendingConflicts}</div>
-                    <div className="text-xs text-gray-500">Conflicts</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Bell className="h-5 w-5 text-purple-500" />
-                  <div>
-                    <div className="text-lg font-semibold">
+                  
+                  <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                        <Bell className="h-5 w-5" />
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold mb-1">
                       {analytics.realTimeMetrics.familyQuietTimeActive ? 'Active' : 'Off'}
                     </div>
-                    <div className="text-xs text-gray-500">Quiet Time</div>
+                    <div className="text-purple-100 text-sm">Quiet Time</div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">Last Updated</div>
+                    <div className="text-sm font-medium">{format(lastUpdated, 'HH:mm:ss')}</div>
                   </div>
                 </div>
-                
-                <div className="text-right">
-                  <div className="text-xs text-gray-500">Last Updated</div>
-                  <div className="text-sm font-medium">{format(lastUpdated, 'HH:mm:ss')}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Overview Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Total Events</p>
-                    <p className="text-2xl font-bold">{analytics.overview.totalEvents}</p>
+            {/* Overview Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                    <Calendar className="h-6 w-6" />
                   </div>
-                  <Calendar className="h-8 w-8 text-blue-500" />
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Conflict Rate</p>
-                    <p className="text-2xl font-bold">{Math.round(analytics.overview.conflictRate)}%</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-500" />
+                <div className="text-white">
+                  <div className="text-2xl font-bold mb-1">{analytics.overview.totalEvents}</div>
+                  <div className="text-white/80 text-sm">Total Events</div>
                 </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Family Efficiency</p>
-                    <p className={`text-2xl font-bold ${getEfficiencyColor(analytics.overview.familyEfficiencyScore)}`}>
-                      {Math.round(analytics.overview.familyEfficiencyScore)}%
-                    </p>
-                  </div>
-                  <Target className="h-8 w-8 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Detailed Analytics Tabs */}
-          <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="members">Members</TabsTrigger>
-              <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
-              <TabsTrigger value="predictions">Predictions</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="space-y-4">
-              {/* Utilization and Focus Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Calendar Utilization</CardTitle>
-                    <CardDescription>Average family calendar usage</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Utilization Rate</span>
-                        <span>{Math.round(analytics.overview.averageUtilization)}%</span>
-                      </div>
-                      <Progress value={analytics.overview.averageUtilization} className="h-2" />
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Focus Time</CardTitle>
-                    <CardDescription>Total family focus hours</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-blue-600">
-                        {Math.round(analytics.overview.focusTimeHours)}h
-                      </div>
-                      <p className="text-sm text-gray-500 mt-1">This {timeRange}</p>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
               
-              {/* Optimal Time Slots */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Optimal Time Analysis</CardTitle>
-                  <CardDescription>Best time slots for family scheduling</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {analytics.optimalTimes.slice(0, 5).map((slot, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-4 w-4 text-gray-500" />
-                          <span className="font-medium">{slot.timeSlot}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <div className="text-sm text-gray-600">
-                            {Math.round(slot.utilizationRate)}% utilized
-                          </div>
-                          
-                          <div className="text-sm text-gray-600">
-                            Quality: {Math.round(slot.averageQuality)}%
-                          </div>
-                          
-                          {getRecommendationBadge(slot.recommendation)}
-                        </div>
-                      </div>
-                    ))}
+              <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                    <AlertTriangle className="h-6 w-6" />
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="members" className="space-y-4">
-              <div className="grid gap-4">
-                {analytics.memberStats.map((member) => (
-                  <Card key={member.memberId}>
+                </div>
+                <div className="text-white">
+                  <div className="text-2xl font-bold mb-1">{Math.round(analytics.overview.conflictRate)}%</div>
+                  <div className="text-white/80 text-sm">Conflict Rate</div>
+                </div>
+              </div>
+              
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl p-4 text-white hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="p-2 rounded-lg bg-white/20 group-hover:bg-white/30 transition-all">
+                    <Target className="h-6 w-6" />
+                  </div>
+                </div>
+                <div className="text-white">
+                  <div className={`text-2xl font-bold mb-1`}>
+                    {Math.round(analytics.overview.familyEfficiencyScore)}%
+                  </div>
+                  <div className="text-white/80 text-sm">Family Efficiency</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed Analytics Tabs */}
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="conflicts">Conflicts</TabsTrigger>
+                <TabsTrigger value="predictions">Predictions</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="space-y-4">
+                {/* Utilization and Focus Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{member.name}</CardTitle>
-                          <CardDescription>{member.role}</CardDescription>
-                        </div>
-                        <Badge variant="outline">
-                          Efficiency: {Math.round(member.efficiencyScore)}%
-                        </Badge>
-                      </div>
+                      <CardTitle>Calendar Utilization</CardTitle>
+                      <CardDescription>Average family calendar usage</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Events</p>
-                          <p className="text-xl font-semibold">{member.eventCount}</p>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Utilization Rate</span>
+                          <span>{Math.round(analytics.overview.averageUtilization)}%</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Utilization</p>
-                          <p className="text-xl font-semibold">{Math.round(member.utilizationRate)}%</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Conflicts</p>
-                          <p className="text-xl font-semibold text-red-600">{member.conflictCount}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Focus Hours</p>
-                          <p className="text-xl font-semibold text-blue-600">{Math.round(member.focusHours)}h</p>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4">
-                        <p className="text-sm font-medium mb-2">Patterns</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                          <div>Most active: <span className="font-medium">{member.patterns.mostActiveDay}</span></div>
-                          <div>Preferred duration: <span className="font-medium">{member.patterns.preferredDuration}min</span></div>
-                          <div>Conflict-prone times: <span className="font-medium">{member.patterns.conflictProneTimes.join(', ')}</span></div>
-                        </div>
+                        <Progress value={analytics.overview.averageUtilization} className="h-2" />
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="conflicts" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Conflict Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span>Total Conflicts</span>
-                      <span className="font-semibold">{analytics.conflicts.totalConflicts}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Resolved</span>
-                      <span className="font-semibold text-green-600">{analytics.conflicts.resolvedConflicts}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Avg Resolution Time</span>
-                      <span className="font-semibold">{Math.round(analytics.conflicts.avgResolutionTime)}min</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Focus Time</CardTitle>
+                      <CardDescription>Total family focus hours</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {Math.round(analytics.overview.focusTimeHours)}h
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">This {timeRange}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
                 
+                {/* Optimal Time Slots */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Common Conflict Types</CardTitle>
+                    <CardTitle>Optimal Time Analysis</CardTitle>
+                    <CardDescription>Best time slots for family scheduling</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      {analytics.conflicts.commonConflictTypes.map((type, index) => (
-                        <div key={index} className="flex justify-between items-center">
-                          <span className="text-sm">{type.type}</span>
-                          <Badge variant="outline">{type.count}</Badge>
+                    <div className="space-y-3">
+                      {analytics.optimalTimes.slice(0, 5).map((slot, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">{slot.timeSlot}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-4">
+                            <div className="text-sm text-gray-600">
+                              {Math.round(slot.utilizationRate)}% utilized
+                            </div>
+                            
+                            <div className="text-sm text-gray-600">
+                              Quality: {Math.round(slot.averageQuality)}%
+                            </div>
+                            
+                            {getRecommendationBadge(slot.recommendation)}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </CardContent>
                 </Card>
-              </div>
+              </TabsContent>
               
-              {/* Prevention Suggestions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Prevention Suggestions</CardTitle>
-                  <CardDescription>AI-generated recommendations to reduce conflicts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {analytics.conflicts.preventionSuggestions.map((suggestion, index) => (
-                      <div key={index} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-                        <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-                        <span className="text-sm">{suggestion}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="predictions" className="space-y-4">
-              {/* Upcoming Conflicts Prediction */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Predicted Conflicts</CardTitle>
-                  <CardDescription>AI predictions for potential scheduling conflicts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {analytics.predictions.upcomingConflicts.map((prediction, index) => (
-                      <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{format(new Date(prediction.date), 'MMM dd, yyyy')}</span>
-                          <Badge variant={prediction.probability > 0.7 ? 'destructive' : prediction.probability > 0.4 ? 'default' : 'secondary'}>
-                            {Math.round(prediction.probability * 100)}% chance
+              <TabsContent value="members" className="space-y-4">
+                <div className="grid gap-4">
+                  {analytics.memberStats.map((member) => (
+                    <Card key={member.memberId}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">{member.name}</CardTitle>
+                            <CardDescription>{member.role}</CardDescription>
+                          </div>
+                          <Badge variant="outline">
+                            Efficiency: {Math.round(member.efficiencyScore)}%
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Affected: {prediction.affectedMembers.join(', ')}
-                        </p>
-                        <p className="text-sm font-medium text-blue-600">{prediction.suggestion}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-500">Events</p>
+                            <p className="text-xl font-semibold">{member.eventCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Utilization</p>
+                            <p className="text-xl font-semibold">{Math.round(member.utilizationRate)}%</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Conflicts</p>
+                            <p className="text-xl font-semibold text-red-600">{member.conflictCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-500">Focus Hours</p>
+                            <p className="text-xl font-semibold text-blue-600">{Math.round(member.focusHours)}h</p>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-4">
+                          <p className="text-sm font-medium mb-2">Patterns</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                            <div>Most active: <span className="font-medium">{member.patterns.mostActiveDay}</span></div>
+                            <div>Preferred duration: <span className="font-medium">{member.patterns.preferredDuration}min</span></div>
+                            <div>Conflict-prone times: <span className="font-medium">{member.patterns.conflictProneTimes.join(', ')}</span></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
               
-              {/* Optimal Scheduling Windows */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Optimal Scheduling Windows</CardTitle>
-                  <CardDescription>Best times for upcoming scheduling</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {analytics.predictions.optimalSchedulingWindows.map((window, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">
-                            {format(new Date(window.startTime), 'MMM dd, h:mm a')} - 
-                            {format(new Date(window.endTime), 'h:mm a')}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {window.availableMembers} members available
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-lg font-semibold text-green-600">
-                            {Math.round(window.confidenceScore)}%
-                          </div>
-                          <div className="text-xs text-gray-500">Confidence</div>
-                        </div>
+              <TabsContent value="conflicts" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Conflict Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between">
+                        <span>Total Conflicts</span>
+                        <span className="font-semibold">{analytics.conflicts.totalConflicts}</span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="flex justify-between">
+                        <span>Resolved</span>
+                        <span className="font-semibold text-green-600">{analytics.conflicts.resolvedConflicts}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Avg Resolution Time</span>
+                        <span className="font-semibold">{Math.round(analytics.conflicts.avgResolutionTime)}min</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Common Conflict Types</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {analytics.conflicts.commonConflictTypes.map((type, index) => (
+                          <div key={index} className="flex justify-between items-center">
+                            <span className="text-sm">{type.type}</span>
+                            <Badge variant="outline">{type.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* Prevention Suggestions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Prevention Suggestions</CardTitle>
+                    <CardDescription>AI-generated recommendations to reduce conflicts</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {analytics.conflicts.preventionSuggestions.map((suggestion, index) => (
+                        <div key={index} className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
+                          <span className="text-sm">{suggestion}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
               
-              {/* Workload Predictions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workload Predictions</CardTitle>
-                  <CardDescription>Predicted schedule load for family members</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {analytics.predictions.workloadPredictions.map((prediction, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div>
-                          <div className="font-medium">{prediction.memberName}</div>
-                          <div className="text-sm text-gray-600">{prediction.recommendation}</div>
+              <TabsContent value="predictions" className="space-y-4">
+                {/* Upcoming Conflicts Prediction */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Predicted Conflicts</CardTitle>
+                    <CardDescription>AI predictions for potential scheduling conflicts</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {analytics.predictions.upcomingConflicts.map((prediction, index) => (
+                        <div key={index} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{format(new Date(prediction.date), 'MMM dd, yyyy')}</span>
+                            <Badge variant={prediction.probability > 0.7 ? 'destructive' : prediction.probability > 0.4 ? 'default' : 'secondary'}>
+                              {Math.round(prediction.probability * 100)}% chance
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            Affected: {prediction.affectedMembers.join(', ')}
+                          </p>
+                          <p className="text-sm font-medium text-blue-600">{prediction.suggestion}</p>
                         </div>
-                        <Badge variant={
-                          prediction.predictedLoad === 'High' ? 'destructive' :
-                          prediction.predictedLoad === 'Medium' ? 'default' : 'secondary'
-                        }>
-                          {prediction.predictedLoad} Load
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </>
-      )}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Optimal Scheduling Windows */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Optimal Scheduling Windows</CardTitle>
+                    <CardDescription>Best times for upcoming scheduling</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {analytics.predictions.optimalSchedulingWindows.map((window, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                          <div>
+                            <div className="font-medium">
+                              {format(new Date(window.startTime), 'MMM dd, h:mm a')} - 
+                              {format(new Date(window.endTime), 'h:mm a')}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {window.availableMembers} members available
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-semibold text-green-600">
+                              {Math.round(window.confidenceScore)}%
+                            </div>
+                            <div className="text-xs text-gray-500">Confidence</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Workload Predictions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Workload Predictions</CardTitle>
+                    <CardDescription>Predicted schedule load for family members</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {analytics.predictions.workloadPredictions.map((prediction, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div>
+                            <div className="font-medium">{prediction.memberName}</div>
+                            <div className="text-sm text-gray-600">{prediction.recommendation}</div>
+                          </div>
+                          <Badge variant={
+                            prediction.predictedLoad === 'High' ? 'destructive' :
+                            prediction.predictedLoad === 'Medium' ? 'default' : 'secondary'
+                          }>
+                            {prediction.predictedLoad} Load
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+      </div>
     </div>
   );
 } 

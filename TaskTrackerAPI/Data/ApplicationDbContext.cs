@@ -19,6 +19,8 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models.Analytics;
+using TaskTrackerAPI.Models.ML;
+using TaskTrackerAPI.Models.BackgroundServices;
 
 namespace TaskTrackerAPI.Data;
 
@@ -51,6 +53,12 @@ public class ApplicationDbContext : DbContext
     
     public DbSet<Board> Boards { get; set; } = null!;
     
+    // Enhanced board entities (Custom Kanban Implementation)
+    public DbSet<BoardColumn> BoardColumns { get; set; } = null!;
+    public DbSet<BoardTemplate> BoardTemplates { get; set; } = null!;
+    public DbSet<BoardTemplateColumn> BoardTemplateColumns { get; set; } = null!;
+    public DbSet<BoardSettings> BoardSettings { get; set; } = null!;
+    
     public DbSet<FamilyMember> FamilyMembers { get; set; } = null!;
     
     public DbSet<TaskTemplate> TaskTemplates { get; set; } = null!;
@@ -70,6 +78,9 @@ public class ApplicationDbContext : DbContext
     // Gamification related entities
     public DbSet<UserProgress> UserProgresses { get; set; } = null!;
     public DbSet<PointTransaction> PointTransactions { get; set; } = null!;
+    
+    // Marketplace entities
+    public DbSet<TemplatePurchase> TemplatePurchases { get; set; } = null!;
     
     // Using consistent Gamification namespace models
     public DbSet<GamificationModels.Achievement> Achievements { get; set; } = null!;
@@ -102,6 +113,13 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChecklistItem> ChecklistItems { get; set; } = null!;
     public DbSet<ChecklistTemplateItem> ChecklistTemplateItems { get; set; } = null!;
 
+    // Day 60 Template Enhancement DbSets
+    public DbSet<TaskAutomationRule> TaskAutomationRules { get; set; } = null!;
+    public DbSet<TemplateCategory> TemplateCategories { get; set; } = null!;
+    public DbSet<TemplateMarketplace> TemplateMarketplace { get; set; } = null!;
+    public DbSet<TemplateUsageAnalytics> TemplateUsageAnalytics { get; set; } = null!;
+    public DbSet<WorkflowStep> WorkflowSteps { get; set; } = null!;
+
     // Add these DbSet properties after the existing ones
     public DbSet<SubscriptionTier> SubscriptionTiers { get; set; } = null!;
     public DbSet<UserApiQuota> UserApiQuotas { get; set; } = null!;
@@ -129,6 +147,17 @@ public class ApplicationDbContext : DbContext
     public DbSet<AnalyticsQuery> AnalyticsQueries { get; set; } = null!;
     public DbSet<DataExportRequest> DataExportRequests { get; set; } = null!;
     public DbSet<DashboardWidget> DashboardWidgets { get; set; } = null!;
+
+    // ML and Learning entities (Adaptation Learning System)
+    public DbSet<UserLearningProfile> UserLearningProfiles { get; set; } = null!;
+    public DbSet<RecommendationScore> RecommendationScores { get; set; } = null!;
+    public DbSet<AdaptationEvent> AdaptationEvents { get; set; } = null!;
+
+    // Background service entities (Day 61)
+    public DbSet<BackgroundServiceStatus> BackgroundServiceStatuses { get; set; } = null!;
+    public DbSet<BackgroundServiceExecution> BackgroundServiceExecutions { get; set; } = null!;
+    public DbSet<SystemMaintenanceNotification> SystemMaintenanceNotifications { get; set; } = null!;
+    public DbSet<SystemOptimizationRecommendation> SystemOptimizationRecommendations { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -428,6 +457,9 @@ public class ApplicationDbContext : DbContext
         // Seed all gamification data (achievements, badges, rewards, challenges)
         SeedGamificationData(modelBuilder);
         
+        // Seed Kanban board templates and columns
+        SeedKanbanBoardData(modelBuilder);
+        
         // If this fails to compile, ensure GamificationSeedData.cs is included in the project
 
         // Configure Reminder relationships
@@ -499,5 +531,10 @@ public class ApplicationDbContext : DbContext
     private void SeedGamificationData(ModelBuilder modelBuilder)
     {
         GamificationSeedData.SeedGamificationData(modelBuilder);
+    }
+
+    private void SeedKanbanBoardData(ModelBuilder modelBuilder)
+    {
+        KanbanBoardSeedData.SeedKanbanBoardData(modelBuilder);
     }
 }

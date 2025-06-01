@@ -20,6 +20,7 @@ using TaskTrackerAPI.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using System.Linq;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -28,7 +29,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class BadgesController : ControllerBase
+    public class BadgesController : BaseApiController
     {
         private readonly ILogger<BadgesController> _logger;
         private readonly IBadgeService _badgeService;

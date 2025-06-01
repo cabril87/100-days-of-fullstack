@@ -26,6 +26,7 @@ public class FamilyCalendarService : IFamilyCalendarService
     private readonly IFamilyCalendarRepository _calendarRepository;
     private readonly IFamilyRepository _familyRepository;
     private readonly IFamilyMemberRepository _familyMemberRepository;
+    private readonly IGamificationService _gamificationService;
     private readonly IMapper _mapper;
     private readonly ILogger<FamilyCalendarService> _logger;
 
@@ -33,12 +34,14 @@ public class FamilyCalendarService : IFamilyCalendarService
         IFamilyCalendarRepository calendarRepository,
         IFamilyRepository familyRepository,
         IFamilyMemberRepository familyMemberRepository,
+        IGamificationService gamificationService,
         IMapper mapper,
         ILogger<FamilyCalendarService> logger)
     {
         _calendarRepository = calendarRepository;
         _familyRepository = familyRepository;
         _familyMemberRepository = familyMemberRepository;
+        _gamificationService = gamificationService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -187,6 +190,30 @@ public class FamilyCalendarService : IFamilyCalendarService
                 _logger.LogError("Created event {EventId} not found when retrieving complete data", createdEvent.Id);
                 // Return the basic created event if we can't get the complete one
                 return _mapper.Map<FamilyCalendarEventDTO>(createdEvent);
+            }
+            
+            // Process gamification rewards for event creation
+            try
+            {
+                // Award base points for creating an event
+                await _gamificationService.AddPointsAsync(creatorId, 5, "family_event_creation", $"Created family event: {completeEvent.Title}");
+                
+                // Check for event creation achievements
+                await _gamificationService.ProcessAchievementUnlocksAsync(creatorId, "family_event_creation", completeEvent.Id, new Dictionary<string, object>
+                {
+                    { "familyId", completeEvent.FamilyId },
+                    { "eventType", completeEvent.EventType.ToString() },
+                    { "isRecurring", completeEvent.IsRecurring },
+                    { "attendeeCount", eventDto.AttendeeIds?.Count() ?? 0 }
+                });
+                
+                _logger.LogInformation("Gamification rewards processed for event {EventId} creation by user {UserId}", 
+                    completeEvent.Id, creatorId);
+            }
+            catch (Exception gamificationEx)
+            {
+                _logger.LogError(gamificationEx, "Error processing gamification rewards for event {EventId} creation", completeEvent.Id);
+                // Don't fail the event creation if gamification fails
             }
             
             // Successfully created and retrieved the complete event
@@ -542,6 +569,28 @@ public class FamilyCalendarService : IFamilyCalendarService
         
         // Get the full availability with related data
         FamilyMemberAvailability? completeAvailability = await _calendarRepository.GetAvailabilityByIdAsync(createdAvailability.Id);
+        
+        // Process gamification rewards for availability update
+        try
+        {
+            // Award points for updating availability
+            await _gamificationService.AddPointsAsync(userId, 5, "availability_updated", $"Updated availability for {completeAvailability?.StartTime:yyyy-MM-dd}");
+            
+            // Check for availability update achievements
+            await _gamificationService.ProcessAchievementUnlocksAsync(userId, "availability_updated", completeAvailability?.FamilyMemberId ?? 0, new Dictionary<string, object>
+            {
+                { "familyId", availabilityDto.FamilyMemberId }, // This might need to be adjusted to get actual family ID
+                { "availabilityType", availabilityDto.Status.ToString() }
+            });
+            
+            _logger.LogInformation("Gamification rewards processed for availability update by user {UserId}", userId);
+        }
+        catch (Exception gamificationEx)
+        {
+            _logger.LogError(gamificationEx, "Error processing gamification rewards for availability update");
+            // Don't fail the availability creation if gamification fails
+        }
+        
         return _mapper.Map<FamilyMemberAvailabilityDTO>(completeAvailability);
     }
 

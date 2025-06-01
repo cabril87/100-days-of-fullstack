@@ -38,6 +38,64 @@ public class TaskTemplate
     // Optional icon for the template
     public string? IconUrl { get; set; }
     
+    // AUTOMATION FIELDS - Day 60 Enhancement
+    public bool IsAutomated { get; set; } = false;
+    
+    [StringLength(2000)]
+    public string? AutomationRules { get; set; }
+    
+    [StringLength(1000)]
+    public string? TriggerConditions { get; set; }
+    
+    // MARKETPLACE FIELDS - Day 60 Enhancement  
+    public bool IsPublic { get; set; } = false;
+    
+    [StringLength(50)]
+    public string? Category { get; set; }
+    
+    public decimal Rating { get; set; } = 0.0m;
+    
+    public int DownloadCount { get; set; } = 0;
+    
+    [StringLength(1000)]
+    public string? MarketplaceDescription { get; set; }
+    
+    public DateTime? PublishedDate { get; set; }
+    
+    // MARKETPLACE PRICING FIELDS - Template Marketplace Enhancement
+    public int Price { get; set; } = 0; // Price in points (0 = free)
+    
+    public bool IsPremium { get; set; } = false;
+    
+    public int PurchaseCount { get; set; } = 0;
+    
+    [StringLength(1000)]
+    public string? ValueProposition { get; set; }
+    
+    [StringLength(2000)]
+    public string? SuccessStories { get; set; }
+    
+    [StringLength(500)]
+    public string? Prerequisites { get; set; }
+    
+    // ANALYTICS FIELDS - Day 60 Enhancement
+    public int UsageCount { get; set; } = 0;
+    
+    public decimal SuccessRate { get; set; } = 0.0m;
+    
+    public int AverageCompletionTimeMinutes { get; set; } = 0;
+    
+    public DateTime? LastUsedDate { get; set; }
+    
+    // WORKFLOW FIELDS - Day 60 Enhancement
+    [StringLength(5000)]
+    public string? WorkflowSteps { get; set; }
+    
+    [StringLength(2000)]
+    public string? ConditionalLogic { get; set; }
+    
+    public int WorkflowVersion { get; set; } = 1;
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime? UpdatedAt { get; set; }
@@ -51,6 +109,13 @@ public class TaskTemplate
     // Collection of checklist template items
     public virtual ICollection<ChecklistTemplateItem>? ChecklistItems { get; set; }
     
+    // Day 60 Navigation properties
+    public virtual ICollection<TaskAutomationRule>? AutomationRulesCollection { get; set; }
+    
+    public virtual ICollection<TemplateUsageAnalytics>? UsageAnalytics { get; set; }
+    
+    public virtual ICollection<WorkflowStep>? WorkflowStepsCollection { get; set; }
+    
     // Helper methods to work with template data
     public T? GetTemplateData<T>() where T : class
     {
@@ -63,6 +128,33 @@ public class TaskTemplate
     public void SetTemplateData<T>(T data) where T : class
     {
         TemplateData = JsonSerializer.Serialize(data);
+    }
+    
+    // Day 60 Helper methods for automation
+    public T? GetAutomationRules<T>() where T : class
+    {
+        if (string.IsNullOrEmpty(AutomationRules))
+            return null;
+            
+        return JsonSerializer.Deserialize<T>(AutomationRules);
+    }
+    
+    public void SetAutomationRules<T>(T rules) where T : class
+    {
+        AutomationRules = JsonSerializer.Serialize(rules);
+    }
+    
+    public T? GetWorkflowSteps<T>() where T : class
+    {
+        if (string.IsNullOrEmpty(WorkflowSteps))
+            return null;
+            
+        return JsonSerializer.Deserialize<T>(WorkflowSteps);
+    }
+    
+    public void SetWorkflowSteps<T>(T steps) where T : class
+    {
+        WorkflowSteps = JsonSerializer.Serialize(steps);
     }
 }
 
@@ -80,5 +172,6 @@ public enum TaskTemplateType
     Goal,
     Daily,
     Weekly,
-    Monthly
+    Monthly,
+    Quarterly
 } 

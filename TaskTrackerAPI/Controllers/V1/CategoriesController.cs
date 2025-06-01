@@ -19,9 +19,8 @@ using TaskTrackerAPI.DTOs.Categories;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
-
+using TaskTrackerAPI.Controllers.V2;
 namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiVersion("1.0")]
@@ -29,7 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [Route("api/categories")]
 [ApiController]
 [Authorize]
-public class CategoriesController : ControllerBase
+public class CategoriesController : BaseApiController
 {
     private readonly ICategoryService _categoryService;
     private readonly ITaskService _taskService;

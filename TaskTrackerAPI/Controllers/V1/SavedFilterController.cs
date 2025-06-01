@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -49,7 +50,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var filters = await _savedFilterService.GetUserFiltersAsync(userId);
+                IEnumerable<SavedFilterDTO> filters = await _savedFilterService.GetUserFiltersAsync(userId);
                 return Ok(filters);
             }
             catch (Exception ex)
@@ -70,7 +71,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var filter = await _savedFilterService.GetFilterByIdAsync(id, userId);
+                SavedFilterDTO? filter = await _savedFilterService.GetFilterByIdAsync(id, userId);
                 
                 if (filter == null)
                 {
@@ -97,7 +98,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var filter = await _savedFilterService.CreateFilterAsync(createDto, userId);
+                SavedFilterDTO filter = await _savedFilterService.CreateFilterAsync(createDto, userId);
                 return CreatedAtAction(nameof(GetFilterById), new { id = filter.Id }, filter);
             }
             catch (InvalidOperationException ex)
@@ -127,7 +128,13 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var filter = await _savedFilterService.UpdateFilterAsync(id, updateDto, userId);
+                SavedFilterDTO? filter = await _savedFilterService.UpdateFilterAsync(id, updateDto, userId);
+                
+                if (filter == null)
+                {
+                    return NotFound("Filter not found or access denied.");
+                }
+
                 return Ok(filter);
             }
             catch (UnauthorizedAccessException ex)
@@ -160,7 +167,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var success = await _savedFilterService.DeleteFilterAsync(id, userId);
+                bool success = await _savedFilterService.DeleteFilterAsync(id, userId);
                 
                 if (!success)
                 {
@@ -185,7 +192,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var filters = await _savedFilterService.GetPublicFiltersAsync();
+                IEnumerable<SavedFilterDTO> filters = await _savedFilterService.GetPublicFiltersAsync();
                 return Ok(filters);
             }
             catch (Exception ex)
@@ -205,7 +212,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var filters = await _savedFilterService.GetSharedFiltersAsync(userId);
+                IEnumerable<SavedFilterDTO> filters = await _savedFilterService.GetSharedFiltersAsync(userId);
                 return Ok(filters);
             }
             catch (Exception ex)
@@ -226,7 +233,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var result = await _savedFilterService.ExecuteFilterAsync(id, userId);
+                object result = await _savedFilterService.ExecuteFilterAsync(id, userId);
                 return Ok(result);
             }
             catch (UnauthorizedAccessException ex)
@@ -250,7 +257,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var isValid = await _savedFilterService.ValidateFilterCriteriaAsync(criteria);
+                bool isValid = await _savedFilterService.ValidateFilterCriteriaAsync(criteria);
                 return Ok(new { IsValid = isValid });
             }
             catch (Exception ex)

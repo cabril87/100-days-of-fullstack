@@ -208,6 +208,7 @@ public class Program
         builder.Services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();
         builder.Services.AddScoped<IFamilyAchievementRepository, FamilyAchievementRepository>();
         builder.Services.AddScoped<IFamilyCalendarRepository, FamilyCalendarRepository>();
+        builder.Services.AddScoped<IUserCalendarRepository, UserCalendarRepository>();
         builder.Services.AddScoped<IFamilyActivityRepository, FamilyActivityRepository>();
         
         // Add notification preference repository
@@ -238,6 +239,7 @@ public class Program
         
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
+        builder.Services.AddScoped<IUserCalendarService, UserCalendarService>();
         builder.Services.AddScoped<ISmartSchedulingService, SmartSchedulingService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
         
@@ -254,10 +256,15 @@ public class Program
         builder.Services.AddScoped<IReminderService, ReminderService>();
         builder.Services.AddScoped<IBoardService, BoardService>();
         builder.Services.AddScoped<IFamilyMemberService, FamilyMemberService>();
-        builder.Services.AddScoped<ITaskTemplateService, TaskTemplateService>();
         builder.Services.AddScoped<IFamilyRoleService, FamilyRoleService>();
         builder.Services.AddScoped<IAchievementService, AchievementService>();
         builder.Services.AddScoped<IBadgeService, BadgeService>();
+        
+        // Register TaskTemplateService (required for TaskTemplatesController)
+        builder.Services.AddScoped<ITaskTemplateService, TaskTemplateService>();
+        
+        // Register marketplace services
+        builder.Services.AddScoped<IPointsService, PointsService>();
 
         // Register SignalR for real-time updates
         builder.Services.AddSignalR(options =>
@@ -268,6 +275,9 @@ public class Program
         
         // Register notification real-time service
         builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
+        
+        // Register gamification real-time service
+        builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
         
         // Register calendar real-time service
         builder.Services.AddScoped<ICalendarRealTimeService, CalendarRealTimeService>();
@@ -288,14 +298,44 @@ public class Program
         // Register Board repositories and services
         builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 
+        // Register Enhanced Board Repositories (Phase 2 - Repository Pattern)
+        builder.Services.AddScoped<IBoardColumnRepository, BoardColumnRepository>();
+        builder.Services.AddScoped<IBoardSettingsRepository, BoardSettingsRepository>();
+        builder.Services.AddScoped<IBoardTemplateRepository, BoardTemplateRepository>();
+
+        // Register Enhanced Board Services (Phase 3 - Service Layer)
+        builder.Services.AddScoped<IBoardColumnService, BoardColumnService>();
+        builder.Services.AddScoped<IBoardSettingsService, BoardSettingsService>();
+        builder.Services.AddScoped<IBoardTemplateService, BoardTemplateService>();
+
         // Register Reminder, TaskTemplate, and Notification repositories
         builder.Services.AddScoped<IReminderRepository, ReminderRepository>();
         builder.Services.AddScoped<ITaskTemplateRepository, TaskTemplateRepository>();
         builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
         builder.Services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
 
+        // Register new gamification repositories (repository pattern compliance)
+        builder.Services.AddScoped<ISecurityRepository, SecurityRepository>();
+        builder.Services.AddScoped<IAchievementRepository, AchievementRepository>();
+        builder.Services.AddScoped<IBadgeRepository, BadgeRepository>();
+        builder.Services.AddScoped<IPointsRepository, PointsRepository>();
+        builder.Services.AddScoped<IThreatIntelligenceRepository, ThreatIntelligenceRepository>();
+
+        // Register new security & monitoring repositories (Phase 2 repository pattern compliance)
+        builder.Services.AddScoped<IGeolocationRepository, GeolocationRepository>();
+        builder.Services.AddScoped<IFailedLoginRepository, FailedLoginRepository>();
+        builder.Services.AddScoped<ISessionManagementRepository, SessionManagementRepository>();
+
+        // Register new analytics & subscription repositories (Phase 3 repository pattern compliance)
+        builder.Services.AddScoped<IBehavioralAnalyticsRepository, BehavioralAnalyticsRepository>();
+        builder.Services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
+
         // Register DeadlineNotificationService as a hosted service
         builder.Services.AddHostedService<DeadlineNotificationService>();
+
+        // Register Enhanced Board Background Services
+        builder.Services.AddHostedService<TaskTrackerAPI.Services.Background.EnhancedBoardAnalyticsService>();
+        builder.Services.AddHostedService<TaskTrackerAPI.Services.Background.TemplateMarketplaceService>();
 
         // Register QRCode Generator as singleton
         builder.Services.AddSingleton<QRCodeGenerator>();
@@ -344,6 +384,10 @@ public class Program
         builder.Services.AddScoped<IDataExportService, DataExportService>();
         builder.Services.AddScoped<IDashboardWidgetRepository, DashboardWidgetRepository>();
         builder.Services.AddScoped<IDataVisualizationService, DataVisualizationService>();
+
+        // Register Background Service Status Management (Day 61)
+        builder.Services.AddScoped<IBackgroundServiceStatusRepository, BackgroundServiceStatusRepository>();
+        builder.Services.AddScoped<IBackgroundServiceStatusService, BackgroundServiceStatusService>();
 
         // Add response compression
         builder.Services.AddResponseCompression(options =>
@@ -574,7 +618,20 @@ public class Program
         }
 
         // Register DataProtectionService
-        builder.Services.AddScoped<TaskTrackerAPI.Services.Interfaces.IDataProtectionService, TaskTrackerAPI.Services.DataProtectionService>();
+        builder.Services.AddScoped<IDataProtectionService, DataProtectionService>();
+
+        // Day 60: Register Template Automation Services
+        builder.Services.AddScoped<ITemplateAutomationRepository, TemplateAutomationRepository>();
+        builder.Services.AddScoped<ITemplateAutomationService, TemplateAutomationService>();
+
+        // Register additional repositories for proper separation of concerns
+        builder.Services.AddScoped<IGamificationRepository, GamificationRepository>();
+        builder.Services.AddScoped<IMLAnalyticsRepository, MLAnalyticsRepository>();
+        builder.Services.AddScoped<IAdaptationLearningRepository, AdaptationLearningRepository>();
+        builder.Services.AddScoped<ISecurityMonitoringRepository, SecurityMonitoringRepository>();
+
+        // Register marketplace services
+        builder.Services.AddScoped<IPointsService, PointsService>();
 
         WebApplication app = builder.Build();
 
@@ -683,6 +740,11 @@ public class Program
         app.MapHub<NotificationHub>("/hubs/notifications");
         app.MapHub<GamificationHub>("/hubs/gamification");
         app.MapHub<CalendarHub>("/hubs/calendar");
+        
+        // Map Enhanced Kanban Board SignalR hubs
+        app.MapHub<EnhancedBoardHub>("/hubs/enhanced-board");
+        app.MapHub<TemplateMarketplaceHub>("/hubs/template-marketplace");
+        app.MapHub<SettingsSyncHub>("/hubs/settings-sync");
 
         // Add health check endpoint for Docker
         app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
@@ -716,14 +778,15 @@ public class Program
 
                 if (app.Environment.IsDevelopment())
                 {
-                    // Apply any pending migrations
-                    logger.LogInformation("Applying pending migrations...");
+                    // Apply migrations and seed data in development
+                    logger.LogInformation("Development environment - applying migrations...");
                     await context.Database.MigrateAsync();
+                    logger.LogInformation("Migrations applied successfully.");
                 }
                 else 
                 {
-                    // Just make sure the database exists
-                    await context.Database.EnsureCreatedAsync();
+                    // Production: use migrations
+                    await context.Database.MigrateAsync();
                 }
                 
                 var seeder = new Data.SeedData.DataSeeder();

@@ -18,6 +18,7 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Data;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {

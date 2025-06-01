@@ -29,4 +29,28 @@ public interface ITaskTemplateService
     Task<bool> IsTaskTemplateOwnedByUserAsync(int templateId, int userId);
     Task SeedDefaultTemplatesAsync();
     Task<TemplateApplicationResultDTO> ApplyTemplateAsync(int userId, int templateId, ApplyTemplateDTO applyDto);
+    
+    // Day 60 Enhancement Methods
+    
+    // Marketplace methods
+    Task<IEnumerable<TaskTemplateDTO>> GetTemplateMarketplaceAsync();
+    Task<IEnumerable<TaskTemplateDTO>> GetTemplatesByCategoryAsync(string category);
+    Task<IEnumerable<TaskTemplateDTO>> SearchTemplatesAsync(string searchTerm);
+    Task<bool> PublishTemplateToMarketplaceAsync(int templateId, int userId);
+    Task<bool> UnpublishTemplateFromMarketplaceAsync(int templateId, int userId);
+    Task<IEnumerable<TaskTemplateDTO>> GetFeaturedTemplatesAsync();
+    Task<IEnumerable<TaskTemplateDTO>> GetPopularTemplatesAsync(int count = 10);
+    
+    // Analytics methods
+    Task<TemplateUsageAnalyticsDTO> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes);
+    Task<IEnumerable<TemplateUsageAnalyticsDTO>> GetTemplateAnalyticsAsync(int templateId);
+    Task<TemplateAnalyticsSummaryDTO> GetTemplateAnalyticsSummaryAsync(int templateId);
+    Task UpdateTemplateRatingAsync(int templateId, decimal rating);
+    Task IncrementTemplateDownloadCountAsync(int templateId);
+    
+    // Automation methods
+    Task<IEnumerable<TaskTemplateDTO>> GetAutomatedTemplatesAsync();
+    Task<IEnumerable<TaskTemplateDTO>> GetTemplatesWithTriggersAsync(string triggerType);
+    Task<TaskTemplateDTO> GenerateAutomatedTasksAsync(int templateId, int userId);
+    Task<WorkflowExecutionResultDTO> ExecuteWorkflowAsync(int templateId, int userId);
 } 

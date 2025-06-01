@@ -55,6 +55,9 @@ public class User
 
     public bool IsActive { get; set; } = true;
 
+    // MARKETPLACE POINTS SYSTEM
+    public int Points { get; set; } = 100; // Starting points for new users
+
     // Navigation property for user's tasks
     public virtual ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
 

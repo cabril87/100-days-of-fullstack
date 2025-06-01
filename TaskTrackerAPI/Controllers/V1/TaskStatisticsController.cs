@@ -21,6 +21,7 @@ using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Linq;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {

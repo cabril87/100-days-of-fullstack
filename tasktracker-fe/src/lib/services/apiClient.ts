@@ -5,7 +5,7 @@
  */
 
 import { ApiResponse } from '@/lib/types/api';
-import { applyMethodOverride, toPascalCase } from '@/lib/services/apiMethodOverride';
+import { toPascalCase } from '@/lib/services/apiMethodOverride';
 import { apiThrottler } from '@/lib/utils/apiThrottler';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -71,7 +71,7 @@ function getAuthToken(options: { suppressAuthError?: boolean } = {}): string | n
 /**
  * Convert an object to a FormData instance
  */
-function formDataFromObject(obj: Record<string, any>): FormData {
+function formDataFromObject(obj: Record<string, unknown>): FormData {
   const formData = new FormData();
   Object.entries(obj).forEach(([key, value]) => {
     if (value !== null && value !== undefined) {
@@ -82,12 +82,12 @@ function formDataFromObject(obj: Record<string, any>): FormData {
       // Handle arrays
       else if (Array.isArray(value)) {
         value.forEach((item, index) => {
-          formData.append(`${key}[${index}]`, item);
+          formData.append(`${key}[${index}]`, String(item));
         });
       }
       // Handle other values
       else {
-        formData.append(key, value.toString());
+        formData.append(key, String(value));
       }
     }
   });
@@ -97,16 +97,16 @@ function formDataFromObject(obj: Record<string, any>): FormData {
 /**
  * Convert an object to a query string
  */
-function objectToQueryString(obj: Record<string, any>): string {
+function objectToQueryString(obj: Record<string, unknown>): string {
   return Object.entries(obj)
-    .filter(([_, value]) => value !== null && value !== undefined)
+    .filter(([, value]) => value !== null && value !== undefined)
     .map(([key, value]) => {
       if (Array.isArray(value)) {
         return value
-          .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(item)}`)
+          .map((item) => `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`)
           .join('&');
       }
-      return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+      return `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`;
     })
     .join('&');
 }

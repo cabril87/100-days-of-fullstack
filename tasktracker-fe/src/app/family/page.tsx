@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,9 @@ export default function FamilyDashboard() {
   const [retryCount, setRetryCount] = useState(0);
   const [usingCachedData, setUsingCachedData] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(Date.now());
-  const [cacheKey, setCacheKey] = useState<string>(Date.now().toString());
+  const [lastError, setLastError] = useState<number | null>(null); // Track last error time
+  const [cacheKey, setCacheKey] = useState(Date.now().toString());
+  const isPollingRef = useRef(false); // Track if we're already polling
   const [stats, setStats] = useState<{
     totalMembers: number;
     totalCompletedTasks: number;
@@ -204,6 +206,7 @@ export default function FamilyDashboard() {
         // Reset error states
         setConnectionError(false);
         setUsingCachedData(false);
+        setLastError(null); // Clear error timestamp on success
       } else if (response.error) {
         console.error("Error fetching families:", response.error);
         setConnectionError(true);
@@ -218,6 +221,7 @@ export default function FamilyDashboard() {
     } catch (error) {
       console.error("Exception in fetchFamilies:", error);
       setConnectionError(true);
+      setLastError(Date.now()); // Track error time
       
       // Use cached data as fallback
       const cachedFamilies = getCachedFamilies();
@@ -396,6 +400,7 @@ export default function FamilyDashboard() {
           // Reset error states
           setConnectionError(false);
           setUsingCachedData(false);
+          setLastError(null); // Clear error timestamp on success
         } else if (response.error) {
           console.error("Error fetching families:", response.error);
           setConnectionError(true);
@@ -410,6 +415,7 @@ export default function FamilyDashboard() {
       } catch (error) {
         console.error("Exception in fetchFamilies:", error);
         setConnectionError(true);
+        setLastError(Date.now()); // Track error time
         
         // Use cached data as fallback
         const cachedFamilies = getCachedFamilies();
@@ -431,22 +437,38 @@ export default function FamilyDashboard() {
     
     localFetchFamilies(0, true);
     
-    // Set up polling to check for updates
+    // Set up polling to check for updates (only if not already polling)
     // This helps when families are created/deleted in other tabs or after redirection
-    const pollInterval = setInterval(() => {
-      console.log("[DEBUG] Polling for family updates...");
-      localFetchFamilies(0, true);
-    }, 3000); // Poll every 3 seconds
+    let pollInterval: NodeJS.Timeout;
+    let stopPollingTimeout: NodeJS.Timeout;
     
-    // Stop polling after 15 seconds to conserve resources
-    const stopPollingTimeout = setTimeout(() => {
-      clearInterval(pollInterval);
-      console.log("[DEBUG] Stopped polling for family updates");
-    }, 15000);
+    if (!isPollingRef.current) {
+      isPollingRef.current = true;
+      
+      pollInterval = setInterval(() => {
+        // Skip polling if there was a recent error (within last 5 minutes)
+        const now = Date.now();
+        if (lastError && (now - lastError) < 300000) {
+          console.log("[DEBUG] Skipping poll due to recent error");
+          return;
+        }
+        
+        console.log("[DEBUG] Polling for family updates...");
+        localFetchFamilies(0, true);
+      }, 30000); // Poll every 30 seconds instead of 3 seconds
+      
+      // Stop polling after 2 minutes to conserve resources
+      stopPollingTimeout = setTimeout(() => {
+        clearInterval(pollInterval);
+        isPollingRef.current = false;
+        console.log("[DEBUG] Stopped polling for family updates");
+      }, 120000); // 2 minutes instead of 15 seconds
+    }
     
     return () => {
-      clearInterval(pollInterval);
-      clearTimeout(stopPollingTimeout);
+      if (pollInterval) clearInterval(pollInterval);
+      if (stopPollingTimeout) clearTimeout(stopPollingTimeout);
+      isPollingRef.current = false;
     };
   }, [pathname]); // Re-run when pathname changes
   

@@ -22,6 +22,7 @@ using System.Web;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -29,7 +30,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;

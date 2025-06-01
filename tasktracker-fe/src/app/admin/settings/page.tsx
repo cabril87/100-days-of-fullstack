@@ -5,16 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { 
   Settings, 
   Shield, 
   Bell, 
-  Database, 
-  Mail, 
-  Globe, 
-  Lock, 
-  Users, 
   Activity,
   Save,
   RefreshCw,
@@ -22,8 +16,7 @@ import {
   CheckCircle,
   Info,
   Server,
-  Key,
-  Clock
+  Key
 } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -92,7 +85,7 @@ export default function AdminSettingsPage() {
           <CardContent className="p-6 text-center">
             <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
-            <p className="text-gray-600">You don't have permission to access this page.</p>
+            <p className="text-gray-600">You don&apos;t have permission to access this page.</p>
           </CardContent>
         </Card>
       </div>
@@ -140,7 +133,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const updateSetting = (section: keyof SystemSettings, key: string, value: any) => {
+  const updateSetting = (section: keyof SystemSettings, key: string, value: unknown) => {
     if (!settings) return;
     
     setSettings(prev => {

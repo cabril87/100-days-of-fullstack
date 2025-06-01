@@ -23,7 +23,7 @@ services:
     container_name: tasktracker-api
     ports:
       - "5000:8080"
-      - "5001:443"
+      - "5002:443"
     depends_on:
       - sqlserver
     environment:

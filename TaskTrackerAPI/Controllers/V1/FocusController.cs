@@ -22,9 +22,32 @@ using TaskTrackerAPI.DTOs.Focus;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    public class HourlySessionData
+    {
+        public int Count { get; set; }
+        public double AvgQuality { get; set; }
+        public double AvgLength { get; set; }
+        public double CompletionRate { get; set; }
+    }
+
+    public class CategorySessionData
+    {
+        public int Count { get; set; }
+        public double AvgQuality { get; set; }
+        public int TotalTime { get; set; }
+        public int CompletedTasks { get; set; }
+    }
+
+    public class HourlyRecommendationData
+    {
+        public int Count { get; set; }
+        public double AvgQuality { get; set; }
+    }
+
     [Authorize]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/focus")]
@@ -48,36 +71,17 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            FocusSession? session = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
+                .Include(fs => fs.TaskItem)
                 .OrderByDescending(fs => fs.StartTime)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        // Don't include AssignedToName
-                    }
-                })
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
-            
-            // Manually set the TaskItem
-            var session = sessionData.Session;
-            session.TaskItem = sessionData.TaskItem;
 
             return ApiOk(session);
         }
@@ -94,7 +98,7 @@ namespace TaskTrackerAPI.Controllers.V1
             int userId = GetUserId();
 
             // Check if there's already an active session
-            var activeSession = await _context.FocusSessions
+            FocusSession? activeSession = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
                 .FirstOrDefaultAsync();
@@ -126,7 +130,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Check if the task exists and belongs to the user
-            var task = await _context.Tasks
+            TaskItem? task = await _context.Tasks
                 .Where(t => t.Id == request.TaskId && t.UserId == userId)
                 .FirstOrDefaultAsync();
 
@@ -135,7 +139,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("Task not found or does not belong to you");
             }
 
-            var focusSession = new FocusSession
+            FocusSession focusSession = new FocusSession
             {
                 UserId = userId,
                 TaskId = request.TaskId,
@@ -173,7 +177,7 @@ namespace TaskTrackerAPI.Controllers.V1
             int userId = GetUserId();
 
             // Find and end any active session
-            var activeSession = await _context.FocusSessions
+            FocusSession? activeSession = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
                 .FirstOrDefaultAsync();
@@ -194,7 +198,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Check if the task exists and belongs to the user
-            var task = await _context.Tasks
+            TaskItem? task = await _context.Tasks
                 .Where(t => t.Id == request.TaskId && t.UserId == userId)
                 .FirstOrDefaultAsync();
 
@@ -203,7 +207,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("Task not found or does not belong to you");
             }
 
-            var focusSession = new FocusSession
+            FocusSession focusSession = new FocusSession
             {
                 UserId = userId,
                 TaskId = request.TaskId,
@@ -235,35 +239,15 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            FocusSession? session = await _context.FocusSessions
                 .Where(fs => fs.Id == id && fs.UserId == userId)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        ProgressPercentage = fs.TaskItem.ProgressPercentage,
-                        ActualTimeSpentMinutes = fs.TaskItem.ActualTimeSpentMinutes
-                    }
-                })
+                .Include(fs => fs.TaskItem)
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
-
-            var session = sessionData.Session;
-            var task = sessionData.TaskItem;
-            session.TaskItem = task;
 
             if (session.Status == SessionStatus.Completed)
             {
@@ -279,11 +263,11 @@ namespace TaskTrackerAPI.Controllers.V1
             session.DurationMinutes = (int)Math.Ceiling(duration.TotalMinutes);
 
             // Update task's actual time spent (accumulate from all focus sessions)
-            var totalTimeSpent = await _context.FocusSessions
-                .Where(fs => fs.TaskId == task.Id && fs.Status == SessionStatus.Completed)
+            int totalTimeSpent = await _context.FocusSessions
+                .Where(fs => fs.TaskId == session.TaskItem!.Id && fs.Status == SessionStatus.Completed)
                 .SumAsync(fs => fs.DurationMinutes);
             
-            task.ActualTimeSpentMinutes = totalTimeSpent + session.DurationMinutes;
+            session.TaskItem!.ActualTimeSpentMinutes = totalTimeSpent + session.DurationMinutes;
 
             await _context.SaveChangesAsync();
 
@@ -347,8 +331,8 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
 
-            var session = sessionData.Session;
-            var task = sessionData.TaskItem;
+            FocusSession session = sessionData.Session;
+            TaskItem task = sessionData.TaskItem;
             session.TaskItem = task;
 
             if (session.Status == SessionStatus.Completed)
@@ -393,7 +377,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Update task's actual time spent (accumulate from all focus sessions)
-            var totalTimeSpent = await _context.FocusSessions
+            int totalTimeSpent = await _context.FocusSessions
                 .Where(fs => fs.TaskId == task.Id && fs.Status == SessionStatus.Completed)
                 .SumAsync(fs => fs.DurationMinutes);
             
@@ -476,8 +460,8 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
 
-            var session = sessionData.Session;
-            var task = sessionData.TaskItem;
+            FocusSession session = sessionData.Session;
+            TaskItem task = sessionData.TaskItem;
             session.TaskItem = task;
 
             session.EndTime = DateTime.UtcNow;
@@ -489,7 +473,7 @@ namespace TaskTrackerAPI.Controllers.V1
             session.DurationMinutes = (int)Math.Ceiling(duration.TotalMinutes);
 
             // Update task's actual time spent (accumulate from all focus sessions)
-            var totalTimeSpent = await _context.FocusSessions
+            int totalTimeSpent = await _context.FocusSessions
                 .Where(fs => fs.TaskId == task.Id && fs.Status == SessionStatus.Completed)
                 .SumAsync(fs => fs.DurationMinutes);
             
@@ -555,7 +539,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
 
-            var session = sessionData.Session;
+            FocusSession session = sessionData.Session;
             session.TaskItem = sessionData.TaskItem;
 
             if (session.Status != SessionStatus.InProgress)
@@ -611,7 +595,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
 
-            var session = sessionData.Session;
+            FocusSession session = sessionData.Session;
             session.TaskItem = sessionData.TaskItem;
 
             // Calculate and accumulate duration up to this point
@@ -661,7 +645,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
 
-            var session = sessionData.Session;
+            FocusSession session = sessionData.Session;
             session.TaskItem = sessionData.TaskItem;
 
             if (session.Status != SessionStatus.Paused)
@@ -687,25 +671,11 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var suggestions = await _context.Tasks
+            List<TaskItem> suggestions = await _context.Tasks
                 .Where(t => t.UserId == userId && t.Status != TaskItemStatus.Completed)
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)
                 .Take(count)
-                .Select(t => new TaskItem 
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    Status = t.Status,
-                    DueDate = t.DueDate,
-                    Priority = t.Priority,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt,
-                    IsCompleted = t.IsCompleted,
-                    UserId = t.UserId,
-                    // Excluding AssignedToName to avoid the error
-                })
                 .ToListAsync();
 
             return ApiOk(suggestions);
@@ -723,7 +693,7 @@ namespace TaskTrackerAPI.Controllers.V1
             int userId = GetUserId();
             
             // Verify the session exists and belongs to the user
-            var session = await _context.FocusSessions
+            FocusSession? session = await _context.FocusSessions
                 .FirstOrDefaultAsync(fs => fs.Id == request.SessionId && fs.UserId == userId);
 
             if (session == null)
@@ -731,7 +701,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiNotFound<Distraction>("Focus session not found");
             }
 
-            var distraction = new Distraction
+            Distraction distraction = new Distraction
             {
                 FocusSessionId = request.SessionId,
                 Description = request.Description,
@@ -754,10 +724,10 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 // Default to last 7 days if no dates provided
-                var start = startDate ?? DateTime.UtcNow.AddDays(-7);
-                var end = endDate ?? DateTime.UtcNow;
+                DateTime start = startDate ?? DateTime.UtcNow.AddDays(-7);
+                DateTime end = endDate ?? DateTime.UtcNow;
 
-                var sessions = await _context.FocusSessions
+                List<FocusSession> sessions = await _context.FocusSessions
                     .Where(fs => fs.UserId == userId && fs.StartTime >= start && fs.StartTime <= end)
                     .Include(fs => fs.Distractions)
                     .ToListAsync();
@@ -776,7 +746,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     });
                 }
 
-                var statistics = new FocusStatisticsDto
+                FocusStatisticsDto statistics = new FocusStatisticsDto
                 {
                     TotalMinutesFocused = sessions.Sum(s => s.DurationMinutes),
                     SessionCount = sessions.Count,
@@ -832,8 +802,8 @@ namespace TaskTrackerAPI.Controllers.V1
                 .ToListAsync();
 
             // Create list of sessions with manually assigned TaskItems
-            var history = historySessions.Select(data => {
-                var session = data.Session;
+            List<FocusSession> history = historySessions.Select(data => {
+                FocusSession session = data.Session;
                 session.TaskItem = data.TaskItem;
                 return session;
             }).ToList();
@@ -848,7 +818,7 @@ namespace TaskTrackerAPI.Controllers.V1
             int userId = GetUserId();
             
             // Verify the session exists and belongs to the user
-            var session = await _context.FocusSessions
+            FocusSession? session = await _context.FocusSessions
                 .FirstOrDefaultAsync(fs => fs.Id == id && fs.UserId == userId);
 
             if (session == null)
@@ -871,13 +841,13 @@ namespace TaskTrackerAPI.Controllers.V1
             int userId = GetUserId();
             
             // Default to last 30 days if no dates provided
-            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-            var end = endDate ?? DateTime.UtcNow;
+            DateTime start = startDate ?? DateTime.UtcNow.AddDays(-30);
+            DateTime end = endDate ?? DateTime.UtcNow;
 
             try
             {
                 // Get focus sessions for the date range with all necessary includes
-                var sessions = await _context.FocusSessions
+                List<FocusSession> sessions = await _context.FocusSessions
                     .Where(fs => fs.UserId == userId && 
                                  fs.StartTime >= start && 
                                  fs.StartTime <= end &&
@@ -936,7 +906,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 // Calculate insights with existing data
-                var insights = new ProductivityInsightsDto
+                ProductivityInsightsDto insights = new ProductivityInsightsDto
                 {
                     TimeOfDayPatterns = CalculateTimeOfDayInsights(sessions),
                     StreakData = await CalculateFocusStreakData(userId, sessions),
@@ -956,13 +926,14 @@ namespace TaskTrackerAPI.Controllers.V1
 
         private TimeOfDayInsights CalculateTimeOfDayInsights(List<FocusSession> sessions)
         {
-            var insights = new TimeOfDayInsights();
+            TimeOfDayInsights insights = new TimeOfDayInsights();
             
-            var hourlyData = sessions
+            Dictionary<int, HourlySessionData> hourlyData = sessions
                 .GroupBy(s => s.StartTime.Hour)
                 .ToDictionary(
                     g => g.Key,
-                    g => new {
+                    g => new HourlySessionData
+                    {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue).DefaultIfEmpty()
                                    .Average(s => s?.SessionQualityRating ?? 0),
@@ -977,8 +948,8 @@ namespace TaskTrackerAPI.Controllers.V1
 
             if (hourlyData.Any())
             {
-                var bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
-                var worstHour = hourlyData.OrderBy(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlySessionData> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlySessionData> worstHour = hourlyData.OrderBy(kv => kv.Value.AvgQuality).First();
                 
                 insights.BestFocusHour = bestHour.Key;
                 insights.BestHourQuality = bestHour.Value.AvgQuality;
@@ -991,22 +962,22 @@ namespace TaskTrackerAPI.Controllers.V1
 
         private async Task<FocusStreakData> CalculateFocusStreakData(int userId, List<FocusSession> sessions)
         {
-            var streakData = new FocusStreakData();
+            FocusStreakData streakData = new FocusStreakData();
             
             // Get all sessions for streak calculation (not just current date range)
-            var allSessions = await _context.FocusSessions
+            List<FocusSession> allSessions = await _context.FocusSessions
                 .Where(fs => fs.UserId == userId && fs.Status == SessionStatus.Completed)
                 .OrderBy(fs => fs.StartTime.Date)
                 .ToListAsync();
 
-            var sessionsByDate = allSessions
+            Dictionary<DateTime, List<FocusSession>> sessionsByDate = allSessions
                 .GroupBy(s => s.StartTime.Date)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             // Calculate current streak
-            var today = DateTime.UtcNow.Date;
-            var currentStreak = 0;
-            var checkDate = today;
+            DateTime today = DateTime.UtcNow.Date;
+            int currentStreak = 0;
+            DateTime checkDate = today;
             
             while (sessionsByDate.ContainsKey(checkDate))
             {
@@ -1017,9 +988,9 @@ namespace TaskTrackerAPI.Controllers.V1
             streakData.CurrentStreak = currentStreak;
 
             // Calculate longest streak
-            var longestStreak = 0;
-            var tempStreak = 0;
-            var dates = sessionsByDate.Keys.OrderBy(d => d).ToList();
+            int longestStreak = 0;
+            int tempStreak = 0;
+            List<DateTime> dates = sessionsByDate.Keys.OrderBy(d => d).ToList();
             
             for (int i = 0; i < dates.Count; i++)
             {
@@ -1037,8 +1008,8 @@ namespace TaskTrackerAPI.Controllers.V1
             streakData.LongestStreak = longestStreak;
 
             // Calculate quality streak (consecutive sessions with rating >= 4)
-            var qualityStreak = 0;
-            var recentSessions = allSessions.TakeLast(30).Reverse();
+            int qualityStreak = 0;
+            IEnumerable<FocusSession> recentSessions = allSessions.TakeLast(30).Reverse();
             
             foreach (var session in recentSessions)
             {
@@ -1057,11 +1028,11 @@ namespace TaskTrackerAPI.Controllers.V1
             // Calculate productivity impact
             if (sessions.Count >= 10)
             {
-                var sessionsWithQuality = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
+                List<FocusSession> sessionsWithQuality = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
                 if (sessionsWithQuality.Any())
                 {
-                    var avgQuality = sessionsWithQuality.Average(s => s.SessionQualityRating!.Value);
-                    var avgLength = sessions.Average(s => s.DurationMinutes);
+                    double avgQuality = sessionsWithQuality.Average(s => s.SessionQualityRating!.Value);
+                    double avgLength = sessions.Average(s => s.DurationMinutes);
                     
                     // Simple productivity impact calculation
                     streakData.StreakImpactOnProductivity = (avgQuality - 3) * 10 + (avgLength - 25) * 0.5;
@@ -1073,30 +1044,30 @@ namespace TaskTrackerAPI.Controllers.V1
 
         private CorrelationInsights CalculateCorrelationInsights(List<FocusSession> sessions)
         {
-            var insights = new CorrelationInsights();
+            CorrelationInsights insights = new CorrelationInsights();
             
-            var qualitySessions = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
+            List<FocusSession> qualitySessions = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
             
             if (qualitySessions.Count >= 5)
             {
                 // Session length vs quality correlation
-                var lengths = qualitySessions.Select(s => (double)s.DurationMinutes).ToArray();
-                var qualities = qualitySessions.Select(s => (double)s.SessionQualityRating!.Value).ToArray();
+                double[] lengths = qualitySessions.Select(s => (double)s.DurationMinutes).ToArray();
+                double[] qualities = qualitySessions.Select(s => (double)s.SessionQualityRating!.Value).ToArray();
                 insights.SessionLengthQualityCorrelation = CalculateCorrelation(lengths, qualities);
 
                 // Distractions vs quality correlation - handle potential null collections
-                var distractionCounts = qualitySessions.Select(s => (double)(s.Distractions?.Count ?? 0)).ToArray();
+                double[] distractionCounts = qualitySessions.Select(s => (double)(s.Distractions?.Count ?? 0)).ToArray();
                 insights.DistractionQualityCorrelation = CalculateCorrelation(distractionCounts, qualities);
 
                 // Task progress vs quality correlation
-                var progressSessions = qualitySessions.Where(s => s.TaskProgressBefore >= 0 && s.TaskProgressAfter >= 0).ToList();
+                List<FocusSession> progressSessions = qualitySessions.Where(s => s.TaskProgressBefore >= 0 && s.TaskProgressAfter >= 0).ToList();
                 if (progressSessions.Any())
                 {
-                    var progressChanges = progressSessions
+                    double[] progressChanges = progressSessions
                         .Select(s => (double)(s.TaskProgressAfter - s.TaskProgressBefore))
                         .ToArray();
                     
-                    var progressQualities = progressSessions
+                    double[] progressQualities = progressSessions
                         .Select(s => (double)s.SessionQualityRating!.Value)
                         .ToArray();
                     
@@ -1104,7 +1075,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 // Completion rate vs quality correlation
-                var completions = qualitySessions.Select(s => s.TaskCompletedDuringSession ? 1.0 : 0.0).ToArray();
+                double[] completions = qualitySessions.Select(s => s.TaskCompletedDuringSession ? 1.0 : 0.0).ToArray();
                 insights.CompletionRateQualityCorrelation = CalculateCorrelation(completions, qualities);
             }
 
@@ -1115,31 +1086,32 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             if (x.Length != y.Length || x.Length < 2) return 0;
 
-            var avgX = x.Average();
-            var avgY = y.Average();
+            double avgX = x.Average();
+            double avgY = y.Average();
             
-            var numerator = x.Zip(y, (xi, yi) => (xi - avgX) * (yi - avgY)).Sum();
-            var denominatorX = Math.Sqrt(x.Sum(xi => Math.Pow(xi - avgX, 2)));
-            var denominatorY = Math.Sqrt(y.Sum(yi => Math.Pow(yi - avgY, 2)));
+            double numerator = x.Zip(y, (xi, yi) => (xi - avgX) * (yi - avgY)).Sum();
+            double denominatorX = Math.Sqrt(x.Sum(xi => Math.Pow(xi - avgX, 2)));
+            double denominatorY = Math.Sqrt(y.Sum(yi => Math.Pow(yi - avgY, 2)));
             
             return denominatorX * denominatorY == 0 ? 0 : numerator / (denominatorX * denominatorY);
         }
 
         private TaskTypeFocusInsights CalculateTaskTypeInsights(List<FocusSession> sessions)
         {
-            var insights = new TaskTypeFocusInsights();
+            TaskTypeFocusInsights insights = new TaskTypeFocusInsights();
             
             // Filter sessions with valid task items and categories, handling nulls safely
-            var taskSessions = sessions.Where(s => 
+            List<FocusSession> taskSessions = sessions.Where(s => 
                 s.TaskItem?.Category?.Name != null && 
                 !string.IsNullOrWhiteSpace(s.TaskItem.Category.Name)
             ).ToList();
             
             if (taskSessions.Any())
             {
-                var categoryData = taskSessions
+                Dictionary<string, CategorySessionData> categoryData = taskSessions
                     .GroupBy(s => s.TaskItem!.Category!.Name!)
-                    .ToDictionary(g => g.Key, g => new {
+                    .ToDictionary(g => g.Key, g => new CategorySessionData
+                    {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue)
                                    .DefaultIfEmpty()
@@ -1159,8 +1131,8 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (categoryData.Any())
                 {
-                    var mostFocused = categoryData.OrderByDescending(kv => kv.Value.Count).First();
-                    var highestQuality = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                    KeyValuePair<string, CategorySessionData> mostFocused = categoryData.OrderByDescending(kv => kv.Value.Count).First();
+                    KeyValuePair<string, CategorySessionData> highestQuality = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First();
                     
                     insights.MostFocusedCategory = mostFocused.Key;
                     insights.HighestQualityCategory = highestQuality.Key;
@@ -1181,16 +1153,17 @@ namespace TaskTrackerAPI.Controllers.V1
 
         private List<ProductivityRecommendation> GenerateRecommendations(List<FocusSession> sessions)
         {
-            var recommendations = new List<ProductivityRecommendation>();
+            List<ProductivityRecommendation> recommendations = new List<ProductivityRecommendation>();
 
             if (!sessions.Any()) return recommendations;
 
             // Calculate time of day insights for best time recommendation
-            var hourlyData = sessions
+            Dictionary<int, HourlyRecommendationData> hourlyData = sessions
                 .GroupBy(s => s.StartTime.Hour)
                 .ToDictionary(
                     g => g.Key,
-                    g => new {
+                    g => new HourlyRecommendationData
+                    {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue).DefaultIfEmpty()
                                    .Average(s => s?.SessionQualityRating ?? 0)
@@ -1199,7 +1172,7 @@ namespace TaskTrackerAPI.Controllers.V1
             // Best time recommendation
             if (hourlyData.Any())
             {
-                var bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlyRecommendationData> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
                 recommendations.Add(new ProductivityRecommendation
                 {
                     Id = "best-time",
@@ -1212,7 +1185,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Streak building recommendation
-            var uniqueDays = sessions.Select(s => s.StartTime.Date).Distinct().Count();
+            int uniqueDays = sessions.Select(s => s.StartTime.Date).Distinct().Count();
             if (uniqueDays < 7)
             {
                 recommendations.Add(new ProductivityRecommendation
@@ -1227,12 +1200,12 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Session length optimization
-                var avgLength = sessions.Average(s => s.DurationMinutes);
-            var qualitySessions = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
+            double avgLength = sessions.Average(s => s.DurationMinutes);
+            List<FocusSession> qualitySessions = sessions.Where(s => s.SessionQualityRating.HasValue).ToList();
             
             if (qualitySessions.Any())
             {
-                var avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
+                double avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
                 
                 if (avgLength < 25 && avgQuality >= 3.5)
                 {
@@ -1261,7 +1234,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Distraction management
-            var avgDistractions = sessions.Average(s => s.Distractions?.Count ?? 0);
+            double avgDistractions = sessions.Average(s => s.Distractions?.Count ?? 0);
             if (avgDistractions > 3)
                 {
                     recommendations.Add(new ProductivityRecommendation
@@ -1276,17 +1249,17 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Category-based recommendations
-            var taskSessions = sessions.Where(s => s.TaskItem?.Category?.Name != null).ToList();
+            List<FocusSession> taskSessions = sessions.Where(s => s.TaskItem?.Category?.Name != null).ToList();
             if (taskSessions.Any())
             {
-                var categoryPerformance = taskSessions
+                Dictionary<string, double> categoryPerformance = taskSessions
                     .Where(s => s.SessionQualityRating.HasValue)
                     .GroupBy(s => s.TaskItem!.Category!.Name)
                     .ToDictionary(g => g.Key, g => g.Average(s => s.SessionQualityRating!.Value));
 
                 if (categoryPerformance.Any())
                 {
-                    var bestCategory = categoryPerformance.OrderByDescending(kv => kv.Value).First();
+                    KeyValuePair<string, double> bestCategory = categoryPerformance.OrderByDescending(kv => kv.Value).First();
                     recommendations.Add(new ProductivityRecommendation
                     {
                         Id = "focus-category",
@@ -1302,7 +1275,7 @@ namespace TaskTrackerAPI.Controllers.V1
             // Quality improvement recommendation
             if (qualitySessions.Any())
             {
-                var avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
+                double avgQuality = qualitySessions.Average(s => s.SessionQualityRating!.Value);
                 if (avgQuality < 3.0)
                 {
                     recommendations.Add(new ProductivityRecommendation

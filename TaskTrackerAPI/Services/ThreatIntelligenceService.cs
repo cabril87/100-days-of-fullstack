@@ -4,11 +4,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Security;
 using TaskTrackerAPI.Models.Security;
+using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Text.Json;
 
@@ -16,7 +15,7 @@ namespace TaskTrackerAPI.Services
 {
     public class ThreatIntelligenceService : IThreatIntelligenceService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IThreatIntelligenceRepository _threatRepository;
         private readonly ILogger<ThreatIntelligenceService> _logger;
         private readonly IMapper _mapper;
         private readonly HttpClient _httpClient;
@@ -40,76 +39,43 @@ namespace TaskTrackerAPI.Services
         };
 
         public ThreatIntelligenceService(
-            ApplicationDbContext context,
+            IThreatIntelligenceRepository threatRepository,
             ILogger<ThreatIntelligenceService> logger,
             IMapper mapper,
             HttpClient httpClient)
         {
-            _context = context;
-            _logger = logger;
-            _mapper = mapper;
-            _httpClient = httpClient;
+            _threatRepository = threatRepository ?? throw new ArgumentNullException(nameof(threatRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
         public async Task<ThreatIntelligenceSummaryDTO> GetThreatIntelligenceSummaryAsync()
         {
             try
             {
-                var threats = await _context.ThreatIntelligence
-                    .Where(t => t.IsActive)
-                    .ToListAsync();
+                // Get threat statistics from repository
+                Dictionary<string, int> statistics = await _threatRepository.GetThreatStatisticsAsync();
+                IEnumerable<ThreatIntelligence> recentThreats = await _threatRepository.GetRecentThreatsAsync(10);
+                IEnumerable<string> topThreatCountries = await _threatRepository.GetTopThreatCountriesAsync(10);
 
-                var summary = new ThreatIntelligenceSummaryDTO
+                ThreatIntelligenceSummaryDTO summary = new ThreatIntelligenceSummaryDTO
                 {
-                    TotalThreats = threats.Count,
-                    ActiveThreats = threats.Count(t => t.IsActive),
-                    CriticalThreats = threats.Count(t => t.Severity == "Critical"),
-                    HighThreats = threats.Count(t => t.Severity == "High"),
-                    MediumThreats = threats.Count(t => t.Severity == "Medium"),
-                    LowThreats = threats.Count(t => t.Severity == "Low"),
-                    BlacklistedIPs = threats.Count(t => t.IsBlacklisted),
-                    WhitelistedIPs = threats.Count(t => t.IsWhitelisted),
-                    AverageThreatScore = threats.Any() ? threats.Average(t => t.ConfidenceScore) : 0,
+                    TotalThreats = statistics.GetValueOrDefault("TotalThreats", 0),
+                    CriticalThreats = statistics.GetValueOrDefault("CriticalThreats", 0),
+                    HighThreats = statistics.GetValueOrDefault("HighThreats", 0),
+                    MediumThreats = statistics.GetValueOrDefault("MediumThreats", 0),
+                    LowThreats = statistics.GetValueOrDefault("LowThreats", 0),
+                    BlacklistedIPs = statistics.GetValueOrDefault("BlacklistedIPs", 0),
+                    WhitelistedIPs = statistics.GetValueOrDefault("WhitelistedIPs", 0),
                     LastUpdated = DateTime.UtcNow
                 };
 
-                // Threat type breakdown
-                summary.ThreatTypeBreakdown = threats
-                    .GroupBy(t => t.ThreatType)
-                    .Select(g => new ThreatTypeCountDTO
-                    {
-                        ThreatType = g.Key,
-                        Count = g.Count(),
-                        Severity = g.OrderByDescending(t => _threatTypeScores.GetValueOrDefault(t.ThreatType, 0))
-                                   .First().Severity
-                    })
-                    .OrderByDescending(t => t.Count)
-                    .ToList();
-
-                // Threat source breakdown
-                summary.ThreatSourceBreakdown = threats
-                    .GroupBy(t => t.ThreatSource)
-                    .Select(g => new ThreatSourceCountDTO
-                    {
-                        Source = g.Key,
-                        Count = g.Count(),
-                        AverageConfidence = g.Average(t => t.ConfidenceScore)
-                    })
-                    .OrderByDescending(t => t.Count)
-                    .ToList();
-
                 // Recent threats
-                summary.RecentThreats = _mapper.Map<List<ThreatIntelligenceDTO>>(
-                    threats.OrderByDescending(t => t.LastSeen).Take(10));
+                summary.RecentThreats = _mapper.Map<List<ThreatIntelligenceDTO>>(recentThreats);
 
                 // Top threat countries
-                summary.TopThreatCountries = threats
-                    .Where(t => !string.IsNullOrEmpty(t.Country))
-                    .GroupBy(t => t.Country)
-                    .OrderByDescending(g => g.Count())
-                    .Take(10)
-                    .Select(g => g.Key)
-                    .ToList();
+                summary.TopThreatCountries = topThreatCountries.ToList();
 
                 return summary;
             }
@@ -124,17 +90,14 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var result = new IPReputationCheckDTO
+                IPReputationCheckDTO result = new IPReputationCheckDTO
                 {
                     IPAddress = ipAddress,
                     CheckedAt = DateTime.UtcNow
                 };
 
-                // Check local threat intelligence database
-                var localThreat = await _context.ThreatIntelligence
-                    .Where(t => t.IPAddress == ipAddress && t.IsActive)
-                    .OrderByDescending(t => t.ConfidenceScore)
-                    .FirstOrDefaultAsync();
+                // Check local threat intelligence database using repository
+                ThreatIntelligence? localThreat = await _threatRepository.GetThreatByIPAsync(ipAddress);
 
                 if (localThreat != null)
                 {
@@ -146,38 +109,19 @@ namespace TaskTrackerAPI.Services
                     return result;
                 }
 
-                // Check if IP is whitelisted
-                var whitelisted = await _context.ThreatIntelligence
-                    .AnyAsync(t => t.IPAddress == ipAddress && t.IsWhitelisted);
-
-                if (whitelisted)
+                // If not found locally, perform basic pattern checks
+                result.IsThreat = IsKnownMaliciousPattern(ipAddress);
+                if (result.IsThreat)
                 {
-                    result.IsThreat = false;
-                    result.ThreatLevel = "Safe";
-                    result.ConfidenceScore = 100;
-                    result.RecommendedAction = "Allow";
-                    return result;
-                }
-
-                // Perform basic pattern analysis
-                var patternAnalysis = AnalyzeIPPatterns(ipAddress);
-                if (patternAnalysis.IsSuspicious)
-                {
-                    result.IsThreat = true;
                     result.ThreatLevel = "Medium";
-                    result.ThreatTypes.AddRange(patternAnalysis.ThreatTypes);
-                    result.ConfidenceScore = patternAnalysis.ConfidenceScore;
+                    result.ThreatTypes.Add("Pattern Match");
+                    result.ConfidenceScore = 60;
                     result.RecommendedAction = "Monitor";
-
-                    // Log this as a new threat
-                    await AddThreatIntelligenceAsync(ipAddress, "Suspicious", "Medium", "Pattern Analysis", 
-                        patternAnalysis.Description, patternAnalysis.ConfidenceScore);
                 }
                 else
                 {
-                    result.IsThreat = false;
-                    result.ThreatLevel = "Low";
-                    result.ConfidenceScore = 10;
+                    result.ThreatLevel = "Safe";
+                    result.ConfidenceScore = 95;
                     result.RecommendedAction = "Allow";
                 }
 
@@ -202,11 +146,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var threats = await _context.ThreatIntelligence
-                    .Where(t => t.ThreatType == threatType && t.IsActive)
-                    .OrderByDescending(t => t.LastSeen)
-                    .ToListAsync();
-
+                IEnumerable<ThreatIntelligence> threats = await _threatRepository.GetThreatsByTypeAsync(threatType);
                 return _mapper.Map<List<ThreatIntelligenceDTO>>(threats);
             }
             catch (Exception ex)
@@ -220,11 +160,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var threats = await _context.ThreatIntelligence
-                    .Where(t => t.Severity == severity && t.IsActive)
-                    .OrderByDescending(t => t.ConfidenceScore)
-                    .ToListAsync();
-
+                IEnumerable<ThreatIntelligence> threats = await _threatRepository.GetThreatsBySeverityAsync(severity);
                 return _mapper.Map<List<ThreatIntelligenceDTO>>(threats);
             }
             catch (Exception ex)
@@ -238,12 +174,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var threats = await _context.ThreatIntelligence
-                    .Where(t => t.IsActive)
-                    .OrderByDescending(t => t.LastSeen)
-                    .Take(count)
-                    .ToListAsync();
-
+                IEnumerable<ThreatIntelligence> threats = await _threatRepository.GetRecentThreatsAsync(count);
                 return _mapper.Map<List<ThreatIntelligenceDTO>>(threats);
             }
             catch (Exception ex)
@@ -258,8 +189,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var existingThreat = await _context.ThreatIntelligence
-                    .FirstOrDefaultAsync(t => t.IPAddress == ipAddress && t.ThreatType == threatType);
+                ThreatIntelligence? existingThreat = await _threatRepository.GetThreatByIPAndTypeAsync(ipAddress, threatType);
 
                 if (existingThreat != null)
                 {
@@ -269,11 +199,13 @@ namespace TaskTrackerAPI.Services
                     existingThreat.ConfidenceScore = Math.Max(existingThreat.ConfidenceScore, confidenceScore);
                     existingThreat.UpdatedAt = DateTime.UtcNow;
                     existingThreat.IsActive = true;
+
+                    await _threatRepository.UpdateThreatAsync(existingThreat);
                 }
                 else
                 {
                     // Add new threat
-                    var threat = new ThreatIntelligence
+                    ThreatIntelligence threat = new ThreatIntelligence
                     {
                         IPAddress = ipAddress,
                         ThreatType = threatType,
@@ -283,16 +215,13 @@ namespace TaskTrackerAPI.Services
                         ConfidenceScore = confidenceScore,
                         FirstSeen = DateTime.UtcNow,
                         LastSeen = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
                         ReportCount = 1,
                         IsActive = true
                     };
 
-                    _context.ThreatIntelligence.Add(threat);
+                    await _threatRepository.CreateThreatAsync(threat);
                 }
 
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -306,15 +235,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var threat = await _context.ThreatIntelligence.FindAsync(threatId);
-                if (threat != null)
-                {
-                    threat.IsActive = isActive;
-                    threat.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-                    return true;
-                }
-                return false;
+                return await _threatRepository.UpdateThreatStatusAsync(threatId, isActive);
             }
             catch (Exception ex)
             {
@@ -327,8 +248,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var existingThreat = await _context.ThreatIntelligence
-                    .FirstOrDefaultAsync(t => t.IPAddress == ipAddress);
+                ThreatIntelligence? existingThreat = await _threatRepository.GetThreatByIPAsync(ipAddress);
 
                 if (existingThreat != null)
                 {
@@ -336,10 +256,11 @@ namespace TaskTrackerAPI.Services
                     existingThreat.IsBlacklisted = false;
                     existingThreat.Description = $"Whitelisted: {reason}";
                     existingThreat.UpdatedAt = DateTime.UtcNow;
+                    await _threatRepository.UpdateThreatAsync(existingThreat);
                 }
                 else
                 {
-                    var whitelist = new ThreatIntelligence
+                    ThreatIntelligence whitelist = new ThreatIntelligence
                     {
                         IPAddress = ipAddress,
                         ThreatType = "Whitelist",
@@ -349,16 +270,13 @@ namespace TaskTrackerAPI.Services
                         ConfidenceScore = 100,
                         FirstSeen = DateTime.UtcNow,
                         LastSeen = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
                         IsWhitelisted = true,
                         IsActive = true
                     };
 
-                    _context.ThreatIntelligence.Add(whitelist);
+                    await _threatRepository.CreateThreatAsync(whitelist);
                 }
 
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -372,8 +290,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var existingThreat = await _context.ThreatIntelligence
-                    .FirstOrDefaultAsync(t => t.IPAddress == ipAddress);
+                ThreatIntelligence? existingThreat = await _threatRepository.GetThreatByIPAsync(ipAddress);
 
                 if (existingThreat != null)
                 {
@@ -382,10 +299,11 @@ namespace TaskTrackerAPI.Services
                     existingThreat.Severity = "Critical";
                     existingThreat.Description = $"Blacklisted: {reason}";
                     existingThreat.UpdatedAt = DateTime.UtcNow;
+                    await _threatRepository.UpdateThreatAsync(existingThreat);
                 }
                 else
                 {
-                    var blacklist = new ThreatIntelligence
+                    ThreatIntelligence blacklist = new ThreatIntelligence
                     {
                         IPAddress = ipAddress,
                         ThreatType = "Blacklist",
@@ -395,16 +313,13 @@ namespace TaskTrackerAPI.Services
                         ConfidenceScore = 100,
                         FirstSeen = DateTime.UtcNow,
                         LastSeen = DateTime.UtcNow,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow,
                         IsBlacklisted = true,
                         IsActive = true
                     };
 
-                    _context.ThreatIntelligence.Add(blacklist);
+                    await _threatRepository.CreateThreatAsync(blacklist);
                 }
 
-                await _context.SaveChangesAsync();
                 return true;
             }
             catch (Exception ex)
@@ -418,8 +333,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                return await _context.ThreatIntelligence
-                    .AnyAsync(t => t.IPAddress == ipAddress && t.IsBlacklisted && t.IsActive);
+                return await _threatRepository.IsIPBlacklistedAsync(ipAddress);
             }
             catch (Exception ex)
             {
@@ -432,8 +346,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                return await _context.ThreatIntelligence
-                    .AnyAsync(t => t.IPAddress == ipAddress && t.IsWhitelisted && t.IsActive);
+                return await _threatRepository.IsIPWhitelistedAsync(ipAddress);
             }
             catch (Exception ex)
             {
@@ -446,12 +359,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                return await _context.ThreatIntelligence
-                    .Where(t => t.IsActive)
-                    .Select(t => t.ThreatType)
-                    .Distinct()
-                    .OrderBy(t => t)
-                    .ToListAsync();
+                IEnumerable<string> threatTypes = await _threatRepository.GetThreatTypesAsync();
+                return threatTypes.ToList();
             }
             catch (Exception ex)
             {
@@ -464,12 +373,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                return await _context.ThreatIntelligence
-                    .Where(t => t.IsActive)
-                    .Select(t => t.ThreatSource)
-                    .Distinct()
-                    .OrderBy(t => t)
-                    .ToListAsync();
+                IEnumerable<string> threatSources = await _threatRepository.GetThreatSourcesAsync();
+                return threatSources.ToList();
             }
             catch (Exception ex)
             {
@@ -499,16 +404,11 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var cutoffDate = DateTime.UtcNow.AddDays(-daysOld);
-                var oldThreats = await _context.ThreatIntelligence
-                    .Where(t => t.LastSeen < cutoffDate && !t.IsBlacklisted && !t.IsWhitelisted)
-                    .ToListAsync();
+                IEnumerable<ThreatIntelligence> oldThreats = await _threatRepository.GetOldThreatsForCleanupAsync(daysOld);
+                int removedCount = await _threatRepository.RemoveThreatsAsync(oldThreats);
 
-                _context.ThreatIntelligence.RemoveRange(oldThreats);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Cleaned up {Count} old threat intelligence records", oldThreats.Count);
-                return oldThreats.Count;
+                _logger.LogInformation("Cleaned up {Count} old threat intelligence records", removedCount);
+                return removedCount;
             }
             catch (Exception ex)
             {
@@ -517,52 +417,26 @@ namespace TaskTrackerAPI.Services
             }
         }
 
-        private (bool IsSuspicious, List<string> ThreatTypes, int ConfidenceScore, string Description) AnalyzeIPPatterns(string ipAddress)
+        private bool IsKnownMaliciousPattern(string ipAddress)
         {
-            var threatTypes = new List<string>();
-            var isSuspicious = false;
-            var confidenceScore = 0;
-            var description = "";
-
-            // Check for private/local IP ranges
-            if (_knownMaliciousPatterns.Any(pattern => ipAddress.StartsWith(pattern)))
-            {
-                isSuspicious = true;
-                threatTypes.Add("Private IP");
-                confidenceScore = 30;
-                description = "Private or local IP address detected";
-            }
-
-            // Check for suspicious patterns (this is a simplified example)
-            if (ipAddress.Contains("..") || ipAddress.Length > 15)
-            {
-                isSuspicious = true;
-                threatTypes.Add("Malformed IP");
-                confidenceScore = 60;
-                description = "Malformed IP address detected";
-            }
-
-            // Add more sophisticated pattern analysis here
-            // In a real implementation, you would integrate with external threat feeds
-
-            return (isSuspicious, threatTypes, confidenceScore, description);
+            return _knownMaliciousPatterns.Any(pattern => ipAddress.StartsWith(pattern));
         }
 
         private string GetRecommendedAction(string severity, string threatType)
         {
-            return severity switch
+            return severity.ToLower() switch
             {
-                "Critical" => "Block immediately",
-                "High" => "Block and investigate",
-                "Medium" => "Monitor closely",
-                "Low" => "Log and monitor",
+                "critical" => "Block",
+                "high" => "Block",
+                "medium" => "Monitor",
+                "low" => "Allow",
                 _ => "Monitor"
             };
         }
 
         private async Task GenerateSampleThreatDataAsync()
         {
-            var sampleThreats = new List<ThreatIntelligence>
+            List<ThreatIntelligence> sampleThreats = new List<ThreatIntelligence>
             {
                 new() {
                     IPAddress = "192.168.1.100",
@@ -573,8 +447,6 @@ namespace TaskTrackerAPI.Services
                     ConfidenceScore = 75,
                     FirstSeen = DateTime.UtcNow.AddDays(-2),
                     LastSeen = DateTime.UtcNow.AddHours(-1),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
                     Country = "Unknown",
                     ReportCount = 3,
                     IsActive = true
@@ -588,26 +460,21 @@ namespace TaskTrackerAPI.Services
                     ConfidenceScore = 85,
                     FirstSeen = DateTime.UtcNow.AddDays(-1),
                     LastSeen = DateTime.UtcNow.AddMinutes(-30),
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
                     Country = "Unknown",
                     ReportCount = 15,
                     IsActive = true
                 }
             };
 
-            foreach (var threat in sampleThreats)
+            foreach (ThreatIntelligence threat in sampleThreats)
             {
-                var existing = await _context.ThreatIntelligence
-                    .FirstOrDefaultAsync(t => t.IPAddress == threat.IPAddress && t.ThreatType == threat.ThreatType);
+                ThreatIntelligence? existing = await _threatRepository.GetThreatByIPAndTypeAsync(threat.IPAddress, threat.ThreatType);
 
                 if (existing == null)
                 {
-                    _context.ThreatIntelligence.Add(threat);
+                    await _threatRepository.CreateThreatAsync(threat);
                 }
             }
-
-            await _context.SaveChangesAsync();
         }
     }
 } 

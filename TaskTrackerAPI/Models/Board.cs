@@ -41,4 +41,9 @@ public class Board
     public virtual User? User { get; set; }
     
     public virtual ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
+    
+    // Enhanced board relationships
+    public virtual ICollection<BoardColumn> Columns { get; set; } = new List<BoardColumn>();
+    
+    public virtual BoardSettings? Settings { get; set; }
 } 

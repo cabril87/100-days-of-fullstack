@@ -257,7 +257,7 @@ export default function AnalyticsReportsPage() {
                       <div>
                         <div className="font-medium text-blue-800">Peak Performance Time</div>
                         <div className="text-sm text-blue-700">
-                          You're most productive between 9-11 AM. Consider scheduling 
+                          You&apos;re most productive between 9-11 AM. Consider scheduling 
                           important tasks during this time.
                         </div>
                       </div>

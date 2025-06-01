@@ -23,8 +23,7 @@ import {
   Download,
   Calendar
 } from 'lucide-react';
-import { ProductivityChart } from '@/components/analytics/charts/ProductivityChart';
-import { TimeDistributionChart } from '@/components/analytics/charts/TimeDistributionChart';
+import { ProductivityChart, TimeDistributionChart, ProductivityDataPoint, TimeDistributionData } from '@/components/analytics/charts/index';
 import { advancedAnalyticsService } from '@/lib/services/analytics';
 import { ProductivityMetrics, TimeAnalysis } from '@/lib/types/analytics';
 
@@ -77,6 +76,35 @@ export default function ProductivityPage() {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     return `${displayHour}:00 ${period}`;
+  };
+
+  // Transform data for charts
+  const transformProductivityData = (weeklyTrends: any[]): ProductivityDataPoint[] => {
+    return weeklyTrends.map(trend => ({
+      date: trend.date || trend.week || trend.period,
+      tasksCompleted: trend.tasksCompleted || trend.tasks || 0,
+      timeSpent: trend.timeSpent || trend.hours || 0,
+      efficiency: trend.efficiency || trend.productivityScore || 0,
+      focusTime: trend.focusTime || trend.activeTime || 0,
+      breaks: trend.breaks || 0,
+      productivity: trend.productivity || trend.score || 0
+    }));
+  };
+
+  const transformTimeDistributionData = (timeDistribution: any[]): TimeDistributionData[] => {
+    return timeDistribution.map(item => ({
+      period: item.period || item.time || item.hour || '',
+      hours: item.hours || item.duration || item.timeSpent || 0,
+      tasks: item.tasks || item.taskCount || 0,
+      category: item.category,
+      productivity: item.productivity || item.efficiency,
+      focus: item.focus || item.focusTime,
+      breaks: item.breaks,
+      efficiency: item.efficiency,
+      date: item.date,
+      dayOfWeek: item.dayOfWeek || item.day,
+      hourOfDay: item.hourOfDay || item.hour
+    }));
   };
 
   return (
@@ -273,7 +301,7 @@ export default function ProductivityPage() {
                   Productivity Over Time
                 </h3>
                 <ProductivityChart 
-                  data={metrics?.weeklyTrends || []}
+                  data={transformProductivityData(metrics?.weeklyTrends || [])}
                   isLoading={isLoading}
                   theme="dark"
                   height={400}
@@ -288,7 +316,7 @@ export default function ProductivityPage() {
                   Time Distribution Analysis
                 </h3>
                 <TimeDistributionChart 
-                  data={timeAnalysis?.timeDistribution || []}
+                  data={transformTimeDistributionData(timeAnalysis?.timeDistribution || [])}
                   isLoading={isLoading}
                   theme="dark"
                   height={400}

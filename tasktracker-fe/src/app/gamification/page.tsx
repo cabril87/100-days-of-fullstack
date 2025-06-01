@@ -1578,8 +1578,8 @@ export default function GamificationDashboard(): React.ReactElement {
                 </div>
               ) : dashboardData.suggestions.length > 0 ? (
                 <div className="space-y-4">
-                  {dashboardData.suggestions.slice(0, 3).map((suggestion) => (
-                    <SuggestionCard key={`suggestion-${suggestion.id}`} suggestion={suggestion} />
+                  {dashboardData.suggestions.slice(0, 3).map((suggestion, index) => (
+                    <SuggestionCard key={`suggestion-${suggestion.title}-${index}`} suggestion={suggestion} />
                   ))}
                 </div>
               ) : (

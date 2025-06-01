@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -55,10 +56,10 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widgets = await _widgetRepository.GetUserWidgetsAsync(userId);
-                var widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
+                IEnumerable<DashboardWidget> widgets = await _widgetRepository.GetUserWidgetsAsync(userId);
+                IEnumerable<WidgetConfigDTO> widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
 
-                var config = new DashboardConfigDTO
+                DashboardConfigDTO config = new DashboardConfigDTO
                 {
                     Widgets = widgetDtos.ToList(),
                     Layout = new DashboardLayoutDTO(),
@@ -85,8 +86,8 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widgets = await _widgetRepository.GetUserWidgetsAsync(userId);
-                var widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
+                IEnumerable<DashboardWidget> widgets = await _widgetRepository.GetUserWidgetsAsync(userId);
+                IEnumerable<WidgetConfigDTO> widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
                 return Ok(widgetDtos);
             }
             catch (Exception ex)
@@ -107,14 +108,14 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widget = await _widgetRepository.GetByIdAsync(id);
+                DashboardWidget? widget = await _widgetRepository.GetByIdAsync(id);
                 
                 if (widget == null || widget.UserId != userId)
                 {
                     return NotFound("Widget not found or access denied.");
                 }
 
-                var widgetDto = _mapper.Map<WidgetConfigDTO>(widget);
+                WidgetConfigDTO widgetDto = _mapper.Map<WidgetConfigDTO>(widget);
                 return Ok(widgetDto);
             }
             catch (Exception ex)
@@ -136,11 +137,11 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = GetUserIdFromClaims();
                 
-                var widget = _mapper.Map<DashboardWidget>(createDto);
+                DashboardWidget widget = _mapper.Map<DashboardWidget>(createDto);
                 widget.UserId = userId;
 
-                var createdWidget = await _widgetRepository.CreateAsync(widget);
-                var widgetDto = _mapper.Map<WidgetConfigDTO>(createdWidget);
+                DashboardWidget createdWidget = await _widgetRepository.CreateAsync(widget);
+                WidgetConfigDTO widgetDto = _mapper.Map<WidgetConfigDTO>(createdWidget);
                 
                 return CreatedAtAction(nameof(GetWidgetById), new { id = createdWidget.Id }, widgetDto);
             }
@@ -163,7 +164,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var existingWidget = await _widgetRepository.GetByIdAsync(id);
+                DashboardWidget? existingWidget = await _widgetRepository.GetByIdAsync(id);
                 
                 if (existingWidget == null || existingWidget.UserId != userId)
                 {
@@ -171,8 +172,8 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
 
                 _mapper.Map(updateDto, existingWidget);
-                var updatedWidget = await _widgetRepository.UpdateAsync(existingWidget);
-                var widgetDto = _mapper.Map<WidgetConfigDTO>(updatedWidget);
+                DashboardWidget updatedWidget = await _widgetRepository.UpdateAsync(existingWidget);
+                WidgetConfigDTO widgetDto = _mapper.Map<WidgetConfigDTO>(updatedWidget);
                 
                 return Ok(widgetDto);
             }
@@ -194,14 +195,14 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widget = await _widgetRepository.GetByIdAsync(id);
+                DashboardWidget? widget = await _widgetRepository.GetByIdAsync(id);
                 
                 if (widget == null || widget.UserId != userId)
                 {
                     return NotFound("Widget not found or access denied.");
                 }
 
-                var success = await _widgetRepository.DeleteAsync(id);
+                bool success = await _widgetRepository.DeleteAsync(id);
                 
                 if (!success)
                 {
@@ -229,15 +230,15 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widget = await _widgetRepository.GetByIdAsync(id);
+                DashboardWidget? widget = await _widgetRepository.GetByIdAsync(id);
                 
                 if (widget == null || widget.UserId != userId)
                 {
                     return NotFound("Widget not found or access denied.");
                 }
 
-                var positionJson = System.Text.Json.JsonSerializer.Serialize(position);
-                var success = await _widgetRepository.UpdatePositionAsync(id, positionJson);
+                string positionJson = System.Text.Json.JsonSerializer.Serialize(position);
+                bool success = await _widgetRepository.UpdatePositionAsync(id, positionJson);
                 
                 if (!success)
                 {
@@ -265,15 +266,15 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widget = await _widgetRepository.GetByIdAsync(id);
+                DashboardWidget? widget = await _widgetRepository.GetByIdAsync(id);
                 
                 if (widget == null || widget.UserId != userId)
                 {
                     return NotFound("Widget not found or access denied.");
                 }
 
-                var configJson = System.Text.Json.JsonSerializer.Serialize(configuration);
-                var success = await _widgetRepository.UpdateConfigurationAsync(id, configJson);
+                string configJson = System.Text.Json.JsonSerializer.Serialize(configuration);
+                bool success = await _widgetRepository.UpdateConfigurationAsync(id, configJson);
                 
                 if (!success)
                 {
@@ -300,8 +301,8 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widgets = await _widgetRepository.GetWidgetsByTypeAsync(userId, type);
-                var widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
+                IEnumerable<DashboardWidget> widgets = await _widgetRepository.GetWidgetsByTypeAsync(userId, type);
+                IEnumerable<WidgetConfigDTO> widgetDtos = _mapper.Map<IEnumerable<WidgetConfigDTO>>(widgets);
                 return Ok(widgetDtos);
             }
             catch (Exception ex)
@@ -321,9 +322,9 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var widgetCount = await _widgetRepository.GetWidgetCountAsync(userId);
+                int widgetCount = await _widgetRepository.GetWidgetCountAsync(userId);
                 
-                var stats = new
+                object stats = new
                 {
                     TotalWidgets = widgetCount,
                     ActiveWidgets = widgetCount, // For now, assume all widgets are active

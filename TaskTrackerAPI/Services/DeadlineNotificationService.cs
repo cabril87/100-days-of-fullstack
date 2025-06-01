@@ -29,6 +29,7 @@ namespace TaskTrackerAPI.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<DeadlineNotificationService> _logger;
         private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(30); // Check every 30 minutes
+        private const string ServiceName = "DeadlineNotificationService";
 
         public DeadlineNotificationService(
             IServiceProvider serviceProvider,
@@ -42,6 +43,9 @@ namespace TaskTrackerAPI.Services
         {
             _logger.LogInformation("Deadline Notification Service is starting");
 
+            // Update service status to Running
+            await UpdateServiceStatusAsync("Running", "Service started successfully");
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -51,6 +55,8 @@ namespace TaskTrackerAPI.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error occurred while checking for upcoming deadlines");
+                    await UpdateServiceStatusAsync("Error", $"Error during execution: {ex.Message}");
+                    await RecordExecutionAsync(false, $"Error: {ex.Message}");
                 }
 
                 // Wait for the next check interval
@@ -58,28 +64,80 @@ namespace TaskTrackerAPI.Services
             }
 
             _logger.LogInformation("Deadline Notification Service is stopping");
+            await UpdateServiceStatusAsync("Stopped", "Service stopped");
         }
 
         private async Task CheckForUpcomingDeadlinesAsync()
         {
             _logger.LogInformation("Checking for upcoming task deadlines");
+            DateTime startTime = DateTime.UtcNow;
+            int notificationsCreated = 0;
 
-            using (IServiceScope scope = _serviceProvider.CreateScope())
+            try
             {
-                INotificationService notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
-
-                // Generate notifications for tasks due in the next 24 hours
-                IEnumerable<NotificationDTO>? notifications = await notificationService.GenerateUpcomingDeadlineNotificationsAsync(24);
-
-                int count = notifications?.Count() ?? 0;
-                if (count > 0)
+                using (IServiceScope scope = _serviceProvider.CreateScope())
                 {
-                    _logger.LogInformation("Created {Count} deadline notifications", count);
+                    INotificationService notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+                    // Generate notifications for tasks due in the next 24 hours
+                    IEnumerable<NotificationDTO>? notifications = await notificationService.GenerateUpcomingDeadlineNotificationsAsync(24);
+
+                    notificationsCreated = notifications?.Count() ?? 0;
+                    
+                    if (notificationsCreated > 0)
+                    {
+                        _logger.LogInformation("Created {Count} deadline notifications", notificationsCreated);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("No upcoming deadlines found requiring notifications");
+                    }
+
+                    // Update service status and record successful execution
+                    await UpdateServiceStatusAsync("Running", $"Last run: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC", DateTime.UtcNow);
+                    await RecordExecutionAsync(true, $"Successfully processed notifications. Created {notificationsCreated} notifications.", notificationsCreated);
                 }
-                else
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during deadline notification check");
+                await UpdateServiceStatusAsync("Error", $"Error during execution: {ex.Message}");
+                await RecordExecutionAsync(false, $"Error: {ex.Message}");
+                throw;
+            }
+        }
+
+        private async Task UpdateServiceStatusAsync(string status, string? message = null, DateTime? lastRun = null)
+        {
+            try
+            {
+                using (IServiceScope scope = _serviceProvider.CreateScope())
                 {
-                    _logger.LogInformation("No upcoming deadlines found requiring notifications");
+                    IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
+                    await statusService.UpdateServiceStatusAsync(ServiceName, status, message, lastRun);
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update service status for {ServiceName}", ServiceName);
+                // Don't rethrow as this is not critical to the main functionality
+            }
+        }
+
+        private async Task RecordExecutionAsync(bool success, string? details = null, int? recordsProcessed = null)
+        {
+            try
+            {
+                using (IServiceScope scope = _serviceProvider.CreateScope())
+                {
+                    IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
+                    await statusService.RecordServiceExecutionAsync(ServiceName, success, details, recordsProcessed);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to record execution for {ServiceName}", ServiceName);
+                // Don't rethrow as this is not critical to the main functionality
             }
         }
     }

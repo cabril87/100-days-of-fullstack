@@ -19,6 +19,8 @@ using TaskTrackerAPI.Repositories.Interfaces;
 using System.Globalization;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.Data;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Services
 {
@@ -480,7 +482,7 @@ namespace TaskTrackerAPI.Services
             .ToList();
             
             return categoryActivities;
-                }
+        }
 
         // Interface method implementation
         public async Task ValidateUserAccess(int taskId, int userId)
@@ -496,11 +498,5 @@ namespace TaskTrackerAPI.Services
             int diff = (7 + (date.DayOfWeek - DayOfWeek.Monday)) % 7;
             return date.AddDays(-1 * diff).Date;
         }
-    }
-
-    public class ProductivityPeriodDTO
-    {
-        public int PeriodNumber { get; set; }
-        public int CompletedTasks { get; set; }
     }
 } 

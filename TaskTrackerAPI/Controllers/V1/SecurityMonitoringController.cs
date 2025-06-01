@@ -20,15 +20,20 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Attributes;
 using Microsoft.Extensions.DependencyInjection;
+using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Security monitoring and management controller for admin operations
+/// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/security")]
 [ApiController]
 [Authorize(Roles = "Admin")]
 [RateLimit(50, 60)] // Admin endpoints get higher limits
-public class SecurityMonitoringController : ControllerBase
+public class SecurityMonitoringController : BaseApiController
 {
     private readonly ISecurityMonitoringService _securityMonitoringService;
     private readonly ILogger<SecurityMonitoringController> _logger;

@@ -19,7 +19,7 @@ using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
@@ -28,7 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [Route("api/v{version:apiVersion}/family/{familyId}/tasks")]
     [ApiController]
-    public class FamilyTasksController : ControllerBase
+    public class FamilyTasksController : BaseApiController
     {
         private readonly ITaskSharingService _taskSharingService;
         private readonly IFamilyService _familyService;
@@ -62,17 +62,17 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
                 
                 IEnumerable<FamilyTaskItemDTO> tasks = await _taskSharingService.GetFamilyTasksAsync(familyId, userId);
-                return Ok(Utils.ApiResponse<IEnumerable<FamilyTaskItemDTO>>.SuccessResponse(tasks));
+                return Ok(ApiResponse<IEnumerable<FamilyTaskItemDTO>>.SuccessResponse(tasks));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for family tasks");
-                return Unauthorized(Utils.ApiResponse<object>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving family tasks");
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -94,20 +94,20 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (task == null)
                 {
-                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                    return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
                 }
                 
-                return Ok(Utils.ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
+                return Ok(ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for family task {TaskId}", taskId);
-                return Unauthorized(Utils.ApiResponse<object>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving family task {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -127,7 +127,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!await _familyService.HasPermissionAsync(familyId, userId, "assign_tasks"))
                 {
                     _logger.LogWarning("User {UserId} does not have permission to assign tasks in family {FamilyId}", userId, familyId);
-                    return Unauthorized(Utils.ApiResponse<object>.ErrorResponse("You don't have permission to assign tasks in this family"));
+                    return Unauthorized(ApiResponse<object>.ErrorResponse("You don't have permission to assign tasks in this family"));
                 }
                 
                 // Handle possible string user ID by converting to int
@@ -139,7 +139,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     {
                         // Simplified logging to avoid dynamic dispatch issues
                         _logger.LogError("Invalid assignToUserId format");
-                        return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Invalid user ID format"));
+                        return BadRequest(ApiResponse<object>.BadRequestResponse("Invalid user ID format"));
                     }
                 }
                 else
@@ -153,7 +153,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (assignedUser == null)
                 {
                     _logger.LogWarning("Assigned user with ID {UserId} not found", assignToUserIdInt);
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Assigned user not found"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("Assigned user not found"));
                 }
                 
                 // Get the family member ID for the assigned user
@@ -168,7 +168,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (familyMember == null)
                 {
                     _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", assignToUserIdInt, familyId);
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("User is not a member of this family"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("User is not a member of this family"));
                 }
                 
                 // Create modified DTO with corrected user ID
@@ -194,29 +194,29 @@ namespace TaskTrackerAPI.Controllers.V1
                     _logger.LogError("Failed to assign task {0} to family member {1}", 
                         SafeConvertToInt(assignmentDto.TaskId), 
                         SafeConvertToInt(familyMember.Id));
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to assign task"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("Failed to assign task"));
                 }
                 
                 // Simplified logging to avoid dynamic dispatch issues
                 _logger.LogInformation("Successfully assigned task {0} to family member {1}", 
                     SafeConvertToInt(assignmentDto.TaskId), 
                     SafeConvertToInt(familyMember.Id));
-                return Ok(Utils.ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
+                return Ok(ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for assigning task");
-                return Unauthorized(Utils.ApiResponse<object>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error assigning task to family member");
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse($"An error occurred: {ex.Message}"));
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse($"An error occurred: {ex.Message}"));
             }
         }
 
         [HttpDelete("{taskId}/unassign")]
-        public async Task<ActionResult<Utils.ApiResponse<bool>>> UnassignTask(int familyId, int taskId)
+        public async Task<ActionResult<ApiResponse<bool>>> UnassignTask(int familyId, int taskId)
         {
             try
             {
@@ -229,7 +229,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!isFamilyMember)
                 {
                     _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", userId, familyId);
-                    return Unauthorized(Utils.ApiResponse<bool>.UnauthorizedResponse("You must be a member of this family"));
+                    return Unauthorized(ApiResponse<bool>.UnauthorizedResponse("You must be a member of this family"));
                 }
                 
                 // Check if task exists first
@@ -237,14 +237,14 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (task == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found for family {FamilyId}", taskId, familyId);
-                    return NotFound(Utils.ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} not found"));
+                    return NotFound(ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} not found"));
                 }
                 
                 // Check if task is assigned
                 if (task.AssignedToFamilyMemberId == null)
                 {
                     _logger.LogWarning("Task {TaskId} is not assigned to anyone", taskId);
-                    return NotFound(Utils.ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} is not assigned to any family member"));
+                    return NotFound(ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} is not assigned to any family member"));
                 }
                 
                 // Attempt to unassign
@@ -253,21 +253,21 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!result)
                 {
                     _logger.LogWarning("Failed to unassign task {TaskId}", taskId);
-                    return BadRequest(Utils.ApiResponse<bool>.BadRequestResponse("Failed to unassign task"));
+                    return BadRequest(ApiResponse<bool>.BadRequestResponse("Failed to unassign task"));
                 }
                 
                 _logger.LogInformation("Successfully unassigned task {TaskId}", taskId);
-                return Ok(Utils.ApiResponse<bool>.SuccessResponse(true));
+                return Ok(ApiResponse<bool>.SuccessResponse(true));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized attempt to unassign task {TaskId}", taskId);
-                return Unauthorized(Utils.ApiResponse<bool>.UnauthorizedResponse(ex.Message));
+                return Unauthorized(ApiResponse<bool>.UnauthorizedResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error unassigning task {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<bool>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<bool>.ServerErrorResponse());
             }
         }
 
@@ -281,7 +281,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 // Check if the task ID matches
                 if (taskId != approvalDto.TaskId)
                 {
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Task ID mismatch"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("Task ID mismatch"));
                 }
                 
                 // Permissions are checked in the service
@@ -289,7 +289,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (!success)
                 {
-                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found or doesn't require approval"));
+                    return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found or doesn't require approval"));
                 }
                 
                 return NoContent();
@@ -297,12 +297,12 @@ namespace TaskTrackerAPI.Controllers.V1
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for approving task {TaskId}", taskId);
-                return Unauthorized(Utils.ApiResponse<object>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error approving task {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -316,17 +316,17 @@ namespace TaskTrackerAPI.Controllers.V1
                 // Permissions are checked in the service
                 IEnumerable<FamilyTaskItemDTO> tasks = await _taskSharingService.GetTasksAssignedToFamilyMemberAsync(familyMemberId, userId);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<FamilyTaskItemDTO>>.SuccessResponse(tasks));
+                return Ok(ApiResponse<IEnumerable<FamilyTaskItemDTO>>.SuccessResponse(tasks));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized access attempt for viewing tasks of family member {FamilyMemberId}", familyMemberId);
-                return Unauthorized(Utils.ApiResponse<object>.ErrorResponse(ex.Message));
+                return Unauthorized(ApiResponse<object>.ErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving tasks for family member {FamilyMemberId}", familyMemberId);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -348,20 +348,20 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 if (task == null)
                 {
-                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                    return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
                 }
                 
-                return Ok(Utils.ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
+                return Ok(ApiResponse<FamilyTaskItemDTO>.SuccessResponse(task));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving task details for {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
         [HttpDelete("member/{familyMemberId}/unassign-all")]
-        public async Task<ActionResult<Utils.ApiResponse<int>>> UnassignAllTasksFromMember(int familyId, int familyMemberId)
+        public async Task<ActionResult<ApiResponse<int>>> UnassignAllTasksFromMember(int familyId, int familyMemberId)
         {
             try
             {
@@ -375,29 +375,29 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!hasPermission)
                 {
                     _logger.LogWarning("User {UserId} doesn't have manage_family permission for family {FamilyId}", userId, familyId);
-                    return Unauthorized(Utils.ApiResponse<int>.UnauthorizedResponse("You need admin permissions to perform this action"));
+                    return Unauthorized(ApiResponse<int>.UnauthorizedResponse("You need admin permissions to perform this action"));
                 }
                 
                 // Call service to handle bulk unassignment
                 int tasksUnassigned = await _taskSharingService.UnassignAllTasksFromFamilyMemberAsync(familyMemberId, userId);
                 
                 _logger.LogInformation("Successfully unassigned {Count} tasks from family member {MemberId}", tasksUnassigned, familyMemberId);
-                return Ok(Utils.ApiResponse<int>.SuccessResponse(tasksUnassigned, $"Successfully unassigned {tasksUnassigned} tasks"));
+                return Ok(ApiResponse<int>.SuccessResponse(tasksUnassigned, $"Successfully unassigned {tasksUnassigned} tasks"));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized attempt to unassign all tasks from member {MemberId}", familyMemberId);
-                return Unauthorized(Utils.ApiResponse<int>.UnauthorizedResponse(ex.Message));
+                return Unauthorized(ApiResponse<int>.UnauthorizedResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error unassigning all tasks from family member {MemberId}", familyMemberId);
-                return StatusCode(500, Utils.ApiResponse<int>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<int>.ServerErrorResponse());
             }
         }
 
         [HttpDelete("{taskId}")]
-        public async Task<ActionResult<Utils.ApiResponse<bool>>> DeleteFamilyTask(int familyId, int taskId)
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteFamilyTask(int familyId, int taskId)
         {
             try
             {
@@ -417,7 +417,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     if (!isTaskAssignedByUser)
                     {
                         _logger.LogWarning("User {UserId} doesn't have permission to delete task {TaskId}", userId, taskId);
-                        return Unauthorized(Utils.ApiResponse<bool>.UnauthorizedResponse(
+                        return Unauthorized(ApiResponse<bool>.UnauthorizedResponse(
                             "You need management permissions or to be the task creator to delete this task"));
                     }
                 }
@@ -427,13 +427,13 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (taskToDelete == null)
                 {
                     _logger.LogWarning("Task {TaskId} not found for family {FamilyId}", taskId, familyId);
-                    return NotFound(Utils.ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} not found"));
+                    return NotFound(ApiResponse<bool>.NotFoundResponse($"Task with ID {taskId} not found"));
                 }
                 
                 if (taskToDelete.FamilyId != familyId)
                 {
                     _logger.LogWarning("Task {TaskId} does not belong to family {FamilyId}", taskId, familyId);
-                    return BadRequest(Utils.ApiResponse<bool>.BadRequestResponse("Task does not belong to this family"));
+                    return BadRequest(ApiResponse<bool>.BadRequestResponse("Task does not belong to this family"));
                 }
                 
                 // Delete the task completely
@@ -442,21 +442,21 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!result)
                 {
                     _logger.LogWarning("Failed to delete task {TaskId}", taskId);
-                    return BadRequest(Utils.ApiResponse<bool>.BadRequestResponse("Failed to delete task"));
+                    return BadRequest(ApiResponse<bool>.BadRequestResponse("Failed to delete task"));
                 }
                 
                 _logger.LogInformation("Successfully deleted task {TaskId}", taskId);
-                return Ok(Utils.ApiResponse<bool>.SuccessResponse(true, "Task deleted successfully"));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Task deleted successfully"));
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "Unauthorized attempt to delete task {TaskId}", taskId);
-                return Unauthorized(Utils.ApiResponse<bool>.UnauthorizedResponse(ex.Message));
+                return Unauthorized(ApiResponse<bool>.UnauthorizedResponse(ex.Message));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting task {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<bool>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<bool>.ServerErrorResponse());
             }
         }
 

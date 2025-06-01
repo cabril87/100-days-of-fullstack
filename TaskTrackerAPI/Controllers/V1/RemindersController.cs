@@ -19,7 +19,7 @@ using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Controllers.V2;
 using ModelReminderStatus = TaskTrackerAPI.Models.ReminderStatus;
 
 namespace TaskTrackerAPI.Controllers.V1
@@ -29,7 +29,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class RemindersController : ControllerBase
+    public class RemindersController : BaseApiController
     {
         private readonly ILogger<RemindersController> _logger;
         private readonly IReminderService _reminderService;
@@ -40,257 +40,276 @@ namespace TaskTrackerAPI.Controllers.V1
             _reminderService = reminderService;
         }
 
-        // POST: api/Reminders
-        [HttpPost]
-        public async Task<ActionResult<ReminderDTO>> PostReminder(CreateReminderDTO reminderDTO)
+        // GET: api/Reminders
+        [HttpGet]
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetAllReminders()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
+                
+                IEnumerable<ReminderDTO> reminders = await _reminderService.GetAllRemindersAsync(userId);
+                
+                return ApiOk(reminders, "Reminders retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all reminders for user");
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving reminders");
+            }
+        }
+
+        // POST: api/Reminders
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<ReminderDTO>>> PostReminder(CreateReminderDTO reminderDTO)
+        {
+            try
+            {
+                int userId = GetUserId();
                 
                 ReminderDTO? createdReminder = await _reminderService.CreateReminderAsync(userId, reminderDTO);
                 
                 if (createdReminder == null)
                 {
-                    return BadRequest(Utils.ApiResponse<ReminderDTO>.BadRequestResponse("Failed to create reminder"));
+                    return ApiBadRequest<ReminderDTO>("Failed to create reminder");
                 }
 
-                return CreatedAtAction(nameof(GetReminderById), new { id = createdReminder.Id }, createdReminder);
+                return ApiCreated(createdReminder, "Reminder created successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating reminder");
-                return StatusCode(500, Utils.ApiResponse<ReminderDTO>.ServerErrorResponse());
+                return ApiServerError<ReminderDTO>("An error occurred while creating the reminder");
             }
         }
 
         // GET: api/Reminders/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<ReminderDTO>> GetReminderById(int id)
+        public async Task<ActionResult<ApiResponse<ReminderDTO>>> GetReminderById(int id)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 ReminderDTO? reminder = await _reminderService.GetReminderByIdAsync(userId, id);
                 
                 if (reminder == null)
                 {
-                    return NotFound(Utils.ApiResponse<ReminderDTO>.NotFoundResponse($"Reminder with ID {id} not found"));
+                    return ApiNotFound<ReminderDTO>($"Reminder with ID {id} not found");
                 }
 
-                return Ok(Utils.ApiResponse<ReminderDTO>.SuccessResponse(reminder));
+                return ApiOk(reminder, "Reminder retrieved successfully");
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to access a reminder they don't own");
-                return Forbid();
+                return ApiUnauthorized<ReminderDTO>("You do not have permission to access this reminder");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reminder with ID {ReminderId}", id);
-                return StatusCode(500, Utils.ApiResponse<ReminderDTO>.ServerErrorResponse());
+                return ApiServerError<ReminderDTO>("An error occurred while retrieving the reminder");
             }
         }
 
         // PUT: api/Reminders/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult<ReminderDTO>> PutReminder(int id, UpdateReminderDTO reminderDTO)
+        public async Task<ActionResult<ApiResponse<ReminderDTO>>> PutReminder(int id, UpdateReminderDTO reminderDTO)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 ReminderDTO? updatedReminder = await _reminderService.UpdateReminderAsync(userId, id, reminderDTO);
                 
                 if (updatedReminder == null)
                 {
-                    return NotFound(Utils.ApiResponse<ReminderDTO>.NotFoundResponse($"Reminder with ID {id} not found"));
+                    return ApiNotFound<ReminderDTO>($"Reminder with ID {id} not found");
                 }
 
-                return Ok(Utils.ApiResponse<ReminderDTO>.SuccessResponse(updatedReminder));
+                return ApiOk(updatedReminder, "Reminder updated successfully");
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to update a reminder they don't own");
-                return Forbid();
+                return ApiUnauthorized<ReminderDTO>("You do not have permission to update this reminder");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating reminder with ID {ReminderId}", id);
-                return StatusCode(500, Utils.ApiResponse<ReminderDTO>.ServerErrorResponse());
+                return ApiServerError<ReminderDTO>("An error occurred while updating the reminder");
             }
         }
 
         // DELETE: api/Reminders/{id}
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteReminder(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteReminder(int id)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 await _reminderService.DeleteReminderAsync(userId, id);
                 
-                return NoContent();
+                return ApiOk<object>(new object(), "Reminder deleted successfully");
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to delete a reminder they don't own");
-                return Forbid();
+                return ApiUnauthorized<object>("You do not have permission to delete this reminder");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting reminder with ID {ReminderId}", id);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return ApiServerError<object>("An error occurred while deleting the reminder");
             }
         }
 
         // GET: api/Reminders/status/{status}
         [HttpGet("status/{status}")]
-        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetRemindersByStatus(DTOs.Tasks.ReminderStatus status)
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetRemindersByStatus(DTOs.Tasks.ReminderStatus status)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 IEnumerable<ReminderDTO> reminders = await _reminderService.GetRemindersByStatusAsync(userId, (ModelReminderStatus)status);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+                return ApiOk(reminders, "Reminders retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reminders with status {Status}", status);
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving reminders by status");
             }
         }
 
         // GET: api/Reminders/upcoming/{days}
         [HttpGet("upcoming/{days}")]
-        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetUpcomingReminders(int days = 7)
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetUpcomingReminders(int days = 7)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 IEnumerable<ReminderDTO> reminders = await _reminderService.GetUpcomingRemindersAsync(userId, days);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+                return ApiOk(reminders, "Upcoming reminders retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving upcoming reminders for the next {Days} days", days);
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving upcoming reminders");
             }
         }
 
         // GET: api/Reminders/overdue
         [HttpGet("overdue")]
-        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetOverdueReminders()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetOverdueReminders()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 IEnumerable<ReminderDTO> reminders = await _reminderService.GetOverdueRemindersAsync(userId);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+                return ApiOk(reminders, "Overdue reminders retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving overdue reminders");
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving overdue reminders");
             }
         }
 
         // GET: api/Reminders/duetoday
         [HttpGet("duetoday")]
-        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetDueTodayReminders()
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetDueTodayReminders()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 IEnumerable<ReminderDTO> reminders = await _reminderService.GetDueTodayRemindersAsync(userId);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+                return ApiOk(reminders, "Reminders due today retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reminders due today");
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving reminders due today");
             }
         }
 
         // GET: api/Reminders/task/{taskId}
         [HttpGet("task/{taskId}")]
-        public async Task<ActionResult<IEnumerable<ReminderDTO>>> GetRemindersByTaskId(int taskId)
+        public async Task<ActionResult<ApiResponse<IEnumerable<ReminderDTO>>>> GetRemindersByTaskId(int taskId)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 IEnumerable<ReminderDTO> reminders = await _reminderService.GetRemindersByTaskIdAsync(userId, taskId);
                 
-                return Ok(Utils.ApiResponse<IEnumerable<ReminderDTO>>.SuccessResponse(reminders));
+                return ApiOk(reminders, "Task reminders retrieved successfully");
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to access reminders for a task they don't own");
-                return Forbid();
+                return ApiUnauthorized<IEnumerable<ReminderDTO>>("You do not have permission to access reminders for this task");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reminders for task {TaskId}", taskId);
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<ReminderDTO>>.ServerErrorResponse());
+                return ApiServerError<IEnumerable<ReminderDTO>>("An error occurred while retrieving task reminders");
             }
         }
 
         // GET: api/Reminders/statistics
         [HttpGet("statistics")]
-        public async Task<ActionResult<ReminderStatisticsDTO>> GetReminderStatistics()
+        public async Task<ActionResult<ApiResponse<ReminderStatisticsDTO>>> GetReminderStatistics()
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 ReminderStatisticsDTO statistics = await _reminderService.GetReminderStatisticsAsync(userId);
                 
-                return Ok(Utils.ApiResponse<ReminderStatisticsDTO>.SuccessResponse(statistics));
+                return ApiOk(statistics, "Reminder statistics retrieved successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving reminder statistics");
-                return StatusCode(500, Utils.ApiResponse<ReminderStatisticsDTO>.ServerErrorResponse());
+                return ApiServerError<ReminderStatisticsDTO>("An error occurred while retrieving reminder statistics");
             }
         }
 
         // PUT: api/Reminders/{id}/status
         [HttpPut("{id}/status")]
-        public async Task<ActionResult> UpdateReminderStatus(int id, [FromBody] DTOs.Tasks.ReminderStatus status)
+        public async Task<ActionResult<ApiResponse<object>>> UpdateReminderStatus(int id, [FromBody] DTOs.Tasks.ReminderStatus status)
         {
             try
             {
-                int userId = User.GetUserIdAsInt();
+                int userId = GetUserId();
                 
                 ReminderDTO? updatedReminder = await _reminderService.UpdateReminderStatusAsync(userId, id, (ModelReminderStatus)status);
                 
                 if (updatedReminder == null)
                 {
-                    return NotFound(Utils.ApiResponse<ReminderDTO>.NotFoundResponse($"Reminder with ID {id} not found"));
+                    return ApiNotFound<object>($"Reminder with ID {id} not found");
                 }
                 
-                return NoContent();
+                return ApiOk<object>(new object(), "Reminder status updated successfully");
             }
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "User tried to update status for a reminder they don't own");
-                return Forbid();
+                return ApiUnauthorized<object>("You do not have permission to update this reminder");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for reminder {ReminderId}", id);
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return ApiServerError<object>("An error occurred while updating reminder status");
             }
         }
     }

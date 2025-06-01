@@ -16,8 +16,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -26,7 +27,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class FamilyAchievementsController : ControllerBase
+    public class FamilyAchievementsController : BaseApiController
     {
         private readonly IFamilyAchievementService _achievementService;
         private readonly ILogger<FamilyAchievementsController> _logger;

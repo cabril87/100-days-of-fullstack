@@ -34,7 +34,7 @@ class AuthService {
       if (userData && token) {
         try {
           this.currentUser = JSON.parse(userData);
-        } catch (_e) {
+        } catch {
           console.error('Failed to parse stored user data');
           this.clearCurrentUser();
         }

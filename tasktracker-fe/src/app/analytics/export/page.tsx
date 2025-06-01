@@ -36,7 +36,7 @@ export default function AnalyticsExportPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('export');
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [currentFilter, setCurrentFilter] = useState<FilterCriteria | null>(null);
+  const [currentFilter] = useState<FilterCriteria | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {

@@ -21,12 +21,15 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using AutoMapper;
+using TaskTrackerAPI.Repositories.Interfaces;
 
 namespace TaskTrackerAPI.Services;
 
 public class SecurityMonitoringService : ISecurityMonitoringService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ISecurityMonitoringRepository _securityMonitoringRepository;
+    private readonly IGeolocationRepository _geolocationRepository;
+    private readonly IUserSubscriptionRepository _userSubscriptionRepository;
     private readonly ILogger<SecurityMonitoringService> _logger;
     private readonly IMapper _mapper;
     private readonly IUserSubscriptionService _userSubscriptionService;
@@ -35,7 +38,9 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     private readonly IGeolocationService _geolocationService;
 
     public SecurityMonitoringService(
-        ApplicationDbContext context,
+        ISecurityMonitoringRepository securityMonitoringRepository,
+        IGeolocationRepository geolocationRepository,
+        IUserSubscriptionRepository userSubscriptionRepository,
         ILogger<SecurityMonitoringService> logger,
         IMapper mapper,
         IUserSubscriptionService userSubscriptionService,
@@ -43,13 +48,15 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         ISessionManagementService sessionManagementService,
         IGeolocationService geolocationService)
     {
-        _context = context;
-        _logger = logger;
-        _mapper = mapper;
-        _userSubscriptionService = userSubscriptionService;
-        _failedLoginService = failedLoginService;
-        _sessionManagementService = sessionManagementService;
-        _geolocationService = geolocationService;
+        _securityMonitoringRepository = securityMonitoringRepository ?? throw new ArgumentNullException(nameof(securityMonitoringRepository));
+        _geolocationRepository = geolocationRepository ?? throw new ArgumentNullException(nameof(geolocationRepository));
+        _userSubscriptionRepository = userSubscriptionRepository ?? throw new ArgumentNullException(nameof(userSubscriptionRepository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _userSubscriptionService = userSubscriptionService ?? throw new ArgumentNullException(nameof(userSubscriptionService));
+        _failedLoginService = failedLoginService ?? throw new ArgumentNullException(nameof(failedLoginService));
+        _sessionManagementService = sessionManagementService ?? throw new ArgumentNullException(nameof(sessionManagementService));
+        _geolocationService = geolocationService ?? throw new ArgumentNullException(nameof(geolocationService));
     }
 
     public async Task<SecurityDashboardDTO> GetSecurityDashboardAsync()
@@ -95,18 +102,14 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Get real metrics from audit logs only
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday)
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetSecurityAuditLogsAsync(yesterday, yesterday);
 
             int totalRequests = auditLogs.Count;
             int blockedRequests = auditLogs.Count(log => !log.IsSuccessful);
             int suspiciousActivities = auditLogs.Count(log => log.IsSuspicious);
             
             // Get active users (using UpdatedAt as proxy for last activity)
-            int activeUsers = await _context.Users
-                .Where(u => u.UpdatedAt >= yesterday)
-                .CountAsync();
+            int activeUsers = await _securityMonitoringRepository.GetActiveUsersAsync(yesterday);
 
             // Calculate security score based on real data
             double securityScore = await CalculateSecurityScoreAsync();
@@ -144,21 +147,12 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     {
         try
         {
-            List<RateLimitTierConfig> configs = await _context.RateLimitTierConfigs
-                .Include(c => c.SubscriptionTier)
-                .ToListAsync();
+            List<RateLimitTierConfig> configs = await _securityMonitoringRepository.GetRateLimitTierConfigsAsync();
 
-            List<UserApiQuota> quotas = await _context.UserApiQuotas
-                .Include(q => q.User)
-                .Include(q => q.SubscriptionTier)
-                .OrderByDescending(q => q.ApiCallsUsedToday)
-                .Take(10)
-                .ToListAsync();
+            List<UserApiQuota> quotas = await _userSubscriptionRepository.GetUserApiQuotasAsync(10);
 
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
-            int blockedRequests = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && !log.IsSuccessful && log.Details != null && log.Details.Contains("rate limit"))
-                .CountAsync();
+            int blockedRequests = await _securityMonitoringRepository.GetBlockedRequestsAsync(yesterday, "rate limit");
 
             // Get user activity from audit logs if no quota data exists
             List<UserQuotaStatusDTO> topUsersFromQuotas = quotas.Select(q => new UserQuotaStatusDTO
@@ -177,24 +171,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             // If no quota data, generate from audit logs
             if (!topUsersFromQuotas.Any())
             {
-                var userActivity = await _context.SecurityAuditLogs
-                    .Where(log => log.Timestamp >= yesterday && log.UserId.HasValue && log.Username != null)
-                    .GroupBy(log => new { log.UserId, log.Username })
-                    .Select(g => new UserQuotaStatusDTO
-                    {
-                        UserId = g.Key.UserId ?? 0,
-                        Username = g.Key.Username ?? "Unknown",
-                        SubscriptionTier = "Free", // Default tier
-                        ApiCallsUsedToday = g.Count(),
-                        MaxDailyApiCalls = 1000, // Default limit
-                        UsagePercentage = Math.Round((double)g.Count() / 1000 * 100, 2),
-                        LastActivity = g.Max(log => log.Timestamp),
-                        IsNearLimit = g.Count() > 800,
-                        IsExempt = false
-                    })
-                    .OrderByDescending(u => u.ApiCallsUsedToday)
-                    .Take(10)
-                    .ToListAsync();
+                List<UserQuotaStatusDTO> userActivity = await _securityMonitoringRepository.GetUserActivityAsync(yesterday, "rate limit");
 
                 topUsersFromQuotas = userActivity;
             }
@@ -229,10 +206,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     {
         try
         {
-            List<SystemHealthMetrics> healthMetrics = await _context.SystemHealthMetrics
-                .Where(m => m.Timestamp >= DateTime.UtcNow.AddHours(-1))
-                .OrderByDescending(m => m.Timestamp)
-                .ToListAsync();
+            List<SystemHealthMetrics> healthMetrics = await _securityMonitoringRepository.GetSystemHealthMetricsAsync(DateTime.UtcNow.AddHours(-1));
 
             SystemHealthDTO systemHealth = new SystemHealthDTO
             {
@@ -285,14 +259,11 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             _logger.LogInformation($"[SecurityMetrics] Querying real metrics from {from} to {to}");
 
             // Get only real metrics from database - no sample data generation
-            List<SecurityMetrics> metrics = await _context.SecurityMetrics
-                .Where(m => m.Timestamp >= from && m.Timestamp <= to)
-                .OrderByDescending(m => m.Timestamp)
-                .ToListAsync();
+            List<SecurityMetrics> metrics = await _securityMonitoringRepository.GetSecurityMetricsAsync(from, to);
 
             _logger.LogInformation($"[SecurityMetrics] Found {metrics.Count} real metrics in database");
 
-            var result = _mapper.Map<List<SecurityMetricDTO>>(metrics);
+            List<SecurityMetricDTO> result = _mapper.Map<List<SecurityMetricDTO>>(metrics);
             _logger.LogInformation($"[SecurityMetrics] Returning {result.Count} real security metrics to client");
             
             return result;
@@ -308,7 +279,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     {
         try
         {
-            IQueryable<SecurityAuditLog> query = _context.SecurityAuditLogs.AsQueryable();
+            IQueryable<SecurityAuditLog> query = await _securityMonitoringRepository.GetSecurityAuditLogsAsync();
 
             if (!string.IsNullOrEmpty(severity))
             {
@@ -337,10 +308,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             // For now, generate alerts based on recent suspicious activity
             List<SecurityAlertDTO> alerts = new List<SecurityAlertDTO>();
             
-            List<IGrouping<string, SecurityAuditLog>> recentSuspiciousGroups = await _context.SecurityAuditLogs
-                .Where(log => log.IsSuspicious && log.Timestamp >= DateTime.UtcNow.AddHours(-24))
-                .GroupBy(log => log.EventType)
-                .ToListAsync();
+            List<IGrouping<string, SecurityAuditLog>> recentSuspiciousGroups = await _securityMonitoringRepository.GetRecentSuspiciousGroupsAsync(DateTime.UtcNow.AddHours(-24));
 
             foreach (var group in recentSuspiciousGroups)
             {
@@ -377,18 +345,10 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Get all audit logs for total counts
-            List<SecurityAuditLog> allAuditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday)
-                .ToListAsync();
+            List<SecurityAuditLog> allAuditLogs = await _securityMonitoringRepository.GetAllSecurityAuditLogsAsync(yesterday);
 
             // Get filtered logs for performance calculations (excluding WebSocket connections)
-            List<SecurityAuditLog> apiAuditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday &&
-                             log.Resource != null &&
-                             !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
-                             !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
-                             log.EventType == "API_REQUEST") // Only include normal API requests
-                .ToListAsync();
+            List<SecurityAuditLog> apiAuditLogs = await _securityMonitoringRepository.GetApiAuditLogsAsync(yesterday);
 
             int totalRequests = allAuditLogs.Count;
             int totalErrors = allAuditLogs.Count(log => !log.IsSuccessful);
@@ -434,8 +394,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 Severity = severity
             };
 
-            _context.SecurityMetrics.Add(metric);
-            await _context.SaveChangesAsync();
+            await _securityMonitoringRepository.AddSecurityMetricAsync(metric);
         }
         catch (Exception ex)
         {
@@ -464,8 +423,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 IsSuspicious = isSuspicious
             };
 
-            _context.SecurityAuditLogs.Add(auditLog);
-            await _context.SaveChangesAsync();
+            await _securityMonitoringRepository.AddSecurityAuditLogAsync(auditLog);
         }
         catch (Exception ex)
         {
@@ -490,8 +448,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 ThresholdCritical = thresholdCritical
             };
 
-            _context.SystemHealthMetrics.Add(healthMetric);
-            await _context.SaveChangesAsync();
+            await _securityMonitoringRepository.AddSystemHealthMetricAsync(healthMetric);
         }
         catch (Exception ex)
         {
@@ -532,13 +489,11 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             olderThan ??= DateTime.UtcNow.AddDays(-30); // Default: clear logs older than 30 days
             
-            var logsToDelete = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp < olderThan)
-                .ToListAsync();
+            List<SecurityAuditLog> logsToDelete = await _securityMonitoringRepository.GetSecurityAuditLogsAsync(olderThan);
             
             int count = logsToDelete.Count;
-            _context.SecurityAuditLogs.RemoveRange(logsToDelete);
-            await _context.SaveChangesAsync();
+            _securityMonitoringRepository.RemoveSecurityAuditLogs(logsToDelete);
+            await _securityMonitoringRepository.SaveChangesAsync();
             
             _logger.LogInformation($"Cleared {count} security audit logs older than {olderThan}");
             
@@ -567,13 +522,11 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             olderThan ??= DateTime.UtcNow.AddDays(-30); // Default: clear metrics older than 30 days
             
-            var metricsToDelete = await _context.SecurityMetrics
-                .Where(metric => metric.Timestamp < olderThan)
-                .ToListAsync();
+            List<SecurityMetrics> metricsToDelete = await _securityMonitoringRepository.GetSecurityMetricsAsync(olderThan);
             
             int count = metricsToDelete.Count;
-            _context.SecurityMetrics.RemoveRange(metricsToDelete);
-            await _context.SaveChangesAsync();
+            _securityMonitoringRepository.RemoveSecurityMetrics(metricsToDelete);
+            await _securityMonitoringRepository.SaveChangesAsync();
             
             _logger.LogInformation($"Cleared {count} security metrics older than {olderThan}");
             
@@ -601,16 +554,14 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         try
         {
             // Get counts before deletion
-            int auditLogCount = await _context.SecurityAuditLogs.CountAsync();
-            int metricsCount = await _context.SecurityMetrics.CountAsync();
-            int healthMetricsCount = await _context.SystemHealthMetrics.CountAsync();
+            int auditLogCount = await _securityMonitoringRepository.GetSecurityAuditLogsCountAsync();
+            int metricsCount = await _securityMonitoringRepository.GetSecurityMetricsCountAsync();
+            int healthMetricsCount = await _securityMonitoringRepository.GetSystemHealthMetricsCountAsync();
             
             // Clear all security-related logs
-            _context.SecurityAuditLogs.RemoveRange(_context.SecurityAuditLogs);
-            _context.SecurityMetrics.RemoveRange(_context.SecurityMetrics);
-            _context.SystemHealthMetrics.RemoveRange(_context.SystemHealthMetrics);
+            _securityMonitoringRepository.RemoveAllSecurityLogs();
             
-            await _context.SaveChangesAsync();
+            await _securityMonitoringRepository.SaveChangesAsync();
             
             int totalCleared = auditLogCount + metricsCount + healthMetricsCount;
             
@@ -641,9 +592,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday)
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetSecurityAuditLogsAsync(yesterday, yesterday);
 
             _logger.LogInformation($"[SecurityScore] Found {auditLogs.Count} audit logs in last 24h");
 
@@ -681,10 +630,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             DateTime lastHour = DateTime.UtcNow.AddHours(-1);
             
-            int recentActivity = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= lastHour && 
-                             (log.UserId == userId || log.IpAddress == ipAddress))
-                .CountAsync();
+            int recentActivity = await _securityMonitoringRepository.GetRecentActivityAsync(lastHour, userId, ipAddress);
 
             // Consider suspicious if more than 100 requests in last hour
             return recentActivity > 100;
@@ -702,22 +648,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
-            List<UserActivityDTO> suspiciousUsers = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && log.UserId.HasValue)
-                .GroupBy(log => log.UserId)
-                .Select(g => new UserActivityDTO
-                {
-                    UserId = g.Key ?? 0,
-                    Username = g.First().Username ?? "Unknown",
-                    RequestCount = g.Count(),
-                    LastActivity = g.Max(log => log.Timestamp),
-                    IpAddress = g.First().IpAddress,
-                    IsSuspicious = g.Any(log => log.IsSuspicious) || g.Count() > 1000
-                })
-                .Where(u => u.IsSuspicious)
-                .OrderByDescending(u => u.RequestCount)
-                .Take(limit)
-                .ToListAsync();
+            List<UserActivityDTO> suspiciousUsers = await _securityMonitoringRepository.GetSuspiciousUsersAsync(yesterday, limit);
 
             return suspiciousUsers;
         }
@@ -831,9 +762,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         try
         {
             DateTime lastHour = DateTime.UtcNow.AddHours(-1);
-            int requestCount = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= lastHour)
-                .CountAsync();
+            int requestCount = await _securityMonitoringRepository.GetRecentActivityAsync(lastHour);
             
             return requestCount / 60.0; // Requests per minute over last hour
         }
@@ -864,16 +793,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Extract response times from audit log details, excluding WebSocket and long-running connections
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && 
-                             log.Details != null && 
-                             log.Details.Contains("Elapsed:") &&
-                             log.Resource != null &&
-                             !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
-                             !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
-                             log.EventType != "SECURITY_THREAT" && // Exclude threat logs
-                             log.EventType == "API_REQUEST") // Only include normal API requests
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetResponseTimeAuditLogsAsync(yesterday);
             
             if (!auditLogs.Any())
                 return 150.0; // Default if no data
@@ -885,7 +805,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 if (log.Details != null && log.Details.Contains("Elapsed:"))
                 {
                     // Extract response time from details like "Response: 200, Elapsed: 150ms"
-                    var match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
+                    System.Text.RegularExpressions.Match match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
                     if (match.Success && double.TryParse(match.Groups[1].Value, out double responseTime))
                     {
                         // Filter out extremely high response times (likely WebSocket connections)
@@ -913,13 +833,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Filter out WebSocket and long-running connections for better performance metrics
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && 
-                             log.Resource != null &&
-                             !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
-                             !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
-                             log.EventType == "API_REQUEST") // Only include normal API requests
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetTopEndpointsAuditLogsAsync(yesterday);
             
             List<IGrouping<string?, SecurityAuditLog>> endpointGroups = auditLogs.GroupBy(log => log.Resource).ToList();
             
@@ -933,7 +847,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 {
                     if (log.Details != null && log.Details.Contains("Elapsed:"))
                     {
-                        var match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
+                        System.Text.RegularExpressions.Match match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
                         if (match.Success && double.TryParse(match.Groups[1].Value, out double responseTime))
                         {
                             // Filter out extremely high response times
@@ -970,21 +884,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
-            List<UserActivityDTO> users = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && log.UserId.HasValue)
-                .GroupBy(log => log.UserId)
-                .Select(g => new UserActivityDTO
-                {
-                    UserId = g.Key ?? 0,
-                    Username = g.First().Username ?? "Unknown",
-                    RequestCount = g.Count(),
-                    LastActivity = g.Max(log => log.Timestamp),
-                    IpAddress = g.First().IpAddress,
-                    IsSuspicious = g.Any(log => log.IsSuspicious)
-                })
-                .OrderByDescending(u => u.RequestCount)
-                .Take(10)
-                .ToListAsync();
+            List<UserActivityDTO> users = await _securityMonitoringRepository.GetTopUsersAsync(yesterday, 10);
 
             return users;
         }
@@ -1001,15 +901,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Filter out WebSocket and long-running connections for better metrics
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && 
-                             log.Details != null && 
-                             log.Details.Contains("Elapsed:") &&
-                             log.Resource != null &&
-                             !log.Resource.Contains("/hubs/") && // Exclude SignalR hubs
-                             !log.Resource.Contains("/negotiate") && // Exclude WebSocket negotiate
-                             log.EventType == "API_REQUEST") // Only include normal API requests
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetResponseTimeAuditLogsAsync(yesterday);
             
             // Group by hour and calculate average response times
             List<ResponseTimeMetricDTO> hourlyData = auditLogs
@@ -1022,7 +914,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                     {
                         if (log.Details != null && log.Details.Contains("Elapsed:"))
                         {
-                            var match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
+                            System.Text.RegularExpressions.Match match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Elapsed:\s*(\d+(?:\.\d+)?)ms");
                             if (match.Success && double.TryParse(match.Groups[1].Value, out double responseTime))
                             {
                                 // Filter out extremely high response times
@@ -1050,9 +942,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         {
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday && log.Details != null && log.Details.Contains("Response:"))
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetStatusCodeAuditLogsAsync(yesterday);
             
             if (!auditLogs.Any())
                 return new List<StatusCodeDistributionDTO>();
@@ -1063,7 +953,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             {
                 if (log.Details != null && log.Details.Contains("Response:"))
                 {
-                    var match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Response:\s*(\d+)");
+                    System.Text.RegularExpressions.Match match = System.Text.RegularExpressions.Regex.Match(log.Details, @"Response:\s*(\d+)");
                     if (match.Success && int.TryParse(match.Groups[1].Value, out int statusCode))
                     {
                         statusCodes[statusCode] = statusCodes.GetValueOrDefault(statusCode, 0) + 1;
@@ -1093,10 +983,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     {
         try
         {
-            List<SystemHealthMetrics> healthMetrics = await _context.SystemHealthMetrics
-                .Where(m => m.Timestamp >= DateTime.UtcNow.AddHours(-1))
-                .OrderByDescending(m => m.Timestamp)
-                .ToListAsync();
+            List<SystemHealthMetrics> healthMetrics = await _securityMonitoringRepository.GetSystemHealthMetricsAsync(DateTime.UtcNow.AddHours(-1));
             
             // Return real data only - no sample data generation
             return new DatabaseMetricsDTO
@@ -1199,9 +1086,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             DateTime yesterday = DateTime.UtcNow.AddDays(-1);
             
             // Get all security events from audit logs only (SecurityAlerts table doesn't exist)
-            List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= yesterday)
-                .ToListAsync();
+            List<SecurityAuditLog> auditLogs = await _securityMonitoringRepository.GetAllSecurityAuditLogsAsync(yesterday);
             
             // Calculate event statistics based on audit logs only
             int totalEvents = auditLogs.Count;

@@ -17,7 +17,7 @@ namespace TaskTrackerAPI.ServiceTests.Services
     {
         // Task Service Tests for User Isolation
         [Fact(Skip = "This test is redundant with tests in TaskServiceTests")]
-        public async Task TaskService_OnlyAccessesUserOwnedTasks()
+        public void TaskService_OnlyAccessesUserOwnedTasks()
         {
             // This test is being skipped as it's redundant with tests already in TaskServiceTests
         }

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Services.Interfaces;
@@ -25,7 +26,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class AchievementsController : ControllerBase
+    public class AchievementsController : BaseApiController
     {
         private readonly IAchievementService _achievementService;
         private readonly ILogger<AchievementsController> _logger;

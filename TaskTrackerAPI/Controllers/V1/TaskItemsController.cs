@@ -17,13 +17,13 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.Attributes;
 using System.Text.Json;
 using System.Linq;
 using AutoMapper;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -34,7 +34,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiController]
 [Authorize]
 [RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds
-public class TaskItemsController : ControllerBase
+public class TaskItemsController : BaseApiController
 {
     private readonly ITaskService _taskService;
     private readonly ILogger<TaskItemsController> _logger;
@@ -56,8 +56,8 @@ public class TaskItemsController : ControllerBase
     // GET: api/TaskItems
     [HttpGet]
     [RateLimit(50, 30)] // More strict limit for this potentially resource-intensive endpoint
-    [ProducesResponseType(typeof(Utils.ApiResponse<IEnumerable<TaskItemDTO>>), 200)]
-    public async Task<ActionResult<Utils.ApiResponse<IEnumerable<TaskItemDTO>>>> GetTasks(
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<TaskItemDTO>>), 200)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<TaskItemDTO>>>> GetTasks(
         [FromQuery] string? due = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -132,12 +132,12 @@ public class TaskItemsController : ControllerBase
                     break;
             }
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
 
@@ -147,9 +147,9 @@ public class TaskItemsController : ControllerBase
         requirementLevel: SecurityRequirementLevel.Authenticated,
         resourceType: ResourceType.Task,
         requireOwnership: true)]
-    [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemDTO>), 200)]
-    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 404)]
-    public async Task<ActionResult<Utils.ApiResponse<TaskItemDTO>>> GetTaskItem(int id)
+    [ProducesResponseType(typeof(ApiResponse<TaskItemDTO>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<TaskItemDTO>>> GetTaskItem(int id)
     {
         try
         {
@@ -158,23 +158,23 @@ public class TaskItemsController : ControllerBase
             
             if (task == null)
             {
-                return NotFound(Utils.ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
-            return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(task));
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(task));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<TaskItemDTO>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
     // POST: api/TaskItems
     [HttpPost]
     [RateLimit(30, 60)] // Limit creation rate to prevent abuse
-    [ProducesResponseType(typeof(Utils.ApiResponse<TaskItemDTO>), 201)]
-    [ProducesResponseType(typeof(Utils.ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<TaskItemDTO>), 201)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
     public async Task<ActionResult<TaskItemDTO>> CreateTaskItem([FromBody] object taskData, [FromQuery] bool quick = false)
     {
         try
@@ -192,7 +192,7 @@ public class TaskItemsController : ControllerBase
                 
                 if (quickTaskDto == null)
                 {
-                    return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid quick task data"));
+                    return BadRequest(ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid quick task data"));
                 }
                 
                 // Use AutoMapper to convert QuickTaskDTO to TaskItemDTO
@@ -244,7 +244,7 @@ public class TaskItemsController : ControllerBase
                     
                     if (taskDto == null)
                     {
-                        return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid task data"));
+                        return BadRequest(ApiResponse<TaskItemDTO>.BadRequestResponse("Invalid task data"));
                     }
                     
                     createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
@@ -253,13 +253,13 @@ public class TaskItemsController : ControllerBase
             
             if (createdTask == null)
             {
-                return BadRequest(Utils.ApiResponse<TaskItemDTO>.BadRequestResponse("Failed to create task"));
+                return BadRequest(ApiResponse<TaskItemDTO>.BadRequestResponse("Failed to create task"));
             }
             
             return CreatedAtAction(
                 nameof(GetTaskItem), 
                 new { id = createdTask.Id }, 
-                Utils.ApiResponse<TaskItemDTO>.SuccessResponse(createdTask)
+                ApiResponse<TaskItemDTO>.SuccessResponse(createdTask)
             );
         }
         catch (UnauthorizedAccessException ex)
@@ -270,7 +270,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating task");
-            return StatusCode(500, Utils.ApiResponse<TaskItemDTO>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
@@ -286,7 +286,7 @@ public class TaskItemsController : ControllerBase
             
             if (updatedTask == null)
             {
-                return NotFound(Utils.ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found or you are not authorized to modify it"));
+                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found or you are not authorized to modify it"));
             }
             
             return NoContent();
@@ -299,7 +299,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating task with ID {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<TaskItemDTO>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
         }
     }
 
@@ -321,7 +321,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -335,12 +335,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByStatusAsync(userId, status);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks with status {Status}", status);
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -354,7 +354,7 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByCategoryAsync(userId, categoryId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -364,7 +364,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks for category ID {CategoryId}", categoryId);
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -378,12 +378,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByTagAsync(userId, tagId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks for tag ID {TagId}", tagId);
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -399,12 +399,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByDueDateRangeAsync(userId, startDate, endDate);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks by due date range");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -418,12 +418,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetOverdueTasksAsync(userId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving overdue tasks");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -437,12 +437,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetDueTodayTasksAsync(userId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks due today");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -456,12 +456,12 @@ public class TaskItemsController : ControllerBase
             
             IEnumerable<TaskItemDTO> tasks = await _taskService.GetDueThisWeekTasksAsync(userId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tasks due this week");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -476,12 +476,12 @@ public class TaskItemsController : ControllerBase
             
             TimeRangeTaskStatisticsDTO statistics = await _taskService.GetTaskStatisticsAsync(userId);
             
-            return Ok(Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.SuccessResponse(statistics));
+            return Ok(ApiResponse<TimeRangeTaskStatisticsDTO>.SuccessResponse(statistics));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving task statistics");
-            return StatusCode(500, Utils.ApiResponse<TimeRangeTaskStatisticsDTO>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<TimeRangeTaskStatisticsDTO>.ServerErrorResponse());
         }
     }
     
@@ -501,7 +501,7 @@ public class TaskItemsController : ControllerBase
                 bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
                 if (!isTaskOwned)
                 {
-                    return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                    return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
                 }
                 validTaskIds.Add(taskId);
             }
@@ -521,7 +521,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error completing batch of tasks");
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -537,7 +537,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             await _taskService.UpdateTaskStatusAsync(userId, id, status);
@@ -552,12 +552,12 @@ public class TaskItemsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid operation on task {TaskId}", id);
-            return BadRequest(Utils.ApiResponse<object>.BadRequestResponse(ex.Message));
+            return BadRequest(ApiResponse<object>.BadRequestResponse(ex.Message));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating status for task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -573,7 +573,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             await _taskService.AddTagToTaskAsync(userId, id, tagId);
@@ -583,7 +583,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding tag to task");
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -599,7 +599,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             await _taskService.RemoveTagFromTaskAsync(userId, id, tagId);
@@ -609,7 +609,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing tag from task");
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -625,7 +625,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             await _taskService.UpdateTaskTagsAsync(userId, id, tagIds);
@@ -635,7 +635,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating task tags");
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -651,17 +651,17 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(id, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<IEnumerable<TagDTO>>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<IEnumerable<TagDTO>>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             IEnumerable<TagDTO> tags = await _taskService.GetTagsForTaskAsync(userId, id);
             
-            return Ok(Utils.ApiResponse<IEnumerable<TagDTO>>.SuccessResponse(tags));
+            return Ok(ApiResponse<IEnumerable<TagDTO>>.SuccessResponse(tags));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving tags for task");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TagDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TagDTO>>.ServerErrorResponse());
         }
     }
 
@@ -672,12 +672,12 @@ public class TaskItemsController : ControllerBase
         {
             int userId = User.GetUserIdAsInt();
             PagedResult<TaskItemDTO> pagedTasks = await _taskService.GetPagedTasksAsync(userId, paginationParams);
-            return Ok(Utils.ApiResponse<PagedResult<TaskItemDTO>>.SuccessResponse(pagedTasks));
+            return Ok(ApiResponse<PagedResult<TaskItemDTO>>.SuccessResponse(pagedTasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving paged tasks");
-            return StatusCode(500, Utils.ApiResponse<PagedResult<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<PagedResult<TaskItemDTO>>.ServerErrorResponse());
         }
     }
 
@@ -693,17 +693,17 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<IEnumerable<ChecklistItemDTO>>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<IEnumerable<ChecklistItemDTO>>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             IEnumerable<ChecklistItemDTO> checklistItems = await _taskService.GetChecklistItemsAsync(userId, taskId);
             
-            return Ok(Utils.ApiResponse<IEnumerable<ChecklistItemDTO>>.SuccessResponse(checklistItems));
+            return Ok(ApiResponse<IEnumerable<ChecklistItemDTO>>.SuccessResponse(checklistItems));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving checklist items for task {TaskId}", taskId);
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<ChecklistItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<ChecklistItemDTO>>.ServerErrorResponse());
         }
     }
     
@@ -719,7 +719,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<ChecklistItemDTO>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<ChecklistItemDTO>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             checklistItemDto.TaskId = taskId;
@@ -727,19 +727,19 @@ public class TaskItemsController : ControllerBase
             
             if (createdItem == null)
             {
-                return BadRequest(Utils.ApiResponse<ChecklistItemDTO>.BadRequestResponse("Failed to add checklist item"));
+                return BadRequest(ApiResponse<ChecklistItemDTO>.BadRequestResponse("Failed to add checklist item"));
             }
             
             return CreatedAtAction(
                 nameof(GetChecklistItems), 
                 new { taskId = taskId }, 
-                Utils.ApiResponse<ChecklistItemDTO>.SuccessResponse(createdItem)
+                ApiResponse<ChecklistItemDTO>.SuccessResponse(createdItem)
             );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding checklist item to task {TaskId}", taskId);
-            return StatusCode(500, Utils.ApiResponse<ChecklistItemDTO>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<ChecklistItemDTO>.ServerErrorResponse());
         }
     }
     
@@ -755,7 +755,7 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             checklistItemDto.Id = itemId;
@@ -765,7 +765,7 @@ public class TaskItemsController : ControllerBase
             
             if (!updated)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Checklist item with ID {itemId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Checklist item with ID {itemId} not found"));
             }
             
             return NoContent();
@@ -773,7 +773,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating checklist item {ItemId} for task {TaskId}", itemId, taskId);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -789,14 +789,14 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             bool deleted = await _taskService.DeleteChecklistItemAsync(userId, taskId, itemId);
             
             if (!deleted)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Checklist item with ID {itemId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Checklist item with ID {itemId} not found"));
             }
             
             return NoContent();
@@ -804,7 +804,7 @@ public class TaskItemsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting checklist item {ItemId} from task {TaskId}", itemId, taskId);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 
@@ -820,12 +820,12 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             if (itemIds == null || !itemIds.Any())
             {
-                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
+                return BadRequest(ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
             }
             
             Dictionary<int, bool> result = new Dictionary<int, bool>();
@@ -845,12 +845,12 @@ public class TaskItemsController : ControllerBase
                 result.Add(itemId, updated);
             }
             
-            return Ok(Utils.ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items updated"));
+            return Ok(ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items updated"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error batch completing checklist items for task {TaskId}", taskId);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -866,12 +866,12 @@ public class TaskItemsController : ControllerBase
             bool isTaskOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
             if (!isTaskOwned)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {taskId} not found"));
             }
             
             if (itemIds == null || !itemIds.Any())
             {
-                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
+                return BadRequest(ApiResponse<object>.BadRequestResponse("No checklist item IDs provided"));
             }
             
             Dictionary<int, bool> result = new Dictionary<int, bool>();
@@ -882,12 +882,12 @@ public class TaskItemsController : ControllerBase
                 result.Add(itemId, deleted);
             }
             
-            return Ok(Utils.ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items deleted"));
+            return Ok(ApiResponse<Dictionary<int, bool>>.SuccessResponse(result, "Checklist items deleted"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error batch deleting checklist items for task {TaskId}", taskId);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -899,7 +899,7 @@ public class TaskItemsController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(query))
             {
-                return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Search query is required"));
+                return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Search query is required"));
             }
 
             int userId = User.GetUserIdAsInt();
@@ -914,12 +914,12 @@ public class TaskItemsController : ControllerBase
                 (t.Description != null && t.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
             );
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(searchResults));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(searchResults));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error searching tasks with query: {Query}", query);
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
 
@@ -985,12 +985,12 @@ public class TaskItemsController : ControllerBase
                     break;
             }
             
-            return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(sortedTasks));
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(sortedTasks));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving sorted tasks");
-            return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
         }
     }
 
@@ -1005,7 +1005,7 @@ public class TaskItemsController : ControllerBase
             var task = await _taskService.GetTaskByIdAsync(userId, id);
             if (task == null)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             // Update the task progress
@@ -1028,18 +1028,18 @@ public class TaskItemsController : ControllerBase
             var updatedTask = await _taskService.UpdateTaskAsync(userId, id, updateDto);
             if (updatedTask == null)
             {
-                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to update task progress"));
+                return BadRequest(ApiResponse<object>.BadRequestResponse("Failed to update task progress"));
             }
             
             _logger.LogInformation("Task {TaskId} progress updated to {Progress}% by user {UserId}", 
                 id, progressDto.ProgressPercentage, userId);
             
-            return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task progress updated successfully"));
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task progress updated successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating task progress for task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -1054,7 +1054,7 @@ public class TaskItemsController : ControllerBase
             var task = await _taskService.GetTaskByIdAsync(userId, id);
             if (task == null)
             {
-                return NotFound(Utils.ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             // Mark task as completed with 100% progress
@@ -1078,17 +1078,17 @@ public class TaskItemsController : ControllerBase
             var updatedTask = await _taskService.UpdateTaskAsync(userId, id, updateDto);
             if (updatedTask == null)
             {
-                return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Failed to complete task"));
+                return BadRequest(ApiResponse<object>.BadRequestResponse("Failed to complete task"));
             }
             
             _logger.LogInformation("Task {TaskId} marked as completed by user {UserId}", id, userId);
             
-            return Ok(Utils.ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task completed successfully"));
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task completed successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error completing task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
     
@@ -1103,7 +1103,7 @@ public class TaskItemsController : ControllerBase
             var task = await _taskService.GetTaskByIdAsync(userId, id);
             if (task == null)
             {
-                return NotFound(Utils.ApiResponse<TaskTimeTrackingDto>.NotFoundResponse($"Task with ID {id} not found"));
+                return NotFound(ApiResponse<TaskTimeTrackingDto>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
             // This would typically be implemented in a service, but for now I'll create a basic response
@@ -1124,12 +1124,12 @@ public class TaskItemsController : ControllerBase
                 FocusSessions = new List<FocusSessionSummaryDto>() // Would be populated from focus sessions
             };
             
-            return Ok(Utils.ApiResponse<TaskTimeTrackingDto>.SuccessResponse(timeTracking));
+            return Ok(ApiResponse<TaskTimeTrackingDto>.SuccessResponse(timeTracking));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving time tracking for task {TaskId}", id);
-            return StatusCode(500, Utils.ApiResponse<TaskTimeTrackingDto>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<TaskTimeTrackingDto>.ServerErrorResponse());
         }
     }
 } 

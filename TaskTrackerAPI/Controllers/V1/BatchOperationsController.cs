@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models;
@@ -32,7 +33,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Authorize]
     [RateLimit(20, 60)] // Strict limit for batch operations
-    public class BatchOperationsController : ControllerBase
+    public class BatchOperationsController : BaseApiController
     {
         private readonly ITaskService _taskService;
         private readonly ILogger<BatchOperationsController> _logger;
@@ -57,7 +58,7 @@ namespace TaskTrackerAPI.Controllers.V1
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Utils.ApiResponse<IEnumerable<TaskItemDTO>>>> CreateTasksBatch(
+        public async Task<ActionResult<ApiResponse<IEnumerable<TaskItemDTO>>>> CreateTasksBatch(
             [FromBody] List<TaskItemDTO> tasks)
         {
             try
@@ -65,12 +66,12 @@ namespace TaskTrackerAPI.Controllers.V1
                 // Validate batch size
                 if (tasks == null || tasks.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No tasks provided"));
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No tasks provided"));
                 }
 
                 if (tasks.Count > _maxBatchSize)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
@@ -90,18 +91,18 @@ namespace TaskTrackerAPI.Controllers.V1
                 // If none were created due to validation issues
                 if (createdTasks.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Failed to create tasks"));
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Failed to create tasks"));
                 }
 
                 return CreatedAtAction(
                     nameof(GetTasksBatch),
                     new { ids = string.Join(",", createdTasks.Select(t => t.Id)) },
-                    Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(createdTasks));
+                    ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(createdTasks));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating task batch");
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
             }
         }
 
@@ -114,14 +115,14 @@ namespace TaskTrackerAPI.Controllers.V1
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Utils.ApiResponse<IEnumerable<TaskItemDTO>>>> GetTasksBatch(
+        public async Task<ActionResult<ApiResponse<IEnumerable<TaskItemDTO>>>> GetTasksBatch(
             [FromQuery] string ids)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(ids))
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No task IDs provided"));
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No task IDs provided"));
                 }
 
                 // Parse and validate IDs
@@ -132,12 +133,12 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (taskIds.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Invalid task IDs"));
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("Invalid task IDs"));
                 }
 
                 if (taskIds.Count > _maxBatchSize)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
@@ -158,12 +159,12 @@ namespace TaskTrackerAPI.Controllers.V1
                 TaskItemDTO?[] results = await Task.WhenAll(taskFetches);
                 tasks.AddRange(results.Where(t => t != null)!);
 
-                return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+                return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving task batch");
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
             }
         }
 
@@ -177,19 +178,19 @@ namespace TaskTrackerAPI.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Utils.ApiResponse<IEnumerable<TaskItemDTO>>>> UpdateTasksBatch(
+        public async Task<ActionResult<ApiResponse<IEnumerable<TaskItemDTO>>>> UpdateTasksBatch(
             [FromBody] List<TaskItemDTO> tasks)
         {
             try
             {
                 if (tasks == null || tasks.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No tasks provided"));
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse("No tasks provided"));
                 }
 
                 if (tasks.Count > _maxBatchSize)
                 {
-                    return BadRequest(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
+                    return BadRequest(ApiResponse<IEnumerable<TaskItemDTO>>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
@@ -219,15 +220,15 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (updatedTasks.Count == 0)
                 {
-                    return NotFound(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.NotFoundResponse("No tasks were updated"));
+                    return NotFound(ApiResponse<IEnumerable<TaskItemDTO>>.NotFoundResponse("No tasks were updated"));
                 }
 
-                return Ok(Utils.ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(updatedTasks));
+                return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(updatedTasks));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating task batch");
-                return StatusCode(500, Utils.ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
             }
         }
 
@@ -246,7 +247,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 if (string.IsNullOrWhiteSpace(ids))
                 {
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("No task IDs provided"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("No task IDs provided"));
                 }
 
                 // Parse and validate IDs
@@ -257,12 +258,12 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (taskIds.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse("Invalid task IDs"));
+                    return BadRequest(ApiResponse<object>.BadRequestResponse("Invalid task IDs"));
                 }
 
                 if (taskIds.Count > _maxBatchSize)
                 {
-                    return BadRequest(Utils.ApiResponse<object>.BadRequestResponse(
+                    return BadRequest(ApiResponse<object>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
@@ -283,7 +284,7 @@ namespace TaskTrackerAPI.Controllers.V1
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting task batch");
-                return StatusCode(500, Utils.ApiResponse<object>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
             }
         }
 
@@ -296,19 +297,19 @@ namespace TaskTrackerAPI.Controllers.V1
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>>> UpdateTaskStatusBatch(
+        public async Task<ActionResult<ApiResponse<List<TaskStatusUpdateResponseDTO>>>> UpdateTaskStatusBatch(
             [FromBody] BatchStatusUpdateRequestDTO batchUpdate)
         {
             try
             {
                 if (batchUpdate == null || batchUpdate.TaskIds == null || batchUpdate.TaskIds.Count == 0)
                 {
-                    return BadRequest(Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>.BadRequestResponse("No updates provided"));
+                    return BadRequest(ApiResponse<List<TaskStatusUpdateResponseDTO>>.BadRequestResponse("No updates provided"));
                 }
 
                 if (batchUpdate.TaskIds.Count > _maxBatchSize)
                 {
-                    return BadRequest(Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>.BadRequestResponse(
+                    return BadRequest(ApiResponse<List<TaskStatusUpdateResponseDTO>>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
@@ -316,12 +317,12 @@ namespace TaskTrackerAPI.Controllers.V1
                 
                 List<TaskStatusUpdateResponseDTO> results = await _taskService.BatchUpdateTaskStatusAsync(userId, batchUpdate);
                 
-                return Ok(Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>.SuccessResponse(results));
+                return Ok(ApiResponse<List<TaskStatusUpdateResponseDTO>>.SuccessResponse(results));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating task status batch");
-                return StatusCode(500, Utils.ApiResponse<List<TaskStatusUpdateResponseDTO>>.ServerErrorResponse());
+                return StatusCode(500, ApiResponse<List<TaskStatusUpdateResponseDTO>>.ServerErrorResponse());
             }
         }
     }

@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Activity;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -25,7 +26,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class ActivityController : ControllerBase
+    public class ActivityController : BaseApiController
     {
         private readonly IUserActivityService _userActivityService;
         private readonly ILogger<ActivityController> _logger;

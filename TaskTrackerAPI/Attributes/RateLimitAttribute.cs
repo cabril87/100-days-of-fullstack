@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Attributes;
 
@@ -92,9 +92,7 @@ public class RateLimitAttribute : ActionFilterAttribute
                 context.HttpContext.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
                 context.HttpContext.Response.Headers.Append("Retry-After", _timeWindowInSeconds.ToString());
                 
-                ApiResponse<object> response = ApiResponse<object>.ErrorResponse(
-                    "Too many requests. Please try again later.", 
-                    (int)HttpStatusCode.TooManyRequests);
+                ApiResponse<object> response = ApiResponse<object>.ErrorResponse("Too many requests. Please try again later.");
                 
                 await context.HttpContext.Response.WriteAsJsonAsync(response);
                 context.Result = new EmptyResult();

@@ -50,6 +50,44 @@ export interface FamilyMember {
   isActive?: boolean;
 }
 
+export interface FamilyCalendarEvent {
+  id: number;
+  familyId: number;
+  title: string;
+  description: string;
+  location: string;
+  eventType: string;
+  startTime: string;
+  endTime: string;
+  isAllDay: boolean;
+  isRecurring: boolean;
+  recurrencePattern?: string;
+  priority: string;
+  isPrivate: boolean;
+  createdById: number;
+  createdByName: string;
+  createdAt: string;
+  lastModified: string;
+  attendees: {
+    id: number;
+    eventId: number;
+    familyMemberId: number;
+    memberName: string;
+    response: string;
+    responseDate?: string;
+    notes?: string;
+    familyMember?: FamilyMember;
+  }[];
+  reminders: {
+    id: number;
+    eventId: number;
+    reminderTime: string;
+    reminderType: string;
+    message: string;
+    isActive: boolean;
+  }[];
+}
+
 export interface CreateFamilyInput {
   name: string;
 }

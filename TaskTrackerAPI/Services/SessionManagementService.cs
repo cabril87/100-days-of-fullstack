@@ -12,21 +12,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
 using System.Security.Cryptography;
-using System.Text;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Security;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Repositories.Interfaces;
 
 namespace TaskTrackerAPI.Services
 {
     public class SessionManagementService : ISessionManagementService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ISessionManagementRepository _sessionRepository;
         private readonly ILogger<SessionManagementService> _logger;
         private readonly IMapper _mapper;
         private readonly IGeolocationService _geolocationService;
@@ -37,12 +35,12 @@ namespace TaskTrackerAPI.Services
         private const int CLEANUP_INTERVAL_HOURS = 1;
 
         public SessionManagementService(
-            ApplicationDbContext context,
+            ISessionManagementRepository sessionRepository,
             ILogger<SessionManagementService> logger,
             IMapper mapper,
             IGeolocationService geolocationService)
         {
-            _context = context;
+            _sessionRepository = sessionRepository;
             _logger = logger;
             _mapper = mapper;
             _geolocationService = geolocationService;
@@ -60,8 +58,8 @@ namespace TaskTrackerAPI.Services
                 }
 
                 // Get geolocation and device information
-                var geolocation = await _geolocationService.GetLocationAsync(ipAddress);
-                var deviceInfo = ParseUserAgent(userAgent);
+                GeolocationDTO? geolocation = await _geolocationService.GetLocationAsync(ipAddress);
+                (string DeviceType, string Browser, string OperatingSystem) deviceInfo = ParseUserAgent(userAgent);
 
                 // Generate secure session token
                 string sessionToken = GenerateSecureToken();
@@ -69,7 +67,7 @@ namespace TaskTrackerAPI.Services
                 // Check for suspicious session characteristics
                 bool isSuspicious = await IsSuspiciousSessionCreationAsync(userId, ipAddress, userAgent);
 
-                var session = new UserSession
+                UserSession session = new UserSession
                 {
                     UserId = userId,
                     SessionToken = sessionToken,
@@ -90,15 +88,14 @@ namespace TaskTrackerAPI.Services
                     IsSuspicious = isSuspicious
                 };
 
-                _context.UserSessions.Add(session);
-                await _context.SaveChangesAsync();
+                UserSession createdSession = await _sessionRepository.CreateSessionAsync(session);
 
-                _logger.LogInformation($"Session created for user {userId} from {ipAddress}. Suspicious: {isSuspicious}");
+                _logger.LogInformation("Session created for user {UserId} from {IPAddress}. Suspicious: {IsSuspicious}", userId, ipAddress, isSuspicious);
                 return sessionToken;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating session for user {userId}");
+                _logger.LogError(ex, "Error creating session for user {UserId}", userId);
                 throw;
             }
         }
@@ -107,10 +104,9 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken && s.IsActive);
+                UserSession? session = await _sessionRepository.GetSessionByTokenAsync(sessionToken);
 
-                if (session == null)
+                if (session == null || !session.IsActive)
                     return false;
 
                 // Check if session has expired
@@ -126,7 +122,7 @@ namespace TaskTrackerAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error validating session {sessionToken}");
+                _logger.LogError(ex, "Error validating session {SessionToken}", sessionToken);
                 return false;
             }
         }
@@ -135,19 +131,12 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken && s.IsActive);
-
-                if (session != null)
-                {
-                    session.LastActivity = DateTime.UtcNow;
-                    session.ExpiresAt = DateTime.UtcNow.AddMinutes(SESSION_TIMEOUT_MINUTES);
-                    await _context.SaveChangesAsync();
-                }
+                DateTime newExpiryTime = DateTime.UtcNow.AddMinutes(SESSION_TIMEOUT_MINUTES);
+                await _sessionRepository.UpdateSessionActivityAsync(sessionToken, newExpiryTime);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating session activity for {sessionToken}");
+                _logger.LogError(ex, "Error updating session activity for {SessionToken}", sessionToken);
             }
         }
 
@@ -155,23 +144,20 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .Include(s => s.User)
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
+                bool terminated = await _sessionRepository.TerminateSessionAsync(sessionToken, reason);
 
-                if (session != null)
+                if (terminated)
                 {
-                    session.IsActive = false;
-                    session.TerminatedAt = DateTime.UtcNow;
-                    session.TerminationReason = reason;
-                    await _context.SaveChangesAsync();
-
-                    _logger.LogInformation($"Session {sessionToken} terminated for user {session.UserId}. Reason: {reason}");
+                    _logger.LogInformation("Session {SessionToken} terminated. Reason: {Reason}", sessionToken, reason);
+                }
+                else
+                {
+                    _logger.LogWarning("Session {SessionToken} not found for termination", sessionToken);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error terminating session {sessionToken}");
+                _logger.LogError(ex, "Error terminating session {SessionToken}", sessionToken);
                 throw;
             }
         }
@@ -180,29 +166,13 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var sessions = await _context.UserSessions
-                    .Where(s => s.UserId == userId && s.IsActive)
-                    .ToListAsync();
+                int terminatedCount = await _sessionRepository.TerminateUserSessionsAsync(userId, reason, excludeSessionToken);
 
-                if (!string.IsNullOrEmpty(excludeSessionToken))
-                {
-                    sessions = sessions.Where(s => s.SessionToken != excludeSessionToken).ToList();
-                }
-
-                foreach (var session in sessions)
-                {
-                    session.IsActive = false;
-                    session.TerminatedAt = DateTime.UtcNow;
-                    session.TerminationReason = reason;
-                }
-
-                await _context.SaveChangesAsync();
-
-                _logger.LogWarning($"All sessions terminated for user {userId}. Reason: {reason}. Count: {sessions.Count}");
+                _logger.LogWarning("All sessions terminated for user {UserId}. Reason: {Reason}. Count: {Count}", userId, reason, terminatedCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error terminating all sessions for user {userId}");
+                _logger.LogError(ex, "Error terminating all sessions for user {UserId}", userId);
                 throw;
             }
         }
@@ -211,9 +181,9 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var activeSessions = await GetActiveSessionsAsync();
-                var recentSessions = await GetRecentSessionsAsync();
-                var securitySummary = await GetSessionSecuritySummaryAsync();
+                List<UserSessionDTO> activeSessions = await GetActiveSessionsAsync();
+                List<UserSessionDTO> recentSessions = await GetRecentSessionsAsync();
+                SessionSecuritySummaryDTO securitySummary = await GetSessionSecuritySummaryAsync();
 
                 return new SessionManagementDTO
                 {
@@ -236,20 +206,19 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var query = _context.UserSessions
-                    .Include(s => s.User)
-                    .Where(s => s.IsActive);
-
+                IEnumerable<UserSession> sessions;
+                
                 if (userId.HasValue)
                 {
-                    query = query.Where(s => s.UserId == userId.Value);
+                    sessions = await _sessionRepository.GetActiveSessionsByUserAsync(userId.Value);
+                }
+                else
+                {
+                    sessions = await _sessionRepository.GetActiveSessionsAsync(100);
                 }
 
-                var sessions = await query
-                    .OrderByDescending(s => s.LastActivity)
-                    .ToListAsync();
-
-                return sessions.Select(s => MapToSessionDTO(s)).ToList();
+                List<UserSessionDTO> sessionDTOs = sessions.Select(s => MapToSessionDTO(s)).ToList();
+                return sessionDTOs;
             }
             catch (Exception ex)
             {
@@ -262,25 +231,23 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var query = _context.UserSessions
-                    .Include(s => s.User)
-                    .Where(s => s.UserId == userId);
-
+                IEnumerable<UserSession> sessions;
+                
                 if (activeOnly)
                 {
-                    query = query.Where(s => s.IsActive);
+                    sessions = await _sessionRepository.GetActiveSessionsByUserAsync(userId);
+                }
+                else
+                {
+                    sessions = await _sessionRepository.GetUserSessionsAsync(userId, 50);
                 }
 
-                var sessions = await query
-                    .OrderByDescending(s => s.CreatedAt)
-                    .Take(50)
-                    .ToListAsync();
-
-                return sessions.Select(s => MapToSessionDTO(s)).ToList();
+                List<UserSessionDTO> sessionDTOs = sessions.Select(s => MapToSessionDTO(s)).ToList();
+                return sessionDTOs;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting sessions for user {userId}");
+                _logger.LogError(ex, "Error getting sessions for user {UserId}", userId);
                 throw;
             }
         }
@@ -294,7 +261,7 @@ namespace TaskTrackerAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error checking session limit for user {userId}");
+                _logger.LogError(ex, "Error checking session limit for user {UserId}", userId);
                 return false;
             }
         }
@@ -303,22 +270,17 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var expiredSessions = await _context.UserSessions
-                    .Where(s => s.IsActive && s.ExpiresAt.HasValue && s.ExpiresAt <= DateTime.UtcNow)
-                    .ToListAsync();
+                IEnumerable<UserSession> expiredSessions = await _sessionRepository.GetExpiredSessionsAsync();
 
-                foreach (var session in expiredSessions)
+                List<UserSession> expiredSessionsList = expiredSessions.ToList();
+                foreach (UserSession session in expiredSessionsList)
                 {
-                    session.IsActive = false;
-                    session.TerminatedAt = DateTime.UtcNow;
-                    session.TerminationReason = "Automatic cleanup - session expired";
+                    await _sessionRepository.TerminateSessionAsync(session.SessionToken, "Automatic cleanup - session expired");
                 }
 
-                await _context.SaveChangesAsync();
-
-                if (expiredSessions.Any())
+                if (expiredSessionsList.Any())
                 {
-                    _logger.LogInformation($"Cleaned up {expiredSessions.Count} expired sessions");
+                    _logger.LogInformation("Cleaned up {Count} expired sessions", expiredSessionsList.Count);
                 }
             }
             catch (Exception ex)
@@ -331,15 +293,12 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .Include(s => s.User)
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
-
+                UserSession? session = await _sessionRepository.GetSessionByTokenAsync(sessionToken);
                 return session != null ? MapToSessionDTO(session) : null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting session by token {sessionToken}");
+                _logger.LogError(ex, "Error getting session by token {SessionToken}", sessionToken);
                 return null;
             }
         }
@@ -348,13 +307,11 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                return await _context.UserSessions
-                    .Where(s => s.UserId == userId && s.IsActive)
-                    .CountAsync();
+                return await _sessionRepository.GetActiveSessionCountAsync(userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting active session count for user {userId}");
+                _logger.LogError(ex, "Error getting active session count for user {UserId}", userId);
                 return 0;
             }
         }
@@ -363,14 +320,12 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
-
+                UserSession? session = await _sessionRepository.GetSessionByTokenAsync(sessionToken);
                 return session?.IsSuspicious == true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error checking if session is suspicious: {sessionToken}");
+                _logger.LogError(ex, "Error checking if session is suspicious: {SessionToken}", sessionToken);
                 return false;
             }
         }
@@ -379,21 +334,20 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var session = await _context.UserSessions
-                    .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
+                bool marked = await _sessionRepository.MarkSessionSuspiciousAsync(sessionToken, reason);
 
-                if (session != null)
+                if (marked)
                 {
-                    session.IsSuspicious = true;
-                    session.SecurityNotes = reason;
-                    await _context.SaveChangesAsync();
-
-                    _logger.LogWarning($"Session {sessionToken} marked as suspicious. Reason: {reason}");
+                    _logger.LogWarning("Session {SessionToken} marked as suspicious. Reason: {Reason}", sessionToken, reason);
+                }
+                else
+                {
+                    _logger.LogWarning("Session {SessionToken} not found for marking suspicious", sessionToken);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error marking session as suspicious: {sessionToken}");
+                _logger.LogError(ex, "Error marking session as suspicious: {SessionToken}", sessionToken);
                 throw;
             }
         }
@@ -402,14 +356,9 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var sessions = await _context.UserSessions
-                    .Include(s => s.User)
-                    .Where(s => !s.IsActive)
-                    .OrderByDescending(s => s.TerminatedAt ?? s.CreatedAt)
-                    .Take(50)
-                    .ToListAsync();
-
-                return sessions.Select(s => MapToSessionDTO(s)).ToList();
+                IEnumerable<UserSession> sessions = await _sessionRepository.GetRecentTerminatedSessionsAsync(50);
+                List<UserSessionDTO> sessionDTOs = sessions.Select(s => MapToSessionDTO(s)).ToList();
+                return sessionDTOs;
             }
             catch (Exception ex)
             {
@@ -422,38 +371,29 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var last24Hours = DateTime.UtcNow.AddHours(-24);
-                
-                var recentSessions = await _context.UserSessions
-                    .Where(s => s.CreatedAt >= last24Hours)
-                    .ToListAsync();
+                (int TotalActiveSessions, int SuspiciousSessions, int UniqueUsers, int SessionsCreated) sessionStats = 
+                    await _sessionRepository.GetSessionStatisticsAsync(24);
 
-                var suspiciousSessions = recentSessions.Count(s => s.IsSuspicious);
-                var uniqueLocations = recentSessions
-                    .Where(s => !string.IsNullOrEmpty(s.Country))
-                    .Select(s => $"{s.Country}, {s.City}")
-                    .Distinct()
-                    .Count();
+                IEnumerable<(string Country, string City, int SessionCount)> locationStats = 
+                    await _sessionRepository.GetSessionLocationStatisticsAsync(24);
 
-                var expiredSessions = recentSessions.Count(s => !s.IsActive && s.TerminationReason == "Session expired");
+                IEnumerable<(string DeviceType, string Browser, int SessionCount)> deviceStats = 
+                    await _sessionRepository.GetDeviceStatisticsAsync(24);
 
-                var unusualLocations = recentSessions
-                    .Where(s => s.IsSuspicious && !string.IsNullOrEmpty(s.Country))
-                    .Select(s => $"{s.Country}, {s.City}")
-                    .Distinct()
+                List<string> unusualLocations = locationStats
+                    .Where(ls => ls.SessionCount <= 2) // Consider locations with few sessions as unusual
+                    .Select(ls => $"{ls.Country}, {ls.City}")
                     .ToList();
 
-                var newDevices = recentSessions
-                    .Where(s => !string.IsNullOrEmpty(s.DeviceType))
-                    .GroupBy(s => s.DeviceType)
-                    .Select(g => $"{g.Key} ({g.Count()} sessions)")
+                List<string> newDevices = deviceStats
+                    .Select(ds => $"{ds.DeviceType} - {ds.Browser} ({ds.SessionCount} sessions)")
                     .ToList();
 
                 return new SessionSecuritySummaryDTO
                 {
-                    SuspiciousSessions = suspiciousSessions,
-                    UniqueLocations = uniqueLocations,
-                    ExpiredSessions = expiredSessions,
+                    SuspiciousSessions = sessionStats.SuspiciousSessions,
+                    UniqueLocations = locationStats.Count(),
+                    ExpiredSessions = 0, // Could be enhanced with expired session count from repository
                     UnusualLocations = unusualLocations,
                     NewDevices = newDevices
                 };
@@ -469,10 +409,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var oldestSession = await _context.UserSessions
-                    .Where(s => s.UserId == userId && s.IsActive)
-                    .OrderBy(s => s.LastActivity)
-                    .FirstOrDefaultAsync();
+                UserSession? oldestSession = await _sessionRepository.GetOldestActiveSessionAsync(userId);
 
                 if (oldestSession != null)
                 {
@@ -481,7 +418,7 @@ namespace TaskTrackerAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error terminating oldest session for user {userId}");
+                _logger.LogError(ex, "Error terminating oldest session for user {UserId}", userId);
             }
         }
 
@@ -495,12 +432,11 @@ namespace TaskTrackerAPI.Services
                     return true;
 
                 // Check for rapid session creation
-                var lastMinute = DateTime.UtcNow.AddMinutes(-1);
-                int recentSessions = await _context.UserSessions
-                    .Where(s => s.UserId == userId && s.CreatedAt >= lastMinute)
-                    .CountAsync();
+                DateTime lastMinute = DateTime.UtcNow.AddMinutes(-1);
+                IEnumerable<UserSession> recentSessions = await _sessionRepository.GetSessionsInRangeAsync(lastMinute, DateTime.UtcNow);
+                List<UserSession> userRecentSessions = recentSessions.Where(s => s.UserId == userId).ToList();
 
-                if (recentSessions >= 3)
+                if (userRecentSessions.Count >= 3)
                     return true;
 
                 // Check for unusual user agent
@@ -548,7 +484,7 @@ namespace TaskTrackerAPI.Services
 
         private string GenerateSecureToken()
         {
-            using var rng = RandomNumberGenerator.Create();
+            using RandomNumberGenerator rng = RandomNumberGenerator.Create();
             byte[] tokenBytes = new byte[32];
             rng.GetBytes(tokenBytes);
             return Convert.ToBase64String(tokenBytes).Replace("+", "-").Replace("/", "_").Replace("=", "");

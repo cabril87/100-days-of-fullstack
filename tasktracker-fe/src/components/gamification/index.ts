@@ -27,4 +27,5 @@ export { gamificationService } from '@/lib/services/gamificationService';
 
 // New components
 export { AchievementModal } from './AchievementModal';
-export { CharacterSystem } from './CharacterSystem'; 
+export { CharacterSystem } from './CharacterSystem';
+export { GamificationNotifications } from './GamificationNotifications'; 

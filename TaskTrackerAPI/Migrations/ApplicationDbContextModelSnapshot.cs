@@ -245,6 +245,218 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("GeneralAuditLogs");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.BackgroundServices.BackgroundServiceExecution", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<TimeSpan?>("Duration")
+                        .HasColumnType("time");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("ExecutionTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int?>("RecordsProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BackgroundServiceExecutions");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BackgroundServices.BackgroundServiceStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("ErrorCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExecutionCount")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsHealthy")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastRun")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("NextRun")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("SuccessCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SuccessRate")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BackgroundServiceStatuses");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BackgroundServices.SystemMaintenanceNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AffectedServices")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("ScheduledEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ScheduledStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemMaintenanceNotifications");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BackgroundServices.SystemOptimizationRecommendation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Impact")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("ImplementationNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ImplementedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsImplemented")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Recommendation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemOptimizationRecommendations");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Board", b =>
                 {
                     b.Property<int>("Id")
@@ -288,6 +500,966 @@ namespace TaskTrackerAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Boards");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardColumn", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsCollapsible")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDoneColumn")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MappedStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TaskLimit")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardId");
+
+                    b.ToTable("BoardColumns");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AutoRefresh")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("AutoRefreshInterval")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("CustomThemeConfig")
+                        .HasColumnType("ntext");
+
+                    b.Property<string>("DefaultSortBy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DefaultSortDirection")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("nvarchar(4)");
+
+                    b.Property<string>("DefaultTaskView")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("EnableDragDrop")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableGamification")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableKeyboardShortcuts")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableRealTimeCollaboration")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableSwimLanes")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableTaskTimer")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("EnableWipLimits")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowAvatars")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowBoardStats")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowCategories")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowColumnCounts")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowDueDates")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowNotifications")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowPriority")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowProgressBars")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowSubtasks")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ShowTaskIds")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SwimLaneGroupBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardId")
+                        .IsUnique();
+
+                    b.ToTable("BoardSettings");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardTemplate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("AverageRating")
+                        .HasColumnType("decimal(3,2)");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int?>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LayoutConfiguration")
+                        .IsRequired()
+                        .HasColumnType("ntext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PreviewImageUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("RatingCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("BoardTemplates");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Category = "General",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Simple three-column board for basic task management",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"default\",\"layout\":\"standard\"}",
+                            Name = "Basic Kanban",
+                            RatingCount = 0,
+                            Tags = "kanban,basic,simple",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AverageRating = 4.5m,
+                            Category = "Development",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Agile development board with bug tracking and code review columns",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"developer\",\"layout\":\"extended\"}",
+                            Name = "Software Development",
+                            RatingCount = 12,
+                            Tags = "agile,development,software,scrum",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AverageRating = 4.2m,
+                            Category = "Creative",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Board designed for content creators with ideation, writing, and publishing phases",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"creative\",\"layout\":\"workflow\"}",
+                            Name = "Content Creation",
+                            RatingCount = 8,
+                            Tags = "content,writing,marketing,creative",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AverageRating = 4.7m,
+                            Category = "Business",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Comprehensive project management board with detailed workflow stages",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"professional\",\"layout\":\"detailed\"}",
+                            Name = "Project Management",
+                            RatingCount = 15,
+                            Tags = "project,management,business,workflow",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AverageRating = 4.0m,
+                            Category = "Personal",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Simple personal productivity board for daily task management",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"minimal\",\"layout\":\"simple\"}",
+                            Name = "Personal Tasks",
+                            RatingCount = 5,
+                            Tags = "personal,productivity,daily,tasks",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            AverageRating = 4.3m,
+                            Category = "Marketing",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track marketing campaigns from ideation to launch and analysis",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"marketing\",\"layout\":\"campaign\"}",
+                            Name = "Marketing Campaign",
+                            RatingCount = 7,
+                            Tags = "marketing,campaign,social,advertising",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            AverageRating = 4.6m,
+                            Category = "Development",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Dedicated board for tracking and resolving software bugs",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"bug-tracker\",\"layout\":\"priority\"}",
+                            Name = "Bug Tracking",
+                            RatingCount = 11,
+                            Tags = "bugs,testing,qa,development",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            AverageRating = 4.1m,
+                            Category = "Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Organize events from initial planning to post-event follow-up",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"events\",\"layout\":\"timeline\"}",
+                            Name = "Event Planning",
+                            RatingCount = 6,
+                            Tags = "events,planning,coordination,logistics",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        });
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardTemplateColumn", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardTemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsCollapsible")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDoneColumn")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MappedStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TaskLimit")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BoardTemplateId");
+
+                    b.ToTable("BoardTemplateColumns");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BoardTemplateId = 1,
+                            Color = "#6B7280",
+                            Description = "Tasks that need to be started",
+                            Icon = "clipboard",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "To Do",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BoardTemplateId = 1,
+                            Color = "#3B82F6",
+                            Description = "Tasks currently being worked on",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Progress",
+                            Order = 2,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 3,
+                            BoardTemplateId = 1,
+                            Color = "#10B981",
+                            Description = "Completed tasks",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Done",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            BoardTemplateId = 2,
+                            Color = "#6B7280",
+                            Description = "Feature requests and bug reports",
+                            Icon = "list",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Backlog",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 5,
+                            BoardTemplateId = 2,
+                            Color = "#F59E0B",
+                            Description = "Features being coded",
+                            Icon = "code",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Development",
+                            Order = 2,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 6,
+                            BoardTemplateId = 2,
+                            Color = "#8B5CF6",
+                            Description = "Code awaiting review",
+                            Icon = "eye",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Code Review",
+                            Order = 3,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 7,
+                            BoardTemplateId = 2,
+                            Color = "#EF4444",
+                            Description = "Features being tested",
+                            Icon = "bug",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Testing",
+                            Order = 4,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 8,
+                            BoardTemplateId = 2,
+                            Color = "#06B6D4",
+                            Description = "Ready for deployment",
+                            Icon = "upload",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Deployment",
+                            Order = 5,
+                            TaskLimit = 1
+                        },
+                        new
+                        {
+                            Id = 9,
+                            BoardTemplateId = 2,
+                            Color = "#10B981",
+                            Description = "Completed and deployed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Done",
+                            Order = 6
+                        },
+                        new
+                        {
+                            Id = 10,
+                            BoardTemplateId = 3,
+                            Color = "#F59E0B",
+                            Description = "Content ideas and concepts",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Ideas",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 11,
+                            BoardTemplateId = 3,
+                            Color = "#3B82F6",
+                            Description = "Researching and gathering information",
+                            Icon = "search",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Research",
+                            Order = 2,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 12,
+                            BoardTemplateId = 3,
+                            Color = "#8B5CF6",
+                            Description = "Content being written",
+                            Icon = "edit",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Writing",
+                            Order = 3,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 13,
+                            BoardTemplateId = 3,
+                            Color = "#EF4444",
+                            Description = "Content under review",
+                            Icon = "eye",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Review",
+                            Order = 4,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 14,
+                            BoardTemplateId = 3,
+                            Color = "#10B981",
+                            Description = "Published content",
+                            Icon = "globe",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Published",
+                            Order = 5
+                        },
+                        new
+                        {
+                            Id = 15,
+                            BoardTemplateId = 4,
+                            Color = "#6B7280",
+                            Description = "Project planning and requirements",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Planning",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 16,
+                            BoardTemplateId = 4,
+                            Color = "#3B82F6",
+                            Description = "Tasks being executed",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Progress",
+                            Order = 2,
+                            TaskLimit = 5
+                        },
+                        new
+                        {
+                            Id = 17,
+                            BoardTemplateId = 4,
+                            Color = "#F59E0B",
+                            Description = "Work under review",
+                            Icon = "eye",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Review",
+                            Order = 3,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 18,
+                            BoardTemplateId = 4,
+                            Color = "#EF4444",
+                            Description = "Quality assurance and testing",
+                            Icon = "shield",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Testing",
+                            Order = 4,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 19,
+                            BoardTemplateId = 4,
+                            Color = "#06B6D4",
+                            Description = "Approved and ready for deployment",
+                            Icon = "checkmark",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Approved",
+                            Order = 5,
+                            TaskLimit = 1
+                        },
+                        new
+                        {
+                            Id = 20,
+                            BoardTemplateId = 4,
+                            Color = "#10B981",
+                            Description = "Project milestones completed",
+                            Icon = "trophy",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 6
+                        },
+                        new
+                        {
+                            Id = 21,
+                            BoardTemplateId = 5,
+                            Color = "#EF4444",
+                            Description = "Tasks for today",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Today",
+                            Order = 1,
+                            TaskLimit = 5
+                        },
+                        new
+                        {
+                            Id = 22,
+                            BoardTemplateId = 5,
+                            Color = "#F59E0B",
+                            Description = "Tasks for this week",
+                            Icon = "clock",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "This Week",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 23,
+                            BoardTemplateId = 5,
+                            Color = "#10B981",
+                            Description = "Finished tasks",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 24,
+                            BoardTemplateId = 6,
+                            Color = "#F59E0B",
+                            Description = "Campaign ideas and brainstorming",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Ideation",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 25,
+                            BoardTemplateId = 6,
+                            Color = "#3B82F6",
+                            Description = "Campaign planning and strategy",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Planning",
+                            Order = 2,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 26,
+                            BoardTemplateId = 6,
+                            Color = "#8B5CF6",
+                            Description = "Creating campaign assets",
+                            Icon = "edit",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Creation",
+                            Order = 3,
+                            TaskLimit = 4
+                        },
+                        new
+                        {
+                            Id = 27,
+                            BoardTemplateId = 6,
+                            Color = "#EF4444",
+                            Description = "Campaign execution and launch",
+                            Icon = "rocket",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Launch",
+                            Order = 4,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 28,
+                            BoardTemplateId = 6,
+                            Color = "#10B981",
+                            Description = "Campaign analysis and reporting",
+                            Icon = "chart",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Analysis",
+                            Order = 5
+                        },
+                        new
+                        {
+                            Id = 29,
+                            BoardTemplateId = 7,
+                            Color = "#EF4444",
+                            Description = "Newly reported bugs",
+                            Icon = "bug",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Reported",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 30,
+                            BoardTemplateId = 7,
+                            Color = "#F59E0B",
+                            Description = "Bugs being investigated",
+                            Icon = "search",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Investigating",
+                            Order = 2,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 31,
+                            BoardTemplateId = 7,
+                            Color = "#3B82F6",
+                            Description = "Bugs being fixed",
+                            Icon = "wrench",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Fixing",
+                            Order = 3,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 32,
+                            BoardTemplateId = 7,
+                            Color = "#8B5CF6",
+                            Description = "Fixes being tested",
+                            Icon = "shield",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Testing",
+                            Order = 4,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 33,
+                            BoardTemplateId = 7,
+                            Color = "#10B981",
+                            Description = "Fixed and verified bugs",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Resolved",
+                            Order = 5
+                        },
+                        new
+                        {
+                            Id = 34,
+                            BoardTemplateId = 8,
+                            Color = "#F59E0B",
+                            Description = "Event concept and initial planning",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 3,
+                            Name = "Concept",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 35,
+                            BoardTemplateId = 8,
+                            Color = "#3B82F6",
+                            Description = "Detailed event planning",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Planning",
+                            Order = 2,
+                            TaskLimit = 5
+                        },
+                        new
+                        {
+                            Id = 36,
+                            BoardTemplateId = 8,
+                            Color = "#8B5CF6",
+                            Description = "Event preparation and setup",
+                            Icon = "settings",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Preparation",
+                            Order = 3,
+                            TaskLimit = 4
+                        },
+                        new
+                        {
+                            Id = 37,
+                            BoardTemplateId = 8,
+                            Color = "#EF4444",
+                            Description = "Event day execution",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Execution",
+                            Order = 4,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 38,
+                            BoardTemplateId = 8,
+                            Color = "#06B6D4",
+                            Description = "Post-event follow-up tasks",
+                            Icon = "mail",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Follow-up",
+                            Order = 5,
+                            TaskLimit = 2
+                        },
+                        new
+                        {
+                            Id = 39,
+                            BoardTemplateId = 8,
+                            Color = "#10B981",
+                            Description = "Event fully completed",
+                            Icon = "trophy",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 6
+                        });
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Category", b =>
@@ -5187,6 +6359,227 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("Invitations");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.AdaptationEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AlgorithmVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Context")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("DataPointsUsed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Impact")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("MeasuredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NewValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OldValues")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("SuccessRateAfter")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("SuccessRateBefore")
+                        .HasColumnType("float");
+
+                    b.Property<string>("UserFeedback")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool?>("WasSuccessful")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AdaptationEvents");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.RecommendationScore", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AlgorithmVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<DateTime?>("FeedbackAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecommendationContext")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RecommendationReason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SatisfactionRating")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Score")
+                        .HasColumnType("float");
+
+                    b.Property<string>("ScoringFactors")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ShownAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int?>("UserFeedback")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("WasShown")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("WasUsed")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RecommendationScores");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.UserLearningProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("AdaptationConfidence")
+                        .HasColumnType("float");
+
+                    b.Property<double>("AutomationPreference")
+                        .HasColumnType("float");
+
+                    b.Property<double>("ChallengeAcceptanceRate")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("DataPointCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FocusPattern")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("LastAdaptationDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<double>("LearningVelocity")
+                        .HasColumnType("float");
+
+                    b.Property<string>("MotivationFactors")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PreferredCategoryId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PreferredComplexity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PreferredDuration")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PreferredTimeOfDay")
+                        .HasColumnType("int");
+
+                    b.Property<double>("ProcrastinationTendency")
+                        .HasColumnType("float");
+
+                    b.Property<double>("SocialPreference")
+                        .HasColumnType("float");
+
+                    b.Property<string>("SuccessPattern")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("UsageFrequencyPattern")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserLearningProfiles");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Note", b =>
                 {
                     b.Property<int>("Id")
@@ -5378,6 +6771,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int?>("TaskId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TemplateId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TransactionType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -5389,6 +6785,8 @@ namespace TaskTrackerAPI.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TaskId");
+
+                    b.HasIndex("TemplateId");
 
                     b.HasIndex("UserId");
 
@@ -6484,6 +7882,71 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("Tags");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.TaskAutomationRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Actions")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Conditions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastTriggered")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SuccessRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TriggerCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("TaskAutomationRules");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -6640,6 +8103,21 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AutomationRules")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("AverageCompletionTimeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Category")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConditionalLogic")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -6650,20 +8128,69 @@ namespace TaskTrackerAPI.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int>("DownloadCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("IconUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsAutomated")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPremium")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsSystemTemplate")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastUsedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MarketplaceDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Prerequisites")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Price")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PublishedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PurchaseCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Rating")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("SuccessRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SuccessStories")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("TemplateCategoryId")
+                        .HasColumnType("int");
+
                     b.Property<string>("TemplateData")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TriggerConditions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -6673,14 +8200,238 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("int");
+
                     b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ValueProposition")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("WorkflowSteps")
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WorkflowVersion")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TemplateCategoryId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("TaskTemplates");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ColorHex")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("IconName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TemplateCategories");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateMarketplace", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ApprovedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ApprovedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ApproverId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ChangeLog")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CreatorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFree")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MinimumRating")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("PublishedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApproverId");
+
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("TemplateMarketplace");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplatePurchase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PointsSpent")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PurchasedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TemplatePurchases");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateUsageAnalytics", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CompletionTimeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("EfficiencyScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Feedback")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("TasksCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TasksCreated")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UsedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TemplateUsageAnalytics");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.User", b =>
@@ -6721,6 +8472,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("int");
 
                     b.Property<int?>("PrimaryFamilyId")
                         .HasColumnType("int");
@@ -7081,6 +8835,72 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("UserSessions");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.WorkflowStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Conditions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Configuration")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Dependencies")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EstimatedDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("StepOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StepType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("WorkflowSteps");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Analytics.AnalyticsQuery", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.User", "User")
@@ -7132,6 +8952,48 @@ namespace TaskTrackerAPI.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardColumn", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.Board", "Board")
+                        .WithMany("Columns")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardSettings", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.Board", "Board")
+                        .WithOne("Settings")
+                        .HasForeignKey("TaskTrackerAPI.Models.BoardSettings", "BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardTemplate", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardTemplateColumn", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.BoardTemplate", "BoardTemplate")
+                        .WithMany("DefaultColumns")
+                        .HasForeignKey("BoardTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BoardTemplate");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Category", b =>
@@ -7452,6 +9314,47 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.AdaptationEvent", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.RecommendationScore", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ML.UserLearningProfile", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Note", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.TaskItem", "TaskItem")
@@ -7510,6 +9413,10 @@ namespace TaskTrackerAPI.Migrations
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId");
+
                     b.HasOne("TaskTrackerAPI.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -7517,6 +9424,8 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
+
+                    b.Navigation("Template");
 
                     b.Navigation("User");
                 });
@@ -7578,6 +9487,17 @@ namespace TaskTrackerAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TaskAutomationRule", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany("AutomationRulesCollection")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskItem", b =>
@@ -7661,10 +9581,75 @@ namespace TaskTrackerAPI.Migrations
 
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskTemplate", b =>
                 {
+                    b.HasOne("TaskTrackerAPI.Models.TemplateCategory", null)
+                        .WithMany("Templates")
+                        .HasForeignKey("TemplateCategoryId");
+
                     b.HasOne("TaskTrackerAPI.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateMarketplace", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "Approver")
+                        .WithMany()
+                        .HasForeignKey("ApproverId");
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatorId");
+
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Approver");
+
+                    b.Navigation("Creator");
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplatePurchase", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateUsageAnalytics", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany("UsageAnalytics")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
 
                     b.Navigation("User");
                 });
@@ -7769,9 +9754,29 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.WorkflowStep", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.TaskTemplate", "Template")
+                        .WithMany("WorkflowStepsCollection")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.Board", b =>
                 {
+                    b.Navigation("Columns");
+
+                    b.Navigation("Settings");
+
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.BoardTemplate", b =>
+                {
+                    b.Navigation("DefaultColumns");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Category", b =>
@@ -7847,7 +9852,18 @@ namespace TaskTrackerAPI.Migrations
 
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskTemplate", b =>
                 {
+                    b.Navigation("AutomationRulesCollection");
+
                     b.Navigation("ChecklistItems");
+
+                    b.Navigation("UsageAnalytics");
+
+                    b.Navigation("WorkflowStepsCollection");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.TemplateCategory", b =>
+                {
+                    b.Navigation("Templates");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.User", b =>

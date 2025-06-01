@@ -33,8 +33,11 @@ public class DataSeeder
         {
             // Seed subscription tiers
             await SubscriptionTierSeed.SeedSubscriptionTiersAsync(context, logger as Microsoft.Extensions.Logging.ILogger);
-
-            // Check specifically for admin user (only check username since email is encrypted)
+            
+            // Seed comprehensive template marketplace
+            await TemplateSeedData.SeedTemplatesAsync(context, logger as Microsoft.Extensions.Logging.ILogger);
+            
+            // Check if admin user exists
             bool adminExists = await context.Users.AnyAsync(u => u.Username == "admin");
             
             // Seed admin user if not found

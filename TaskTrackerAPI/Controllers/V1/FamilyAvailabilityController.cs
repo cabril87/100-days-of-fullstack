@@ -16,8 +16,9 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Family;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -26,7 +27,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/availability")]
     [Route("api/family/{familyId}/availability")]
-    public class FamilyAvailabilityController : ControllerBase
+    public class FamilyAvailabilityController : BaseApiController
     {
         private readonly IFamilyCalendarService _calendarService;
         private readonly ILogger<FamilyAvailabilityController> _logger;

@@ -17,8 +17,9 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -26,7 +27,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    public class FamilyMembersController : ControllerBase
+    public class FamilyMembersController : BaseApiController
     {
         private readonly ILogger<FamilyMembersController> _logger;
         private readonly IFamilyMemberService _familyMemberService;

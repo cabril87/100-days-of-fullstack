@@ -9,31 +9,27 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Gamification;
-using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Models.Gamification;
-using GamificationModels = TaskTrackerAPI.Models.Gamification;
+using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace TaskTrackerAPI.Services
 {
     public class BadgeService : IBadgeService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IBadgeRepository _badgeRepository;
         private readonly IMapper _mapper;
         private readonly ILogger<BadgeService> _logger;
 
-        public BadgeService(ApplicationDbContext context, IMapper mapper, ILogger<BadgeService> logger)
+        public BadgeService(IBadgeRepository badgeRepository, IMapper mapper, ILogger<BadgeService> logger)
         {
-            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _badgeRepository = badgeRepository ?? throw new ArgumentNullException(nameof(badgeRepository));
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -43,11 +39,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
-                    .Where(b => !b.IsSpecial)
-                    .OrderBy(b => b.Name)
-                    .ToListAsync();
-
+                IEnumerable<Badge> badges = await _badgeRepository.GetAllBadgesAsync();
                 return _mapper.Map<IEnumerable<BadgeDTO>>(badges);
             }
             catch (Exception ex)
@@ -62,12 +54,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                GamificationModels.Badge? badge = await _context.Badges
-                    .FirstOrDefaultAsync(b => b.Id == id);
-
-                return badge != null 
-                    ? _mapper.Map<BadgeDTO>(badge) 
-                    : null;
+                Badge? badge = await _badgeRepository.GetBadgeByIdAsync(id);
+                return badge != null ? _mapper.Map<BadgeDTO>(badge) : null;
             }
             catch (Exception ex)
             {
@@ -81,11 +69,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
-                    .Where(b => !b.IsSpecial && b.Category == category)
-                    .OrderBy(b => b.Name)
-                    .ToListAsync();
-
+                IEnumerable<Badge> badges = await _badgeRepository.GetBadgesByCategoryAsync(category);
                 return _mapper.Map<IEnumerable<BadgeDTO>>(badges);
             }
             catch (Exception ex)
@@ -100,12 +84,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                // Since we don't have Rarity property, just return all badges for now
-                IEnumerable<GamificationModels.Badge> badges = await _context.Badges
-                    .Where(b => !b.IsSpecial)
-                    .OrderBy(b => b.Name)
-                    .ToListAsync();
-
+                IEnumerable<Badge> badges = await _badgeRepository.GetBadgesByTierAsync(rarity);
                 return _mapper.Map<IEnumerable<BadgeDTO>>(badges);
             }
             catch (Exception ex)
@@ -116,17 +95,12 @@ namespace TaskTrackerAPI.Services
         }
 
         /// <inheritdoc/>
-        public async Task<BadgeDTO> CreateBadgeAsync(BadgeCreateUpdateDTO badgeDto)
+        public Task<BadgeDTO> CreateBadgeAsync(BadgeCreateUpdateDTO badgeDto)
         {
             try
             {
-                GamificationModels.Badge badge = _mapper.Map<GamificationModels.Badge>(badgeDto);
-                badge.CreatedAt = DateTime.UtcNow;
-
-                _context.Badges.Add(badge);
-                await _context.SaveChangesAsync();
-
-                return _mapper.Map<BadgeDTO>(badge);
+                // Note: Badge creation should be handled by admin services
+                throw new NotSupportedException("Badge creation should be handled through admin services");
             }
             catch (Exception ex)
             {
@@ -136,64 +110,27 @@ namespace TaskTrackerAPI.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> UpdateBadgeAsync(int id, string name, string? description, string? category, string? imageUrl)
+        public Task<bool> UpdateBadgeAsync(int id, string name, string? description, string? category, string? imageUrl)
         {
             try
             {
-                GamificationModels.Badge? existingBadge = await _context.Badges.FindAsync(id);
-                if (existingBadge == null)
-                {
-                    return false;
-                }
-                
-                existingBadge.Name = name;
-                existingBadge.Description = description ?? string.Empty;
-                existingBadge.Category = category ?? string.Empty;
-                existingBadge.IconUrl = imageUrl ?? string.Empty;
-                // Badge doesn't have UpdatedAt property
-                
-                await _context.SaveChangesAsync();
-                return true;
+                // Note: Badge updates should be handled by admin services
+                throw new NotSupportedException("Badge updates should be handled through admin services");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating badge {BadgeId}", id);
-                return false;
+                return Task.FromResult(false);
             }
         }
 
         /// <inheritdoc/>
-        public async Task<bool> DeleteBadgeAsync(int id)
+        public Task<bool> DeleteBadgeAsync(int id)
         {
             try
             {
-                GamificationModels.Badge? badge = await _context.Badges.FindAsync(id);
-                
-                if (badge == null)
-                {
-                    _logger.LogWarning("Badge with ID {BadgeId} not found for deletion", id);
-                    return false;
-                }
-
-                // Check if badge is associated with users
-                List<GamificationModels.UserBadge> userBadges = await _context.UserBadges
-                    .Where(ub => ub.BadgeId == id)
-                    .ToListAsync();
-
-                if (userBadges.Any())
-                {
-                    // Soft delete - just mark as special (which is used as filter)
-                    badge.IsSpecial = true;
-                    _context.Badges.Update(badge);
-                }
-                else
-                {
-                    // Hard delete if no users have this badge
-                    _context.Badges.Remove(badge);
-                }
-
-                await _context.SaveChangesAsync();
-                return true;
+                // Note: Badge deletion should be handled by admin services
+                throw new NotSupportedException("Badge deletion should be handled through admin services");
             }
             catch (Exception ex)
             {
@@ -207,11 +144,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                List<GamificationModels.UserBadge> userBadges = await _context.UserBadges
-                    .Include(ub => ub.Badge)
-                    .Where(ub => ub.UserId == userId)
-                    .ToListAsync();
-
+                IEnumerable<UserBadge> userBadges = await _badgeRepository.GetUserBadgesAsync(userId);
                 return _mapper.Map<IEnumerable<UserBadgeDTO>>(userBadges);
             }
             catch (Exception ex)
@@ -227,36 +160,15 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Check if user already has this badge
-                GamificationModels.UserBadge? existingBadge = await _context.UserBadges
-                    .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
-
-                if (existingBadge != null)
+                bool hasEarned = await _badgeRepository.HasUserEarnedBadgeAsync(userId, badgeId);
+                if (hasEarned)
                 {
                     _logger.LogInformation("User {UserId} already has badge {BadgeId}", userId, badgeId);
                     return false;
                 }
 
-                // Verify badge exists
-                GamificationModels.Badge? badge = await _context.Badges.FindAsync(badgeId);
-                if (badge == null || badge.IsSpecial)
-                {
-                    _logger.LogWarning("Badge {BadgeId} not found or special", badgeId);
-                    return false;
-                }
-
                 // Award badge to user
-                GamificationModels.UserBadge userBadge = new GamificationModels.UserBadge
-                {
-                    UserId = userId,
-                    BadgeId = badgeId,
-                    // The property is AwardedAt in UserBadge model
-                    AwardedAt = DateTime.UtcNow,
-                    IsDisplayed = true
-                };
-
-                _context.UserBadges.Add(userBadge);
-                await _context.SaveChangesAsync();
-
+                await _badgeRepository.AwardBadgeAsync(userId, badgeId);
                 _logger.LogInformation("Badge {BadgeId} awarded to user {UserId}", badgeId, userId);
                 return true;
             }
@@ -272,20 +184,16 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                GamificationModels.UserBadge? userBadge = await _context.UserBadges
-                    .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badgeId);
-
-                if (userBadge == null)
+                bool result = await _badgeRepository.RevokeBadgeAsync(userId, badgeId);
+                if (result)
+                {
+                    _logger.LogInformation("Badge {BadgeId} removed from user {UserId}", badgeId, userId);
+                }
+                else
                 {
                     _logger.LogWarning("User {UserId} does not have badge {BadgeId}", userId, badgeId);
-                    return false;
                 }
-
-                _context.UserBadges.Remove(userBadge);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Badge {BadgeId} removed from user {UserId}", badgeId, userId);
-                return true;
+                return result;
             }
             catch (Exception ex)
             {
@@ -299,20 +207,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                GamificationModels.UserBadge? userBadge = await _context.UserBadges
-                    .FirstOrDefaultAsync(ub => ub.Id == userBadgeId && ub.UserId == userId);
-
-                if (userBadge == null)
-                {
-                    _logger.LogWarning("User badge {UserBadgeId} not found for user {UserId}", userBadgeId, userId);
-                    return false;
-                }
-
-                userBadge.IsDisplayed = isDisplayed;
-                _context.UserBadges.Update(userBadge);
-                await _context.SaveChangesAsync();
-
-                return true;
+                bool result = await _badgeRepository.UpdateBadgeDisplayStatusAsync(userId, userBadgeId, isDisplayed);
+                return result;
             }
             catch (Exception ex)
             {
@@ -326,30 +222,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                // Begin transaction to ensure data consistency
-                using IDbContextTransaction transaction = await _context.Database.BeginTransactionAsync();
-
-                try
-                {
-                    GamificationModels.UserBadge? userBadge = await _context.UserBadges
-                        .FirstOrDefaultAsync(ub => ub.Id == userBadgeId && ub.UserId == userId);
-
-                    if (userBadge == null)
-                    {
-                        _logger.LogWarning("User badge {UserBadgeId} not found for user {UserId}", userBadgeId, userId);
-                        return false;
-                    }
-
-                    // Since IsFeatured isn't a property, we can't implement this feature currently
-                    // We'll just return true for now
-                    await transaction.CommitAsync();
-                    return true;
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                bool result = await _badgeRepository.SetBadgeAsFeaturedAsync(userId, userBadgeId, isFeatured);
+                return result;
             }
             catch (Exception ex)
             {

@@ -20,12 +20,14 @@ using System.Text.Json;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Security;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services
 {
     public class GeolocationService : IGeolocationService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IGeolocationRepository _geolocationRepository;
         private readonly ILogger<GeolocationService> _logger;
         private readonly IConfiguration _configuration;
         private readonly HttpClient _httpClient;
@@ -43,12 +45,12 @@ namespace TaskTrackerAPI.Services
         };
 
         public GeolocationService(
-            ApplicationDbContext context,
+            IGeolocationRepository geolocationRepository,
             ILogger<GeolocationService> logger,
             IConfiguration configuration,
             HttpClient httpClient)
         {
-            _context = context;
+            _geolocationRepository = geolocationRepository;
             _logger = logger;
             _configuration = configuration;
             _httpClient = httpClient;
@@ -173,42 +175,28 @@ namespace TaskTrackerAPI.Services
             {
                 var last24Hours = DateTime.UtcNow.AddHours(-24);
                 
-                // Get recent access data from security audit logs
-                var recentAccess = await _context.SecurityAuditLogs
-                    .Where(log => log.Timestamp >= last24Hours && log.IpAddress != null)
-                    .GroupBy(log => log.IpAddress)
-                    .Select(g => new
-                    {
-                        IpAddress = g.Key,
-                        LastAccess = g.Max(log => log.Timestamp),
-                        Username = g.First().Username,
-                        IsSuspicious = g.Any(log => log.IsSuspicious)
-                    })
-                    .Take(20)
-                    .ToListAsync();
+                // Get recent access data from security audit logs using repository
+                var groupedAccess = await _geolocationRepository.GetGroupedIPAccessAsync(24, 20);
 
                 var geolocationAccess = new List<GeolocationAccessDTO>();
                 
-                foreach (var access in recentAccess)
+                foreach (var access in groupedAccess)
                 {
-                    if (access.IpAddress != null)
-                    {
-                        var location = await GetLocationAsync(access.IpAddress);
-                        var isAllowed = location?.CountryCode != null && await IsCountryAllowedAsync(location.CountryCode);
-                        var isSuspicious = await IsLocationSuspiciousAsync(access.IpAddress);
+                    var location = await GetLocationAsync(access.IpAddress);
+                    var isAllowed = location?.CountryCode != null && await IsCountryAllowedAsync(location.CountryCode);
+                    var isSuspicious = await IsLocationSuspiciousAsync(access.IpAddress);
 
-                        geolocationAccess.Add(new GeolocationAccessDTO
-                        {
-                            IpAddress = access.IpAddress,
-                            Country = location?.Country,
-                            City = location?.City,
-                            AccessTime = access.LastAccess,
-                            Username = access.Username,
-                            IsAllowed = isAllowed,
-                            IsSuspicious = isSuspicious || access.IsSuspicious,
-                            RiskFactors = isSuspicious ? "Suspicious location" : null
-                        });
-                    }
+                    geolocationAccess.Add(new GeolocationAccessDTO
+                    {
+                        IpAddress = access.IpAddress,
+                        Country = location?.Country,
+                        City = location?.City,
+                        AccessTime = access.LastAccess,
+                        Username = access.Username,
+                        IsAllowed = isAllowed,
+                        IsSuspicious = isSuspicious || access.IsSuspicious,
+                        RiskFactors = isSuspicious ? "Suspicious location" : null
+                    });
                 }
 
                 var allowedCountries = await GetAllowedCountriesAsync();
@@ -216,7 +204,7 @@ namespace TaskTrackerAPI.Services
 
                 return new IPGeolocationSummaryDTO
                 {
-                    TotalUniqueIPs = recentAccess.Count,
+                    TotalUniqueIPs = await _geolocationRepository.GetUniqueIPCountAsync(24),
                     SuspiciousIPs = geolocationAccess.Count(g => g.IsSuspicious),
                     BlockedCountriesCount = blockedCountries.Count,
                     AllowedCountries = allowedCountries,
@@ -235,13 +223,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var last24Hours = DateTime.UtcNow.AddHours(-24);
-                
-                var recentAccess = await _context.SecurityAuditLogs
-                    .Where(log => log.Timestamp >= last24Hours && log.IpAddress != null)
-                    .OrderByDescending(log => log.Timestamp)
-                    .Take(limit)
-                    .ToListAsync();
+                var recentAccess = await _geolocationRepository.GetRecentIPAccessAsync(24, limit);
 
                 var result = new List<GeolocationAccessDTO>();
                 
@@ -367,7 +349,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var location = await GetLocationAsync(ipAddress);
+                GeolocationDTO? location = await GetLocationAsync(ipAddress);
                 return location?.IsVPN == true || location?.IsProxy == true;
             }
             catch (Exception ex)
@@ -381,7 +363,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var location = await GetLocationAsync(ipAddress);
+                GeolocationDTO? location = await GetLocationAsync(ipAddress);
                 
                 _logger.LogInformation($"Geolocation access from {location?.Country ?? "Unknown"}, {location?.City ?? "Unknown"}. Risk factors: {riskFactors}");
             }
@@ -434,26 +416,20 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                // Check user's historical locations from audit logs
-                var last30Days = DateTime.UtcNow.AddDays(-30);
-                
-                var userLocations = await _context.SecurityAuditLogs
-                    .Where(log => log.UserId == userId && log.Timestamp >= last30Days && log.IpAddress != null)
-                    .Select(log => log.IpAddress)
-                    .Distinct()
-                    .ToListAsync();
+                // Check user's historical locations from audit logs using repository
+                IEnumerable<string> userIPs = await _geolocationRepository.GetUserHistoricalIPsAsync(userId, 30);
 
                 // If user has accessed from less than 3 different IPs, consider new location suspicious
-                if (userLocations.Count < 3)
+                if (userIPs.Count() < 3)
                     return true;
 
                 // Check if current country is different from user's usual countries
-                var usualCountries = new List<string>();
-                foreach (var ip in userLocations)
+                List<string> usualCountries = new();
+                foreach (var ip in userIPs)
                 {
                     if (ip != null)
                     {
-                        var historicalLocation = await GetLocationAsync(ip);
+                        GeolocationDTO? historicalLocation = await GetLocationAsync(ip);
                         if (historicalLocation?.CountryCode != null)
                             usualCountries.Add(historicalLocation.CountryCode);
                     }

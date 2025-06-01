@@ -9,6 +9,31 @@ export interface GamificationEvent {
   timestamp: string;
 }
 
+// Enhanced Board Events
+export interface BoardEvent {
+  type: 'board_updated' | 'column_updated' | 'task_moved' | 'wip_violation' | 'analytics_updated' | 'settings_updated' | 'template_updated';
+  data: any;
+  boardId: number;
+  userId: number;
+  timestamp: string;
+}
+
+export interface TemplateMarketplaceEvent {
+  type: 'template_published' | 'template_rated' | 'template_trending' | 'marketplace_analytics';
+  data: any;
+  templateId?: number;
+  userId: number;
+  timestamp: string;
+}
+
+export interface SettingsSyncEvent {
+  type: 'settings_changed' | 'theme_updated' | 'settings_imported' | 'settings_exported';
+  data: any;
+  boardId: number;
+  userId: number;
+  timestamp: string;
+}
+
 export interface SignalRConnection {
   start: () => Promise<void>;
   stop: () => Promise<void>;
@@ -25,6 +50,11 @@ export interface SignalREvents {
   onDisconnected: () => void;
   onError: (error: Error) => void;
   onGamificationUpdate: (update: GamificationEvent) => void;
+  
+  // Board events
+  onBoardUpdate: (update: BoardEvent) => void;
+  onTemplateMarketplaceUpdate: (update: TemplateMarketplaceEvent) => void;
+  onSettingsSyncUpdate: (update: SettingsSyncEvent) => void;
   
   // Notification events
   ReceiveNotification: (notification: unknown) => void;

@@ -16,9 +16,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Family;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Linq;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -27,7 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/calendar")]
     [Route("api/family/{familyId}/calendar")]
-    public class FamilyCalendarController : ControllerBase
+    public class FamilyCalendarController : BaseApiController
     {
         private readonly IFamilyCalendarService _calendarService;
         private readonly ILogger<FamilyCalendarController> _logger;
@@ -109,7 +110,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 // Check if model is valid
                 if (!ModelState.IsValid)
                 {
-                    var errors = string.Join("; ", ModelState.Values
+                    string errors = string.Join("; ", ModelState.Values
                         .SelectMany(v => v.Errors)
                         .Select(e => e.ErrorMessage));
                     _logger.LogWarning("Invalid model state: {Errors}", errors);

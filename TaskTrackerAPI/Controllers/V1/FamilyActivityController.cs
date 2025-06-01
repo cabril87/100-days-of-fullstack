@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Attributes;
-using TaskTrackerAPI.Controllers.V1;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Services.Interfaces;

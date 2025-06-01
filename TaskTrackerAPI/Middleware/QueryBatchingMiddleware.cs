@@ -239,7 +239,7 @@ namespace TaskTrackerAPI.Middleware
             context.Response.StatusCode = (int)statusCode;
             context.Response.ContentType = "application/json";
             
-            await context.Response.WriteAsJsonAsync(Utils.ApiResponse<object>.ErrorResponse(message));
+            await context.Response.WriteAsJsonAsync(Models.ApiResponse<object>.ErrorResponse(message));
         }
     }
 } 

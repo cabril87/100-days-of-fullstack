@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -39,9 +40,9 @@ namespace TaskTrackerAPI.DTOs.Tasks
         public string? Description { get; set; }
 
         
-        /// Type of template (User or System)
+        /// Type of template (Custom, Daily, Weekly, etc.)
         
-        public TaskTemplateType Type { get; set; } = TaskTemplateType.User;
+        public TaskTemplateType Type { get; set; } = TaskTemplateType.Custom;
 
         
         /// JSON template data
@@ -83,6 +84,48 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Checklist items if this is a checklist template
         
         public List<ChecklistTemplateItemDTO>? ChecklistItems { get; set; }
+        
+        // Marketplace Fields
+        
+        /// Price in points for this template (0 for free)
+        
+        public int Price { get; set; } = 0;
+        
+        /// Whether this is a premium template
+        
+        public bool IsPremium { get; set; } = false;
+        
+        /// Whether this template is published to marketplace
+        
+        public bool IsPublic { get; set; } = false;
+        
+        /// Value proposition for the template
+        
+        public string? ValueProposition { get; set; }
+        
+        /// Prerequisites for using this template
+        
+        public string? Prerequisites { get; set; }
+        
+        /// Success stories and testimonials
+        
+        public string? SuccessStories { get; set; }
+        
+        /// Number of times this template has been purchased
+        
+        public int PurchaseCount { get; set; } = 0;
+        
+        /// Template success rate percentage
+        
+        public decimal SuccessRate { get; set; } = 0.0m;
+        
+        /// Template rating (1-5 stars)
+        
+        public decimal Rating { get; set; } = 0.0m;
+        
+        /// Number of downloads/uses
+        
+        public int DownloadCount { get; set; } = 0;
     }
 
     
@@ -165,15 +208,6 @@ namespace TaskTrackerAPI.DTOs.Tasks
         
         /// URL to icon image
         public string? IconUrl { get; set; }
-    }
-
-    
-    /// Type of task template
-    
-    public enum TaskTemplateType
-    {
-        User = 0,
-        System = 1
     }
 
     

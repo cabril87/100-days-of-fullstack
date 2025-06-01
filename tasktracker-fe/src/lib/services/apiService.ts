@@ -50,8 +50,8 @@ const fetchCsrfToken = async (): Promise<void> => {
       // Get the token from cookies (getCsrfToken() logs results internally)
       getCsrfToken();
     }
-  } catch (_error) {
-    console.error('Error fetching CSRF token:', _error);
+  } catch {
+    console.error('Error fetching CSRF token');
   }
 };
 
@@ -114,8 +114,8 @@ const processResponse = async <T>(response: Response): Promise<ApiResponse<T>> =
         };
       }
     }
-  } catch (_error) {
-    console.error('Error processing response:', _error);
+  } catch {
+    console.error('Error processing response');
     return {
       error: 'Failed to process response',
       status: response.status || 500
@@ -235,7 +235,7 @@ const refreshAuthToken = async (): Promise<boolean> => {
 
 export const apiService = {
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+  async get<T>(endpoint: string, params?: Record<string, unknown>): Promise<ApiResponse<T>> {
     try {
       let url = `${API_URL}${endpoint}`;
       
@@ -291,7 +291,7 @@ export const apiService = {
   },
   
 
-  async post<T>(endpoint: string, data: any, requiresAuth = true): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, data: unknown, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
       // First try to get a fresh CSRF token
       await fetchCsrfToken();
@@ -360,7 +360,7 @@ export const apiService = {
     }
   },
 
-  async put<T>(endpoint: string, data?: any, requiresAuth = true): Promise<ApiResponse<T>> {
+  async put<T>(endpoint: string, data?: unknown, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
       // Try to get a fresh CSRF token before making the request
       await fetchCsrfToken();
@@ -431,7 +431,7 @@ export const apiService = {
     }
   },
 
-  async patch<T>(endpoint: string, data: any, requiresAuth = true): Promise<ApiResponse<T>> {
+  async patch<T>(endpoint: string, data: unknown, requiresAuth = true): Promise<ApiResponse<T>> {
     try {
       // Try to get a fresh CSRF token before making the request
       await fetchCsrfToken();
@@ -572,7 +572,7 @@ export const apiService = {
    * @param data Task data to update
    * @returns API response with the updated task
    */
-  async directTaskUpdate<T>(id: number, data: any): Promise<ApiResponse<T>> {
+  async directTaskUpdate<T>(id: number, data: Record<string, unknown>): Promise<ApiResponse<T>> {
     try {
       // First, refresh the auth token to ensure we're authenticated
       const refreshResponse = await fetch(`${API_URL}/v1/auth/refresh-token`, {
@@ -598,7 +598,7 @@ export const apiService = {
       const url = `${API_URL}/v1/taskitems/${id}`;
       
       // Create the data in PascalCase format
-      const updateData: Record<string, any> = {};
+      const updateData: Record<string, unknown> = {};
       
       // Convert from camelCase to PascalCase and handle special cases
       Object.entries(data).forEach(([key, value]) => {
@@ -632,7 +632,7 @@ export const apiService = {
       // Create FormData (as a fallback in case JSON doesn't work)
       const formData = new FormData();
       Object.entries(updateData).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== null) {
           formData.append(key, value.toString());
         }
       });

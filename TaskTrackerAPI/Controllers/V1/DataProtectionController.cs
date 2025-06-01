@@ -12,13 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using System.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1;
 

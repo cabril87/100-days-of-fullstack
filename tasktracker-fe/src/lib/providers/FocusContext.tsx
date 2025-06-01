@@ -171,6 +171,13 @@ export function FocusProvider({ children }: { children: ReactNode }) {
         console.log('[FocusContext] API Call: getCurrentFocusSession');
         const response = await focusService.getCurrentFocusSession();
         
+        // Handle 404 gracefully - no current session is not an error
+        if (response.status === 404) {
+          console.log('[FocusContext] API Response: No current session (404)');
+          setCurrentSession(null);
+          return null;
+        }
+        
         if (response.data) {
           console.log('[FocusContext] API Response: Data received', response.data);
           
@@ -210,7 +217,15 @@ export function FocusProvider({ children }: { children: ReactNode }) {
           setCurrentSession(null);
           return null;
         }
-      } catch (err) {
+      } catch (err: any) {
+        // Handle 404 errors gracefully - no current session is normal
+        if (err?.status === 404 || err?.response?.status === 404) {
+          console.log('[FocusContext] API Response: No current session (404 from catch)');
+          setCurrentSession(null);
+          return null;
+        }
+        
+        // Only log other errors as actual errors
         console.error('[FocusContext] API Error: fetchCurrentSession', err);
         setError('Failed to fetch current focus session');
         setCurrentSession(null);

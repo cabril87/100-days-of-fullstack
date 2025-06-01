@@ -9,11 +9,15 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.DTOs.User;
+using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Hubs
 {
@@ -24,10 +28,17 @@ namespace TaskTrackerAPI.Hubs
     public class CalendarHub : Hub
     {
         private readonly ILogger<CalendarHub> _logger;
+        private readonly IFamilyService _familyService;
+        private readonly IUserCalendarService _userCalendarService;
 
-        public CalendarHub(ILogger<CalendarHub> logger)
+        public CalendarHub(
+            ILogger<CalendarHub> logger,
+            IFamilyService familyService,
+            IUserCalendarService userCalendarService)
         {
             _logger = logger;
+            _familyService = familyService;
+            _userCalendarService = userCalendarService;
         }
 
         /// <summary>
@@ -37,25 +48,45 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    string userGroup = $"user-calendar-{userId}";
-                    
-                    // Add to user-specific calendar group
-                    await Groups.AddToGroupAsync(Context.ConnectionId, userGroup);
-                    
-                    _logger.LogInformation("User {UserId} connected to CalendarHub with connection {ConnectionId}", 
-                        userId, Context.ConnectionId);
+                    _logger.LogWarning("User context is null in CalendarHub OnConnectedAsync");
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                string connectionId = Context.ConnectionId;
+
+                _logger.LogInformation("User {UserId} connected to CalendarHub with connection {ConnectionId}", userId, connectionId);
+
+                // Join user to their personal group
+                await Groups.AddToGroupAsync(connectionId, $"User_{userId}");
+
+                // Join user to all their family groups
+                IEnumerable<UserFamilyCalendarSummaryDTO> userFamilies = await _userCalendarService.GetUserFamiliesCalendarSummaryAsync(userId);
                 
-                await base.OnConnectedAsync();
+                foreach (UserFamilyCalendarSummaryDTO family in userFamilies)
+                {
+                    string familyGroup = $"Family_{family.FamilyId}";
+                    await Groups.AddToGroupAsync(connectionId, familyGroup);
+                    _logger.LogDebug("Added user {UserId} to family group {FamilyGroup}", userId, familyGroup);
+                }
+
+                // Notify connected users
+                await Clients.Caller.SendAsync("Connected", new
+                {
+                    UserId = userId,
+                    ConnectedAt = DateTime.UtcNow,
+                    Message = "Connected to calendar updates"
+                });
+
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in CalendarHub.OnConnectedAsync");
-                throw;
+                _logger.LogError(ex, "Error in CalendarHub OnConnectedAsync");
             }
+
+            await base.OnConnectedAsync();
         }
 
         /// <summary>
@@ -65,46 +96,82 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    string userGroup = $"user-calendar-{userId}";
-                    
-                    await Groups.RemoveFromGroupAsync(Context.ConnectionId, userGroup);
-                    
-                    _logger.LogInformation("User {UserId} disconnected from CalendarHub with connection {ConnectionId}", 
-                        userId, Context.ConnectionId);
+                    _logger.LogWarning("User context is null in CalendarHub OnDisconnectedAsync");
+                    await base.OnDisconnectedAsync(exception);
+                    return;
                 }
-                
-                await base.OnDisconnectedAsync(exception);
+
+                int userId = Context.User.GetUserIdAsInt();
+                string connectionId = Context.ConnectionId;
+
+                _logger.LogInformation("User {UserId} disconnected from CalendarHub with connection {ConnectionId}", userId, connectionId);
+
+                if (exception != null)
+                {
+                    _logger.LogWarning(exception, "User {UserId} disconnected due to exception", userId);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in CalendarHub.OnDisconnectedAsync");
+                _logger.LogError(ex, "Error in CalendarHub OnDisconnectedAsync");
             }
+
+            await base.OnDisconnectedAsync(exception);
         }
 
         /// <summary>
         /// Join a family calendar group to receive real-time updates for family events
         /// </summary>
         /// <param name="familyId">The family ID to join</param>
-        public async Task JoinFamilyCalendarGroup(int familyId)
+        public async Task JoinFamilyCalendar(int familyId)
         {
             try
             {
-                string familyGroup = $"family-calendar-{familyId}";
-                await Groups.AddToGroupAsync(Context.ConnectionId, familyGroup);
-                
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    _logger.LogInformation("User {UserId} joined family calendar group {FamilyId}", userId, familyId);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
+                }
+
+                int userId = Context.User.GetUserIdAsInt();
+                string connectionId = Context.ConnectionId;
+
+                // Verify user is member of this family
+                IEnumerable<UserFamilyCalendarSummaryDTO> userFamilies = await _userCalendarService.GetUserFamiliesCalendarSummaryAsync(userId);
+                
+                if (userFamilies.Any(f => f.FamilyId == familyId))
+                {
+                    string familyGroup = $"Family_{familyId}";
+                    await Groups.AddToGroupAsync(connectionId, familyGroup);
+                    
+                    _logger.LogInformation("User {UserId} joined family calendar group {FamilyGroup}", userId, familyGroup);
+                    
+                    await Clients.Caller.SendAsync("JoinedFamilyCalendar", new
+                    {
+                        FamilyId = familyId,
+                        Message = "Joined family calendar updates"
+                    });
+                }
+                else
+                {
+                    _logger.LogWarning("User {UserId} attempted to join family calendar {FamilyId} without permission", userId, familyId);
+                    
+                    await Clients.Caller.SendAsync("Error", new
+                    {
+                        Message = "You don't have permission to join this family calendar"
+                    });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error joining family calendar group {FamilyId}", familyId);
-                throw;
+                _logger.LogError(ex, "Error joining family calendar {FamilyId}", familyId);
+                
+                await Clients.Caller.SendAsync("Error", new
+                {
+                    Message = "Failed to join family calendar"
+                });
             }
         }
 
@@ -112,18 +179,29 @@ namespace TaskTrackerAPI.Hubs
         /// Leave a family calendar group
         /// </summary>
         /// <param name="familyId">The family ID to leave</param>
-        public async Task LeaveFamilyCalendarGroup(int familyId)
+        public async Task LeaveFamilyCalendar(int familyId)
         {
             try
             {
-                string familyGroup = $"family-calendar-{familyId}";
-                await Groups.RemoveFromGroupAsync(Context.ConnectionId, familyGroup);
-                
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    _logger.LogInformation("User {UserId} left family calendar group {FamilyId}", userId, familyId);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                string connectionId = Context.ConnectionId;
+                string familyGroup = $"Family_{familyId}";
+
+                await Groups.RemoveFromGroupAsync(connectionId, familyGroup);
+                
+                _logger.LogInformation("User {UserId} left family calendar group {FamilyGroup}", userId, familyGroup);
+                
+                await Clients.Caller.SendAsync("LeftFamilyCalendar", new
+                {
+                    FamilyId = familyId,
+                    Message = "Left family calendar updates"
+                });
             }
             catch (Exception ex)
             {
@@ -171,27 +249,30 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    
-                    // Notify availability group about focus session
-                    string availabilityGroup = $"member-availability-{memberId}";
-                    var focusSession = new
-                    {
-                        MemberId = memberId,
-                        UserId = userId,
-                        DurationMinutes = durationMinutes,
-                        TaskTitle = taskTitle,
-                        StartTime = DateTime.UtcNow,
-                        EndTime = DateTime.UtcNow.AddMinutes(durationMinutes),
-                        Status = "InProgress"
-                    };
-                    
-                    await Clients.Group(availabilityGroup).SendAsync("FocusSessionStarted", focusSession);
-                    _logger.LogInformation("User {UserId} started focus session for member {MemberId}, duration: {Duration} minutes", 
-                        userId, memberId, durationMinutes);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                
+                // Notify availability group about focus session
+                string availabilityGroup = $"member-availability-{memberId}";
+                var focusSession = new
+                {
+                    MemberId = memberId,
+                    UserId = userId,
+                    DurationMinutes = durationMinutes,
+                    TaskTitle = taskTitle,
+                    StartTime = DateTime.UtcNow,
+                    EndTime = DateTime.UtcNow.AddMinutes(durationMinutes),
+                    Status = "InProgress"
+                };
+                
+                await Clients.Group(availabilityGroup).SendAsync("FocusSessionStarted", focusSession);
+                _logger.LogInformation("User {UserId} started focus session for member {MemberId}, duration: {Duration} minutes", 
+                    userId, memberId, durationMinutes);
             }
             catch (Exception ex)
             {
@@ -209,25 +290,28 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    
-                    // Notify availability group about focus session end
-                    string availabilityGroup = $"member-availability-{memberId}";
-                    var focusSessionEnd = new
-                    {
-                        MemberId = memberId,
-                        UserId = userId,
-                        EndTime = DateTime.UtcNow,
-                        SessionQuality = sessionQuality,
-                        Status = "Completed"
-                    };
-                    
-                    await Clients.Group(availabilityGroup).SendAsync("FocusSessionEnded", focusSessionEnd);
-                    _logger.LogInformation("User {UserId} ended focus session for member {MemberId}, quality: {Quality}", 
-                        userId, memberId, sessionQuality);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                
+                // Notify availability group about focus session end
+                string availabilityGroup = $"member-availability-{memberId}";
+                var focusSessionEnd = new
+                {
+                    MemberId = memberId,
+                    UserId = userId,
+                    EndTime = DateTime.UtcNow,
+                    SessionQuality = sessionQuality,
+                    Status = "Completed"
+                };
+                
+                await Clients.Group(availabilityGroup).SendAsync("FocusSessionEnded", focusSessionEnd);
+                _logger.LogInformation("User {UserId} ended focus session for member {MemberId}, quality: {Quality}", 
+                    userId, memberId, sessionQuality);
             }
             catch (Exception ex)
             {
@@ -245,28 +329,31 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    
-                    // This would trigger the smart scheduling service to find optimal focus times
-                    // For now, send a placeholder response
-                    var suggestions = new
-                    {
-                        MemberId = memberId,
-                        RequestedDuration = desiredDuration,
-                        SuggestedTimes = new[]
-                        {
-                            new { StartTime = DateTime.UtcNow.AddMinutes(15), Confidence = 85, Reasoning = "Low family activity period" },
-                            new { StartTime = DateTime.UtcNow.AddHours(2), Confidence = 92, Reasoning = "Optimal focus window based on patterns" },
-                            new { StartTime = DateTime.UtcNow.AddHours(4), Confidence = 78, Reasoning = "Alternative quiet time" }
-                        }
-                    };
-                    
-                    await Clients.Caller.SendAsync("OptimalFocusTimeSuggestions", suggestions);
-                    _logger.LogInformation("User {UserId} requested optimal focus time for member {MemberId}, duration: {Duration} minutes", 
-                        userId, memberId, desiredDuration);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                
+                // This would trigger the smart scheduling service to find optimal focus times
+                // For now, send a placeholder response
+                var suggestions = new
+                {
+                    MemberId = memberId,
+                    RequestedDuration = desiredDuration,
+                    SuggestedTimes = new[]
+                    {
+                        new { StartTime = DateTime.UtcNow.AddMinutes(15), Confidence = 85, Reasoning = "Low family activity period" },
+                        new { StartTime = DateTime.UtcNow.AddHours(2), Confidence = 92, Reasoning = "Optimal focus window based on patterns" },
+                        new { StartTime = DateTime.UtcNow.AddHours(4), Confidence = 78, Reasoning = "Alternative quiet time" }
+                    }
+                };
+                
+                await Clients.Caller.SendAsync("OptimalFocusTimeSuggestions", suggestions);
+                _logger.LogInformation("User {UserId} requested optimal focus time for member {MemberId}, duration: {Duration} minutes", 
+                    userId, memberId, desiredDuration);
             }
             catch (Exception ex)
             {
@@ -286,25 +373,28 @@ namespace TaskTrackerAPI.Hubs
         {
             try
             {
-                if (Context.User != null)
+                if (Context.User == null)
                 {
-                    int userId = Context.User.GetUserIdAsInt();
-                    
-                    string familyGroup = $"family-calendar-{familyId}";
-                    var quietTime = new
-                    {
-                        FamilyId = familyId,
-                        InitiatedBy = userId,
-                        StartTime = startTime,
-                        EndTime = endTime,
-                        Reason = reason,
-                        DurationMinutes = (int)(endTime - startTime).TotalMinutes
-                    };
-                    
-                    await Clients.Group(familyGroup).SendAsync("FamilyQuietTimeRequested", quietTime);
-                    _logger.LogInformation("User {UserId} requested family quiet time for family {FamilyId}, {Start} to {End}", 
-                        userId, familyId, startTime, endTime);
+                    await Clients.Caller.SendAsync("Error", new { Message = "User not authenticated" });
+                    return;
                 }
+
+                int userId = Context.User.GetUserIdAsInt();
+                
+                string familyGroup = $"family-calendar-{familyId}";
+                var quietTime = new
+                {
+                    FamilyId = familyId,
+                    InitiatedBy = userId,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    Reason = reason,
+                    DurationMinutes = (int)(endTime - startTime).TotalMinutes
+                };
+                
+                await Clients.Group(familyGroup).SendAsync("FamilyQuietTimeRequested", quietTime);
+                _logger.LogInformation("User {UserId} requested family quiet time for family {FamilyId}, {Start} to {End}", 
+                    userId, familyId, startTime, endTime);
             }
             catch (Exception ex)
             {

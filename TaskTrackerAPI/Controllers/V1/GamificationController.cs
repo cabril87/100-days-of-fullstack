@@ -23,6 +23,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Security.Claims;
 using AutoMapper;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -31,7 +32,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class GamificationController : ControllerBase
+    public class GamificationController : BaseApiController
     {
         private readonly IGamificationService _gamificationService;
         private readonly ILogger<GamificationController> _logger;

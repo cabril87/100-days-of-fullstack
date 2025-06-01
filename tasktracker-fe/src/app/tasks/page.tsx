@@ -9,7 +9,7 @@ import { useTemplates } from '@/lib/providers/TemplateProvider';
 import { Task } from '@/lib/types/task';
 import Link from 'next/link';
 import { Spinner } from '@/components/ui/spinner';
-import { Brain, XCircle, Play, Clock, Plus, ArrowUpRight, Tag, BookOpen, Filter, FileText, RefreshCw, List, CheckSquare, Settings, Calendar } from 'lucide-react';
+import { Brain, XCircle, Play, Clock, Plus, ArrowUpRight, Tag, BookOpen, Filter, FileText, RefreshCw, List, CheckSquare, Settings, Calendar, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/lib/hooks/useToast';
@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import BulkOperationsMenu from '@/components/tasks/BulkOperationsMenu';
 import BatchOperations from '@/components/tasks/BatchOperations';
 import { StatsCard } from '@/components/ui/card';
+import { KanbanBoard } from '@/components/tasks/KanbanBoard';
 
 export default function TasksPage() {
   const router = useRouter();
@@ -58,6 +59,9 @@ export default function TasksPage() {
   // Add bulk selection states
   const [selectedTasks, setSelectedTasks] = useState<Task[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
+
+  // Add view state
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
 
   useEffect(() => {
     // Only fetch tasks when user is authenticated
@@ -819,6 +823,49 @@ export default function TasksPage() {
                         <p>Refresh Tasks (Click if tasks don't appear)</p>
                       </TooltipContent>
                     </Tooltip>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-white/40 backdrop-blur-sm rounded-xl p-1 border border-white/30">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={viewMode === 'list' ? "default" : "ghost"}
+                            size="sm"
+                            className={`h-10 w-10 p-0 rounded-lg transition-all duration-300 ${
+                              viewMode === 'list'
+                                ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
+                                : "text-gray-600 hover:text-indigo-600 hover:bg-white/60"
+                            }`}
+                            onClick={() => setViewMode('list')}
+                          >
+                            <List className="h-5 w-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>List View</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={viewMode === 'board' ? "default" : "ghost"}
+                            size="sm"
+                            className={`h-10 w-10 p-0 rounded-lg transition-all duration-300 ${
+                              viewMode === 'board'
+                                ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md"
+                                : "text-gray-600 hover:text-indigo-600 hover:bg-white/60"
+                            }`}
+                            onClick={() => setViewMode('board')}
+                          >
+                            <Grid3X3 className="h-5 w-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Board View</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                 </div>
 
@@ -1275,146 +1322,157 @@ export default function TasksPage() {
                   <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-gradient-to-br from-blue-400/5 via-purple-400/5 to-pink-400/5 rounded-full blur-xl"></div>
                   
                   <div className="relative z-10 p-6 bg-gradient-to-r from-white via-gray-50/30 to-slate-50/30 backdrop-blur-sm border border-gray-100/50 shadow-lg hover:shadow-xl transition-all duration-300">
-                    {/* Task List Header */}
-                                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-gradient-to-r from-purple-100 via-blue-100 to-indigo-100 rounded-xl shadow-md">
-                            <List className="h-5 w-5 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent" />
-                          </div>
-                          <div>
-                            <h2 className="text-xl font-black bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                              Your Tasks
-                            </h2>
-                            <p className="text-sm font-bold text-gray-600">
-                              {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
-                              {selectedTab !== 'all' && ` • ${selectedTab.replace('-', ' ')}`}
-                              {selectedCategoryId && ` • ${getCategoryName(selectedCategoryId)}`}
-                            </p>
-                          </div>
-                        </div>
-
-                      {/* Active Filters Display */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {selectedTab !== 'all' && (
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-xs px-2 py-1 font-bold ${
-                              selectedTab === 'todo' ? 'bg-orange-100 text-orange-700' :
-                              selectedTab === 'in-progress' ? 'bg-amber-100 text-amber-700' :
-                              selectedTab === 'done' ? 'bg-green-100 text-green-700' :
-                              'bg-purple-100 text-purple-700'
-                            }`}
-                          >
-                            {selectedTab === 'todo' ? 'To Do' : 
-                             selectedTab === 'in-progress' ? 'In Progress' : 
-                             selectedTab === 'done' ? 'Completed' : selectedTab}
-                          </Badge>
-                        )}
-                        
-                        {selectedCategoryId && (
-                          <Badge
-                            variant="outline"
-                            className="flex items-center gap-1 text-xs px-2 py-1 font-bold"
-                            style={{
-                              backgroundColor: `${getCategoryColor(selectedCategoryId)}15`,
-                              color: getCategoryColor(selectedCategoryId),
-                              borderColor: `${getCategoryColor(selectedCategoryId)}40`
-                            }}
-                          >
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: getCategoryColor(selectedCategoryId) }}
-                            />
-                            {getCategoryName(selectedCategoryId)}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-3 w-3 ml-1 hover:bg-white/20 p-0"
-                              onClick={() => setSelectedCategoryId(null)}
-                            >
-                              <XCircle className="h-2.5 w-2.5" />
-                            </Button>
-                          </Badge>
-                        )}
-
-                        {selectionMode && selectedTasks.length > 0 && (
-                          <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs px-2 py-1 font-bold animate-pulse">
-                            {selectedTasks.length} selected
-                          </Badge>
-                        )}
+                    {/* Conditional Content Based on View Mode */}
+                    {viewMode === 'board' ? (
+                      // Board View
+                      <div className="mb-6">
+                        <KanbanBoard showHeader={false} className="bg-transparent" />
                       </div>
-                    </div>
-
-                    {/* Enhanced Task List */}
-                    <div className="space-y-3">
-                      {filteredTasks.map((task, index) => {
-                        // Ensure unique key by combining task.id with index as fallback
-                        const taskKey = task.id ? `task-${task.id}` : `task-index-${index}`;
-                        return (
-                          <div
-                            key={taskKey}
-                            className={`transform transition-all duration-300 ${
-                              pageReady ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-                            }`}
-                            style={{ 
-                              transitionDelay: `${Math.min(index * 50, 300)}ms`,
-                              animation: pageReady ? `slideInUp 0.4s ease-out ${Math.min(index * 0.05, 0.3)}s both` : 'none'
-                            }}
-                          >
-                            <TaskComponent
-                              task={task}
-                              onStatusChange={handleStatusChange}
-                              onDelete={handleDelete}
-                              onEdit={handleEdit}
-                              showCategories={true}
-                              selectionMode={selectionMode}
-                              isSelected={selectedTasks.some(t => t.id === task.id)}
-                              onToggleSelection={() => toggleTaskSelection(task)}
-                            />
+                    ) : (
+                      // List View
+                      <>
+                        {/* Task List Header */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-gradient-to-r from-purple-100 via-blue-100 to-indigo-100 rounded-xl shadow-md">
+                              <List className="h-5 w-5 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent" />
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-black bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                Your Tasks
+                              </h2>
+                              <p className="text-sm font-bold text-gray-600">
+                                {filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'} 
+                                {selectedTab !== 'all' && ` • ${selectedTab.replace('-', ' ')}`}
+                                {selectedCategoryId && ` • ${getCategoryName(selectedCategoryId)}`}
+                              </p>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
 
-                    {/* Task List Footer */}
-                    {filteredTasks.length > 5 && (
-                      <div className="mt-6 pt-4 border-t border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm text-gray-600">
-                            Showing all {filteredTasks.length} tasks
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {selectionMode && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const allVisible = filteredTasks.every(task => selectedTasks.some(t => t.id === task.id));
-                                  if (allVisible) {
-                                    // Deselect all visible tasks
-                                    setSelectedTasks(prev => prev.filter(t => !filteredTasks.some(ft => ft.id === t.id)));
-                                  } else {
-                                    // Select all visible tasks
-                                    const newSelections = filteredTasks.filter(task => !selectedTasks.some(t => t.id === task.id));
-                                    setSelectedTasks(prev => [...prev, ...newSelections]);
-                                  }
-                                }}
-                                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                          {/* Active Filters Display */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {selectedTab !== 'all' && (
+                              <Badge 
+                                variant="secondary" 
+                                className={`text-xs px-2 py-1 font-bold ${
+                                  selectedTab === 'todo' ? 'bg-orange-100 text-orange-700' :
+                                  selectedTab === 'in-progress' ? 'bg-amber-100 text-amber-700' :
+                                  selectedTab === 'done' ? 'bg-green-100 text-green-700' :
+                                  'bg-purple-100 text-purple-700'
+                                }`}
                               >
-                                {filteredTasks.every(task => selectedTasks.some(t => t.id === task.id)) ? 'Deselect All' : 'Select All'}
-                              </Button>
+                                {selectedTab === 'todo' ? 'To Do' : 
+                                 selectedTab === 'in-progress' ? 'In Progress' : 
+                                 selectedTab === 'done' ? 'Completed' : selectedTab}
+                              </Badge>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                              className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
-                            >
-                              Back to Top
-                            </Button>
+                            
+                            {selectedCategoryId && (
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 text-xs px-2 py-1 font-bold"
+                                style={{
+                                  backgroundColor: `${getCategoryColor(selectedCategoryId)}15`,
+                                  color: getCategoryColor(selectedCategoryId),
+                                  borderColor: `${getCategoryColor(selectedCategoryId)}40`
+                                }}
+                              >
+                                <div
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: getCategoryColor(selectedCategoryId) }}
+                                />
+                                {getCategoryName(selectedCategoryId)}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-3 w-3 ml-1 hover:bg-white/20 p-0"
+                                  onClick={() => setSelectedCategoryId(null)}
+                                >
+                                  <XCircle className="h-2.5 w-2.5" />
+                                </Button>
+                              </Badge>
+                            )}
+
+                            {selectionMode && selectedTasks.length > 0 && (
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs px-2 py-1 font-bold animate-pulse">
+                                {selectedTasks.length} selected
+                              </Badge>
+                            )}
                           </div>
                         </div>
-                      </div>
+
+                        {/* Enhanced Task List */}
+                        <div className="space-y-3">
+                          {filteredTasks.map((task, index) => {
+                            // Ensure unique key by combining task.id with index as fallback
+                            const taskKey = task.id ? `task-${task.id}` : `task-index-${index}`;
+                            return (
+                              <div
+                                key={taskKey}
+                                className={`transform transition-all duration-300 ${
+                                  pageReady ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
+                                }`}
+                                style={{ 
+                                  transitionDelay: `${Math.min(index * 50, 300)}ms`,
+                                  animation: pageReady ? `slideInUp 0.4s ease-out ${Math.min(index * 0.05, 0.3)}s both` : 'none'
+                                }}
+                              >
+                                <TaskComponent
+                                  task={task}
+                                  onStatusChange={handleStatusChange}
+                                  onDelete={handleDelete}
+                                  onEdit={handleEdit}
+                                  showCategories={true}
+                                  selectionMode={selectionMode}
+                                  isSelected={selectedTasks.some(t => t.id === task.id)}
+                                  onToggleSelection={() => toggleTaskSelection(task)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Task List Footer */}
+                        {filteredTasks.length > 5 && (
+                          <div className="mt-6 pt-4 border-t border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm text-gray-600">
+                                Showing all {filteredTasks.length} tasks
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {selectionMode && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const allVisible = filteredTasks.every(task => selectedTasks.some(t => t.id === task.id));
+                                      if (allVisible) {
+                                        // Deselect all visible tasks
+                                        setSelectedTasks(prev => prev.filter(t => !filteredTasks.some(ft => ft.id === t.id)));
+                                      } else {
+                                        // Select all visible tasks
+                                        const newSelections = filteredTasks.filter(task => !selectedTasks.some(t => t.id === task.id));
+                                        setSelectedTasks(prev => [...prev, ...newSelections]);
+                                      }
+                                    }}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                  >
+                                    {filteredTasks.every(task => selectedTasks.some(t => t.id === task.id)) ? 'Deselect All' : 'Select All'}
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                  className="text-gray-600 hover:text-gray-700 hover:bg-gray-50"
+                                >
+                                  Back to Top
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

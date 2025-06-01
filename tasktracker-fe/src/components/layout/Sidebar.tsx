@@ -28,6 +28,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
     family: true,
     gamification: true,
     admin: true,
+    templates: true,
   });
 
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
@@ -237,14 +238,14 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                   </Link>
 
                   <Link
-                    href={family ? `/family/${family.id}/calendar` : "/calendar"}
+                    href="/calendar"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/calendar') || isActiveLink(`/family/${family?.id}/calendar`)
+                      isActiveLink('/calendar')
                         ? 'bg-blue-500/20 border-l-4 border-blue-400'
                         : ''
                     }`}
                   >
-                    📅 {family ? 'Family Calendar' : 'Calendar'}
+                    📅 Global Calendar
                   </Link>
 
                   <Link
@@ -279,6 +280,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               >
                 <span className="flex items-center gap-2">
                   ✅ Tasks & Productivity
+                  <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse"></span>
                 </span>
                 <svg
                   className={`w-4 h-4 transform transition-transform ${expandedSections.tasks ? 'rotate-180' : ''}`}
@@ -294,55 +296,130 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                   <Link
                     href="/tasks"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/tasks')
-                        ? 'bg-indigo-500/20 border-l-4 border-indigo-400'
+                      isActiveLink('/tasks') && pathname === '/tasks'
+                        ? 'bg-green-500/20 border-l-4 border-green-400'
                         : ''
                     }`}
                   >
-                    📝 My Tasks
+                    📝 All Tasks
                   </Link>
                   <Link
-                    href="/templates"
+                    href="/tasks/board"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/templates')
-                        ? 'bg-emerald-500/20 border-l-4 border-emerald-400'
+                      isActiveLink('/tasks/board')
+                        ? 'bg-purple-500/20 border-l-4 border-purple-400'
                         : ''
                     }`}
                   >
-                    📋 Templates
+                    📊 Kanban Board
+                  </Link>
+                  <Link
+                    href="/tasks/create"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/tasks/create')
+                        ? 'bg-blue-500/20 border-l-4 border-blue-400'
+                        : ''
+                    }`}
+                  >
+                    ➕ Create Task
+                  </Link>
+                  <Link
+                    href="/categories"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/categories')
+                        ? 'bg-amber-500/20 border-l-4 border-amber-400'
+                        : ''
+                    }`}
+                  >
+                    🏷️ Categories
                   </Link>
                   <Link
                     href="/focus"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActiveLink('/focus')
-                        ? 'bg-amber-500/20 border-l-4 border-amber-400'
+                        ? 'bg-indigo-500/20 border-l-4 border-indigo-400'
                         : ''
                     }`}
                   >
                     🎯 Focus Mode
-                    {currentSession?.status === 'InProgress' && (
-                      <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse ml-auto"></span>
+                    {currentSession && (
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-auto"></span>
                     )}
                   </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Templates Section */}
+            <div>
+              <button
+                onClick={() => toggleSection('templates')}
+                className="sidebar-button flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  📄 Templates & Automation
+                  <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></span>
+                </span>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${expandedSections.templates ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {expandedSections.templates && (
+                <div className="space-y-1 ml-4">
                   <Link
-                    href="/notifications/center"
+                    href="/templates"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/notifications')
+                      isActiveLink('/templates') && pathname === '/templates'
+                        ? 'bg-purple-500/20 border-l-4 border-purple-400'
+                        : ''
+                    }`}
+                  >
+                    📚 Template Library
+                  </Link>
+                  <Link
+                    href="/templates/builder"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/templates/builder')
                         ? 'bg-blue-500/20 border-l-4 border-blue-400'
                         : ''
                     }`}
                   >
-                    🔔 Notifications
+                    🛠️ Template Builder
                   </Link>
                   <Link
-                    href="/reminders"
+                    href="/templates/marketplace"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/reminders')
+                      isActiveLink('/templates/marketplace')
                         ? 'bg-green-500/20 border-l-4 border-green-400'
                         : ''
                     }`}
                   >
-                    ⏰ Reminders
+                    🌐 Marketplace
+                  </Link>
+                  <Link
+                    href="/templates/automation"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/templates/automation')
+                        ? 'bg-orange-500/20 border-l-4 border-orange-400'
+                        : ''
+                    }`}
+                  >
+                    ⚡ Smart Automation
+                  </Link>
+                  <Link
+                    href="/templates/analytics"
+                    className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/templates/analytics')
+                        ? 'bg-teal-500/20 border-l-4 border-teal-400'
+                        : ''
+                    }`}
+                  >
+                    📈 Template Analytics
                   </Link>
                 </div>
               )}

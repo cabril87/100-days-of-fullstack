@@ -8,24 +8,17 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
-using TaskTrackerAPI.DTOs.Family;
-using TaskTrackerAPI.Data;
-
-using TaskTrackerAPI.Services;
-using TaskTrackerAPI.Services.Interfaces;
-using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Extensions;
-using TaskTrackerAPI.Models;
 using System.Linq;
-using TaskTrackerAPI.Attributes;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -38,11 +31,8 @@ namespace TaskTrackerAPI.Controllers.V1
         private readonly IFamilyService _familyService;
         private readonly IInvitationService _invitationService;
         private readonly ILogger<FamilyController> _logger;
-        private readonly ApplicationDbContext _context;
-
 
         public FamilyController(
-            ApplicationDbContext context,
             IFamilyService familyService,
             IInvitationService invitationService,
             ILogger<FamilyController> logger)
@@ -50,7 +40,6 @@ namespace TaskTrackerAPI.Controllers.V1
             _familyService = familyService;
             _invitationService = invitationService;
             _logger = logger;
-            _context = context;
         }
 
         [HttpGet]
@@ -75,8 +64,8 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserId();
-                var families = await _familyService.GetByUserIdAsync(userId);
-                var currentFamily = families.FirstOrDefault();
+                IEnumerable<FamilyDTO> families = await _familyService.GetByUserIdAsync(userId);
+                FamilyDTO? currentFamily = families.FirstOrDefault();
                 
                 if (currentFamily == null)
                 {
@@ -97,7 +86,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             if (!ModelState.IsValid)
             {
-                var errors = ModelState.Values
+                List<string> errors = ModelState.Values
                     .SelectMany(v => v.Errors)
                     .Select(e => e.ErrorMessage)
                     .ToList();
@@ -108,7 +97,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = GetUserId();
                 FamilyDTO family = await _familyService.CreateAsync(familyDto, userId);
-                return OkApiResponse(family, "Family created successfully. You are now the leader of this family. Use the invite endpoint to invite members.");
+                return ApiCreated(family, "Family created successfully. You are now the leader of this family. Use the invite endpoint to invite members.");
             }
             catch (Exception ex)
             {
@@ -188,97 +177,97 @@ namespace TaskTrackerAPI.Controllers.V1
 
         [Authorize]
         [HttpPost("members/{memberId}/complete-profile")]
-        public async Task<ActionResult<FamilyMemberDTO>> CompleteMemberProfile(int memberId, [FromBody] CompleteProfileDTO profileDto)
+        public async Task<ActionResult<ApiResponse<FamilyMemberDTO>>> CompleteMemberProfile(int memberId, [FromBody] CompleteProfileDTO profileDto)
         {
             try
             {
                 int userId = GetUserId();
                 FamilyMemberDTO member = await _familyService.CompleteMemberProfileAsync(memberId, userId, profileDto);
-                return Ok(member);
+                return ApiOk(member, "Member profile completed successfully.");
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return ApiUnauthorized<FamilyMemberDTO>(ex.Message);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return ApiBadRequest<FamilyMemberDTO>(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error completing member profile");
-                return StatusCode(500, "An error occurred while completing the profile.");
+                return ApiServerError<FamilyMemberDTO>("An error occurred while completing the profile.");
             }
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("pending-members")]
-        public async Task<ActionResult<IEnumerable<FamilyMemberDTO>>> GetPendingMembers()
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyMemberDTO>>>> GetPendingMembers()
         {
             try
             {
                 IEnumerable<FamilyMemberDTO> pendingMembers = await _familyService.GetPendingMembersAsync();
-                return Ok(pendingMembers);
+                return ApiOk(pendingMembers);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving pending members");
-                return StatusCode(500, "An error occurred while retrieving pending members.");
+                return ApiServerError<IEnumerable<FamilyMemberDTO>>("An error occurred while retrieving pending members.");
             }
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPost("members/{memberId}/approve")]
-        public async Task<ActionResult<FamilyMemberDTO>> ApproveMember(int memberId)
+        public async Task<ActionResult<ApiResponse<FamilyMemberDTO>>> ApproveMember(int memberId)
         {
             try
             {
                 int adminId = GetUserId();
                 FamilyMemberDTO member = await _familyService.ApproveMemberAsync(memberId, adminId);
-                return Ok(member);
+                return ApiOk(member, "Member approved successfully.");
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return ApiUnauthorized<FamilyMemberDTO>(ex.Message);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return ApiBadRequest<FamilyMemberDTO>(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error approving member");
-                return StatusCode(500, "An error occurred while approving the member.");
+                return ApiServerError<FamilyMemberDTO>("An error occurred while approving the member.");
             }
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPost("members/{memberId}/reject")]
-        public async Task<ActionResult> RejectMember(int memberId, [FromBody] RejectMemberDTO rejectDto)
+        public async Task<ActionResult<ApiResponse<object>>> RejectMember(int memberId, [FromBody] RejectMemberDTO rejectDto)
         {
             try
             {
                 int adminId = GetUserId();
                 await _familyService.RejectMemberAsync(memberId, adminId, rejectDto.Reason);
-                return NoContent();
+                return ApiOk<object>(new object(), "Member rejected successfully.");
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Unauthorized(ex.Message);
+                return ApiUnauthorized<object>(ex.Message);
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex.Message);
+                return ApiBadRequest<object>(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error rejecting member");
-                return StatusCode(500, "An error occurred while rejecting the member.");
+                return ApiServerError<object>("An error occurred while rejecting the member.");
             }
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteFamily(int id)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteFamily(int id)
         {
             try
             {
@@ -290,7 +279,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (family == null)
                 {
                     _logger.LogWarning("Family with ID {FamilyId} not found for deletion", id);
-                    return NotFound($"Family with ID {id} not found");
+                    return ApiNotFound<object>($"Family with ID {id} not found");
                 }
                 
                 // Check if user is admin or creator
@@ -298,7 +287,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!isAdmin)
                 {
                     _logger.LogWarning("User {UserId} attempted to delete family {FamilyId} without admin rights", userId, id);
-                    return Forbid();
+                    return ApiUnauthorized<object>("You do not have permission to delete this family.");
                 }
                 
                 bool deleteSuccess = await _familyService.DeleteAsync(id, userId);
@@ -306,7 +295,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (!deleteSuccess)
                 {
                     _logger.LogError("Failed to delete family with ID {FamilyId}", id);
-                    return StatusCode(500, $"Failed to delete family with ID {id}. The deletion operation was not successful.");
+                    return ApiServerError<object>($"Failed to delete family with ID {id}. The deletion operation was not successful.");
                 }
                 
                 // Double-check that the family was actually deleted
@@ -314,16 +303,16 @@ namespace TaskTrackerAPI.Controllers.V1
                 if (familyAfterDelete != null)
                 {
                     _logger.LogError("Family with ID {FamilyId} was reported as deleted but still exists", id);
-                    return StatusCode(500, $"Deletion inconsistency: Family with ID {id} still exists after deletion.");
+                    return ApiServerError<object>($"Deletion inconsistency: Family with ID {id} still exists after deletion.");
                 }
                 
                 _logger.LogInformation("Family with ID {FamilyId} deleted successfully", id);
-                return NoContent();
+                return ApiOk<object>(new object(), "Family deleted successfully.");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting family with ID {FamilyId}", id);
-                return StatusCode(500, $"An error occurred while deleting the family: {ex.Message}");
+                return ApiServerError<object>($"An error occurred while deleting the family: {ex.Message}");
             }
         }
     }

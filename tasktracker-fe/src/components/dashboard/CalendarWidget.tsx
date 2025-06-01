@@ -3,23 +3,29 @@
  */
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFamily } from '@/lib/providers/FamilyContext';
-import { useAuth } from '@/lib/providers/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, CalendarDays, Clock, Users, Plus, ArrowRight } from 'lucide-react';
+import { 
+  Calendar as CalendarIcon, 
+  ChevronLeft, 
+  ChevronRight, 
+  Plus,
+  Eye,
+  Clock,
+  Users,
+  Target
+} from 'lucide-react';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-interface UpcomingEvent {
-  id: number;
+interface CalendarEvent {
+  id: string;
   title: string;
-  startTime: Date;
-  endTime: Date;
-  attendees: number;
-  isToday: boolean;
-  isConflicted?: boolean;
+  date: string;
+  type: 'task' | 'family' | 'focus' | 'personal';
+  priority?: 'high' | 'medium' | 'low';
 }
 
 interface CalendarWidgetProps {
@@ -27,273 +33,282 @@ interface CalendarWidgetProps {
 }
 
 export function CalendarWidget({ className }: CalendarWidgetProps) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const { family, loading } = useFamily();
-  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [todayEvents, setTodayEvents] = useState(0);
-  const [weekEvents, setWeekEvents] = useState(0);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Memoize navigation handlers to prevent infinite re-renders
-  const handleViewCalendar = useCallback(() => {
-    if (family) {
-      router.push(`/family/${family.id}/calendar`);
-    } else {
-      router.push('/calendar');
-    }
-  }, [family, router]);
-
-  const handleCreateEvent = useCallback(() => {
-    // Navigate to family calendar with create action or family event page
-    if (family) {
-      router.push(`/family/${family.id}?tab=events&action=create`);
-    } else {
-      router.push('/calendar?action=create');
-    }
-  }, [family, router]);
-
-  // Load upcoming events when family is available
+  // Sample events - in real app, this would be fetched from API
   useEffect(() => {
-    const loadUpcomingEvents = async () => {
-      if (!family) {
-        setIsLoading(false);
-        return;
+    const sampleEvents: CalendarEvent[] = [
+      {
+        id: '1',
+        title: 'Project Meeting',
+        date: new Date().toISOString().split('T')[0], // Today
+        type: 'task',
+        priority: 'high'
+      },
+      {
+        id: '2',
+        title: 'Family Dinner',
+        date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+        type: 'family'
+      },
+      {
+        id: '3',
+        title: 'Focus Session',
+        date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0], // Day after tomorrow
+        type: 'focus'
       }
+    ];
+    setEvents(sampleEvents);
+  }, []);
 
-      try {
-        setIsLoading(true);
-        // Mock upcoming events for demonstration
-        // In production, you would fetch from familyCalendarService
-        const mockEvents: UpcomingEvent[] = [
-          {
-            id: 1,
-            title: "Family Movie Night",
-            startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-            endTime: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
-            attendees: 4,
-            isToday: true
-          },
-          {
-            id: 2,
-            title: "Soccer Practice",
-            startTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // tomorrow
-            endTime: new Date(Date.now() + 25 * 60 * 60 * 1000),
-            attendees: 2,
-            isToday: false
-          }
-        ];
-        setUpcomingEvents(mockEvents);
-        setTodayEvents(mockEvents.filter(e => e.isToday).length);
-        setWeekEvents(mockEvents.length);
-      } catch (error) {
-        console.error('Error loading upcoming events:', error);
-        setUpcomingEvents([]);
-      } finally {
-        setIsLoading(false);
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
       }
-    };
-
-    loadUpcomingEvents();
-  }, [family]); // Only depend on family, not user
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+      return newDate;
     });
   };
 
-  const formatDate = (date: Date) => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
-    } else {
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric'
-      });
+    const days = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
+  const getEventsForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return events.filter(event => event.date === dateString);
+  };
+
+  const getEventTypeIcon = (type: CalendarEvent['type']) => {
+    switch (type) {
+      case 'task':
+        return <Target className="h-3 w-3" />;
+      case 'family':
+        return <Users className="h-3 w-3" />;
+      case 'focus':
+        return <Clock className="h-3 w-3" />;
+      default:
+        return <CalendarIcon className="h-3 w-3" />;
     }
   };
 
-  if (!user) {
-    return null;
-  }
+  const getEventTypeColor = (type: CalendarEvent['type']) => {
+    switch (type) {
+      case 'task':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'family':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'focus':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate?.toDateString() === date.toDateString();
+  };
+
+  const days = getDaysInMonth(currentDate);
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-3">
+    <Card className={cn("bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg transition-all relative overflow-hidden", className)}>
+      {/* Decorative background elements */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-emerald-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-600 opacity-[0.05] rounded-full blur-2xl"></div>
+      
+      {/* Gradient accent bar */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-t-xl"></div>
+      
+      <CardHeader className="pb-2 bg-gradient-to-r from-emerald-50 to-blue-50 border-b relative z-10">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Calendar className="h-5 w-5 text-blue-600" />
-            Family Calendar
-            {family && (
-              <Badge variant="secondary" className="text-xs">
-                {family.name}
-              </Badge>
-            )}
+          <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5 text-emerald-600" />
+            Calendar
           </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleViewCalendar}
-            className="text-blue-600 hover:text-blue-700 p-1"
-          >
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigateMonth('prev')}
+              className="h-8 w-8 p-0 hover:bg-white/60"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium text-gray-700 min-w-[100px] text-center">
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigateMonth('next')}
+              className="h-8 w-8 p-0 hover:bg-white/60"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Today</p>
-                <p className="text-xl font-bold text-blue-600">{todayEvents}</p>
-              </div>
+      
+      <CardContent className="p-4 relative z-10">
+        {/* Days of week header */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {daysOfWeek.map(day => (
+            <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+              {day}
             </div>
-          </div>
-          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-purple-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">This Week</p>
-                <p className="text-xl font-bold text-purple-600">{weekEvents}</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
-
-        {/* Upcoming Events */}
-        <div>
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Upcoming Events
-          </h4>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                </div>
-              ))}
-            </div>
-          ) : upcomingEvents.length === 0 ? (
-            <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-              <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No upcoming events</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCreateEvent}
-                className="mt-2 text-blue-600 hover:text-blue-700"
+        
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7 gap-1 mb-4">
+          {days.map((day, index) => {
+            if (!day) {
+              return <div key={index} className="h-8" />;
+            }
+            
+            const dayEvents = getEventsForDate(day);
+            const today = isToday(day);
+            const selected = isSelected(day);
+            
+            return (
+              <button
+                key={day.toISOString()}
+                onClick={() => setSelectedDate(day)}
+                className={cn(
+                  "h-8 w-8 text-xs rounded-lg relative flex items-center justify-center transition-all duration-200 hover:scale-110",
+                  {
+                    "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md": today,
+                    "bg-gradient-to-br from-purple-100 to-purple-200 text-purple-800 border border-purple-300": selected && !today,
+                    "hover:bg-gray-100": !today && !selected,
+                    "text-gray-900": !today && !selected
+                  }
+                )}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Create Event
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {upcomingEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className={`border rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                    event.isConflicted
-                      ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                      : 'border-gray-200 dark:border-gray-700'
-                  }`}
-                  onClick={handleViewCalendar}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h5 className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                          {event.title}
-                        </h5>
-                        {event.isConflicted && (
-                          <Badge variant="destructive" className="text-xs">
-                            Conflict
-                          </Badge>
+                {day.getDate()}
+                {/* Event indicator dots */}
+                {dayEvents.length > 0 && (
+                  <div className="absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 flex gap-0.5">
+                    {dayEvents.slice(0, 3).map((event, eventIndex) => (
+                      <div
+                        key={eventIndex}
+                        className={cn(
+                          "w-1 h-1 rounded-full",
+                          {
+                            "bg-white": today,
+                            "bg-blue-500": !today && event.type === 'task',
+                            "bg-green-500": !today && event.type === 'family',
+                            "bg-purple-500": !today && event.type === 'focus',
+                            "bg-gray-500": !today && event.type === 'personal'
+                          }
                         )}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(event.startTime)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {event.attendees}
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs ml-2">
-                      {formatDate(event.startTime)}
-                    </Badge>
+                      />
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </button>
+            );
+          })}
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleViewCalendar}
-            className="flex-1"
-          >
-            <Calendar className="h-4 w-4 mr-1" />
-            View Calendar
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleCreateEvent}
-            className="flex-1"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Event
-          </Button>
-        </div>
-
-        {/* Calendar Access Quick Link */}
-        {!family && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-              Join a family to access shared calendar features!
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/family/create')}
-                className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
-              >
-                Create Family
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push('/family/join')}
-                className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
-              >
-                Join Family
-              </Button>
+        
+        {/* Selected date events */}
+        {selectedDate && (
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">
+              {selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </h4>
+            
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {getEventsForDate(selectedDate).length > 0 ? (
+                getEventsForDate(selectedDate).map(event => (
+                  <div key={event.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className={cn("p-1 rounded-md border", getEventTypeColor(event.type))}>
+                      {getEventTypeIcon(event.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-900 truncate">{event.title}</p>
+                      {event.priority && (
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            "text-xs h-4",
+                            {
+                              "border-red-200 text-red-700 bg-red-50": event.priority === 'high',
+                              "border-amber-200 text-amber-700 bg-amber-50": event.priority === 'medium',
+                              "border-green-200 text-green-700 bg-green-50": event.priority === 'low'
+                            }
+                          )}
+                        >
+                          {event.priority}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500 italic text-center py-2">
+                  No events scheduled
+                </p>
+              )}
             </div>
           </div>
         )}
+        
+        {/* Quick actions */}
+        <div className="flex gap-2 mt-4 pt-4 border-t">
+          <Button variant="outline" size="sm" className="flex-1 text-xs" asChild>
+            <Link href="/calendar">
+              <Eye className="h-3 w-3 mr-1" />
+              Full Calendar
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 text-xs" asChild>
+            <Link href="/tasks/create">
+              <Plus className="h-3 w-3 mr-1" />
+              Add Event
+            </Link>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

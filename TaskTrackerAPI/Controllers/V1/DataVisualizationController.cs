@@ -16,7 +16,7 @@ using TaskTrackerAPI.Attributes;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System;
-using System.Collections.Generic;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {

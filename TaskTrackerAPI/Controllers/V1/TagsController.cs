@@ -15,7 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
@@ -27,7 +27,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class TagsController : ControllerBase
+public class TagsController : BaseApiController
 {
     private readonly ITagService _tagService;
     private readonly ILogger<TagsController> _logger;

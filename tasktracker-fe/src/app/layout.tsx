@@ -16,6 +16,7 @@ import FetchInterceptor from '@/components/FetchInterceptor';
 import DeletionOverlay from '@/components/DeletionOverlay';
 import SignalRManager from '@/components/SignalRManager';
 import RealTimeNotificationWidget from '@/components/notifications/RealTimeNotificationWidget';
+import { GamificationNotifications } from '@/components/gamification/GamificationNotifications';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -93,6 +94,7 @@ export default function RootLayout({
                           <DeletionOverlay />
                           <SignalRManager />
                           <RealTimeNotificationWidget />
+                          <GamificationNotifications />
                           <AppLayout>
                             {children}
                           </AppLayout>

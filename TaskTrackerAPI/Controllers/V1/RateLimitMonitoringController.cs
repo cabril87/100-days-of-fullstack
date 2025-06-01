@@ -22,6 +22,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Utils;
 
 namespace TaskTrackerAPI.Controllers.V1;
@@ -30,7 +31,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [Route("api/v{version:apiVersion}/rate-limits")]
 [ApiController]
 [Authorize(Roles = "Admin")]
-public class RateLimitMonitoringController : ControllerBase
+public class RateLimitMonitoringController : BaseApiController
 {
     private readonly ILogger<RateLimitMonitoringController> _logger;
     private readonly ApplicationDbContext _context;
@@ -50,17 +51,17 @@ public class RateLimitMonitoringController : ControllerBase
     /// Gets all subscription tiers
     /// </summary>
     [HttpGet("subscription-tiers")]
-    public async Task<ActionResult<Models.ApiResponse<IEnumerable<SubscriptionTier>>>> GetSubscriptionTiers()
+    public async Task<ActionResult<ApiResponse<IEnumerable<SubscriptionTier>>>> GetSubscriptionTiers()
     {
         try
         {
             IEnumerable<SubscriptionTier> tiers = await _context.SubscriptionTiers.ToListAsync();
-            return Ok(Models.ApiResponse<IEnumerable<SubscriptionTier>>.SuccessResponse(tiers));
+            return Ok(ApiResponse<IEnumerable<SubscriptionTier>>.SuccessResponse(tiers));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving subscription tiers");
-            return StatusCode(500, Models.ApiResponse<IEnumerable<SubscriptionTier>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<SubscriptionTier>>.ServerErrorResponse());
         }
     }
 
@@ -68,22 +69,22 @@ public class RateLimitMonitoringController : ControllerBase
     /// Gets a subscription tier by ID
     /// </summary>
     [HttpGet("subscription-tiers/{id}")]
-    public async Task<ActionResult<Models.ApiResponse<SubscriptionTier>>> GetSubscriptionTier(int id)
+    public async Task<ActionResult<ApiResponse<SubscriptionTier>>> GetSubscriptionTier(int id)
     {
         try
         {
             SubscriptionTier? tier = await _context.SubscriptionTiers.FindAsync(id);
             if (tier == null)
             {
-                return NotFound(Models.ApiResponse<SubscriptionTier>.NotFoundResponse($"Tier with ID {id} not found"));
+                return NotFound(ApiResponse<SubscriptionTier>.NotFoundResponse($"Tier with ID {id} not found"));
             }
 
-            return Ok(Models.ApiResponse<SubscriptionTier>.SuccessResponse(tier));
+            return Ok(ApiResponse<SubscriptionTier>.SuccessResponse(tier));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving subscription tier {TierId}", id);
-            return StatusCode(500, Models.ApiResponse<SubscriptionTier>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<SubscriptionTier>.ServerErrorResponse());
         }
     }
 
@@ -91,7 +92,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Creates a new subscription tier
     /// </summary>
     [HttpPost("subscription-tiers")]
-    public async Task<ActionResult<Models.ApiResponse<SubscriptionTier>>> CreateSubscriptionTier(SubscriptionTier tier)
+    public async Task<ActionResult<ApiResponse<SubscriptionTier>>> CreateSubscriptionTier(SubscriptionTier tier)
     {
         try
         {
@@ -99,12 +100,12 @@ public class RateLimitMonitoringController : ControllerBase
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetSubscriptionTier), new { id = tier.Id }, 
-                Models.ApiResponse<SubscriptionTier>.SuccessResponse(tier));
+                ApiResponse<SubscriptionTier>.SuccessResponse(tier));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating subscription tier");
-            return StatusCode(500, Models.ApiResponse<SubscriptionTier>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<SubscriptionTier>.ServerErrorResponse());
         }
     }
 
@@ -112,11 +113,11 @@ public class RateLimitMonitoringController : ControllerBase
     /// Updates a subscription tier
     /// </summary>
     [HttpPut("subscription-tiers/{id}")]
-    public async Task<ActionResult<Models.ApiResponse<SubscriptionTier>>> UpdateSubscriptionTier(int id, SubscriptionTier tier)
+    public async Task<ActionResult<ApiResponse<SubscriptionTier>>> UpdateSubscriptionTier(int id, SubscriptionTier tier)
     {
         if (id != tier.Id)
         {
-            return BadRequest(Models.ApiResponse<SubscriptionTier>.ErrorResponse("ID mismatch"));
+            return BadRequest(ApiResponse<SubscriptionTier>.ErrorResponse("ID mismatch"));
         }
 
         try
@@ -125,20 +126,20 @@ public class RateLimitMonitoringController : ControllerBase
             _context.Entry(tier).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
-            return Ok(Models.ApiResponse<SubscriptionTier>.SuccessResponse(tier));
+            return Ok(ApiResponse<SubscriptionTier>.SuccessResponse(tier));
         }
         catch (DbUpdateConcurrencyException)
         {
             if (!await TierExists(id))
             {
-                return NotFound(Models.ApiResponse<SubscriptionTier>.NotFoundResponse($"Tier with ID {id} not found"));
+                return NotFound(ApiResponse<SubscriptionTier>.NotFoundResponse($"Tier with ID {id} not found"));
             }
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating subscription tier {TierId}", id);
-            return StatusCode(500, Models.ApiResponse<SubscriptionTier>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<SubscriptionTier>.ServerErrorResponse());
         }
     }
 
@@ -146,7 +147,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Gets all rate limit configurations
     /// </summary>
     [HttpGet("tier-configs")]
-    public async Task<ActionResult<Models.ApiResponse<IEnumerable<RateLimitTierConfig>>>> GetRateLimitConfigs()
+    public async Task<ActionResult<ApiResponse<IEnumerable<RateLimitTierConfig>>>> GetRateLimitConfigs()
     {
         try
         {
@@ -154,12 +155,12 @@ public class RateLimitMonitoringController : ControllerBase
                 .Include(c => c.SubscriptionTier)
                 .ToListAsync();
                 
-            return Ok(Models.ApiResponse<IEnumerable<RateLimitTierConfig>>.SuccessResponse(configs));
+            return Ok(ApiResponse<IEnumerable<RateLimitTierConfig>>.SuccessResponse(configs));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving rate limit configurations");
-            return StatusCode(500, Models.ApiResponse<IEnumerable<RateLimitTierConfig>>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<IEnumerable<RateLimitTierConfig>>.ServerErrorResponse());
         }
     }
 
@@ -167,7 +168,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Creates a new rate limit configuration
     /// </summary>
     [HttpPost("tier-configs")]
-    public async Task<ActionResult<Models.ApiResponse<RateLimitTierConfig>>> CreateRateLimitConfig(RateLimitTierConfig config)
+    public async Task<ActionResult<ApiResponse<RateLimitTierConfig>>> CreateRateLimitConfig(RateLimitTierConfig config)
     {
         try
         {
@@ -175,12 +176,12 @@ public class RateLimitMonitoringController : ControllerBase
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetRateLimitConfigs), null,
-                Models.ApiResponse<RateLimitTierConfig>.SuccessResponse(config));
+                ApiResponse<RateLimitTierConfig>.SuccessResponse(config));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating rate limit configuration");
-            return StatusCode(500, Models.ApiResponse<RateLimitTierConfig>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<RateLimitTierConfig>.ServerErrorResponse());
         }
     }
 
@@ -188,7 +189,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Gets all circuit breakers and their statuses
     /// </summary>
     [HttpGet("circuit-breakers")]
-    public ActionResult<Models.ApiResponse<object>> GetCircuitBreakers()
+    public ActionResult<ApiResponse<object>> GetCircuitBreakers()
     {
         try
         {
@@ -200,12 +201,12 @@ public class RateLimitMonitoringController : ControllerBase
                 IsOpen = cb.Value.State == CircuitState.Open
             });
 
-            return Ok(Models.ApiResponse<object>.SuccessResponse(result));
+            return Ok(ApiResponse<object>.SuccessResponse(result));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving circuit breakers");
-            return StatusCode(500, Models.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 
@@ -213,7 +214,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Resets a specific circuit breaker
     /// </summary>
     [HttpPost("circuit-breakers/{name}/reset")]
-    public ActionResult<Models.ApiResponse<object>> ResetCircuitBreaker(string name)
+    public ActionResult<ApiResponse<object>> ResetCircuitBreaker(string name)
     {
         try
         {
@@ -221,7 +222,7 @@ public class RateLimitMonitoringController : ControllerBase
             if (circuitBreakers.TryGetValue(name, out CircuitBreaker? circuitBreaker))
             {
                 circuitBreaker!.Reset();
-                return Ok(Models.ApiResponse<object>.SuccessResponse(new 
+                return Ok(ApiResponse<object>.SuccessResponse(new 
                 { 
                     Name = name,
                     State = circuitBreaker.State.ToString(),
@@ -229,12 +230,12 @@ public class RateLimitMonitoringController : ControllerBase
                 }));
             }
 
-            return NotFound(Models.ApiResponse<object>.NotFoundResponse($"Circuit breaker '{name}' not found"));
+            return NotFound(ApiResponse<object>.NotFoundResponse($"Circuit breaker '{name}' not found"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resetting circuit breaker {Name}", name);
-            return StatusCode(500, Models.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 
@@ -242,7 +243,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// Gets API quota usage for all users
     /// </summary>
     [HttpGet("quotas")]
-    public async Task<ActionResult<Models.ApiResponse<object>>> GetQuotaUsage([FromQuery] int? userId = null)
+    public async Task<ActionResult<ApiResponse<object>>> GetQuotaUsage([FromQuery] int? userId = null)
     {
         try
         {
@@ -272,12 +273,12 @@ public class RateLimitMonitoringController : ControllerBase
                 IsExempt = q.IsExemptFromQuota
             });
 
-            return Ok(Models.ApiResponse<object>.SuccessResponse(result));
+            return Ok(ApiResponse<object>.SuccessResponse(result));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving quota usage");
-            return StatusCode(500, Models.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 
@@ -285,14 +286,14 @@ public class RateLimitMonitoringController : ControllerBase
     /// Reset user API quota
     /// </summary>
     [HttpPost("quotas/{userId}/reset")]
-    public async Task<ActionResult<Models.ApiResponse<object>>> ResetQuota(int userId)
+    public async Task<ActionResult<ApiResponse<object>>> ResetQuota(int userId)
     {
         try
         {
             UserApiQuota? quota = await _context.UserApiQuotas.FirstOrDefaultAsync(q => q.UserId == userId);
             if (quota == null)
             {
-                return NotFound(Models.ApiResponse<object>.NotFoundResponse($"Quota for user {userId} not found"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Quota for user {userId} not found"));
             }
 
             quota.ApiCallsUsedToday = 0;
@@ -302,7 +303,7 @@ public class RateLimitMonitoringController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            return Ok(Models.ApiResponse<object>.SuccessResponse(new
+            return Ok(ApiResponse<object>.SuccessResponse(new
             {
                 UserId = userId,
                 Message = "API quota reset successfully",
@@ -317,7 +318,7 @@ public class RateLimitMonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resetting quota for user {UserId}", userId);
-            return StatusCode(500, Models.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 
@@ -326,7 +327,7 @@ public class RateLimitMonitoringController : ControllerBase
     /// </summary>
     [HttpGet("my-limits")]
     [AllowAnonymous]
-    public async Task<ActionResult<Models.ApiResponse<object>>> GetMyLimits()
+    public async Task<ActionResult<ApiResponse<object>>> GetMyLimits()
     {
         try
         {
@@ -336,7 +337,7 @@ public class RateLimitMonitoringController : ControllerBase
 
             if (userId == 0)
             {
-                return Ok(Models.ApiResponse<object>.SuccessResponse(new
+                return Ok(ApiResponse<object>.SuccessResponse(new
                 {
                     Message = "You are not authenticated. Default rate limits apply.",
                     UserType = "Anonymous",
@@ -354,7 +355,7 @@ public class RateLimitMonitoringController : ControllerBase
             SubscriptionTier tier = await _userSubscriptionService.GetUserSubscriptionTierAsync(userId);
             (int remaining, DateTime resetTime) = await _userSubscriptionService.GetRemainingQuotaAsync(userId);
 
-            return Ok(Models.ApiResponse<object>.SuccessResponse(new
+            return Ok(ApiResponse<object>.SuccessResponse(new
             {
                 UserId = userId,
                 SubscriptionTier = tier.Name,
@@ -376,7 +377,7 @@ public class RateLimitMonitoringController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving user limits");
-            return StatusCode(500, Models.ApiResponse<object>.ServerErrorResponse());
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 

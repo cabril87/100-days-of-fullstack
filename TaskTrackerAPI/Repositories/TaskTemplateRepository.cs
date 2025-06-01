@@ -107,73 +107,9 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         if (await _context.TaskTemplates.AnyAsync(t => t.IsSystemTemplate))
             return;
 
-        // Create the default templates
-
-        // 1. Kanban Board Template
-        TaskTemplate kanbanTemplate = new TaskTemplate
-        {
-            Name = "Kanban Board",
-            Description = "A standard kanban board with To Do, In Progress, and Done columns",
-            Type = TaskTemplateType.Kanban,
-            TemplateData = @"{
-                ""columns"": [
-                    { ""id"": 1, ""name"": ""To Do"", ""status"": ""ToDo"" },
-                    { ""id"": 2, ""name"": ""In Progress"", ""status"": ""InProgress"" },
-                    { ""id"": 3, ""name"": ""Done"", ""status"": ""Completed"" }
-                ]
-            }",
-            IsSystemTemplate = true,
-            IconUrl = "/images/templates/kanban.png",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // 2. Project Management Template
-        TaskTemplate projectTemplate = new TaskTemplate
-        {
-            Name = "Project Management",
-            Description = "Project management board with Backlog, To Do, In Progress, Testing, and Done columns",
-            Type = TaskTemplateType.ProjectBoard,
-            TemplateData = @"{
-                ""columns"": [
-                    { ""id"": 1, ""name"": ""Backlog"", ""status"": ""Pending"" },
-                    { ""id"": 2, ""name"": ""To Do"", ""status"": ""ToDo"" },
-                    { ""id"": 3, ""name"": ""In Progress"", ""status"": ""InProgress"" },
-                    { ""id"": 4, ""name"": ""Testing"", ""status"": ""OnHold"" },
-                    { ""id"": 5, ""name"": ""Done"", ""status"": ""Completed"" }
-                ]
-            }",
-            IsSystemTemplate = true,
-            IconUrl = "/images/templates/project.png",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // 3. Daily Tasks Template
-        TaskTemplate dailyTemplate = new TaskTemplate
-        {
-            Name = "Daily Tasks",
-            Description = "Morning, Afternoon, and Evening task organization",
-            Type = TaskTemplateType.Daily,
-            TemplateData = @"{
-                ""sections"": [
-                    { ""id"": 1, ""name"": ""Morning"", ""timeRange"": ""6:00 AM - 12:00 PM"" },
-                    { ""id"": 2, ""name"": ""Afternoon"", ""timeRange"": ""12:00 PM - 6:00 PM"" },
-                    { ""id"": 3, ""name"": ""Evening"", ""timeRange"": ""6:00 PM - 11:00 PM"" }
-                ],
-                ""defaultTasks"": [
-                    { ""title"": ""Breakfast"", ""sectionId"": 1 },
-                    { ""title"": ""Lunch"", ""sectionId"": 2 },
-                    { ""title"": ""Dinner"", ""sectionId"": 3 }
-                ]
-            }",
-            IsSystemTemplate = true,
-            IconUrl = "/images/templates/daily.png",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Add more default templates as needed
-
-        _context.TaskTemplates.AddRange(kanbanTemplate, projectTemplate, dailyTemplate);
-        await _context.SaveChangesAsync();
+        // Use the comprehensive template seeding system
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        await TaskTrackerAPI.Data.SeedData.TemplateSeedData.SeedTemplatesAsync(_context, logger);
     }
 
     public Task<TaskItem?> GetSharedTaskByIdAsync(int taskId)
@@ -211,4 +147,232 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         throw new NotImplementedException();
     }
 
+    // Day 60 Enhancement Methods Implementation
+    
+    // Marketplace methods
+    public async Task<IEnumerable<TaskTemplate>> GetPublicTemplatesAsync()
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.IsPublic)
+            .OrderByDescending(t => t.DownloadCount)
+            .ThenByDescending(t => t.Rating)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<TaskTemplate>> GetTemplatesByCategory(string category)
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.Category == category && (t.IsPublic || t.IsSystemTemplate))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<TaskTemplate>> SearchTemplates(string searchTerm)
+    {
+        return await _context.TaskTemplates
+            .Where(t => (t.IsPublic || t.IsSystemTemplate) && 
+                       (t.Name.Contains(searchTerm) || 
+                        t.Description.Contains(searchTerm) ||
+                        (t.MarketplaceDescription != null && t.MarketplaceDescription.Contains(searchTerm))))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<bool> PublishTemplateToMarketplaceAsync(int templateId, int userId)
+    {
+        TaskTemplate? template = await _context.TaskTemplates
+            .FirstOrDefaultAsync(t => t.Id == templateId && t.UserId == userId);
+            
+        if (template == null)
+            return false;
+            
+        template.IsPublic = true;
+        template.PublishedDate = DateTime.UtcNow;
+        template.UpdatedAt = DateTime.UtcNow;
+        
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> UnpublishTemplateFromMarketplaceAsync(int templateId, int userId)
+    {
+        TaskTemplate? template = await _context.TaskTemplates
+            .FirstOrDefaultAsync(t => t.Id == templateId && t.UserId == userId);
+            
+        if (template == null)
+            return false;
+            
+        template.IsPublic = false;
+        template.UpdatedAt = DateTime.UtcNow;
+        
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<IEnumerable<TaskTemplate>> GetFeaturedTemplatesAsync()
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.IsPublic && t.Rating >= 4.0m)
+            .OrderByDescending(t => t.Rating)
+            .ThenByDescending(t => t.DownloadCount)
+            .Take(10)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<TaskTemplate>> GetPopularTemplatesAsync(int count = 10)
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.IsPublic)
+            .OrderByDescending(t => t.DownloadCount)
+            .ThenByDescending(t => t.UsageCount)
+            .Take(count)
+            .ToListAsync();
+    }
+    
+    // Analytics methods
+    public async Task<TemplateUsageAnalytics> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes)
+    {
+        TemplateUsageAnalytics analytics = new TemplateUsageAnalytics
+        {
+            TemplateId = templateId,
+            UserId = userId,
+            UsedDate = DateTime.UtcNow,
+            Success = success,
+            CompletionTimeMinutes = completionTimeMinutes,
+            TasksCreated = 1,
+            TasksCompleted = success ? 1 : 0,
+            EfficiencyScore = success ? (completionTimeMinutes > 0 ? Math.Min(100, 1000 / completionTimeMinutes) : 100) : 0
+        };
+        
+        _context.TemplateUsageAnalytics.Add(analytics);
+        
+        // Update template statistics
+        TaskTemplate? template = await _context.TaskTemplates.FindAsync(templateId);
+        if (template != null)
+        {
+            template.UsageCount++;
+            template.LastUsedDate = DateTime.UtcNow;
+            
+            // Recalculate success rate
+            IEnumerable<TemplateUsageAnalytics> allUsages = await _context.TemplateUsageAnalytics
+                .Where(a => a.TemplateId == templateId)
+                .ToListAsync();
+            
+            int totalUsages = allUsages.Count() + 1;
+            int successfulUsages = allUsages.Count(a => a.Success) + (success ? 1 : 0);
+            template.SuccessRate = totalUsages > 0 ? (decimal)successfulUsages / totalUsages * 100 : 0;
+            
+            // Update average completion time
+            IEnumerable<int> completionTimes = allUsages
+                .Where(a => a.CompletionTimeMinutes > 0)
+                .Select(a => a.CompletionTimeMinutes)
+                .Concat(new[] { completionTimeMinutes });
+            template.AverageCompletionTimeMinutes = completionTimes.Any() ? (int)completionTimes.Average() : 0;
+        }
+        
+        await _context.SaveChangesAsync();
+        return analytics;
+    }
+
+    public async Task<IEnumerable<TemplateUsageAnalytics>> GetTemplateAnalyticsAsync(int templateId)
+    {
+        return await _context.TemplateUsageAnalytics
+            .Where(a => a.TemplateId == templateId)
+            .OrderByDescending(a => a.UsedDate)
+            .ToListAsync();
+    }
+
+    public async Task<decimal> GetTemplateSuccessRateAsync(int templateId)
+    {
+        IEnumerable<TemplateUsageAnalytics> analytics = await _context.TemplateUsageAnalytics
+            .Where(a => a.TemplateId == templateId)
+            .ToListAsync();
+            
+        if (!analytics.Any())
+            return 0;
+            
+        int successfulUsages = analytics.Count(a => a.Success);
+        return (decimal)successfulUsages / analytics.Count() * 100;
+    }
+
+    public async Task<int> GetTemplateUsageCountAsync(int templateId)
+    {
+        return await _context.TemplateUsageAnalytics
+            .CountAsync(a => a.TemplateId == templateId);
+    }
+
+    public async Task UpdateTemplateRatingAsync(int templateId, decimal rating)
+    {
+        TaskTemplate? template = await _context.TaskTemplates.FindAsync(templateId);
+        if (template != null)
+        {
+            template.Rating = rating;
+            template.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task IncrementTemplateDownloadCountAsync(int templateId)
+    {
+        TaskTemplate? template = await _context.TaskTemplates.FindAsync(templateId);
+        if (template != null)
+        {
+            template.DownloadCount++;
+            template.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+    
+    // Automation methods
+    public async Task<IEnumerable<TaskTemplate>> GetAutomatedTemplatesAsync()
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.IsAutomated)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<TaskTemplate>> GetTemplatesWithTriggersAsync(string triggerType)
+    {
+        return await _context.TaskTemplates
+            .Where(t => t.IsAutomated && t.TriggerConditions != null && t.TriggerConditions.Contains(triggerType))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    // Template Purchase methods
+    public async Task<bool> HasUserPurchasedTemplateAsync(int userId, int templateId)
+    {
+        return await _context.TemplatePurchases
+            .AnyAsync(tp => tp.UserId == userId && tp.TemplateId == templateId);
+    }
+
+    public async Task<TemplatePurchase> CreateTemplatePurchaseAsync(TemplatePurchase purchase)
+    {
+        _context.TemplatePurchases.Add(purchase);
+        await _context.SaveChangesAsync();
+        return purchase;
+    }
+
+    public async Task<List<TemplatePurchase>> GetUserTemplatePurchasesAsync(int userId)
+    {
+        return await _context.TemplatePurchases
+            .Where(tp => tp.UserId == userId)
+            .Include(tp => tp.Template)
+            .OrderByDescending(tp => tp.PurchasedAt)
+            .ToListAsync();
+    }
+
+    public async Task<bool> UpdateTemplatePurchaseCountAsync(int templateId)
+    {
+        TaskTemplate? template = await _context.TaskTemplates.FindAsync(templateId);
+        if (template != null)
+        {
+            template.PurchaseCount++;
+            template.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        return false;
+    }
 } 

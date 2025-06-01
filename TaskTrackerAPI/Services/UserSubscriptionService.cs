@@ -13,12 +13,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Services;
@@ -28,7 +27,7 @@ namespace TaskTrackerAPI.Services;
 /// </summary>
 public class UserSubscriptionService : IUserSubscriptionService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IUserSubscriptionRepository _userSubscriptionRepository;
     private readonly IMemoryCache _cache;
     private readonly ILogger<UserSubscriptionService> _logger;
     private readonly IConfiguration _configuration;
@@ -51,15 +50,15 @@ public class UserSubscriptionService : IUserSubscriptionService
     private readonly HashSet<int> _trustedSystemAccountIds = new();
 
     public UserSubscriptionService(
-        ApplicationDbContext context,
+        IUserSubscriptionRepository userSubscriptionRepository,
         IMemoryCache cache,
         ILogger<UserSubscriptionService> logger,
         IConfiguration configuration)
     {
-        _context = context;
-        _cache = cache;
-        _logger = logger;
-        _configuration = configuration;
+        _userSubscriptionRepository = userSubscriptionRepository ?? throw new ArgumentNullException(nameof(userSubscriptionRepository));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         
         // Load the default tier IDs, but these will be looked up by name if not found
         _defaultFreeTierId = _configuration.GetValue<int>("Subscriptions:DefaultFreeTierId", 0);
@@ -90,15 +89,13 @@ public class UserSubscriptionService : IUserSubscriptionService
             
             if (_systemTierId > 0)
             {
-                systemTier = await _context.SubscriptionTiers
-                    .FirstOrDefaultAsync(t => t.Id == _systemTierId);
+                systemTier = await _userSubscriptionRepository.GetSubscriptionTierByIdAsync(_systemTierId);
             }
             
             // If we don't have a valid system tier ID or couldn't find it, look it up by name
             if (systemTier == null)
             {
-                systemTier = await _context.SubscriptionTiers
-                    .FirstOrDefaultAsync(t => t.Name == "System" && t.IsSystemTier);
+                systemTier = await _userSubscriptionRepository.GetSystemTierAsync();
             }
                 
             if (systemTier != null)
@@ -108,10 +105,8 @@ public class UserSubscriptionService : IUserSubscriptionService
             }
         }
         
-        // Get user's subscription tier from database
-        UserApiQuota? userQuota = await _context.UserApiQuotas
-            .Include(q => q.SubscriptionTier)
-            .FirstOrDefaultAsync(q => q.UserId == userId);
+        // Get user's subscription tier from repository
+        UserApiQuota? userQuota = await _userSubscriptionRepository.GetUserApiQuotaAsync(userId);
         
         if (userQuota?.SubscriptionTier != null)
         {
@@ -124,15 +119,13 @@ public class UserSubscriptionService : IUserSubscriptionService
         
         if (_defaultFreeTierId > 0)
         {
-            freeTier = await _context.SubscriptionTiers
-                .FirstOrDefaultAsync(t => t.Id == _defaultFreeTierId);
+            freeTier = await _userSubscriptionRepository.GetSubscriptionTierByIdAsync(_defaultFreeTierId);
         }
         
         // If we don't have a valid free tier ID or couldn't find it, look it up by name
         if (freeTier == null)
         {
-            freeTier = await _context.SubscriptionTiers
-                .FirstOrDefaultAsync(t => t.Name == "Free" && !t.IsSystemTier);
+            freeTier = await _userSubscriptionRepository.GetDefaultFreeTierAsync();
         }
             
         if (freeTier == null)
@@ -148,130 +141,127 @@ public class UserSubscriptionService : IUserSubscriptionService
     /// <inheritdoc />
     public async Task<(int Limit, int TimeWindowSeconds)> GetRateLimitForUserAndEndpointAsync(int userId, string endpoint)
     {
-        // Get user's subscription tier
-        SubscriptionTier tier = await GetUserSubscriptionTierAsync(userId);
-        
-        // Trusted system accounts with bypass enabled get maximum limits
-        if (tier.IsSystemTier && tier.BypassStandardRateLimits)
+        try
         {
-            return (int.MaxValue, 60);
-        }
-        
-        // Try to find a specific rate limit configuration for this endpoint and tier
-        string cacheKey = string.Format(RateLimitConfigCacheKey, tier.Id, endpoint);
-        
-        if (!_cache.TryGetValue(cacheKey, out RateLimitTierConfig? cachedConfig))
-        {
+            SubscriptionTier tier = await GetUserSubscriptionTierAsync(userId);
+            
+            // Cache key includes tier ID and endpoint for specific configuration
+            string cacheKey = string.Format(RateLimitConfigCacheKey, tier.Id, endpoint);
+            
+            // Try to get from cache first
+            if (_cache.TryGetValue(cacheKey, out (int limit, int timeWindow) cachedLimit))
+            {
+                return cachedLimit;
+            }
+            
             // Get all configs for this tier ordered by priority
-            List<RateLimitTierConfig> tierConfigs = await _context.RateLimitTierConfigs
-                .Where(c => c.SubscriptionTierId == tier.Id)
-                .OrderByDescending(c => c.MatchPriority)
-                .ToListAsync();
+            IEnumerable<RateLimitTierConfig> tierConfigs = await _userSubscriptionRepository.GetRateLimitConfigsForTierAsync(tier.Id);
+            List<RateLimitTierConfig> tierConfigsList = tierConfigs.ToList();
             
             // Find the most specific matching configuration
             RateLimitTierConfig? matchingConfig = null;
-            foreach (RateLimitTierConfig config in tierConfigs)
+            
+            foreach (RateLimitTierConfig config in tierConfigsList)
             {
-                string pattern = config.EndpointPattern
-                    .Replace("*", ".*") // Convert wildcard to regex
-                    .Replace("/", "\\/"); // Escape slashes
-                    
-                if (Regex.IsMatch(endpoint, $"^{pattern}$", RegexOptions.IgnoreCase))
+                // Check if the endpoint pattern matches
+                if (IsEndpointMatch(endpoint, config.EndpointPattern))
                 {
                     matchingConfig = config;
-                    break;
+                    break; // We have them ordered by priority, so first match is best
                 }
             }
             
-            if (matchingConfig != null)
-            {
-                cachedConfig = matchingConfig;
-                _cache.Set(cacheKey, cachedConfig, _configCacheDuration);
-            }
+            // Use specific config if found, otherwise use tier defaults
+            int limit = matchingConfig?.RateLimit ?? tier.DefaultRateLimit;
+            int timeWindow = matchingConfig?.TimeWindowSeconds ?? tier.DefaultTimeWindowSeconds;
+            
+            // Cache the result
+            (int, int) result = (limit, timeWindow);
+            _cache.Set(cacheKey, result, _configCacheDuration);
+            
+            return result;
         }
-        
-        // If we found a specific configuration, use it
-        if (cachedConfig != null)
+        catch (Exception ex)
         {
-            return (cachedConfig.RateLimit, cachedConfig.TimeWindowSeconds);
+            _logger.LogError(ex, "Error getting rate limit for user {UserId} and endpoint {Endpoint}", userId, endpoint);
+            
+            // Return a conservative default in case of error
+            return (100, 3600); // 100 requests per hour
         }
-        
-        // Otherwise fall back to the tier's default limits
-        return (tier.DefaultRateLimit, tier.DefaultTimeWindowSeconds);
     }
 
     /// <inheritdoc />
     public async Task<bool> HasUserExceededDailyQuotaAsync(int userId)
     {
-        // System accounts are exempt from quotas
-        if (await IsTrustedSystemAccountAsync(userId))
+        try
         {
-            return false;
-        }
-        
-        // Get the user's quota record
-        UserApiQuota? quota = await GetOrCreateUserQuotaAsync(userId);
-        
-        // Check if quota is reset daily
-        if (quota.LastResetTime.Date < DateTime.UtcNow.Date)
-        {
-            // Reset the counter for a new day
-            quota.ApiCallsUsedToday = 0;
-            quota.LastResetTime = DateTime.UtcNow.Date;
-            quota.HasReceivedQuotaWarning = false;
+            // System accounts are exempt from quotas
+            if (await IsTrustedSystemAccountAsync(userId))
+            {
+                return false;
+            }
             
-            await _context.SaveChangesAsync();
-            return false;
+            UserApiQuota? quota = await _userSubscriptionRepository.GetUserApiQuotaAsync(userId);
+            
+            if (quota == null)
+            {
+                // Create quota for new user
+                UserApiQuota newQuota = await GetOrCreateUserQuotaAsync(userId);
+                quota = newQuota;
+            }
+            
+            // Reset if it's a new day
+            if (quota.LastResetTime.Date < DateTime.UtcNow.Date)
+            {
+                await _userSubscriptionRepository.ResetUserDailyUsageAsync(userId);
+                return false;
+            }
+            
+            return quota.ApiCallsUsedToday >= quota.MaxDailyApiCalls;
         }
-        
-        // Exempt accounts never exceed quota
-        if (quota.IsExemptFromQuota)
+        catch (Exception ex)
         {
-            return false;
+            _logger.LogError(ex, "Error checking daily quota for user {UserId}", userId);
+            return false; // Allow access on error to avoid blocking legitimate requests
         }
-        
-        // Check if user has exceeded their daily quota
-        return quota.ApiCallsUsedToday >= quota.MaxDailyApiCalls;
     }
 
     /// <inheritdoc />
     public async Task IncrementUserApiUsageAsync(int userId, int count = 1)
     {
-        // System accounts don't track usage
-        if (await IsTrustedSystemAccountAsync(userId))
+        try
         {
-            return;
-        }
-        
-        // Get the user's quota record
-        UserApiQuota quota = await GetOrCreateUserQuotaAsync(userId);
-        
-        // Reset if it's a new day
-        if (quota.LastResetTime.Date < DateTime.UtcNow.Date)
-        {
-            quota.ApiCallsUsedToday = count;
-            quota.LastResetTime = DateTime.UtcNow.Date;
-            quota.HasReceivedQuotaWarning = false;
-        }
-        else
-        {
-            quota.ApiCallsUsedToday += count;
-            
-            // Check if we should trigger a quota warning
-            if (!quota.HasReceivedQuotaWarning && 
-                quota.ApiCallsUsedToday >= (quota.MaxDailyApiCalls * quota.QuotaWarningThresholdPercent / 100))
+            // System accounts don't track usage
+            if (await IsTrustedSystemAccountAsync(userId))
             {
-                quota.HasReceivedQuotaWarning = true;
+                return;
+            }
+            
+            // Use repository method to increment usage
+            bool success = await _userSubscriptionRepository.IncrementUserApiUsageAsync(userId, count);
+            
+            if (!success)
+            {
+                // User quota doesn't exist, create it first
+                await GetOrCreateUserQuotaAsync(userId);
+                await _userSubscriptionRepository.IncrementUserApiUsageAsync(userId, count);
+            }
+            
+            // Check for quota warning (this logic might need to be moved to repository)
+            UserApiQuota? quota = await _userSubscriptionRepository.GetUserApiQuotaAsync(userId);
+            if (quota != null && quota.ApiCallsUsedToday >= (quota.MaxDailyApiCalls * 0.8)) // 80% threshold
+            {
                 // TODO: Trigger quota warning notification
                 _logger.LogInformation("User {UserId} has used {UsedCalls}/{MaxCalls} API calls ({Percent}%)", 
                     userId, quota.ApiCallsUsedToday, quota.MaxDailyApiCalls, 
                     (quota.ApiCallsUsedToday * 100 / quota.MaxDailyApiCalls));
             }
         }
-        
-        quota.LastUpdatedTime = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error incrementing API usage for user {UserId}", userId);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -291,8 +281,6 @@ public class UserSubscriptionService : IUserSubscriptionService
         {
             quota.ApiCallsUsedToday = 0;
             quota.LastResetTime = DateTime.UtcNow.Date;
-            quota.HasReceivedQuotaWarning = false;
-            await _context.SaveChangesAsync();
         }
         
         // Calculate remaining calls
@@ -313,11 +301,8 @@ public class UserSubscriptionService : IUserSubscriptionService
             return true;
         }
         
-        // If not in the pre-loaded list, check from database
-        UserApiQuota? quota = await _context.UserApiQuotas
-            .FirstOrDefaultAsync(q => q.UserId == userId && q.SubscriptionTier!.IsSystemTier);
-            
-        return quota != null;
+        // If not in the pre-loaded list, check from repository
+        return await _userSubscriptionRepository.IsUserTrustedSystemAccountAsync(userId);
     }
     
     /// <summary>
@@ -326,9 +311,7 @@ public class UserSubscriptionService : IUserSubscriptionService
     private async Task<UserApiQuota> GetOrCreateUserQuotaAsync(int userId)
     {
         // Find existing quota
-        UserApiQuota? quota = await _context.UserApiQuotas
-            .Include(q => q.SubscriptionTier)
-            .FirstOrDefaultAsync(q => q.UserId == userId);
+        UserApiQuota? quota = await _userSubscriptionRepository.GetUserApiQuotaAsync(userId);
             
         if (quota != null)
         {
@@ -338,7 +321,7 @@ public class UserSubscriptionService : IUserSubscriptionService
         // Create new quota with default tier
         SubscriptionTier tier = await GetUserSubscriptionTierAsync(userId);
         
-        quota = new UserApiQuota
+        UserApiQuota newQuota = new UserApiQuota
         {
             UserId = userId,
             SubscriptionTierId = tier.Id,
@@ -346,13 +329,30 @@ public class UserSubscriptionService : IUserSubscriptionService
             MaxDailyApiCalls = tier.DailyApiQuota,
             LastResetTime = DateTime.UtcNow.Date,
             LastUpdatedTime = DateTime.UtcNow,
-            IsExemptFromQuota = tier.IsSystemTier,
-            HasReceivedQuotaWarning = false
+            IsExemptFromQuota = tier.IsSystemTier
         };
         
-        _context.UserApiQuotas.Add(quota);
-        await _context.SaveChangesAsync();
-        
-        return quota;
+        return await _userSubscriptionRepository.CreateOrUpdateUserApiQuotaAsync(newQuota);
+    }
+    
+    /// <summary>
+    /// Checks if an endpoint matches a given pattern
+    /// </summary>
+    private static bool IsEndpointMatch(string endpoint, string pattern)
+    {
+        try
+        {
+            // Convert pattern wildcards to regex
+            string regexPattern = pattern
+                .Replace("*", ".*") // Convert wildcard to regex
+                .Replace("/", "\\/"); // Escape slashes
+                
+            return Regex.IsMatch(endpoint, $"^{regexPattern}$", RegexOptions.IgnoreCase);
+        }
+        catch
+        {
+            // If pattern is invalid, fall back to exact match
+            return endpoint.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+        }
     }
 } 

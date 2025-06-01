@@ -15,6 +15,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.DTOs.Security;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Repositories.Interfaces;
 using System.Threading.Tasks;
 using System;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace TaskTrackerAPI.Services
 {
     public class FailedLoginService : IFailedLoginService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IFailedLoginRepository _failedLoginRepository;
         private readonly ILogger<FailedLoginService> _logger;
         private readonly IMapper _mapper;
         private readonly IGeolocationService _geolocationService;
@@ -36,12 +37,12 @@ namespace TaskTrackerAPI.Services
         private const int TIME_WINDOW_MINUTES = 15;
 
         public FailedLoginService(
-            ApplicationDbContext context,
+            IFailedLoginRepository failedLoginRepository,
             ILogger<FailedLoginService> logger,
             IMapper mapper,
             IGeolocationService geolocationService)
         {
-            _context = context;
+            _failedLoginRepository = failedLoginRepository;
             _logger = logger;
             _mapper = mapper;
             _geolocationService = geolocationService;
@@ -74,8 +75,7 @@ namespace TaskTrackerAPI.Services
                     RiskFactors = string.Join(", ", riskFactors)
                 };
 
-                _context.FailedLoginAttempts.Add(failedAttempt);
-                await _context.SaveChangesAsync();
+                await _failedLoginRepository.CreateFailedLoginAttemptAsync(failedAttempt);
 
                 // Log security audit
                 _logger.LogWarning($"Failed login attempt logged for {emailOrUsername} from {ipAddress}. Suspicious: {isSuspicious}");
@@ -111,12 +111,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow.AddMinutes(-TIME_WINDOW_MINUTES);
-                
-                var recentAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.EmailOrUsername == emailOrUsername && f.AttemptTime >= cutoffTime)
-                    .OrderByDescending(f => f.AttemptTime)
-                    .ToListAsync();
+                var recentAttempts = await _failedLoginRepository.GetRecentFailedAttemptsAsync(emailOrUsername, TIME_WINDOW_MINUTES);
 
                 int failedAttempts = recentAttempts.Count();
                 var lastAttempt = recentAttempts.FirstOrDefault()?.AttemptTime;
@@ -160,36 +155,23 @@ namespace TaskTrackerAPI.Services
                 from ??= DateTime.UtcNow.AddDays(-1);
                 to ??= DateTime.UtcNow;
 
-                var attempts = await _context.FailedLoginAttempts
-                    .Where(f => f.AttemptTime >= from && f.AttemptTime <= to)
-                    .ToListAsync();
+                var attempts = await _failedLoginRepository.GetFailedAttemptsInRangeAsync(from.Value, to.Value);
 
                 var recentAttempts = attempts
                     .OrderByDescending(f => f.AttemptTime)
                     .Take(10)
                     .ToList();
 
-                var topTargetedAccounts = attempts
-                    .GroupBy(f => f.EmailOrUsername)
-                    .OrderByDescending(g => g.Count())
-                    .Take(5)
-                    .Select(g => $"{g.Key} ({g.Count()} attempts)")
-                    .ToList();
-
-                var topAttackingIPs = attempts
-                    .GroupBy(f => f.IpAddress)
-                    .OrderByDescending(g => g.Count())
-                    .Take(5)
-                    .Select(g => $"{g.Key} ({g.Count()} attempts)")
-                    .ToList();
+                var topTargetedAccounts = await _failedLoginRepository.GetTopTargetedAccountsAsync(24, 5);
+                var topAttackingIPs = await _failedLoginRepository.GetTopAttackingIPsAsync(24, 5);
 
                 return new FailedLoginSummaryDTO
                 {
                     TotalAttempts = attempts.Count(),
                     UniqueIPs = attempts.Select(f => f.IpAddress).Distinct().Count(),
                     SuspiciousAttempts = attempts.Count(f => f.IsSuspicious),
-                    TopTargetedAccounts = topTargetedAccounts,
-                    TopAttackingIPs = topAttackingIPs,
+                    TopTargetedAccounts = topTargetedAccounts.Select(t => $"{t.EmailOrUsername} ({t.AttemptCount} attempts)").ToList(),
+                    TopAttackingIPs = topAttackingIPs.Select(t => $"{t.IpAddress} ({t.AttemptCount} attempts)").ToList(),
                     RecentAttempts = _mapper.Map<List<FailedLoginAttemptDTO>>(recentAttempts)
                 };
             }
@@ -204,13 +186,8 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var attempts = await _context.FailedLoginAttempts
-                    .OrderByDescending(f => f.AttemptTime)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                return _mapper.Map<List<FailedLoginAttemptDTO>>(attempts);
+                var attempts = await _failedLoginRepository.GetFailedAttemptsPagedAsync(page, pageSize);
+                return _mapper.Map<List<FailedLoginAttemptDTO>>(attempts.ToList());
             }
             catch (Exception ex)
             {
@@ -224,14 +201,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Clear recent failed attempts to unlock the account
-                var cutoffTime = DateTime.UtcNow.AddMinutes(-TIME_WINDOW_MINUTES);
-                var recentAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.EmailOrUsername == emailOrUsername && f.AttemptTime >= cutoffTime)
-                    .ToListAsync();
-
-                _context.FailedLoginAttempts.RemoveRange(recentAttempts);
-                await _context.SaveChangesAsync();
-
+                await _failedLoginRepository.RemoveRecentAttemptsAsync(emailOrUsername, TIME_WINDOW_MINUTES);
                 _logger.LogInformation($"Account {emailOrUsername} unlocked by {unlockedBy}");
             }
             catch (Exception ex)
@@ -245,12 +215,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow.AddMinutes(-TIME_WINDOW_MINUTES);
-                
-                int recentFailedAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.EmailOrUsername == emailOrUsername && f.AttemptTime >= cutoffTime)
-                    .CountAsync();
-
+                int recentFailedAttempts = await _failedLoginRepository.GetFailedAttemptCountAsync(emailOrUsername, TIME_WINDOW_MINUTES);
                 return recentFailedAttempts >= MAX_FAILED_ATTEMPTS;
             }
             catch (Exception ex)
@@ -278,18 +243,20 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow.AddHours(-24);
-                
-                var suspiciousIPs = await _context.FailedLoginAttempts
-                    .Where(f => f.AttemptTime >= cutoffTime)
-                    .GroupBy(f => f.IpAddress)
-                    .Where(g => g.Count() >= SUSPICIOUS_THRESHOLD || g.Any(f => f.IsSuspicious))
-                    .OrderByDescending(g => g.Count())
-                    .Take(limit)
-                    .Select(g => g.Key)
-                    .ToListAsync();
+                var suspiciousIPs = await _failedLoginRepository.GetUniqueIPAddressesAsync(24);
+                var result = new List<string>();
 
-                return suspiciousIPs;
+                foreach (var ip in suspiciousIPs)
+                {
+                    if (await _failedLoginRepository.IsIPSuspiciousAsync(ip, 24, SUSPICIOUS_THRESHOLD))
+                    {
+                        result.Add(ip);
+                        if (result.Count >= limit)
+                            break;
+                    }
+                }
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -302,17 +269,7 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var cutoffTime = DateTime.UtcNow.AddHours(-24);
-                
-                int recentAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.IpAddress == ipAddress && f.AttemptTime >= cutoffTime)
-                    .CountAsync();
-
-                bool hasSuspiciousAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.IpAddress == ipAddress && f.AttemptTime >= cutoffTime)
-                    .AnyAsync(f => f.IsSuspicious);
-
-                return recentAttempts >= SUSPICIOUS_THRESHOLD || hasSuspiciousAttempts;
+                return await _failedLoginRepository.IsIPSuspiciousAsync(ipAddress, 24, SUSPICIOUS_THRESHOLD);
             }
             catch (Exception ex)
             {
@@ -356,23 +313,13 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Check for rapid successive attempts
-                var lastMinute = DateTime.UtcNow.AddMinutes(-1);
-                int recentAttempts = await _context.FailedLoginAttempts
-                    .Where(f => f.EmailOrUsername == emailOrUsername && f.AttemptTime >= lastMinute)
-                    .CountAsync();
-
+                int recentAttempts = await _failedLoginRepository.GetRapidAttemptsCountAsync(emailOrUsername, 1, 3);
                 if (recentAttempts >= 3)
                     riskFactors.Add("Rapid successive attempts");
 
                 // Check for multiple accounts from same IP
-                var lastHour = DateTime.UtcNow.AddHours(-1);
-                int uniqueAccounts = await _context.FailedLoginAttempts
-                    .Where(f => f.IpAddress == ipAddress && f.AttemptTime >= lastHour)
-                    .Select(f => f.EmailOrUsername)
-                    .Distinct()
-                    .CountAsync();
-
-                if (uniqueAccounts >= 5)
+                var uniqueAccounts = await _failedLoginRepository.GetAccountsTargetedByIPAsync(ipAddress, 1);
+                if (uniqueAccounts.Count() >= 5)
                     riskFactors.Add("Multiple accounts targeted from same IP");
 
                 // Check for suspicious geolocation
@@ -409,17 +356,13 @@ namespace TaskTrackerAPI.Services
                 if (riskFactors.Any(rf => rf.Contains("Multiple accounts") || rf.Contains("VPN") || rf.Contains("Proxy")))
                     return true;
 
-                // Check historical patterns
-                var last24Hours = DateTime.UtcNow.AddHours(-24);
-                int totalAttemptsFromIP = await _context.FailedLoginAttempts
-                    .Where(f => f.IpAddress == ipAddress && f.AttemptTime >= last24Hours)
-                    .CountAsync();
-
-                return totalAttemptsFromIP >= SUSPICIOUS_THRESHOLD;
+                // Check historical patterns using repository
+                bool isIPSuspicious = await _failedLoginRepository.IsIPSuspiciousAsync(ipAddress, 24, SUSPICIOUS_THRESHOLD);
+                return isIPSuspicious;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error determining if attempt is suspicious");
+                _logger.LogError(ex, "Error determining if suspicious");
                 return false;
             }
         }

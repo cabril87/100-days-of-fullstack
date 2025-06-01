@@ -3,11 +3,7 @@ using TaskTrackerAPI.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
-using System.Text.Json;
-using TaskTrackerAPI.Services;
-using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Data;
-using Microsoft.EntityFrameworkCore;
 using TaskTrackerAPI.Models;
 using Microsoft.Extensions.Logging;
 using System.Linq;
@@ -16,13 +12,14 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class DebugController : ControllerBase
+public class DebugController : BaseApiController
 {
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _environment;

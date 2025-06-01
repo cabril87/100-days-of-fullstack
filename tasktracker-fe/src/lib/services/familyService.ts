@@ -52,25 +52,34 @@ export const familyService = {
     return this.withRetry(async () => {
       try {
         const response = await apiClient.get<Family>('/v1/family/current-family', options);
-        console.log('[familyService] Get current family response:', response);
         
-        if (response.status === 404 && response.error?.includes('No family found')) {
+        // Handle 404 gracefully - user having no family is normal, not an error
+        if (response.status === 404) {
+          console.log('[familyService] Get current family response: User has no family (404)');
           return { data: undefined, status: 404 };
         }
+        
+        console.log('[familyService] Get current family response:', response);
 
-        if (response.error) {
+        if (response.error && !response.error.includes('No family found')) {
           return { error: response.error, status: response.status };
         }
 
         if (!response.data) {
-          return { error: 'No family data received', status: response.status };
+          return { data: undefined, status: response.status };
         }
 
         return {
           data: this.convertFamily(response.data),
           status: response.status
         };
-      } catch (error) {
+      } catch (error: any) {
+        // Handle 404 errors gracefully - user having no family is normal
+        if (error?.status === 404 || error?.response?.status === 404) {
+          console.log('[familyService] Get current family: User has no family (404 from catch)');
+          return { data: undefined, status: 404 };
+        }
+        
         console.error('[familyService] Error getting current family:', error);
         return {
           error: error instanceof Error ? error.message : 'Failed to get current family',

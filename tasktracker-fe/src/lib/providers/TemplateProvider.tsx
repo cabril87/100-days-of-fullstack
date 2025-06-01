@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { templateService } from '@/lib/services/templateService';
 import { TaskTemplate, TaskCategory, CreateTemplateInput, SaveAsTemplateInput } from '@/lib/types/task';
 import { useAuth } from '@/lib/providers/AuthContext';
@@ -21,10 +21,11 @@ interface TemplateContextType {
   
   // Category methods
   getCategories: () => Promise<TaskCategory[]>;
-  getCategory: (id: number) => Promise<TaskCategory | null>;
-  createCategory: (category: Partial<TaskCategory>) => Promise<TaskCategory | null>;
-  updateCategory: (id: number, category: Partial<TaskCategory>) => Promise<TaskCategory | null>;
-  deleteCategory: (id: number) => Promise<boolean>;
+  
+  // Additional template methods
+  getMarketplaceTemplates: () => Promise<void>;
+  getFeaturedTemplates: () => Promise<TaskTemplate[]>;
+  getAutomatedTemplates: () => Promise<void>;
   
   // Filtered data
   getTemplatesByCategory: (categoryId: number) => TaskTemplate[];
@@ -48,32 +49,49 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
 
-  // Load templates and categories on mount - only when authenticated
+  // Load templates and categories on mount - load marketplace templates when not authenticated
   useEffect(() => {
     async function loadInitialData() {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         setError(null);
         
-        // Load categories first
-        const categoriesResponse = await templateService.getCategories();
-        if (categoriesResponse.data) {
-          setCategories(categoriesResponse.data);
-        } else if (categoriesResponse.error) {
-          console.error('Failed to load categories:', categoriesResponse.error);
-        }
-        
-        // Then load templates
-        const templatesResponse = await templateService.getTemplates();
-        if (templatesResponse.data) {
-          setTemplates(templatesResponse.data);
-        } else if (templatesResponse.error) {
-          console.error('Failed to load templates:', templatesResponse.error);
+        if (isAuthenticated) {
+          // Load categories first (only when authenticated)
+          const categoriesResponse = await templateService.getCategories();
+          if (categoriesResponse.data) {
+            setCategories(categoriesResponse.data);
+          } else if (categoriesResponse.error) {
+            console.error('Failed to load categories:', categoriesResponse.error);
+          }
+          
+          // Then try to load user templates
+          const templatesResponse = await templateService.getTemplates();
+          
+          // If authentication failed, fall back to marketplace templates
+          if (templatesResponse.status === 401 || (templatesResponse.error && templatesResponse.error.includes('Authentication'))) {
+            console.log('[TemplateProvider] Authentication failed during initial load, falling back to marketplace templates');
+            const marketplaceResponse = await templateService.getMarketplaceTemplates();
+            if (marketplaceResponse.data) {
+              setTemplates(marketplaceResponse.data);
+            } else if (marketplaceResponse.error) {
+              console.error('Failed to load marketplace templates:', marketplaceResponse.error);
+              setError(marketplaceResponse.error);
+            }
+          } else if (templatesResponse.data) {
+            setTemplates(templatesResponse.data);
+          } else if (templatesResponse.error) {
+            console.error('Failed to load templates:', templatesResponse.error);
+          }
+        } else {
+          // Load marketplace templates when not authenticated
+          const marketplaceResponse = await templateService.getMarketplaceTemplates();
+          if (marketplaceResponse.data) {
+            setTemplates(marketplaceResponse.data);
+          } else if (marketplaceResponse.error) {
+            console.error('Failed to load marketplace templates:', marketplaceResponse.error);
+            setError(marketplaceResponse.error);
+          }
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error loading templates';
@@ -87,75 +105,166 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
     loadInitialData();
   }, [isAuthenticated]);
   
-  // Template methods
-  const getTemplates = async (categoryId?: number): Promise<TaskTemplate[]> => {
+  // Load templates
+  const getTemplates = useCallback(async (categoryId?: number): Promise<TaskTemplate[]> => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      const response = await templateService.getTemplates(categoryId);
+      let response;
+      
+      if (isAuthenticated) {
+        // Try to load user templates when authenticated
+        response = await templateService.getTemplates(categoryId);
+        
+        // If authentication failed (401), fall back to marketplace templates
+        if (response.status === 401 || (response.error && response.error.includes('Authentication'))) {
+          console.log('[TemplateProvider] Authentication failed, falling back to marketplace templates');
+          response = await templateService.getMarketplaceTemplates();
+        }
+      } else {
+        // Load marketplace templates when not authenticated
+        response = await templateService.getMarketplaceTemplates();
+      }
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
       
       if (response.data) {
-        // Update state if no category filter, otherwise return without updating state
-        if (!categoryId) {
-          setTemplates(response.data);
-        }
+        setTemplates(response.data);
         return response.data;
-      } else if (response.error) {
-        setError(response.error);
-        return [];
       }
       
       return [];
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting templates';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load templates';
       setError(errorMessage);
+      console.error('Error loading templates:', err);
       return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Load categories
+  const getCategories = useCallback(async (): Promise<TaskCategory[]> => {
+    try {
+      const response = await templateService.getCategories();
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data) {
+        setCategories(response.data);
+        return response.data;
+      }
+      
+      return [];
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load categories';
+      console.error('Error loading categories:', err);
+      // Don't set global error for categories, just log it
+      return [];
+    }
+  }, []);
+
+  // Get marketplace templates
+  const getMarketplaceTemplates = useCallback(async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await templateService.getMarketplaceTemplates();
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data) {
+        setTemplates(response.data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load marketplace templates';
+      setError(errorMessage);
+      console.error('Error loading marketplace templates:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Get featured templates
+  const getFeaturedTemplates = useCallback(async (): Promise<TaskTemplate[]> => {
+    try {
+      const response = await templateService.getFeaturedTemplates();
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      return response.data || [];
+    } catch (err) {
+      console.error('Error loading featured templates:', err);
+      return [];
+    }
+  }, []);
+
+  // Get automated templates
+  const getAutomatedTemplates = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await templateService.getAutomatedTemplates();
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
+      if (response.data) {
+        setTemplates(response.data);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load automated templates';
+      setError(errorMessage);
+      console.error('Error loading automated templates:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  // Template methods
+  const getTemplate = async (id: number): Promise<TaskTemplate | null> => {
+    try {
+      setLoading(true);
+      const response = await templateService.getTemplate(id);
+      
+      if (response.data) {
+        return response.data;
+      } else if (response.error) {
+        setError(response.error);
+        return null;
+      }
+      
+      return null;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting template';
+      setError(errorMessage);
+      return null;
     } finally {
       setLoading(false);
     }
   };
   
-  const getTemplate = async (id: number): Promise<TaskTemplate | null> => {
-    try {
-      console.log('[templateService] Getting template with ID:', id);
-      
-      // First check if we already have it in state
-      const cachedTemplate = templates.find(t => t.id === id);
-      if (cachedTemplate) {
-        console.log('[templateService] Found template in cache:', cachedTemplate.title);
-        return cachedTemplate;
-      }
-      
-      // Otherwise fetch from API
-      console.log('[templateService] Template not in cache, fetching from API');
-      const response = await templateService.getTemplate(id);
-      
-      if (response.data) {
-        console.log('[templateService] Template fetched successfully:', response.data.title);
-        return response.data;
-      } else if (response.error) {
-        console.error('[templateService] Error getting template:', response.error);
-        setError(response.error);
-        return null;
-      }
-      
-      console.error('[templateService] No data or error returned for template');
-      return null;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting template';
-      console.error('[templateService] Exception getting template:', errorMessage);
-      setError(errorMessage);
-      return null;
-    }
-  };
-  
-  const createTemplate = async (template: CreateTemplateInput): Promise<TaskTemplate | null> => {
+  const createTemplate = async (templateData: CreateTemplateInput): Promise<TaskTemplate | null> => {
     try {
       setLoading(true);
-      const response = await templateService.createTemplate(template);
+      const response = await templateService.createTemplate(templateData);
       
       if (response.data) {
-        // Add new template to state
-        setTemplates(prev => [...prev, response.data as TaskTemplate]);
+        // Add to templates list
+        setTemplates(prev => [...prev, response.data!]);
         return response.data;
       } else if (response.error) {
         setError(response.error);
@@ -226,8 +335,8 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
       const response = await templateService.saveAsTemplate(input);
       
       if (response.data) {
-        // Add new template to state
-        setTemplates(prev => [...prev, response.data as TaskTemplate]);
+        // Add to templates list
+        setTemplates(prev => [...prev, response.data!]);
         return response.data;
       } else if (response.error) {
         setError(response.error);
@@ -236,124 +345,9 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       return null;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error saving task as template';
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error saving template';
       setError(errorMessage);
       return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Category methods
-  const getCategories = async (): Promise<TaskCategory[]> => {
-    try {
-      setLoading(true);
-      const response = await templateService.getCategories();
-      
-      if (response.data) {
-        setCategories(response.data);
-        return response.data;
-      } else if (response.error) {
-        setError(response.error);
-        return [];
-      }
-      
-      return [];
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting categories';
-      setError(errorMessage);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const getCategory = async (id: number): Promise<TaskCategory | null> => {
-    try {
-      const response = await templateService.getCategory(id);
-      
-      if (response.data) {
-        return response.data;
-      } else if (response.error) {
-        setError(response.error);
-        return null;
-      }
-      
-      return null;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error getting category';
-      setError(errorMessage);
-      return null;
-    }
-  };
-  
-  const createCategory = async (category: Partial<TaskCategory>): Promise<TaskCategory | null> => {
-    try {
-      setLoading(true);
-      const response = await templateService.createCategory(category);
-      
-      if (response.data) {
-        // Add new category to state
-        setCategories(prev => [...prev, response.data as TaskCategory]);
-        return response.data;
-      } else if (response.error) {
-        setError(response.error);
-        return null;
-      }
-      
-      return null;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error creating category';
-      setError(errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const updateCategory = async (id: number, category: Partial<TaskCategory>): Promise<TaskCategory | null> => {
-    try {
-      setLoading(true);
-      const response = await templateService.updateCategory(id, category);
-      
-      if (response.data) {
-        // Update category in state
-        setCategories(prev => prev.map(c => c.id === id ? response.data as TaskCategory : c));
-        return response.data;
-      } else if (response.error) {
-        setError(response.error);
-        return null;
-      }
-      
-      return null;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error updating category';
-      setError(errorMessage);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const deleteCategory = async (id: number): Promise<boolean> => {
-    try {
-      setLoading(true);
-      const response = await templateService.deleteCategory(id);
-      
-      if (response.status === 204) {
-        // Remove category from state
-        setCategories(prev => prev.filter(c => c.id !== id));
-        return true;
-      } else if (response.error) {
-        setError(response.error);
-        return false;
-      }
-      
-      return false;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error deleting category';
-      setError(errorMessage);
-      return false;
     } finally {
       setLoading(false);
     }
@@ -385,10 +379,11 @@ export const TemplateProvider: React.FC<{ children: ReactNode }> = ({ children }
     
     // Category methods
     getCategories,
-    getCategory,
-    createCategory,
-    updateCategory,
-    deleteCategory,
+    
+    // Additional template methods
+    getMarketplaceTemplates,
+    getFeaturedTemplates,
+    getAutomatedTemplates,
     
     // Filtered data
     getTemplatesByCategory,

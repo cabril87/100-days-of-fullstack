@@ -12,8 +12,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Repositories.Interfaces;
@@ -23,15 +21,13 @@ namespace TaskTrackerAPI.Services
 {
     public class TaskPriorityService : ITaskPriorityService
     {
-        private readonly ApplicationDbContext _context;
         private readonly ITaskItemRepository _taskRepository;
         private readonly ITaskService _taskService;
 
-        public TaskPriorityService(ApplicationDbContext context, ITaskItemRepository taskRepository, ITaskService taskService)
+        public TaskPriorityService(ITaskItemRepository taskRepository, ITaskService taskService)
         {
-            _context = context;
-            _taskRepository = taskRepository;
-            _taskService = taskService;
+            _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
+            _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
         }
 
         /// <inheritdoc />
@@ -39,33 +35,22 @@ namespace TaskTrackerAPI.Services
         {
             int userIdInt = int.Parse(userId);
             
-            // Get incomplete tasks for the user
-            List<TaskItem> tasks = await _context.Tasks
-                .Where(t => t.UserId == userIdInt && 
-                            t.Status != TaskItemStatus.Completed &&
-                            t.Status != TaskItemStatus.Cancelled)
-                .Select(t => new TaskItem
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    Status = t.Status,
-                    DueDate = t.DueDate,
-                    Priority = t.Priority,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt,
-                    CompletedAt = t.CompletedAt,
-                    IsCompleted = t.IsCompleted,
-                    UserId = t.UserId,
-                    CategoryId = t.CategoryId,
-                    BoardId = t.BoardId,
-                    FamilyId = t.FamilyId,
-                    AssignedByUserId = t.AssignedByUserId,
-                    // Don't include AssignedToName to avoid the error
-                })
-                .ToListAsync();
+            // Get incomplete tasks for the user using repository
+            IEnumerable<TaskItem> notStartedTasks = await _taskRepository.GetTasksByStatusAsync(userIdInt, TaskItemStatus.NotStarted);
+            IEnumerable<TaskItem> inProgressTasks = await _taskRepository.GetTasksByStatusAsync(userIdInt, TaskItemStatus.InProgress);
+            
+            // Combine all incomplete tasks
+            List<TaskItem> allIncompleteTasks = new List<TaskItem>();
+            foreach (TaskItem task in notStartedTasks)
+            {
+                allIncompleteTasks.Add(task);
+            }
+            foreach (TaskItem task in inProgressTasks)
+            {
+                allIncompleteTasks.Add(task);
+            }
                 
-            return tasks
+            return allIncompleteTasks
                 .OrderByDescending(GetPriorityValue)
                 .ThenBy(t => t.DueDate) // Earlier due date first
                 .FirstOrDefault();
@@ -76,33 +61,22 @@ namespace TaskTrackerAPI.Services
         {
             int userIdInt = int.Parse(userId);
             
-            // Get prioritized tasks for the user
-            List<TaskItem> tasks = await _context.Tasks
-                .Where(t => t.UserId == userIdInt && 
-                            t.Status != TaskItemStatus.Completed &&
-                            t.Status != TaskItemStatus.Cancelled)
-                .Select(t => new TaskItem
-                {
-                    Id = t.Id,
-                    Title = t.Title,
-                    Description = t.Description,
-                    Status = t.Status,
-                    DueDate = t.DueDate,
-                    Priority = t.Priority,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt,
-                    CompletedAt = t.CompletedAt,
-                    IsCompleted = t.IsCompleted,
-                    UserId = t.UserId,
-                    CategoryId = t.CategoryId,
-                    BoardId = t.BoardId,
-                    FamilyId = t.FamilyId,
-                    AssignedByUserId = t.AssignedByUserId,
-                    // Don't include AssignedToName to avoid the error
-                })
-                .ToListAsync();
+            // Get incomplete tasks for the user using repository
+            IEnumerable<TaskItem> notStartedTasks = await _taskRepository.GetTasksByStatusAsync(userIdInt, TaskItemStatus.NotStarted);
+            IEnumerable<TaskItem> inProgressTasks = await _taskRepository.GetTasksByStatusAsync(userIdInt, TaskItemStatus.InProgress);
+            
+            // Combine all incomplete tasks
+            List<TaskItem> allIncompleteTasks = new List<TaskItem>();
+            foreach (TaskItem task in notStartedTasks)
+            {
+                allIncompleteTasks.Add(task);
+            }
+            foreach (TaskItem task in inProgressTasks)
+            {
+                allIncompleteTasks.Add(task);
+            }
                 
-            return tasks
+            return allIncompleteTasks
                 .OrderByDescending(GetPriorityValue)
                 .ThenBy(t => t.DueDate) // Earlier due date first
                 .Take(count)

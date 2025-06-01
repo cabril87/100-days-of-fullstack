@@ -16,9 +16,10 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Collections.Generic;
+using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -27,7 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [Route("api/[controller]")]
-    public class InvitationController : ControllerBase
+    public class InvitationController : BaseApiController
     {
         private readonly IInvitationService _invitationService;
         private readonly ILogger<InvitationController> _logger;
@@ -41,152 +42,152 @@ namespace TaskTrackerAPI.Controllers.V1
         }
 
         [HttpGet("token/{token}")]
-        public async Task<ActionResult<InvitationResponseDTO>> GetByToken(string token)
+        public async Task<ActionResult<ApiResponse<InvitationResponseDTO>>> GetByToken(string token)
         {
             try
             {
                 InvitationResponseDTO invitation = await _invitationService.GetByTokenAsync(token);
                 if (invitation == null)
                 {
-                    return NotFound("Invitation not found or has expired");
+                    return ApiNotFound<InvitationResponseDTO>("Invitation not found or has expired");
                 }
 
-                return Ok(invitation);
+                return ApiOk(invitation);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving invitation by token");
-                return StatusCode(500, "An error occurred while retrieving the invitation.");
+                return ApiServerError<InvitationResponseDTO>("An error occurred while retrieving the invitation.");
             }
         }
 
         [HttpPost("accept")]
-        public async Task<ActionResult> AcceptInvitation([FromBody] InvitationAcceptDTO dto)
+        public async Task<ActionResult<ApiResponse<object>>> AcceptInvitation([FromBody] InvitationAcceptDTO dto)
         {
             try
             {
                 if (!User.TryGetUserIdAsInt(out int userId))
                 {
                     _logger.LogWarning("Unable to retrieve user ID from claims in AcceptInvitation");
-                    return Unauthorized("User authentication failed");
+                    return ApiUnauthorized<object>("User authentication failed");
                 }
                 
                 bool result = await _invitationService.AcceptInvitationAsync(dto.Token, userId);
                 
                 if (!result)
                 {
-                    return BadRequest("Failed to accept invitation");
+                    return ApiBadRequest<object>("Failed to accept invitation");
                 }
 
-                return Ok(new { message = "Invitation accepted successfully" });
+                return ApiOk<object>(new object(), "Invitation accepted successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error accepting invitation");
-                return StatusCode(500, "An error occurred while accepting the invitation.");
+                return ApiServerError<object>("An error occurred while accepting the invitation.");
             }
         }
 
         [HttpGet("pending")]
-        public async Task<ActionResult<IEnumerable<InvitationResponseDTO>>> GetPendingInvitations()
+        public async Task<ActionResult<ApiResponse<IEnumerable<InvitationResponseDTO>>>> GetPendingInvitations()
         {
             try
             {
                 if (!User.TryGetUserIdAsInt(out int userId))
                 {
                     _logger.LogWarning("Unable to retrieve user ID from claims in GetPendingInvitations");
-                    return Unauthorized("User authentication failed");
+                    return ApiUnauthorized<IEnumerable<InvitationResponseDTO>>("User authentication failed");
                 }
                 
-                var invitations = await _invitationService.GetPendingInvitationsForUserAsync(userId);
+                IEnumerable<InvitationResponseDTO> invitations = await _invitationService.GetPendingInvitationsForUserAsync(userId);
                 
-                return Ok(invitations);
+                return ApiOk(invitations);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving pending invitations");
-                return StatusCode(500, "An error occurred while retrieving pending invitations.");
+                return ApiServerError<IEnumerable<InvitationResponseDTO>>("An error occurred while retrieving pending invitations.");
             }
         }
 
         [HttpPost("decline")]
-        public async Task<ActionResult> DeclineInvitation([FromBody] InvitationAcceptDTO dto)
+        public async Task<ActionResult<ApiResponse<object>>> DeclineInvitation([FromBody] InvitationAcceptDTO dto)
         {
             try
             {
                 if (!User.TryGetUserIdAsInt(out int userId))
                 {
                     _logger.LogWarning("Unable to retrieve user ID from claims in DeclineInvitation");
-                    return Unauthorized("User authentication failed");
+                    return ApiUnauthorized<object>("User authentication failed");
                 }
                 
                 bool result = await _invitationService.DeclineInvitationAsync(dto.Token, userId);
                 
                 if (!result)
                 {
-                    return BadRequest("Failed to decline invitation");
+                    return ApiBadRequest<object>("Failed to decline invitation");
                 }
 
-                return Ok(new { message = "Invitation declined successfully" });
+                return ApiOk<object>(new object(), "Invitation declined successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error declining invitation");
-                return StatusCode(500, "An error occurred while declining the invitation.");
+                return ApiServerError<object>("An error occurred while declining the invitation.");
             }
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> CancelInvitation(int id)
+        public async Task<ActionResult<ApiResponse<object>>> CancelInvitation(int id)
         {
             try
             {
                 if (!User.TryGetUserIdAsInt(out int userId))
                 {
                     _logger.LogWarning("Unable to retrieve user ID from claims in CancelInvitation");
-                    return Unauthorized("User authentication failed");
+                    return ApiUnauthorized<object>("User authentication failed");
                 }
                 
                 bool result = await _invitationService.DeleteAsync(id, userId);
                 
                 if (!result)
                 {
-                    return BadRequest("Failed to cancel invitation. You may not have permission or the invitation does not exist.");
+                    return ApiBadRequest<object>("Failed to cancel invitation. You may not have permission or the invitation does not exist.");
                 }
 
-                return Ok(new { message = "Invitation canceled successfully" });
+                return ApiOk<object>(new object(), "Invitation canceled successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error canceling invitation: {Message}", ex.Message);
-                return StatusCode(500, "An error occurred while canceling the invitation.");
+                return ApiServerError<object>("An error occurred while canceling the invitation.");
             }
         }
 
         [HttpPost("{id}/resend")]
-        public async Task<ActionResult> ResendInvitation(int id)
+        public async Task<ActionResult<ApiResponse<object>>> ResendInvitation(int id)
         {
             try
             {
                 if (!User.TryGetUserIdAsInt(out int userId))
                 {
                     _logger.LogWarning("Unable to retrieve user ID from claims in ResendInvitation");
-                    return Unauthorized("User authentication failed");
+                    return ApiUnauthorized<object>("User authentication failed");
                 }
                 
                 bool result = await _invitationService.ResendInvitationAsync(id, userId);
                 
                 if (!result)
                 {
-                    return BadRequest("Failed to resend invitation. You may not have permission or the invitation does not exist.");
+                    return ApiBadRequest<object>("Failed to resend invitation. You may not have permission or the invitation does not exist.");
                 }
 
-                return Ok(new { message = "Invitation resent successfully" });
+                return ApiOk<object>(new object(), "Invitation resent successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error resending invitation: {Message}", ex.Message);
-                return StatusCode(500, "An error occurred while resending the invitation.");
+                return ApiServerError<object>("An error occurred while resending the invitation.");
             }
         }
     }

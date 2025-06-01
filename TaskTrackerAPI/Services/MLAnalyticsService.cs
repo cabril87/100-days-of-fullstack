@@ -2,11 +2,10 @@ using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Trainers;
 using Microsoft.ML.Transforms.TimeSeries;
-using Microsoft.EntityFrameworkCore;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models.ML;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Repositories.Interfaces;
 using System.Threading.Tasks;
 using System;
 using System.IO;
@@ -18,7 +17,8 @@ namespace TaskTrackerAPI.Services
 {
     public class MLAnalyticsService : IMLAnalyticsService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IMLAnalyticsRepository _mlAnalyticsRepository;
+        private readonly ITaskItemRepository _taskRepository;
         private readonly ILogger<MLAnalyticsService> _logger;
         private readonly MLContext _mlContext;
         private readonly string _modelsPath;
@@ -26,10 +26,14 @@ namespace TaskTrackerAPI.Services
         // Model storage
         private ITransformer? _focusSuccessModel;
         
-        public MLAnalyticsService(ApplicationDbContext context, ILogger<MLAnalyticsService> logger)
+        public MLAnalyticsService(
+            IMLAnalyticsRepository mlAnalyticsRepository,
+            ITaskItemRepository taskRepository,
+            ILogger<MLAnalyticsService> logger)
         {
-            _context = context;
-            _logger = logger;
+            _mlAnalyticsRepository = mlAnalyticsRepository ?? throw new ArgumentNullException(nameof(mlAnalyticsRepository));
+            _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _mlContext = new MLContext(seed: 0);
             _modelsPath = Path.Combine(Directory.GetCurrentDirectory(), "MLModels");
             Directory.CreateDirectory(_modelsPath);
@@ -39,16 +43,16 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                var trainingData = await PrepareTrainingDataAsync(userId);
+                List<FocusPredictionData> trainingData = await PrepareTrainingDataAsync(userId);
                 if (trainingData.Count < 10)
                 {
                     _logger.LogWarning("Insufficient data for training focus success model for user {UserId}", userId);
                     return false;
                 }
 
-                var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
+                IDataView dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
                 
-                var pipeline = _mlContext.Transforms.Conversion.MapValueToKey("Label", nameof(FocusPredictionData.SessionSuccess))
+                IEstimator<ITransformer> pipeline = _mlContext.Transforms.Conversion.MapValueToKey("Label", nameof(FocusPredictionData.SessionSuccess))
                     .Append(_mlContext.Transforms.Concatenate("Features", 
                         nameof(FocusPredictionData.HourOfDay),
                         nameof(FocusPredictionData.DayOfWeek),
@@ -65,7 +69,7 @@ namespace TaskTrackerAPI.Services
 
                 _focusSuccessModel = pipeline.Fit(dataView);
                 
-                var modelPath = Path.Combine(_modelsPath, $"focus_success_model_{userId}.zip");
+                string modelPath = Path.Combine(_modelsPath, $"focus_success_model_{userId}.zip");
                 _mlContext.Model.Save(_focusSuccessModel, dataView.Schema, modelPath);
                 
                 _logger.LogInformation("Focus success model trained successfully for user {UserId}", userId);
@@ -84,7 +88,7 @@ namespace TaskTrackerAPI.Services
             {
                 if (_focusSuccessModel == null)
                 {
-                    var modelPath = Path.Combine(_modelsPath, $"focus_success_model_{userId}.zip");
+                    string modelPath = Path.Combine(_modelsPath, $"focus_success_model_{userId}.zip");
                     if (File.Exists(modelPath))
                     {
                         _focusSuccessModel = _mlContext.Model.Load(modelPath, out _);
@@ -95,8 +99,8 @@ namespace TaskTrackerAPI.Services
                     }
                 }
 
-                var currentData = await PrepareCurrentUserDataAsync(userId);
-                var predictionEngine = _mlContext.Model.CreatePredictionEngine<FocusPredictionData, FocusSessionPrediction>(_focusSuccessModel!);
+                FocusPredictionData currentData = await PrepareCurrentUserDataAsync(userId);
+                PredictionEngine<FocusPredictionData, FocusSessionPrediction> predictionEngine = _mlContext.Model.CreatePredictionEngine<FocusPredictionData, FocusSessionPrediction>(_focusSuccessModel!);
                 
                 return predictionEngine.Predict(currentData);
             }
@@ -109,36 +113,33 @@ namespace TaskTrackerAPI.Services
 
         public async Task<List<FocusPredictionData>> PrepareTrainingDataAsync(int userId)
         {
-            var sessions = await _context.FocusSessions
-                .Where(s => s.UserId == userId && s.EndTime.HasValue)
-                .OrderBy(s => s.StartTime)
-                .ToListAsync();
+            IEnumerable<FocusSession> sessionsEnum = await _mlAnalyticsRepository.GetCompletedFocusSessionsAsync(userId);
+            List<FocusSession> sessions = sessionsEnum.OrderBy(s => s.StartTime).ToList();
 
-            var tasks = await _context.Tasks
-                .Where(t => t.UserId == userId)
-                .ToListAsync();
+            IEnumerable<TaskItem> tasksEnum = await _mlAnalyticsRepository.GetUserTasksForMLAsync(userId);
+            List<TaskItem> tasks = tasksEnum.ToList();
 
-            var trainingData = new List<FocusPredictionData>();
+            List<FocusPredictionData> trainingData = new List<FocusPredictionData>();
 
             for (int i = 1; i < sessions.Count; i++)
             {
-                var currentSession = sessions[i];
-                var previousSession = sessions[i - 1];
+                FocusSession currentSession = sessions[i];
+                FocusSession previousSession = sessions[i - 1];
                 
-                var sessionDate = currentSession.StartTime.Date;
-                var tasksCompletedToday = tasks.Count(t => t.CompletedAt?.Date == sessionDate);
+                DateTime sessionDate = currentSession.StartTime.Date;
+                int tasksCompletedToday = tasks.Count(t => t.CompletedAt?.Date == sessionDate);
                 
-                var weeklyMinutes = sessions
+                int weeklyMinutes = sessions
                     .Where(s => s.StartTime >= sessionDate.AddDays(-7) && s.StartTime < sessionDate)
                     .Sum(s => s.DurationMinutes);
 
-                var avgSessionLength = sessions
+                double avgSessionLength = sessions
                     .Where(s => s.StartTime < currentSession.StartTime)
                     .Average(s => s.DurationMinutes);
 
-                var consecutiveDays = CalculateConsecutiveDays(sessions, currentSession.StartTime);
+                int consecutiveDays = CalculateConsecutiveDays(sessions, currentSession.StartTime);
                 
-                var sessionSuccess = currentSession.DurationMinutes >= 15 && 
+                float sessionSuccess = currentSession.DurationMinutes >= 15 && 
                                    currentSession.Distractions.Count <= 3 ? 1f : 0f;
 
                 trainingData.Add(new FocusPredictionData
@@ -164,26 +165,21 @@ namespace TaskTrackerAPI.Services
 
         public async Task<FocusPredictionData> PrepareCurrentUserDataAsync(int userId)
         {
-            var recentSessions = await _context.FocusSessions
-                .Where(s => s.UserId == userId && s.EndTime.HasValue)
-                .OrderByDescending(s => s.StartTime)
-                .Take(10)
-                .ToListAsync();
+            IEnumerable<FocusSession> recentSessionsEnum = await _mlAnalyticsRepository.GetCompletedFocusSessionsAsync(userId);
+            List<FocusSession> recentSessions = recentSessionsEnum.OrderByDescending(s => s.StartTime).Take(10).ToList();
 
-            var today = DateTime.Today;
-            var tasksCompletedToday = await _context.Tasks
-                .Where(t => t.UserId == userId && t.CompletedAt != null && t.CompletedAt.Value.Date == today)
-                .CountAsync();
+            DateTime today = DateTime.Today;
+            int tasksCompletedToday = await _mlAnalyticsRepository.GetTasksCompletedTodayCountAsync(userId);
 
-            var weeklyMinutes = recentSessions
+            int weeklyMinutes = recentSessions
                 .Where(s => s.StartTime >= today.AddDays(-7))
                 .Sum(s => s.DurationMinutes);
 
-            var avgSessionLength = recentSessions.Any() ? 
-                recentSessions.Average(s => s.DurationMinutes) : 25f;
+            float avgSessionLength = recentSessions.Any() ? 
+                (float)recentSessions.Average(s => s.DurationMinutes) : 25f;
 
-            var lastSession = recentSessions.FirstOrDefault();
-            var consecutiveDays = recentSessions.Any() ? 
+            FocusSession? lastSession = recentSessions.FirstOrDefault();
+            int consecutiveDays = recentSessions.Any() ? 
                 CalculateConsecutiveDays(recentSessions, DateTime.Now) : 0;
 
             return new FocusPredictionData
@@ -193,7 +189,7 @@ namespace TaskTrackerAPI.Services
                 PreviousSessionLength = lastSession?.DurationMinutes ?? 25f,
                 PreviousDistractionCount = lastSession?.Distractions.Count ?? 2,
                 WeeklyFocusMinutes = weeklyMinutes,
-                AverageSessionLength = (float)avgSessionLength,
+                AverageSessionLength = avgSessionLength,
                 ConsecutiveDaysActive = consecutiveDays,
                 TasksCompletedToday = tasksCompletedToday,
                 StressLevel = 5f,
@@ -281,28 +277,46 @@ namespace TaskTrackerAPI.Services
         // Additional helper methods would continue here...
         // Due to length constraints, I'll implement the key remaining methods
 
-        private float CalculateConsecutiveDays(List<FocusSession> sessions, DateTime currentDate)
+        private int CalculateConsecutiveDays(List<FocusSession> sessions, DateTime currentDate)
         {
-            var consecutiveDays = 0f;
-            var checkDate = currentDate.Date.AddDays(-1);
-            
-            while (sessions.Any(s => s.StartTime.Date == checkDate))
+            List<DateTime> distinctDates = sessions
+                .Where(s => s.StartTime < currentDate)
+                .Select(s => s.StartTime.Date)
+                .Distinct()
+                .OrderByDescending(d => d)
+                .ToList();
+
+            int consecutiveDays = 0;
+            DateTime? expectedDate = null;
+
+            foreach (DateTime date in distinctDates)
             {
-                consecutiveDays++;
-                checkDate = checkDate.AddDays(-1);
+                if (expectedDate == null || expectedDate.Value == date)
+                {
+                    consecutiveDays++;
+                    expectedDate = date.AddDays(-1);
+                }
+                else
+                {
+                    break;
+                }
             }
-            
+
             return consecutiveDays;
         }
 
         private float CalculateOverallConfidence(MLInsightsResult result)
         {
-            var confidences = new List<float>();
+            // Simple confidence calculation based on multiple factors
+            float baseConfidence = 0.7f;
             
-            if (result.NextSessionPrediction != null)
-                confidences.Add(result.NextSessionPrediction.Probability);
+            if (result.PredictiveInsights.Any())
+                baseConfidence += 0.1f;
                 
-            return confidences.Any() ? confidences.Average() : 0.5f;
+            if (result.PersonalizedRecommendations.Any())
+                baseConfidence += 0.1f;
+                
+            return Math.Min(baseConfidence, 1.0f);
         }
 
         // Placeholder implementations for interface compliance

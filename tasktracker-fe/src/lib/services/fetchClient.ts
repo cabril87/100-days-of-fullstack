@@ -58,7 +58,7 @@ const fetchCsrfToken = async (): Promise<void> => {
 };
 
 // Process all requests in the queue with the new token
-const processQueue = (newToken: string): void => {
+const processQueue = (): void => {
   requestQueue.forEach(callback => callback());
   requestQueue.length = 0;
 };
@@ -234,7 +234,7 @@ class FetchClient {
         }
         
         // Process any queued requests with new token
-        processQueue(data.accessToken);
+        processQueue();
         return true;
       }
     }
@@ -337,7 +337,7 @@ class FetchClient {
     });
   }
   
-  async patch<T>(url: string, data?: any, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
+  async patch<T>(url: string, data?: unknown, options: Partial<FetchOptions> = {}): Promise<ApiResponse<T>> {
     return this.fetch<T>(url, {
       method: 'PATCH',
       data,

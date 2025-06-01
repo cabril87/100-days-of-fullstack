@@ -17,7 +17,24 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 class FocusService {
   async getCurrentFocusSession(): Promise<ApiResponse<FocusSession>> {
-    return apiClient.get<FocusSession>('/v1/focus/current');
+    try {
+      const response = await apiClient.get<FocusSession>('/v1/focus/current');
+      
+      // Handle 404 gracefully - no current session is normal
+      if (response.status === 404) {
+        return { data: undefined, status: 404 };
+      }
+      
+      return response;
+    } catch (error: any) {
+      // Handle 404 errors gracefully - no current session is normal
+      if (error?.status === 404 || error?.response?.status === 404) {
+        return { data: undefined, status: 404 };
+      }
+      
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async startFocusSession(request: FocusRequest): Promise<ApiResponse<FocusSession>> {
