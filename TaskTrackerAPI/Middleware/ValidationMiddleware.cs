@@ -58,7 +58,10 @@ namespace TaskTrackerAPI.Middleware
                 "/api/v1/categories",
                 "/api/v1/lists",
                 "/api/v1/quicktasks",
-                "/api/v1/family"
+                "/api/v1/family",
+                "/api/v1/boards",
+                "/api/v1/board-templates",
+                "/api/v1/board-settings"
             };
         }
 
@@ -151,7 +154,10 @@ namespace TaskTrackerAPI.Middleware
                     controllerName.Contains("category", StringComparison.OrdinalIgnoreCase) ||
                     controllerName.Contains("list", StringComparison.OrdinalIgnoreCase) ||
                     controllerName.Contains("reminder", StringComparison.OrdinalIgnoreCase) ||
-                    controllerName.Contains("family", StringComparison.OrdinalIgnoreCase))
+                    controllerName.Contains("family", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("board", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("column", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Contains("template", StringComparison.OrdinalIgnoreCase))
                 {
                     _logger.LogInformation("Using reduced validation for controller: {Controller}", controllerName);
                     return true;
@@ -172,6 +178,22 @@ namespace TaskTrackerAPI.Middleware
                     
                     if (!string.IsNullOrEmpty(valueStr))
                     {
+                        // Skip validation for controller action method names
+                        if (context.Request.RouteValues.TryGetValue("action", out object? actionObj) && 
+                            actionObj?.ToString() == valueStr)
+                        {
+                            _logger.LogDebug("Skipping validation for action method name: {Action}", valueStr);
+                            continue;
+                        }
+                        
+                        // Skip validation for controller names
+                        if (context.Request.RouteValues.TryGetValue("controller", out object? controllerObj) && 
+                            controllerObj?.ToString() == valueStr)
+                        {
+                            _logger.LogDebug("Skipping validation for controller name: {Controller}", valueStr);
+                            continue;
+                        }
+                        
                         if (CheckIfPotentiallyMalicious(valueStr, useReducedValidation))
                         {
                             _logger.LogWarning("Potentially malicious route parameter detected: {Value}", routeValue);

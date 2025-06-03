@@ -8,7 +8,7 @@ import { Users, PlusCircle, LogIn, CheckCircle, Clock, FileText, Settings, Alert
 import Link from 'next/link';
 import { familyService } from '@/lib/services/familyService';
 import { Family } from '@/lib/types/family';
-import { useToast } from '@/lib/hooks/useToast';
+import { useSafeToast } from '@/lib/hooks/useSafeToast';
 import FamilyCard from '@/components/family/FamilyCard';
 import { useRouter, usePathname } from 'next/navigation';
 import { taskService } from '@/lib/services/taskService';
@@ -62,7 +62,8 @@ export default function FamilyDashboard() {
     userPendingTasks: 0,
     activeFamilies: 0
   });
-  const { showToast } = useToast();
+  
+  const { showToast } = useSafeToast();
   // const router = useRouter();
   const pathname = usePathname();
   

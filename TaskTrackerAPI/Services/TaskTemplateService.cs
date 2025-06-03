@@ -386,32 +386,167 @@ public class TaskTemplateService : ITaskTemplateService
         }
     }
 
-    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetAllTaskTemplatesAsync()
+    public async Task<WorkflowExecutionResultDTO> ExecuteWorkflowAsync(int templateId, int userId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            // Verify template accessibility
+            bool isAccessible = await _taskTemplateRepository.IsTaskTemplateOwnedByUserAsync(templateId, userId);
+            if (!isAccessible)
+            {
+                throw new UnauthorizedAccessException($"Template with ID {templateId} not accessible to user");
+            }
+
+            TaskTemplate? template = await _taskTemplateRepository.GetTaskTemplateByIdAsync(templateId);
+            if (template == null)
+            {
+                throw new ArgumentException($"Template with ID {templateId} not found");
+            }
+
+            DateTime startTime = DateTime.UtcNow;
+            WorkflowExecutionResultDTO result = new WorkflowExecutionResultDTO
+            {
+                Success = true,
+                Message = $"Workflow executed successfully for template: {template.Name}",
+                ExecutedAt = startTime,
+                StepsCompleted = 0,
+                TotalSteps = 0
+            };
+
+            // Parse workflow steps from template data
+            if (!string.IsNullOrEmpty(template.TemplateData))
+            {
+                try
+                {
+                    Dictionary<string, object>? workflowData = JsonSerializer.Deserialize<Dictionary<string, object>>(template.TemplateData);
+                    if (workflowData?.ContainsKey("steps") == true)
+                    {
+                        string stepsJson = workflowData["steps"].ToString() ?? string.Empty;
+                        if (!string.IsNullOrEmpty(stepsJson))
+                        {
+                            List<Dictionary<string, object>>? workflowSteps = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(stepsJson);
+                            if (workflowSteps != null)
+                            {
+                                result.TotalSteps = workflowSteps.Count;
+
+                                // Execute each step
+                                foreach (Dictionary<string, object> step in workflowSteps)
+                                {
+                                    DateTime stepStartTime = DateTime.UtcNow;
+                                    string stepName = step.GetValueOrDefault("name", $"Step {result.StepsCompleted + 1}").ToString() ?? "Unnamed Step";
+
+                                    try
+                                    {
+                                        // Execute step logic based on step type
+                                        string stepType = step.GetValueOrDefault("type", "generic").ToString() ?? "generic";
+                                        await ExecuteWorkflowStepAsync(stepType, step, userId);
+
+                                        result.StepsCompleted++;
+
+                                        result.StepsExecuted.Add(new WorkflowStepExecutionDTO
+                                        {
+                                            StepId = result.StepsCompleted,
+                                            StepName = stepName,
+                                            Success = true,
+                                            ExecutedAt = stepStartTime,
+                                            ExecutionTimeMs = (int)(DateTime.UtcNow - stepStartTime).TotalMilliseconds
+                                        });
+                                    }
+                                    catch (Exception stepEx)
+                                    {
+                                        result.StepsExecuted.Add(new WorkflowStepExecutionDTO
+                                        {
+                                            StepId = result.StepsCompleted + 1,
+                                            StepName = stepName,
+                                            Success = false,
+                                            ErrorMessage = stepEx.Message,
+                                            ExecutedAt = stepStartTime,
+                                            ExecutionTimeMs = (int)(DateTime.UtcNow - stepStartTime).TotalMilliseconds
+                                        });
+
+                                        result.Errors.Add($"Step '{stepName}' failed: {stepEx.Message}");
+                                        _logger.LogWarning(stepEx, "Workflow step {StepName} failed for template {TemplateId}", stepName, templateId);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    result.Success = false;
+                    result.Message = $"Failed to parse workflow data: {ex.Message}";
+                    result.Errors.Add($"JSON parsing error: {ex.Message}");
+                }
+            }
+
+            result.TotalExecutionTimeMs = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
+
+            // Record template usage
+            await _taskTemplateRepository.RecordTemplateUsageAsync(templateId, userId, result.Success, result.TotalExecutionTimeMs / 60000); // Convert to minutes
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing workflow for template {TemplateId} and user {UserId}", templateId, userId);
+            throw;
+        }
     }
 
-    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetUserTaskTemplatesAsync(int userId)
+    private async Task ExecuteWorkflowStepAsync(string stepType, Dictionary<string, object> stepConfig, int userId)
     {
-        throw new NotImplementedException();
+        switch (stepType?.ToLower())
+        {
+            case "createtask":
+                await ExecuteCreateTaskStepAsync(stepConfig, userId);
+                break;
+            case "sendnotification":
+                await ExecuteSendNotificationStepAsync(stepConfig, userId);
+                break;
+            case "delay":
+                await ExecuteDelayStepAsync(stepConfig);
+                break;
+            default:
+                // Generic step execution
+                await Task.Delay(100); // Simulate step execution
+                break;
+        }
     }
 
-    Task<IEnumerable<DTOs.Tasks.TaskTemplateDTO>> ITaskTemplateService.GetSystemTaskTemplatesAsync()
+    private async Task ExecuteCreateTaskStepAsync(Dictionary<string, object> stepConfig, int userId)
     {
-        throw new NotImplementedException();
+        var taskItem = new TaskItem
+        {
+            UserId = userId,
+            Title = stepConfig.GetValueOrDefault("title", "Workflow Task").ToString() ?? "Workflow Task",
+            Description = stepConfig.GetValueOrDefault("description", "")?.ToString() ?? "",
+            Priority = stepConfig.GetValueOrDefault("priority", "Medium").ToString() ?? "Medium",
+            Status = TaskItemStatus.NotStarted,
+            CreatedAt = DateTime.UtcNow,
+            DueDate = DateTime.UtcNow.AddDays(1)
+        };
+
+        await _taskItemRepository.CreateTaskAsync(taskItem);
     }
 
-
-    Task<DTOs.Tasks.TaskTemplateDTO?> ITaskTemplateService.GetTaskTemplateByIdAsync(int templateId)
+    private async Task ExecuteSendNotificationStepAsync(Dictionary<string, object> stepConfig, int userId)
     {
-        throw new NotImplementedException();
+        // Simulate sending notification
+        var message = stepConfig.GetValueOrDefault("message", "Workflow notification").ToString();
+        _logger.LogInformation("Sending notification to user {UserId}: {Message}", userId, message);
+        await Task.Delay(50); // Simulate async notification sending
     }
 
-
-
-    Task<DTOs.Tasks.TaskTemplateDTO?> ITaskTemplateService.UpdateTaskTemplateAsync(int userId, int templateId, UpdateTaskTemplateDTO templateDto)
+    private async Task ExecuteDelayStepAsync(Dictionary<string, object> stepConfig)
     {
-        throw new NotImplementedException();
+        var delayMs = 100; // Default delay
+        if (stepConfig.ContainsKey("delayMs") && int.TryParse(stepConfig["delayMs"].ToString(), out int configDelay))
+        {
+            delayMs = Math.Min(configDelay, 5000); // Cap at 5 seconds for safety
+        }
+
+        await Task.Delay(delayMs);
     }
 
     // Day 60 Enhancement Methods Implementation
@@ -612,171 +747,8 @@ public class TaskTemplateService : ITaskTemplateService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating automated tasks for template {TemplateId} and user {UserId}", templateId, userId);
+            _logger.LogError(ex, "Error generating automated tasks from template {TemplateId}", templateId);
             throw;
         }
-    }
-
-    public async Task<WorkflowExecutionResultDTO> ExecuteWorkflowAsync(int templateId, int userId)
-    {
-        try
-        {
-            // Verify template accessibility
-            bool isAccessible = await _taskTemplateRepository.IsTaskTemplateOwnedByUserAsync(templateId, userId);
-            if (!isAccessible)
-            {
-                throw new UnauthorizedAccessException($"Template with ID {templateId} not accessible to user");
-            }
-
-            TaskTemplate? template = await _taskTemplateRepository.GetTaskTemplateByIdAsync(templateId);
-            if (template == null)
-            {
-                throw new ArgumentException($"Template with ID {templateId} not found");
-            }
-
-            DateTime startTime = DateTime.UtcNow;
-            WorkflowExecutionResultDTO result = new WorkflowExecutionResultDTO
-            {
-                Success = true,
-                Message = $"Workflow executed successfully for template: {template.Name}",
-                ExecutedAt = startTime,
-                StepsCompleted = 0,
-                TotalSteps = 0
-            };
-
-            // Parse workflow steps from template data
-            if (!string.IsNullOrEmpty(template.TemplateData))
-            {
-                try
-                {
-                    Dictionary<string, object>? workflowData = JsonSerializer.Deserialize<Dictionary<string, object>>(template.TemplateData);
-                    if (workflowData?.ContainsKey("steps") == true)
-                    {
-                        string stepsJson = workflowData["steps"].ToString() ?? string.Empty;
-                        if (!string.IsNullOrEmpty(stepsJson))
-                        {
-                            List<Dictionary<string, object>>? workflowSteps = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(stepsJson);
-                            if (workflowSteps != null)
-                            {
-                                result.TotalSteps = workflowSteps.Count;
-
-                                // Execute each step
-                                foreach (Dictionary<string, object> step in workflowSteps)
-                                {
-                                    DateTime stepStartTime = DateTime.UtcNow;
-                                    string stepName = step.GetValueOrDefault("name", $"Step {result.StepsCompleted + 1}").ToString() ?? "Unnamed Step";
-
-                                    try
-                                    {
-                                        // Execute step logic based on step type
-                                        string stepType = step.GetValueOrDefault("type", "generic").ToString() ?? "generic";
-                                        await ExecuteWorkflowStepAsync(stepType, step, userId);
-
-                                        result.StepsCompleted++;
-
-                                        result.StepsExecuted.Add(new WorkflowStepExecutionDTO
-                                        {
-                                            StepId = result.StepsCompleted,
-                                            StepName = stepName,
-                                            Success = true,
-                                            ExecutedAt = stepStartTime,
-                                            ExecutionTimeMs = (int)(DateTime.UtcNow - stepStartTime).TotalMilliseconds
-                                        });
-                                    }
-                                    catch (Exception stepEx)
-                                    {
-                                        result.StepsExecuted.Add(new WorkflowStepExecutionDTO
-                                        {
-                                            StepId = result.StepsCompleted + 1,
-                                            StepName = stepName,
-                                            Success = false,
-                                            ErrorMessage = stepEx.Message,
-                                            ExecutedAt = stepStartTime,
-                                            ExecutionTimeMs = (int)(DateTime.UtcNow - stepStartTime).TotalMilliseconds
-                                        });
-
-                                        result.Errors.Add($"Step '{stepName}' failed: {stepEx.Message}");
-                                        _logger.LogWarning(stepEx, "Workflow step {StepName} failed for template {TemplateId}", stepName, templateId);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    result.Success = false;
-                    result.Message = $"Failed to parse workflow data: {ex.Message}";
-                    result.Errors.Add($"JSON parsing error: {ex.Message}");
-                }
-            }
-
-            result.TotalExecutionTimeMs = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
-
-            // Record template usage
-            await _taskTemplateRepository.RecordTemplateUsageAsync(templateId, userId, result.Success, result.TotalExecutionTimeMs / 60000); // Convert to minutes
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing workflow for template {TemplateId} and user {UserId}", templateId, userId);
-            throw;
-        }
-    }
-
-    private async Task ExecuteWorkflowStepAsync(string stepType, Dictionary<string, object> stepConfig, int userId)
-    {
-        switch (stepType?.ToLower())
-        {
-            case "createtask":
-                await ExecuteCreateTaskStepAsync(stepConfig, userId);
-                break;
-            case "sendnotification":
-                await ExecuteSendNotificationStepAsync(stepConfig, userId);
-                break;
-            case "delay":
-                await ExecuteDelayStepAsync(stepConfig);
-                break;
-            default:
-                // Generic step execution
-                await Task.Delay(100); // Simulate step execution
-                break;
-        }
-    }
-
-    private async Task ExecuteCreateTaskStepAsync(Dictionary<string, object> stepConfig, int userId)
-    {
-        var taskItem = new TaskItem
-        {
-            UserId = userId,
-            Title = stepConfig.GetValueOrDefault("title", "Workflow Task").ToString() ?? "Workflow Task",
-            Description = stepConfig.GetValueOrDefault("description", "")?.ToString() ?? "",
-            Priority = stepConfig.GetValueOrDefault("priority", "Medium").ToString() ?? "Medium",
-            Status = TaskItemStatus.NotStarted,
-            CreatedAt = DateTime.UtcNow,
-            DueDate = DateTime.UtcNow.AddDays(1)
-        };
-
-        await _taskItemRepository.CreateTaskAsync(taskItem);
-    }
-
-    private async Task ExecuteSendNotificationStepAsync(Dictionary<string, object> stepConfig, int userId)
-    {
-        // Simulate sending notification
-        var message = stepConfig.GetValueOrDefault("message", "Workflow notification").ToString();
-        _logger.LogInformation("Sending notification to user {UserId}: {Message}", userId, message);
-        await Task.Delay(50); // Simulate async notification sending
-    }
-
-    private async Task ExecuteDelayStepAsync(Dictionary<string, object> stepConfig)
-    {
-        var delayMs = 100; // Default delay
-        if (stepConfig.ContainsKey("delayMs") && int.TryParse(stepConfig["delayMs"].ToString(), out int configDelay))
-        {
-            delayMs = Math.Min(configDelay, 5000); // Cap at 5 seconds for safety
-        }
-
-        await Task.Delay(delayMs);
     }
 }

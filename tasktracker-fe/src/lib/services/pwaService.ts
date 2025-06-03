@@ -29,7 +29,7 @@ class PWAService {
       this.deferredPrompt = null;
     });
 
-    // Register service worker
+    // Register service worker (now handled by next-pwa)
     await this.registerServiceWorker();
   }
 
@@ -310,6 +310,34 @@ class PWAService {
     } catch (error) {
       console.error('PWA: Failed to get cache size', error);
       return 0;
+    }
+  }
+
+  async unregisterServiceWorker(): Promise<boolean> {
+    if (!('serviceWorker' in navigator)) {
+      console.log('PWA: Service workers not supported');
+      return false;
+    }
+
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      let unregistered = false;
+
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log('PWA: Service worker unregistered', registration);
+        unregistered = true;
+      }
+
+      // Clear all caches
+      await this.clearCache();
+      
+      this.registration = null;
+      console.log('PWA: All service workers unregistered and cache cleared');
+      return unregistered;
+    } catch (error) {
+      console.error('PWA: Service worker unregistration failed', error);
+      return false;
     }
   }
 }

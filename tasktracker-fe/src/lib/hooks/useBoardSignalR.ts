@@ -4,7 +4,7 @@
  * Provides real-time board updates, analytics, and template marketplace features
  */
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import { boardSignalRService } from '@/lib/services/boardSignalRService';
 import { BoardEvent, TemplateMarketplaceEvent, SettingsSyncEvent } from '@/lib/types/signalr';
 
@@ -43,15 +43,17 @@ export function useBoardSignalR(
     autoConnect = true
   } = options;
 
-  const isConnectedRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
   const callbacksRef = useRef(callbacks);
+  const currentBoardIdRef = useRef<number | undefined>(undefined);
+  const isInitializedRef = useRef(false);
 
   // Update callbacks ref when callbacks change
   useEffect(() => {
     callbacksRef.current = callbacks;
   }, [callbacks]);
 
-  // Set up event handlers
+  // Set up event handlers - only once
   useEffect(() => {
     const handleBoardUpdate = (update: BoardEvent) => {
       callbacksRef.current?.onBoardUpdate?.(update);
@@ -66,12 +68,12 @@ export function useBoardSignalR(
     };
 
     const handleConnected = () => {
-      isConnectedRef.current = true;
+      setIsConnected(true);
       callbacksRef.current?.onConnected?.();
     };
 
     const handleDisconnected = () => {
-      isConnectedRef.current = false;
+      setIsConnected(false);
       callbacksRef.current?.onDisconnected?.();
     };
 
@@ -87,6 +89,9 @@ export function useBoardSignalR(
     boardSignalRService.on('onDisconnected', handleDisconnected);
     boardSignalRService.on('onError', handleError);
 
+    // Initial connection status
+    setIsConnected(boardSignalRService.isConnected());
+
     return () => {
       // Clean up event handlers
       boardSignalRService.off('onBoardUpdate');
@@ -96,86 +101,107 @@ export function useBoardSignalR(
       boardSignalRService.off('onDisconnected');
       boardSignalRService.off('onError');
     };
-  }, []);
+  }, []); // Empty dependency array - only run once
 
-  // Auto-connect on mount if enabled
+  // SINGLE effect for connection and board management
   useEffect(() => {
-    if (autoConnect) {
-      boardSignalRService.startConnections().then((success) => {
-        if (success) {
-          isConnectedRef.current = true;
-          
-          // Auto-join board group if boardId provided
-          if (boardId) {
-            boardSignalRService.joinBoardGroup(boardId);
-          }
-          
-          // Auto-join template marketplace if enabled
-          if (enableTemplateMarketplace) {
-            boardSignalRService.joinTemplateMarketplace();
-          }
-        }
-      });
-    }
+    if (!autoConnect) return;
 
-    return () => {
-      if (autoConnect) {
-        // Leave board group on unmount
-        if (boardId) {
-          boardSignalRService.leaveBoardGroup(boardId);
+    const initializeConnection = async () => {
+      if (!isInitializedRef.current) {
+        // Start connection if not already connected
+        if (!boardSignalRService.isConnected()) {
+          const success = await boardSignalRService.startConnections();
+          setIsConnected(success);
+        } else {
+          setIsConnected(true);
+        }
+        isInitializedRef.current = true;
+      }
+
+      // Handle board ID changes
+      if (boardId && boardId !== currentBoardIdRef.current) {
+        // Leave previous board if any
+        if (currentBoardIdRef.current) {
+          await boardSignalRService.leaveBoardGroup(currentBoardIdRef.current);
         }
         
-        // Leave template marketplace on unmount
-        if (enableTemplateMarketplace) {
-          boardSignalRService.leaveTemplateMarketplace();
+        // Join new board
+        if (boardSignalRService.isConnected()) {
+          await boardSignalRService.joinBoardGroup(boardId);
+          currentBoardIdRef.current = boardId;
         }
+      } else if (!boardId && currentBoardIdRef.current) {
+        // Leave board if boardId becomes undefined
+        await boardSignalRService.leaveBoardGroup(currentBoardIdRef.current);
+        currentBoardIdRef.current = undefined;
+      }
+
+      // Handle template marketplace
+      if (enableTemplateMarketplace && boardSignalRService.isConnected()) {
+        await boardSignalRService.joinTemplateMarketplace();
       }
     };
-  }, [autoConnect, boardId, enableTemplateMarketplace]);
 
-  // Handle board ID changes
-  useEffect(() => {
-    if (isConnectedRef.current && boardId) {
-      boardSignalRService.joinBoardGroup(boardId);
+    initializeConnection();
+
+    return () => {
+      // Cleanup on unmount or dependencies change
+      if (currentBoardIdRef.current) {
+        boardSignalRService.leaveBoardGroup(currentBoardIdRef.current);
+        currentBoardIdRef.current = undefined;
+      }
       
-      return () => {
-        boardSignalRService.leaveBoardGroup(boardId);
-      };
-    }
-  }, [boardId]);
+      if (enableTemplateMarketplace) {
+        boardSignalRService.leaveTemplateMarketplace();
+      }
+    };
+  }, [autoConnect, boardId, enableTemplateMarketplace]); // Controlled dependencies
 
   // Memoized functions
   const joinBoard = useCallback(async (boardId: number) => {
-    await boardSignalRService.joinBoardGroup(boardId);
+    if (boardSignalRService.isConnected()) {
+      await boardSignalRService.joinBoardGroup(boardId);
+      currentBoardIdRef.current = boardId;
+    }
   }, []);
 
   const leaveBoard = useCallback(async (boardId: number) => {
-    await boardSignalRService.leaveBoardGroup(boardId);
+    if (boardSignalRService.isConnected()) {
+      await boardSignalRService.leaveBoardGroup(boardId);
+      if (currentBoardIdRef.current === boardId) {
+        currentBoardIdRef.current = undefined;
+      }
+    }
   }, []);
 
   const joinTemplateMarketplace = useCallback(async () => {
-    await boardSignalRService.joinTemplateMarketplace();
+    if (boardSignalRService.isConnected()) {
+      await boardSignalRService.joinTemplateMarketplace();
+    }
   }, []);
 
   const leaveTemplateMarketplace = useCallback(async () => {
-    await boardSignalRService.leaveTemplateMarketplace();
+    if (boardSignalRService.isConnected()) {
+      await boardSignalRService.leaveTemplateMarketplace();
+    }
   }, []);
 
   const startConnections = useCallback(async () => {
     const success = await boardSignalRService.startConnections();
-    if (success) {
-      isConnectedRef.current = true;
-    }
+    setIsConnected(success);
     return success;
   }, []);
 
   const disconnect = useCallback(async () => {
     await boardSignalRService.disconnect();
-    isConnectedRef.current = false;
+    setIsConnected(false);
+    currentBoardIdRef.current = undefined;
+    isInitializedRef.current = false;
   }, []);
 
   return {
-    isConnected: boardSignalRService.isConnected(),
+    isConnected,
     joinBoard,
     leaveBoard,
     joinTemplateMarketplace,

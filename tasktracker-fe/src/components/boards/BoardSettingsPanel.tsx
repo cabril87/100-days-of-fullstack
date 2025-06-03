@@ -2,549 +2,806 @@
 
 /**
  * Board Settings Panel Component
- * Comprehensive settings UI with all configuration options
+ * Comprehensive settings management for Kanban boards
  */
 
-import React, { useState, useEffect } from 'react';
-import { Board, BoardSettings, UpdateBoardSettingsDTO } from '@/lib/types/board';
-import { useBoard } from '@/lib/providers/BoardProvider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useCallback } from 'react';
+
+// Types
+import { Board, BoardSettings, UpdateBoardSettings } from '@/lib/types/board';
+import { CustomTaskStatus } from '@/lib/types/task';
+
+// Components
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { 
-  X, 
-  Save, 
-  RotateCcw, 
-  Download, 
-  Upload, 
-  Palette, 
-  Settings2,
+import { Slider } from '@/components/ui/slider';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+// Icons
+import {
+  Settings,
+  Palette,
+  Zap,
   Bell,
-  Eye,
-  Columns,
-  Timer,
-  Shield,
-  Zap
+  Layout,
+  Target,
+  Save,
+  RotateCcw,
+  AlertCircle,
+  Workflow
 } from 'lucide-react';
-import { useToast } from '@/lib/hooks/useToast';
+
+// Utils
+import { cn } from '@/lib/utils';
 
 interface BoardSettingsPanelProps {
   board: Board;
+  settings: BoardSettings | null;
+  onUpdateSettings: (settings: UpdateBoardSettings) => Promise<void>;
+  onUpdateBoard: (boardId: number, data: Partial<Board>) => Promise<void>;
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export function BoardSettingsPanel({ board, onClose }: BoardSettingsPanelProps) {
-  const { 
-    state: { boardSettings, isLoadingSettings },
-    updateBoardSettings,
-    resetBoardSettings,
-    exportBoardSettings,
-    importBoardSettings
-  } = useBoard();
-  
-  const { showToast } = useToast();
-  const [localSettings, setLocalSettings] = useState<Partial<UpdateBoardSettingsDTO>>({});
+export function BoardSettingsPanel({
+  board,
+  settings,
+  onUpdateSettings,
+  onUpdateBoard,
+  isOpen,
+  onClose
+}: BoardSettingsPanelProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+  
+  // Mock custom statuses for now (replace with real data)
+  const [customStatuses] = useState<CustomTaskStatus[]>([]);
 
-  // Initialize local settings when board settings are loaded
-  useEffect(() => {
-    if (boardSettings) {
-      setLocalSettings({
-        theme: boardSettings.theme,
-        backgroundColor: boardSettings.backgroundColor,
-        headerColor: boardSettings.headerColor,
-        enableWipLimits: boardSettings.enableWipLimits,
-        enableColumnCollapse: boardSettings.enableColumnCollapse,
-        enableTaskCounting: boardSettings.enableTaskCounting,
-        enableDueDateWarnings: boardSettings.enableDueDateWarnings,
-        enablePriorityColors: boardSettings.enablePriorityColors,
-        autoMoveCompletedTasks: boardSettings.autoMoveCompletedTasks,
-        showColumnIcons: boardSettings.showColumnIcons,
-        showTaskLabels: boardSettings.showTaskLabels,
-        showTaskAssignees: boardSettings.showTaskAssignees,
-        showTaskDueDates: boardSettings.showTaskDueDates,
-        showTaskPriorities: boardSettings.showTaskPriorities,
-        defaultTaskPriority: boardSettings.defaultTaskPriority,
-        defaultColumnColor: boardSettings.defaultColumnColor,
-        maxTasksPerColumn: boardSettings.maxTasksPerColumn,
-        enableRealTimeUpdates: boardSettings.enableRealTimeUpdates,
-        enableNotifications: boardSettings.enableNotifications,
-        enableKeyboardShortcuts: boardSettings.enableKeyboardShortcuts,
-        enableDragAndDrop: boardSettings.enableDragAndDrop,
-        enableColumnReordering: boardSettings.enableColumnReordering,
-        enableTaskFiltering: boardSettings.enableTaskFiltering,
-        enableSearchFunction: boardSettings.enableSearchFunction,
-        enableBulkOperations: boardSettings.enableBulkOperations,
-        enableTimeTracking: boardSettings.enableTimeTracking,
-        enableProgressTracking: boardSettings.enableProgressTracking
-      });
-    }
-  }, [boardSettings]);
+  // Local state for settings
+  const [localSettings, setLocalSettings] = useState<Partial<UpdateBoardSettings>>(
+    settings ? {
+      theme: settings.theme,
+      backgroundColor: settings.backgroundColor,
+      headerColor: settings.headerColor,
+      enableWipLimits: settings.enableWipLimits,
+      enableColumnCollapse: settings.enableColumnCollapse,
+      enableTaskCounting: settings.enableTaskCounting,
+      enableDueDateWarnings: settings.enableDueDateWarnings,
+      enablePriorityColors: settings.enablePriorityColors,
+      autoMoveCompletedTasks: settings.autoMoveCompletedTasks,
+      showColumnIcons: settings.showColumnIcons,
+      showTaskLabels: settings.showTaskLabels,
+      showTaskAssignees: settings.showTaskAssignees,
+      showTaskDueDates: settings.showTaskDueDates,
+      showTaskPriorities: settings.showTaskPriorities,
+      defaultTaskPriority: settings.defaultTaskPriority,
+      defaultColumnColor: settings.defaultColumnColor,
+      maxTasksPerColumn: settings.maxTasksPerColumn,
+      enableRealTimeUpdates: settings.enableRealTimeUpdates,
+      enableNotifications: settings.enableNotifications,
+      enableKeyboardShortcuts: settings.enableKeyboardShortcuts,
+      enableDragAndDrop: settings.enableDragAndDrop,
+      enableColumnReordering: settings.enableColumnReordering,
+      enableTaskFiltering: settings.enableTaskFiltering,
+      enableSearchFunction: settings.enableSearchFunction,
+      enableBulkOperations: settings.enableBulkOperations,
+      enableTimeTracking: settings.enableTimeTracking,
+      enableProgressTracking: settings.enableProgressTracking,
+    } : {}
+  );
 
-  // Update setting value and mark as changed
-  const updateSetting = (key: keyof UpdateBoardSettingsDTO, value: any) => {
+  const [localBoard, setLocalBoard] = useState({
+    name: board.name,
+    description: board.description || ''
+  });
+
+  // Handle setting updates
+  const updateSetting = useCallback((key: keyof UpdateBoardSettings, value: string | number | boolean) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
-  };
+  }, []);
 
-  // Save settings
-  const handleSave = async () => {
+  // Handle board info updates
+  const updateBoard = useCallback((key: 'name' | 'description', value: string) => {
+    setLocalBoard(prev => ({ ...prev, [key]: value }));
+    setHasChanges(true);
+  }, []);
+
+  // Save changes
+  const handleSave = useCallback(async () => {
+    setIsLoading(true);
     try {
-      await updateBoardSettings(board.id, localSettings);
-      setHasChanges(false);
-      showToast('Settings saved successfully', 'success');
-    } catch (error) {
-      showToast('Failed to save settings', 'error');
-    }
-  };
-
-  // Reset to defaults
-  const handleReset = async () => {
-    try {
-      await resetBoardSettings(board.id);
-      setHasChanges(false);
-      showToast('Settings reset to defaults', 'success');
-    } catch (error) {
-      showToast('Failed to reset settings', 'error');
-    }
-  };
-
-  // Export settings
-  const handleExport = async () => {
-    try {
-      await exportBoardSettings(board.id);
-    } catch (error) {
-      showToast('Failed to export settings', 'error');
-    }
-  };
-
-  // Import settings
-  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      try {
-        await importBoardSettings(board.id, file);
-        setHasChanges(false);
-        showToast('Settings imported successfully', 'success');
-      } catch (error) {
-        showToast('Failed to import settings', 'error');
+      // Save board info changes
+      if (localBoard.name !== board.name || localBoard.description !== board.description) {
+        await onUpdateBoard(board.id, localBoard);
       }
-    }
-  };
 
-  if (isLoadingSettings) {
-    return (
-      <Card className="w-96 h-fit">
-        <CardContent className="pt-6 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading settings...</p>
-        </CardContent>
-      </Card>
-    );
-  }
+      // Save settings changes
+      if (Object.keys(localSettings).length > 0) {
+        await onUpdateSettings(localSettings);
+      }
+
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [localBoard, board, localSettings, onUpdateBoard, onUpdateSettings]);
+
+  // Reset changes
+  const handleReset = useCallback(() => {
+    setLocalBoard({
+      name: board.name,
+      description: board.description || ''
+    });
+    setLocalSettings(settings ? {
+      theme: settings.theme,
+      backgroundColor: settings.backgroundColor,
+      headerColor: settings.headerColor,
+      enableWipLimits: settings.enableWipLimits,
+      enableColumnCollapse: settings.enableColumnCollapse,
+      enableTaskCounting: settings.enableTaskCounting,
+      enableDueDateWarnings: settings.enableDueDateWarnings,
+      enablePriorityColors: settings.enablePriorityColors,
+      autoMoveCompletedTasks: settings.autoMoveCompletedTasks,
+      showColumnIcons: settings.showColumnIcons,
+      showTaskLabels: settings.showTaskLabels,
+      showTaskAssignees: settings.showTaskAssignees,
+      showTaskDueDates: settings.showTaskDueDates,
+      showTaskPriorities: settings.showTaskPriorities,
+      defaultTaskPriority: settings.defaultTaskPriority,
+      defaultColumnColor: settings.defaultColumnColor,
+      maxTasksPerColumn: settings.maxTasksPerColumn,
+      enableRealTimeUpdates: settings.enableRealTimeUpdates,
+      enableNotifications: settings.enableNotifications,
+      enableKeyboardShortcuts: settings.enableKeyboardShortcuts,
+      enableDragAndDrop: settings.enableDragAndDrop,
+      enableColumnReordering: settings.enableColumnReordering,
+      enableTaskFiltering: settings.enableTaskFiltering,
+      enableSearchFunction: settings.enableSearchFunction,
+      enableBulkOperations: settings.enableBulkOperations,
+      enableTimeTracking: settings.enableTimeTracking,
+      enableProgressTracking: settings.enableProgressTracking,
+    } : {});
+    setHasChanges(false);
+  }, [board, settings]);
+
+  // Predefined themes
+  const themes = [
+    { value: 'default', label: 'Default', description: 'Clean and modern' },
+    { value: 'dark', label: 'Dark Mode', description: 'Easy on the eyes' },
+    { value: 'light', label: 'Light Mode', description: 'Bright and airy' },
+    { value: 'minimal', label: 'Minimal', description: 'Clean and simple' },
+    { value: 'professional', label: 'Professional', description: 'Business focused' },
+    { value: 'creative', label: 'Creative', description: 'Colorful and inspiring' },
+  ];
+
+  // Priority options
+  const priorityOptions = [
+    { value: 1, label: 'Low', color: 'bg-blue-100 text-blue-800' },
+    { value: 2, label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 3, label: 'High', color: 'bg-orange-100 text-orange-800' },
+    { value: 4, label: 'Critical', color: 'bg-red-100 text-red-800' },
+  ];
 
   return (
-    <Card className="w-96 max-h-[90vh] overflow-hidden flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Settings2 className="h-5 w-5" />
-          Board Settings
-        </CardTitle>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </CardHeader>
-      
-      <CardContent className="flex-1 overflow-y-auto">
-        <Tabs defaultValue="appearance" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="appearance">
-              <Palette className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Style</span>
-            </TabsTrigger>
-            <TabsTrigger value="features">
-              <Zap className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Features</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Notify</span>
-            </TabsTrigger>
-            <TabsTrigger value="advanced">
-              <Shield className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Advanced</span>
-            </TabsTrigger>
-          </TabsList>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Board Settings
+          </DialogTitle>
+          <DialogDescription>
+            Customize your board appearance, behavior, and features
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Appearance Settings */}
-          <TabsContent value="appearance" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="theme">Board Theme</Label>
-                <Select 
-                  value={localSettings.theme || 'light'} 
-                  onValueChange={(value) => updateSetting('theme', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="blue">Blue</SelectItem>
-                    <SelectItem value="green">Green</SelectItem>
-                    <SelectItem value="purple">Purple</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="flex-1 overflow-auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="general" className="flex items-center gap-2">
+                <Layout className="h-4 w-4" />
+                General
+              </TabsTrigger>
+              <TabsTrigger value="appearance" className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Appearance
+              </TabsTrigger>
+              <TabsTrigger value="workflow" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Workflow
+              </TabsTrigger>
+              <TabsTrigger value="features" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Features
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Notifications
+              </TabsTrigger>
+            </TabsList>
 
-              <div>
-                <Label htmlFor="backgroundColor">Background Color</Label>
-                <Input
-                  id="backgroundColor"
-                  type="color"
-                  value={localSettings.backgroundColor || '#ffffff'}
-                  onChange={(e) => updateSetting('backgroundColor', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="headerColor">Header Color</Label>
-                <Input
-                  id="headerColor"
-                  type="color"
-                  value={localSettings.headerColor || '#f8f9fa'}
-                  onChange={(e) => updateSetting('headerColor', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showColumnIcons">Show Column Icons</Label>
-                <Switch
-                  id="showColumnIcons"
-                  checked={localSettings.showColumnIcons || false}
-                  onCheckedChange={(checked) => updateSetting('showColumnIcons', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showTaskLabels">Show Task Labels</Label>
-                <Switch
-                  id="showTaskLabels"
-                  checked={localSettings.showTaskLabels || false}
-                  onCheckedChange={(checked) => updateSetting('showTaskLabels', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showTaskAssignees">Show Task Assignees</Label>
-                <Switch
-                  id="showTaskAssignees"
-                  checked={localSettings.showTaskAssignees || false}
-                  onCheckedChange={(checked) => updateSetting('showTaskAssignees', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showTaskDueDates">Show Due Dates</Label>
-                <Switch
-                  id="showTaskDueDates"
-                  checked={localSettings.showTaskDueDates || false}
-                  onCheckedChange={(checked) => updateSetting('showTaskDueDates', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showTaskPriorities">Show Task Priorities</Label>
-                <Switch
-                  id="showTaskPriorities"
-                  checked={localSettings.showTaskPriorities || false}
-                  onCheckedChange={(checked) => updateSetting('showTaskPriorities', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enablePriorityColors">Priority Color Coding</Label>
-                <Switch
-                  id="enablePriorityColors"
-                  checked={localSettings.enablePriorityColors || false}
-                  onCheckedChange={(checked) => updateSetting('enablePriorityColors', checked)}
-                />
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Features Settings */}
-          <TabsContent value="features" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableWipLimits">Enable WIP Limits</Label>
-                <Switch
-                  id="enableWipLimits"
-                  checked={localSettings.enableWipLimits || false}
-                  onCheckedChange={(checked) => updateSetting('enableWipLimits', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableTimeTracking">Enable Time Tracking</Label>
-                <Switch
-                  id="enableTimeTracking"
-                  checked={localSettings.enableTimeTracking || false}
-                  onCheckedChange={(checked) => updateSetting('enableTimeTracking', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableProgressTracking">Enable Progress Tracking</Label>
-                <Switch
-                  id="enableProgressTracking"
-                  checked={localSettings.enableProgressTracking || false}
-                  onCheckedChange={(checked) => updateSetting('enableProgressTracking', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="autoMoveCompletedTasks">Auto Move Completed Tasks</Label>
-                <Switch
-                  id="autoMoveCompletedTasks"
-                  checked={localSettings.autoMoveCompletedTasks || false}
-                  onCheckedChange={(checked) => updateSetting('autoMoveCompletedTasks', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableColumnCollapse">Enable Column Collapse</Label>
-                <Switch
-                  id="enableColumnCollapse"
-                  checked={localSettings.enableColumnCollapse || false}
-                  onCheckedChange={(checked) => updateSetting('enableColumnCollapse', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableTaskCounting">Enable Task Counting</Label>
-                <Switch
-                  id="enableTaskCounting"
-                  checked={localSettings.enableTaskCounting || false}
-                  onCheckedChange={(checked) => updateSetting('enableTaskCounting', checked)}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableDueDateWarnings">Due Date Warnings</Label>
-                <Switch
-                  id="enableDueDateWarnings"
-                  checked={localSettings.enableDueDateWarnings || false}
-                  onCheckedChange={(checked) => updateSetting('enableDueDateWarnings', checked)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="defaultTaskPriority">Default Task Priority</Label>
-                <div className="mt-2 space-y-2">
-                  <Slider
-                    value={[localSettings.defaultTaskPriority || 3]}
-                    onValueChange={([value]) => updateSetting('defaultTaskPriority', value)}
-                    max={5}
-                    min={1}
-                    step={1}
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    Priority: {localSettings.defaultTaskPriority || 3}
+            {/* General Settings */}
+            <TabsContent value="general" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Board Information</CardTitle>
+                  <CardDescription>
+                    Basic information about your board
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="board-name">Board Name</Label>
+                    <Input
+                      id="board-name"
+                      value={localBoard.name}
+                      onChange={(e) => updateBoard('name', e.target.value)}
+                      placeholder="Enter board name..."
+                    />
                   </div>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="maxTasksPerColumn">Max Tasks Per Column</Label>
-                <div className="mt-2 space-y-2">
-                  <Slider
-                    value={[localSettings.maxTasksPerColumn || 20]}
-                    onValueChange={([value]) => updateSetting('maxTasksPerColumn', value)}
-                    max={100}
-                    min={1}
-                    step={1}
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    {localSettings.maxTasksPerColumn || 20} tasks
+                  
+                  <div>
+                    <Label htmlFor="board-description">Description</Label>
+                    <Textarea
+                      id="board-description"
+                      value={localBoard.description}
+                      onChange={(e) => updateBoard('description', e.target.value)}
+                      placeholder="Describe the purpose of this board..."
+                      rows={3}
+                    />
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableRealTimeUpdates">Real-time Updates</Label>
-                <Switch
-                  id="enableRealTimeUpdates"
-                  checked={localSettings.enableRealTimeUpdates || false}
-                  onCheckedChange={(checked) => updateSetting('enableRealTimeUpdates', checked)}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Default Settings</CardTitle>
+                  <CardDescription>
+                    Default values for new tasks and columns
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Default Task Priority</Label>
+                    <Select
+                      value={localSettings.defaultTaskPriority?.toString()}
+                      onValueChange={(value) => updateSetting('defaultTaskPriority', Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select default priority..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {priorityOptions.map((priority) => (
+                          <SelectItem key={priority.value} value={priority.value.toString()}>
+                            <div className="flex items-center gap-2">
+                              <Badge className={cn("text-xs", priority.color)}>
+                                {priority.label}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="default-column-color">Default Column Color</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="default-column-color"
+                        type="color"
+                        value={localSettings.defaultColumnColor || '#3b82f6'}
+                        onChange={(e) => updateSetting('defaultColumnColor', e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input
+                        value={localSettings.defaultColumnColor || '#3b82f6'}
+                        onChange={(e) => updateSetting('defaultColumnColor', e.target.value)}
+                        placeholder="#3b82f6"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>Maximum Tasks Per Column</Label>
+                    <div className="space-y-2">
+                      <Slider
+                        value={[localSettings.maxTasksPerColumn || 20]}
+                        onValueChange={([value]) => updateSetting('maxTasksPerColumn', value)}
+                        max={100}
+                        min={5}
+                        step={5}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>5 tasks</span>
+                        <span className="font-medium">{localSettings.maxTasksPerColumn || 20} tasks</span>
+                        <span>100 tasks</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableKeyboardShortcuts">Keyboard Shortcuts</Label>
-                <Switch
-                  id="enableKeyboardShortcuts"
-                  checked={localSettings.enableKeyboardShortcuts || false}
-                  onCheckedChange={(checked) => updateSetting('enableKeyboardShortcuts', checked)}
-                />
-              </div>
+            {/* Appearance Settings */}
+            <TabsContent value="appearance" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Theme & Colors</CardTitle>
+                  <CardDescription>
+                    Customize the visual appearance of your board
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Board Theme</Label>
+                    <Select
+                      value={localSettings.theme || 'default'}
+                      onValueChange={(value) => updateSetting('theme', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select theme..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {themes.map((theme) => (
+                          <SelectItem key={theme.value} value={theme.value}>
+                            <div>
+                              <div className="font-medium">{theme.label}</div>
+                              <div className="text-xs text-muted-foreground">{theme.description}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="background-color">Background Color</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="background-color"
+                        type="color"
+                        value={localSettings.backgroundColor || '#ffffff'}
+                        onChange={(e) => updateSetting('backgroundColor', e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input
+                        value={localSettings.backgroundColor || '#ffffff'}
+                        onChange={(e) => updateSetting('backgroundColor', e.target.value)}
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="header-color">Header Color</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="header-color"
+                        type="color"
+                        value={localSettings.headerColor || '#f1f5f9'}
+                        onChange={(e) => updateSetting('headerColor', e.target.value)}
+                        className="w-16 h-10"
+                      />
+                      <Input
+                        value={localSettings.headerColor || '#f1f5f9'}
+                        onChange={(e) => updateSetting('headerColor', e.target.value)}
+                        placeholder="#f1f5f9"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableDragAndDrop">Drag and Drop</Label>
-                <Switch
-                  id="enableDragAndDrop"
-                  checked={localSettings.enableDragAndDrop || false}
-                  onCheckedChange={(checked) => updateSetting('enableDragAndDrop', checked)}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Display Options</CardTitle>
+                  <CardDescription>
+                    Control what information is shown on the board
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show Column Icons</Label>
+                      <p className="text-sm text-muted-foreground">Display icons next to column names</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.showColumnIcons ?? true}
+                      onCheckedChange={(checked) => updateSetting('showColumnIcons', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show Task Labels</Label>
+                      <p className="text-sm text-muted-foreground">Display category labels on tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.showTaskLabels ?? true}
+                      onCheckedChange={(checked) => updateSetting('showTaskLabels', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show Task Assignees</Label>
+                      <p className="text-sm text-muted-foreground">Display assigned users on tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.showTaskAssignees ?? true}
+                      onCheckedChange={(checked) => updateSetting('showTaskAssignees', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show Due Dates</Label>
+                      <p className="text-sm text-muted-foreground">Display due dates on tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.showTaskDueDates ?? true}
+                      onCheckedChange={(checked) => updateSetting('showTaskDueDates', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Show Priority Colors</Label>
+                      <p className="text-sm text-muted-foreground">Use colors to indicate task priority</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enablePriorityColors ?? true}
+                      onCheckedChange={(checked) => updateSetting('enablePriorityColors', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableColumnReordering">Column Reordering</Label>
-                <Switch
-                  id="enableColumnReordering"
-                  checked={localSettings.enableColumnReordering || false}
-                  onCheckedChange={(checked) => updateSetting('enableColumnReordering', checked)}
-                />
-              </div>
+            {/* Workflow Settings */}
+            <TabsContent value="workflow" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">WIP Limits & Flow</CardTitle>
+                  <CardDescription>
+                    Control task flow and work-in-progress limits
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable WIP Limits</Label>
+                      <p className="text-sm text-muted-foreground">Enforce work-in-progress limits on columns</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableWipLimits ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableWipLimits', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Auto-move Completed Tasks</Label>
+                      <p className="text-sm text-muted-foreground">Automatically move completed tasks to done column</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.autoMoveCompletedTasks ?? false}
+                      onCheckedChange={(checked) => updateSetting('autoMoveCompletedTasks', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable Task Counting</Label>
+                      <p className="text-sm text-muted-foreground">Show task counts on column headers</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableTaskCounting ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableTaskCounting', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable Due Date Warnings</Label>
+                      <p className="text-sm text-muted-foreground">Highlight tasks approaching due dates</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableDueDateWarnings ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableDueDateWarnings', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableTaskFiltering">Task Filtering</Label>
-                <Switch
-                  id="enableTaskFiltering"
-                  checked={localSettings.enableTaskFiltering || false}
-                  onCheckedChange={(checked) => updateSetting('enableTaskFiltering', checked)}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Progress Tracking</CardTitle>
+                  <CardDescription>
+                    Monitor progress and time tracking features
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable Time Tracking</Label>
+                      <p className="text-sm text-muted-foreground">Track time spent on tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableTimeTracking ?? false}
+                      onCheckedChange={(checked) => updateSetting('enableTimeTracking', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable Progress Tracking</Label>
+                      <p className="text-sm text-muted-foreground">Show completion progress on tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableProgressTracking ?? false}
+                      onCheckedChange={(checked) => updateSetting('enableProgressTracking', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableSearchFunction">Search Function</Label>
-                <Switch
-                  id="enableSearchFunction"
-                  checked={localSettings.enableSearchFunction || false}
-                  onCheckedChange={(checked) => updateSetting('enableSearchFunction', checked)}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Workflow className="h-5 w-5" />
+                    Custom Task Statuses
+                  </CardTitle>
+                  <CardDescription>
+                    Create and manage custom statuses for your workflow
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Custom Status Workflow</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Define custom statuses beyond the default To Do, In Progress, Done
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Manage Statuses
+                    </Button>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground">
+                    {customStatuses.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        <span>Current statuses:</span>
+                        {customStatuses.slice(0, 5).map((status, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {status.displayName}
+                          </Badge>
+                        ))}
+                        {customStatuses.length > 5 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{customStatuses.length - 5} more
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <p>Using default statuses: To Do, In Progress, Done</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableBulkOperations">Bulk Operations</Label>
-                <Switch
-                  id="enableBulkOperations"
-                  checked={localSettings.enableBulkOperations || false}
-                  onCheckedChange={(checked) => updateSetting('enableBulkOperations', checked)}
-                />
-              </div>
-            </div>
-          </TabsContent>
+            {/* Features Settings */}
+            <TabsContent value="features" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Board Features</CardTitle>
+                  <CardDescription>
+                    Enable or disable board functionality
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Drag & Drop</Label>
+                      <p className="text-sm text-muted-foreground">Allow dragging tasks between columns</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableDragAndDrop ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableDragAndDrop', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Column Reordering</Label>
+                      <p className="text-sm text-muted-foreground">Allow reordering of columns</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableColumnReordering ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableColumnReordering', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Task Filtering</Label>
+                      <p className="text-sm text-muted-foreground">Enable task filtering and search</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableTaskFiltering ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableTaskFiltering', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Search Function</Label>
+                      <p className="text-sm text-muted-foreground">Enable search across tasks</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableSearchFunction ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableSearchFunction', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Bulk Operations</Label>
+                      <p className="text-sm text-muted-foreground">Allow bulk task operations</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableBulkOperations ?? false}
+                      onCheckedChange={(checked) => updateSetting('enableBulkOperations', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Keyboard Shortcuts</Label>
+                      <p className="text-sm text-muted-foreground">Enable keyboard shortcuts for power users</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableKeyboardShortcuts ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableKeyboardShortcuts', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Notifications Settings */}
-          <TabsContent value="notifications" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="enableNotifications">Enable Notifications</Label>
-                <Switch
-                  id="enableNotifications"
-                  checked={localSettings.enableNotifications || false}
-                  onCheckedChange={(checked) => updateSetting('enableNotifications', checked)}
-                />
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Column Features</CardTitle>
+                  <CardDescription>
+                    Column-specific functionality
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Column Collapse</Label>
+                      <p className="text-sm text-muted-foreground">Allow collapsing/expanding columns</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableColumnCollapse ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableColumnCollapse', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              <div className="text-sm text-muted-foreground p-4 bg-muted rounded-lg">
-                <p>Advanced notification settings will be available in a future update.</p>
-                <p className="mt-2">Current notification features:</p>
-                <ul className="mt-2 space-y-1 list-disc list-inside">
-                  <li>Basic task notifications</li>
-                  <li>Due date reminders</li>
-                  <li>Assignment notifications</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Advanced Settings */}
-          <TabsContent value="advanced" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="defaultColumnColor">Default Column Color</Label>
-                <Input
-                  id="defaultColumnColor"
-                  type="color"
-                  value={localSettings.defaultColumnColor || '#6366f1'}
-                  onChange={(e) => updateSetting('defaultColumnColor', e.target.value)}
-                  className="mt-1 w-20 h-10"
-                />
-              </div>
-
-              <div className="text-sm text-muted-foreground p-4 bg-muted rounded-lg">
-                <p>Advanced features coming soon:</p>
-                <ul className="mt-2 space-y-1 list-disc list-inside">
-                  <li>File attachment settings</li>
-                  <li>Public sharing configuration</li>
-                  <li>Data export options</li>
-                  <li>Background sync settings</li>
-                  <li>Custom integrations</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <Separator className="my-6" />
-
-        {/* Settings Actions */}
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={!hasChanges} className="flex-1">
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
-            <Button onClick={handleReset} variant="outline">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Reset
-            </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button onClick={handleExport} variant="outline" className="flex-1">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <label className="flex-1">
-              <Button variant="outline" className="w-full">
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-          </div>
-
-          {hasChanges && (
-            <div className="text-center">
-              <Badge variant="secondary">
-                <Timer className="h-3 w-3 mr-1" />
-                Unsaved changes
-              </Badge>
-            </div>
-          )}
+            {/* Notifications Settings */}
+            <TabsContent value="notifications" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Real-time & Notifications</CardTitle>
+                  <CardDescription>
+                    Configure real-time updates and notification preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Real-time Updates</Label>
+                      <p className="text-sm text-muted-foreground">Receive live updates from other users</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableRealTimeUpdates ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableRealTimeUpdates', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Enable Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Show notification alerts for board changes</p>
+                    </div>
+                    <Switch
+                      checked={localSettings.enableNotifications ?? true}
+                      onCheckedChange={(checked) => updateSetting('enableNotifications', checked)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
 
-export default BoardSettingsPanel; 
+        <DialogFooter className="gap-2">
+          {hasChanges && (
+            <Badge variant="secondary" className="mr-auto">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Unsaved changes
+            </Badge>
+          )}
+          
+          <Button variant="outline" onClick={handleReset} disabled={!hasChanges}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset
+          </Button>
+          
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          
+          <Button onClick={handleSave} disabled={!hasChanges || isLoading}>
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+} 

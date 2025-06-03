@@ -1315,6 +1315,150 @@ class TaskService {
       };
     }
   }
+
+  /**
+   * Batch update tasks - useful for column operations
+   */
+  async batchUpdateTasks(updates: Array<{ id: number; data: Partial<TaskFormData> }>): Promise<ApiResponse<Task[]>> {
+    console.log('TaskService: --------- BATCH UPDATE TASKS START ---------');
+    console.log('TaskService: Updating', updates.length, 'tasks');
+    
+    const results: Task[] = [];
+    const errors: string[] = [];
+    
+    try {
+      // Process updates sequentially to avoid overwhelming the API
+      for (const update of updates) {
+        console.log(`TaskService: Updating task ${update.id}`, update.data);
+        const response = await this.updateTask(update.id, update.data);
+        
+        if (response.data) {
+          results.push(response.data);
+        } else {
+          errors.push(`Failed to update task ${update.id}: ${response.error}`);
+        }
+        
+        // Small delay to prevent API rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (errors.length > 0) {
+        console.warn('TaskService: Some batch updates failed:', errors);
+        return {
+          data: results,
+          status: 207, // Multi-Status
+          error: `${errors.length} out of ${updates.length} updates failed`
+        };
+      }
+      
+      console.log('TaskService: Batch update completed successfully');
+      return {
+        data: results,
+        status: 200
+      };
+    } catch (error: any) {
+      console.error('TaskService: Error in batch update:', error);
+      return {
+        error: error.message || 'Batch update failed',
+        status: 500
+      };
+    }
+  }
+
+  /**
+   * Batch delete tasks - useful for column operations
+   */
+  async batchDeleteTasks(taskIds: number[]): Promise<ApiResponse<{ deleted: number[]; failed: number[] }>> {
+    console.log('TaskService: --------- BATCH DELETE TASKS START ---------');
+    console.log('TaskService: Deleting', taskIds.length, 'tasks');
+    
+    const deleted: number[] = [];
+    const failed: number[] = [];
+    
+    try {
+      // Process deletions sequentially to avoid overwhelming the API
+      for (const taskId of taskIds) {
+        console.log(`TaskService: Deleting task ${taskId}`);
+        const response = await this.deleteTask(taskId);
+        
+        if (response.status === 200 || response.status === 204) {
+          deleted.push(taskId);
+        } else {
+          failed.push(taskId);
+          console.warn(`TaskService: Failed to delete task ${taskId}:`, response.error);
+        }
+        
+        // Small delay to prevent API rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      console.log('TaskService: Batch delete completed');
+      console.log(`TaskService: Successfully deleted ${deleted.length}, failed ${failed.length}`);
+      
+      return {
+        data: { deleted, failed },
+        status: deleted.length > 0 ? 200 : 400
+      };
+    } catch (error: any) {
+      console.error('TaskService: Error in batch delete:', error);
+      return {
+        error: error.message || 'Batch delete failed',
+        status: 500
+      };
+    }
+  }
+
+  /**
+   * Move tasks between columns by updating their status
+   */
+  async moveTasksToColumn(taskIds: number[], targetStatus: string): Promise<ApiResponse<Task[]>> {
+    console.log('TaskService: --------- MOVE TASKS TO COLUMN START ---------');
+    console.log('TaskService: Moving', taskIds.length, 'tasks to status:', targetStatus);
+    
+    // Prepare batch updates
+    const updates = taskIds.map(id => ({
+      id,
+      data: {
+        status: targetStatus as ('todo' | 'in-progress' | 'done')
+      } as Partial<TaskFormData>
+    }));
+    
+    return this.batchUpdateTasks(updates);
+  }
+
+  /**
+   * Get tasks by status - useful for column operations
+   */
+  async getTasksByStatus(status: string): Promise<ApiResponse<Task[]>> {
+    console.log('TaskService: --------- GET TASKS BY STATUS START ---------');
+    console.log('TaskService: Getting tasks with status:', status);
+    
+    try {
+      const allTasksResponse = await this.getTasks();
+      
+      if (!allTasksResponse.data) {
+        return {
+          error: allTasksResponse.error || 'Failed to get tasks',
+          status: allTasksResponse.status || 500
+        };
+      }
+      
+      const filteredTasks = allTasksResponse.data.filter(task => task.status === status);
+      
+      console.log(`TaskService: Found ${filteredTasks.length} tasks with status ${status}`);
+      
+      return {
+        data: filteredTasks,
+        status: 200
+      };
+    } catch (error: any) {
+      console.error('TaskService: Error getting tasks by status:', error);
+      return {
+        error: error.message || 'Failed to get tasks by status',
+        status: 500
+      };
+    }
+  }
 }
 
 export const taskService = new TaskService(); 

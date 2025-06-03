@@ -45,7 +45,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             IEnumerable<TaskTemplateDTO> templates = await _templateService.GetUserTaskTemplatesAsync(userId);
             return Ok(templates);
         }
@@ -83,7 +83,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             TaskTemplateDTO? template = await _templateService.CreateTaskTemplateAsync(userId, createDto);
             
             if (template == null)
@@ -106,7 +106,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             TaskTemplateDTO? template = await _templateService.UpdateTaskTemplateAsync(userId, id, updateDto);
             
             if (template == null)
@@ -141,7 +141,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             await _templateService.DeleteTaskTemplateAsync(userId, id);
             return NoContent();
         }
@@ -170,7 +170,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             TemplateApplicationResultDTO result = await _templateService.ApplyTemplateAsync(userId, id, applyDto);
             return Ok(result);
         }
@@ -306,7 +306,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             bool success = await _templateService.PublishTemplateToMarketplaceAsync(id, userId);
             
             if (!success)
@@ -329,7 +329,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             bool success = await _templateService.UnpublishTemplateFromMarketplaceAsync(id, userId);
             
             if (!success)
@@ -397,7 +397,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             TemplateUsageAnalyticsDTO analytics = await _templateService.RecordTemplateUsageAsync(
                 id, userId, usageDto.Success, usageDto.CompletionTimeMinutes);
             
@@ -468,7 +468,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             TaskTemplateDTO template = await _templateService.GenerateAutomatedTasksAsync(id, userId);
             return Ok(template);
         }
@@ -493,7 +493,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             WorkflowExecutionResultDTO result = await _templateService.ExecuteWorkflowAsync(id, userId);
             return Ok(result);
         }
@@ -518,7 +518,7 @@ public class TaskTemplatesController : BaseApiController
     {
         try
         {
-            int userId = GetCurrentUserId();
+            int userId = GetUserId();
             
             // Get user's template usage patterns to generate personalized recommendations
             IEnumerable<TaskTemplateDTO> userTemplates = await _templateService.GetUserTaskTemplatesAsync(userId);
@@ -570,18 +570,8 @@ public class TaskTemplatesController : BaseApiController
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating AI recommendations for user {UserId}", GetCurrentUserId());
+            _logger.LogError(ex, "Error generating AI recommendations for user {UserId}", GetUserId());
             return StatusCode(500, "An error occurred while generating recommendations");
         }
-    }
-
-    private int GetCurrentUserId()
-    {
-        string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-        {
-            throw new UnauthorizedAccessException("User ID not found or invalid");
-        }
-        return userId;
     }
 } 

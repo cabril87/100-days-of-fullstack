@@ -211,15 +211,16 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                       ? 'border-amber-500/40 bg-amber-500/20 shadow-amber-500/25' 
                       : 'border-transparent hover:border-amber-500/20'
                   }`}
-                  title="Focus Mode"
+                  title={currentSession?.status === 'InProgress' ? 'Focus Mode Active' : 'Focus Mode'}
                 >
-                  🎯
-                  {currentSession?.status === 'InProgress' && (
+                  {currentSession?.status === 'InProgress' ? (
                     <>
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse"></span>
-                      {/* Live indicator only when focus session is active */}
+                      <Brain className="h-5 w-5 text-amber-600 animate-pulse" />
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full animate-pulse"></span>
                       <span className="absolute -bottom-0 -right-0 w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse"></span>
                     </>
+                  ) : (
+                    <Brain className="h-5 w-5 text-gray-600 dark:text-gray-400 opacity-60 hover:opacity-100 transition-opacity" />
                   )}
                 </Link>
                 <Link
@@ -388,7 +389,8 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                               role="menuitem"
                               onClick={() => setIsProfileMenuOpen(false)}
                             >
-                              🎯 Focus Mode
+                              <Brain className="h-4 w-4" />
+                              Focus Mode
                               {currentSession?.status === 'InProgress' && (
                                 <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-full animate-pulse ml-auto"></span>
                               )}

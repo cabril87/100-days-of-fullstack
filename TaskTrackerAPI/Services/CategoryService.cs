@@ -194,24 +194,4 @@ public class CategoryService : ICategoryService
             UserId = category.UserId
         };
     }
-
-    Task<IEnumerable<CategoryDTO>> ICategoryService.GetAllCategoriesAsync(int userId)
-    {
-        throw new NotImplementedException();
-    }
-
-    Task<PagedResult<CategoryDTO>> ICategoryService.GetPagedCategoriesAsync(int userId, PaginationParams paginationParams)
-    {
-        throw new NotImplementedException();
-    }
-
-    Task<CategoryDTO?> ICategoryService.GetCategoryByIdAsync(int categoryId, int userId)
-    {
-        throw new NotImplementedException();
-    }
-
-    Task<IEnumerable<CategoryDTO>> ICategoryService.SearchCategoriesAsync(int userId, string searchTerm)
-    {
-        throw new NotImplementedException();
-    }
 }

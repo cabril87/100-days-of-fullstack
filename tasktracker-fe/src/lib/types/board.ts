@@ -3,7 +3,11 @@
  * Matches backend DTOs for comprehensive Kanban board functionality
  */
 
-import { Task, TaskItemStatus } from './task';
+import { Task } from './task';
+import { TaskStatus, TaskStatusType, CustomTaskStatus } from './task';
+
+// Import related user types
+import { User } from './user';
 
 // ==================== CORE BOARD TYPES ====================
 
@@ -14,11 +18,31 @@ export interface Board {
   template: string;
   customLayout?: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
   userId: number;
   columns: BoardColumn[];
   settings?: BoardSettings;
   tasks: Task[];
+  isFavorite?: boolean;
+  memberCount?: number;
+}
+
+export interface BoardDetail extends Board {
+  totalTasks: number;
+  completedTasks: number;
+  inProgressTasks: number;
+  pendingTasks: number;
+  completionRate: number;
+  lastActivity?: string;
+  collaborators?: BoardCollaborator[];
+}
+
+export interface BoardCollaborator {
+  userId: number;
+  username: string;
+  displayName?: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  lastActiveAt?: string;
 }
 
 export interface BoardColumn {
@@ -29,7 +53,7 @@ export interface BoardColumn {
   order: number;
   color: string;
   icon?: string;
-  mappedStatus: TaskItemStatus;
+  mappedStatus: TaskStatusType;
   taskLimit?: number;
   isCollapsible: boolean;
   isDoneColumn: boolean;
@@ -105,7 +129,7 @@ export interface BoardTemplateColumn {
   order: number;
   color: string;
   icon?: string;
-  mappedStatus: TaskItemStatus;
+  mappedStatus: TaskStatusType;
   taskLimit?: number;
   isCollapsible: boolean;
   isDoneColumn: boolean;
@@ -113,43 +137,118 @@ export interface BoardTemplateColumn {
 
 // ==================== DTOs FOR API OPERATIONS ====================
 
-export interface CreateBoardDTO {
+export interface CreateBoard {
   name: string;
   description?: string;
-  template?: string;
-  customLayout?: string;
 }
 
-export interface UpdateBoardDTO {
+export interface UpdateBoard {
   name?: string;
   description?: string;
-  template?: string;
-  customLayout?: string;
+  isFavorite?: boolean;
 }
 
-export interface CreateBoardColumnDTO {
+export interface CreateBoardColumn {
   name: string;
   description?: string;
   order: number;
   color: string;
   icon?: string;
-  mappedStatus: TaskItemStatus;
+  mappedStatus: TaskStatusType;
   taskLimit?: number;
   isCollapsible?: boolean;
   isDoneColumn?: boolean;
 }
 
-export interface UpdateBoardColumnDTO {
+export interface UpdateBoardColumn {
   name?: string;
   description?: string;
   order?: number;
   color?: string;
   icon?: string;
-  mappedStatus?: TaskItemStatus;
+  mappedStatus?: TaskStatusType;
   taskLimit?: number;
   isCollapsible?: boolean;
   isDoneColumn?: boolean;
   isVisible?: boolean;
+}
+
+export interface UpdateBoardSettings {
+  theme?: string;
+  backgroundColor?: string;
+  headerColor?: string;
+  enableWipLimits?: boolean;
+  enableColumnCollapse?: boolean;
+  enableTaskCounting?: boolean;
+  enableDueDateWarnings?: boolean;
+  enablePriorityColors?: boolean;
+  autoMoveCompletedTasks?: boolean;
+  showColumnIcons?: boolean;
+  showTaskLabels?: boolean;
+  showTaskAssignees?: boolean;
+  showTaskDueDates?: boolean;
+  showTaskPriorities?: boolean;
+  defaultTaskPriority?: number;
+  defaultColumnColor?: string;
+  maxTasksPerColumn?: number;
+  enableRealTimeUpdates?: boolean;
+  enableNotifications?: boolean;
+  enableKeyboardShortcuts?: boolean;
+  enableDragAndDrop?: boolean;
+  enableColumnReordering?: boolean;
+  enableTaskFiltering?: boolean;
+  enableSearchFunction?: boolean;
+  enableBulkOperations?: boolean;
+  enableTimeTracking?: boolean;
+  enableProgressTracking?: boolean;
+}
+
+export interface CreateBoardTemplate {
+  name: string;
+  description?: string;
+  isPublic?: boolean;
+  category?: string;
+  tags?: string;
+  layoutConfiguration?: string;
+  previewImageUrl?: string;
+  defaultColumns?: CreateBoardTemplateColumn[];
+}
+
+export interface CreateBoardTemplateColumn {
+  name: string;
+  description?: string;
+  order: number;
+  color: string;
+  icon?: string;
+  mappedStatus: TaskStatusType;
+  taskLimit?: number;
+  isCollapsible?: boolean;
+  isDoneColumn?: boolean;
+}
+
+export interface TaskReorder {
+  taskId: number;
+  sourceColumnId: number;
+  destinationColumnId: number;
+  sourceIndex: number;
+  destinationIndex: number;
+  positionX?: number;
+  positionY?: number;
+  boardOrder?: number;
+}
+
+export interface ColumnOrder {
+  columnId: number;
+  order: number;
+}
+
+export interface BoardFilter {
+  assignee?: string;
+  priority?: string;
+  dueDate?: string;
+  tags?: string[];
+  search?: string;
+  status?: TaskStatusType[];
 }
 
 export interface CreateBoardFromTemplateDTO {
@@ -274,19 +373,21 @@ export interface BoardViewState {
   showSettings: boolean;
   showTemplateSelector: boolean;
   showAnalytics: boolean;
+  showCollaboration: boolean;
   isLoading: boolean;
   error?: string;
 }
 
 export interface TaskFilter {
-  status?: TaskItemStatus[];
-  priority?: number[];
-  assignee?: number[];
+  status?: TaskStatusType[];
+  priority?: number;
+  assignee?: string;
   dueDate?: {
     from?: string;
     to?: string;
   };
   tags?: string[];
+  category?: string;
 }
 
 export interface TaskSort {
@@ -410,4 +511,73 @@ export enum BoardEvent {
   TASK_MOVED = 'task_moved',
   SETTINGS_UPDATED = 'settings_updated',
   TEMPLATE_APPLIED = 'template_applied'
+}
+
+// Board-level custom status management
+export interface BoardCustomStatus {
+  id: string;
+  boardId: number;
+  statusConfig: CustomTaskStatus;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateBoardCustomStatus {
+  boardId: number;
+  name: string;
+  displayName: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  category: 'pending' | 'active' | 'completed' | 'blocked' | 'custom';
+  order?: number;
+}
+
+export interface UpdateBoardCustomStatus {
+  displayName?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  category?: 'pending' | 'active' | 'completed' | 'blocked' | 'custom';
+  order?: number;
+  isActive?: boolean;
+}
+
+// Board status workflow configuration
+export interface BoardStatusWorkflow {
+  id: number;
+  boardId: number;
+  name: string;
+  description?: string;
+  workflowType: 'linear' | 'flexible' | 'custom';
+  statuses: BoardCustomStatus[];
+  transitionRules?: StatusTransitionRule[];
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// Status transition rule for board workflows
+export interface StatusTransitionRule {
+  id: string;
+  fromStatusId: string;
+  toStatusId: string;
+  isAllowed: boolean;
+  requiresPermission?: string;
+  autoTransitionConditions?: string[];
+  workflowId?: number;
+}
+
+// Workflow template for easy setup
+export interface StatusWorkflowTemplate {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string;
+  category: string;
+  statuses: Omit<CustomTaskStatus, 'id' | 'createdAt' | 'updatedAt'>[];
+  transitionRules?: Omit<StatusTransitionRule, 'id' | 'workflowId'>[];
+  isPopular: boolean;
+  usageCount: number;
 } 

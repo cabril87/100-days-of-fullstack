@@ -2,10 +2,145 @@
  * Task related types
  */
 
+// Predefined task statuses (for backward compatibility)
 export enum TaskStatus {
   Todo = 'todo',
   InProgress = 'in-progress',
   Done = 'done'
+}
+
+// Extended status type that supports custom statuses
+export type TaskStatusType = TaskStatus | string;
+
+// Status category type for custom statuses
+export type TaskStatusCategory = 'pending' | 'active' | 'completed' | 'blocked' | 'custom';
+
+// Custom status definition
+export interface CustomTaskStatus {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  category: TaskStatusCategory;
+  isSystemDefault: boolean;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Status group for organizing statuses
+export interface StatusGroup {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+  color: string;
+  order: number;
+  statuses: CustomTaskStatus[];
+}
+
+// Default status configurations
+export const DEFAULT_STATUS_CONFIGURATIONS: CustomTaskStatus[] = [
+  {
+    id: 'todo',
+    name: 'todo',
+    displayName: 'To Do',
+    description: 'Tasks that are not yet started',
+    color: '#6B7280',
+    icon: 'circle',
+    category: 'pending',
+    isSystemDefault: true,
+    order: 0
+  },
+  {
+    id: 'in-progress',
+    name: 'in-progress',
+    displayName: 'In Progress',
+    description: 'Tasks that are currently being worked on',
+    color: '#3B82F6',
+    icon: 'play',
+    category: 'active',
+    isSystemDefault: true,
+    order: 1
+  },
+  {
+    id: 'done',
+    name: 'done',
+    displayName: 'Done',
+    description: 'Tasks that have been completed',
+    color: '#10B981',
+    icon: 'check',
+    category: 'completed',
+    isSystemDefault: true,
+    order: 2
+  }
+];
+
+// Extended default status templates for different workflows
+export const WORKFLOW_STATUS_TEMPLATES = {
+  'software-development': [
+    { id: 'backlog', name: 'backlog', displayName: 'Backlog', color: '#9CA3AF', category: 'pending' as const, order: 0 },
+    { id: 'todo', name: 'todo', displayName: 'To Do', color: '#6B7280', category: 'pending' as const, order: 1 },
+    { id: 'in-progress', name: 'in-progress', displayName: 'In Progress', color: '#3B82F6', category: 'active' as const, order: 2 },
+    { id: 'code-review', name: 'code-review', displayName: 'Code Review', color: '#F59E0B', category: 'active' as const, order: 3 },
+    { id: 'testing', name: 'testing', displayName: 'Testing', color: '#8B5CF6', category: 'active' as const, order: 4 },
+    { id: 'done', name: 'done', displayName: 'Done', color: '#10B981', category: 'completed' as const, order: 5 }
+  ],
+  'marketing-campaign': [
+    { id: 'ideas', name: 'ideas', displayName: 'Ideas', color: '#EC4899', category: 'pending' as const, order: 0 },
+    { id: 'planning', name: 'planning', displayName: 'Planning', color: '#F59E0B', category: 'active' as const, order: 1 },
+    { id: 'content-creation', name: 'content-creation', displayName: 'Content Creation', color: '#3B82F6', category: 'active' as const, order: 2 },
+    { id: 'review', name: 'review', displayName: 'Review', color: '#8B5CF6', category: 'active' as const, order: 3 },
+    { id: 'scheduled', name: 'scheduled', displayName: 'Scheduled', color: '#06B6D4', category: 'active' as const, order: 4 },
+    { id: 'published', name: 'published', displayName: 'Published', color: '#10B981', category: 'completed' as const, order: 5 }
+  ],
+  'customer-support': [
+    { id: 'new', name: 'new', displayName: 'New', color: '#EF4444', category: 'pending' as const, order: 0 },
+    { id: 'assigned', name: 'assigned', displayName: 'Assigned', color: '#F59E0B', category: 'active' as const, order: 1 },
+    { id: 'in-progress', name: 'in-progress', displayName: 'In Progress', color: '#3B82F6', category: 'active' as const, order: 2 },
+    { id: 'waiting-customer', name: 'waiting-customer', displayName: 'Waiting for Customer', color: '#8B5CF6', category: 'blocked' as const, order: 3 },
+    { id: 'escalated', name: 'escalated', displayName: 'Escalated', color: '#DC2626', category: 'blocked' as const, order: 4 },
+    { id: 'resolved', name: 'resolved', displayName: 'Resolved', color: '#10B981', category: 'completed' as const, order: 5 }
+  ],
+  'project-management': [
+    { id: 'not-started', name: 'not-started', displayName: 'Not Started', color: '#9CA3AF', category: 'pending' as const, order: 0 },
+    { id: 'planning', name: 'planning', displayName: 'Planning', color: '#F59E0B', category: 'active' as const, order: 1 },
+    { id: 'in-progress', name: 'in-progress', displayName: 'In Progress', color: '#3B82F6', category: 'active' as const, order: 2 },
+    { id: 'on-hold', name: 'on-hold', displayName: 'On Hold', color: '#8B5CF6', category: 'blocked' as const, order: 3 },
+    { id: 'review', name: 'review', displayName: 'Review', color: '#06B6D4', category: 'active' as const, order: 4 },
+    { id: 'completed', name: 'completed', displayName: 'Completed', color: '#10B981', category: 'completed' as const, order: 5 }
+  ]
+};
+
+// Status management interfaces
+export interface CreateCustomStatusRequest {
+  name: string;
+  displayName: string;
+  description?: string;
+  color: string;
+  icon?: string;
+  category: TaskStatusCategory;
+  order?: number;
+}
+
+export interface UpdateCustomStatusRequest {
+  displayName?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  category?: TaskStatusCategory;
+  order?: number;
+}
+
+export interface StatusTransitionRule {
+  id: string;
+  fromStatus: string;
+  toStatus: string;
+  isAllowed: boolean;
+  requiresPermission?: string;
+  autoTransitionConditions?: string[];
 }
 
 export enum TaskPriority {
@@ -69,8 +204,8 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
-  status: string; // 'todo', 'in-progress', 'done'
-  priority: string; // 'low', 'medium', 'high'
+  status: TaskStatusType;
+  priority: string;
   dueDate?: string;
   createdAt: string;
   updatedAt?: string;
@@ -83,18 +218,18 @@ export interface Task {
   approvedAt?: string;
   completedAt?: string;
   tags?: string[];
-  version?: number; // Version for concurrency control
-  categoryId?: number; // Reference to category
-  templateId?: number; // If created from a template
-  progressPercentage?: number; // Task completion progress (0-100)
-  estimatedTimeMinutes?: number; // Estimated time to complete
-  actualTimeSpentMinutes?: number; // Actual time spent from focus sessions
+  version?: number;
+  categoryId?: number;
+  templateId?: number;
+  progressPercentage?: number;
+  estimatedTimeMinutes?: number;
+  actualTimeSpentMinutes?: number;
 }
 
 export interface TaskFormData {
   title: string;
   description?: string | null;
-  status: 'todo' | 'in-progress' | 'done';
+  status: TaskStatusType;
   dueDate?: string | null;
   dueTime?: string | null;
   priority?: number;
@@ -106,7 +241,7 @@ export interface TaskFormData {
 export interface CreateTaskRequest {
   title: string;
   description?: string;
-  status?: TaskStatus;
+  status?: TaskStatusType;
   priority?: TaskPriority;
   dueDate?: string;
   categoryId?: number;
@@ -137,19 +272,17 @@ export interface QuickTaskDTO {
 }
 
 export interface UpdateTaskRequest {
-  // camelCase properties (for frontend)
   title?: string;
   description?: string;
-  status?: TaskStatus;
+  status?: TaskStatusType;
   priority?: TaskPriority;
   dueDate?: string;
   categoryId?: number;
   boardId?: number;
   
-  // PascalCase properties (for C# backend)
   Title?: string;
   Description?: string | null;
-  Status?: TaskStatus | number;
+  Status?: TaskStatusType | number;
   Priority?: TaskPriority | number;
   DueDate?: string | null;
   CategoryId?: number;
@@ -157,7 +290,7 @@ export interface UpdateTaskRequest {
 }
 
 export interface TaskQueryParams {
-  status?: TaskStatus;
+  status?: TaskStatusType;
   priority?: TaskPriority;
   categoryId?: number;
   boardId?: number;
@@ -173,7 +306,7 @@ export interface TaskQueryParams {
 export interface TaskCreateInput {
   title: string;
   description?: string;
-  status?: string;
+  status?: TaskStatusType;
   priority?: string;
   dueDate?: string;
   categoryId?: number;
@@ -183,7 +316,7 @@ export interface TaskCreateInput {
 export interface TaskUpdateInput {
   title?: string;
   description?: string;
-  status?: string;
+  status?: TaskStatusType;
   priority?: string;
   dueDate?: string;
   categoryId?: number;
@@ -228,7 +361,7 @@ export interface TemplateSummary {
   categoryName?: string;
   isPublic: boolean;
   isDefault: boolean;
-  timesUsed?: number; // Stats on template usage
+  timesUsed?: number;
 }
 
 // Task Priority Management Types
@@ -255,7 +388,7 @@ export interface PrioritizedTask {
   description?: string;
   priority: string;
   dueDate?: string;
-  status: string;
+  status: TaskStatusType;
   priorityScore: number;
 }
 

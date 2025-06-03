@@ -55,11 +55,11 @@ export const familyService = {
         
         // Handle 404 gracefully - user having no family is normal, not an error
         if (response.status === 404) {
-          console.log('[familyService] Get current family response: User has no family (404)');
+          console.log('[familyService] User has no family (normal state)');
           return { data: undefined, status: 404 };
         }
         
-        console.log('[familyService] Get current family response:', response);
+        console.log('[familyService] Current family found:', response.data?.name || 'unnamed');
 
         if (response.error && !response.error.includes('No family found')) {
           return { error: response.error, status: response.status };
@@ -76,11 +76,12 @@ export const familyService = {
       } catch (error: any) {
         // Handle 404 errors gracefully - user having no family is normal
         if (error?.status === 404 || error?.response?.status === 404) {
-          console.log('[familyService] Get current family: User has no family (404 from catch)');
+          console.log('[familyService] User has no family (normal state)');
           return { data: undefined, status: 404 };
         }
         
-        console.error('[familyService] Error getting current family:', error);
+        // Only log non-404 errors as actual errors
+        console.error('[familyService] Unexpected error getting current family:', error);
         return {
           error: error instanceof Error ? error.message : 'Failed to get current family',
           status: 500

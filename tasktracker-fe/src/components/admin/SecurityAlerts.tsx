@@ -16,9 +16,6 @@ import {
   Search,
   Plus,
   Clock,
-  User,
-  Shield,
-  Activity,
   RefreshCw,
   Download,
   Eye,
@@ -55,22 +52,11 @@ export function SecurityAlerts({ data }: SecurityAlertsProps): React.ReactElemen
     affectedResources: ['']
   });
 
-  // Safety check - if data is not available, show loading state
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading security alerts...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Filter alerts based on search and filters
   useEffect(() => {
+    // Only run if data is available
+    if (!data) return;
+    
     let filtered = alerts || [];
 
     // Search filter
@@ -102,7 +88,21 @@ export function SecurityAlerts({ data }: SecurityAlertsProps): React.ReactElemen
     }
 
     setFilteredAlerts(filtered);
-  }, [alerts, searchTerm, severityFilter, statusFilter, typeFilter]);
+  }, [data, alerts, searchTerm, severityFilter, statusFilter, typeFilter]);
+
+  // Safety check - if data is not available, show loading state
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading security alerts...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Refresh alerts
   const refreshAlerts = async () => {

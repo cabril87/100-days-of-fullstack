@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/lib/providers/AuthContext';
 import { TaskProvider } from "@/lib/providers/TaskProvider";
+import { BoardProvider } from '@/lib/providers/BoardProvider';
 import { ToastProvider } from "@/lib/providers/ToastProvider";
 import { FocusProvider } from "@/lib/providers/FocusContext";
 import { GamificationProvider } from "@/lib/providers/GamificationProvider";
@@ -52,8 +53,15 @@ export const metadata: Metadata = {
   },
   other: {
     "Content-Security-Policy": 
-      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' " +
-      (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"),
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' data:; " +
+      "style-src 'self' 'unsafe-inline' data:; " +
+      "img-src 'self' data: blob: https:; " +
+      "font-src 'self' data: https:; " +
+      "connect-src 'self' " + (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000") + " ws: wss:; " +
+      "worker-src 'self' blob:; " +
+      "child-src 'self' blob:; " +
+      "media-src 'self' data: blob:;",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -85,24 +93,26 @@ export default function RootLayout({
             <SidebarProvider>
               <TaskProvider>
                 <ToastProvider>
-                  <FocusProvider>
-                    <FamilyProvider>
-                      <TemplateProvider>
-                        <PWAProvider>
-                        <GamificationProvider>
-                          <FetchInterceptor />
-                          <DeletionOverlay />
-                          <SignalRManager />
-                          <RealTimeNotificationWidget />
-                          <GamificationNotifications />
-                          <AppLayout>
-                            {children}
-                          </AppLayout>
-                        </GamificationProvider>
-                        </PWAProvider>
-                      </TemplateProvider>
-                    </FamilyProvider>
-                  </FocusProvider>
+                  <BoardProvider>
+                    <FocusProvider>
+                      <FamilyProvider>
+                        <TemplateProvider>
+                          <PWAProvider>
+                            <GamificationProvider>
+                              <FetchInterceptor />
+                              <DeletionOverlay />
+                              <SignalRManager />
+                              <RealTimeNotificationWidget />
+                              <GamificationNotifications />
+                              <AppLayout>
+                                {children}
+                              </AppLayout>
+                            </GamificationProvider>
+                          </PWAProvider>
+                        </TemplateProvider>
+                      </FamilyProvider>
+                    </FocusProvider>
+                  </BoardProvider>
                 </ToastProvider>
               </TaskProvider>
             </SidebarProvider>

@@ -15,7 +15,7 @@ class TemplateService {
     console.log('[templateService] Getting task categories');
     
     try {
-      const response = await apiClient.get<TaskCategory[]>('/v1/task-categories');
+      const response = await apiClient.get<TaskCategory[]>('/v1/categories');
       return response;
     } catch (error) {
       console.error('[templateService] Error getting categories:', error);

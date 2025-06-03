@@ -34,7 +34,18 @@ namespace TaskTrackerAPI.Services
             "UpdateTaskItem",
             "DeleteTaskItem",
             "CreateQuickTask",
-            "CompleteTaskItem"
+            "CompleteTaskItem",
+            "CreateBoard",
+            "UpdateBoard",
+            "DeleteBoard",
+            "CreateBoardColumn",
+            "UpdateBoardColumn",
+            "DeleteBoardColumn",
+            "CreateBoardTemplate",
+            "UpdateBoardTemplate",
+            "DeleteBoardTemplate",
+            "CreateBoardFromTemplate",
+            "SaveBoardAsTemplate"
         };
 
         // Regex patterns for detecting security threats
@@ -131,6 +142,17 @@ namespace TaskTrackerAPI.Services
             if (SafeRouteNames.Contains(input))
             {
                 _logger.LogInformation("Safe route name detected, skipping SQL injection check: {Input}", input);
+                return false;
+            }
+            
+            // Skip checks for common controller action method patterns
+            if (input.StartsWith("Create", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("Update", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("Delete", StringComparison.OrdinalIgnoreCase) ||
+                input.StartsWith("Get", StringComparison.OrdinalIgnoreCase))
+            {
+                // These are likely controller action method names, not user input
+                _logger.LogDebug("Controller action method pattern detected, skipping SQL injection check: {Input}", input);
                 return false;
             }
 

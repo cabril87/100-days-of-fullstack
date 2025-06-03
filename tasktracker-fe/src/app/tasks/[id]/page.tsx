@@ -116,8 +116,16 @@ export default function TaskDetailPage() {
   const [focusStartTime, setFocusStartTime] = useState<Date | null>(null);
   const [focusInterval, setFocusInterval] = useState<NodeJS.Timeout | null>(null);
 
+  // Handle special route conflicts - redirect if user navigated to /tasks/create 
+  useEffect(() => {
+    if (id === 'create') {
+      router.replace('/tasks/new');
+      return;
+    }
+  }, [id, router]);
+
   const refreshTask = async () => {
-    if (!id) return;
+    if (!id || id === 'create') return;
     
     // Validate that id is a valid number
     const taskId = Number(id);

@@ -114,7 +114,7 @@ function objectToQueryString(obj: Record<string, unknown>): string {
 /**
  * Handle API response and convert to ApiResponse format
  */
-async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>> {
+async function handleApiResponse<T>(response: Response, endpoint?: string): Promise<ApiResponse<T>> {
   // Handle no-content responses
   if (response.status === 204) {
     return { status: 204 };
@@ -129,6 +129,18 @@ async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>>
       
       if (response.ok) {
         return { status: response.status };
+      }
+      
+      // Check if this is an expected 404 for certain endpoints
+      const isExpected404 = response.status === 404 && endpoint && (
+        endpoint.includes('/focus/current') ||
+        endpoint.includes('/family/current-family') ||
+        endpoint.includes('/v1/focus/current') ||
+        endpoint.includes('/v1/family/current-family')
+      );
+      
+      if (!isExpected404) {
+        console.error(`[apiClient] HTTP ${response.status} for ${endpoint}:`, text || response.statusText);
       }
       
       return {
@@ -157,7 +169,18 @@ async function handleApiResponse<T>(response: Response): Promise<ApiResponse<T>>
       };
     }
     
-    // Error response
+    // Error response - check if it's an expected 404
+    const isExpected404 = response.status === 404 && endpoint && (
+      endpoint.includes('/focus/current') ||
+      endpoint.includes('/family/current-family') ||
+      endpoint.includes('/v1/focus/current') ||
+      endpoint.includes('/v1/family/current-family')
+    );
+    
+    if (!isExpected404) {
+      console.error(`[apiClient] API Error ${response.status} for ${endpoint}:`, json.message || json.error || 'Unknown error');
+    }
+    
     return {
       error: json.message || json.error || 'Unknown error',
       details: json.errors || json.details || null,
@@ -328,7 +351,7 @@ async function makeRequest<T>(
     const response = await fetch(requestUrl, requestOptions);
 
     // Handle the response
-    return handleApiResponse<T>(response);
+    return handleApiResponse<T>(response, endpoint);
   } catch (error) {
     console.error(`[apiClient] Error in ${method} request to ${endpoint}:`, error);
     
@@ -361,32 +384,16 @@ export const apiClient = {
       skipThrottle?: boolean;
     } = {}
   ): Promise<ApiResponse<T>> {
-    // Special handling for calendar event creation to improve success rate
-    if (endpoint.includes('/calendar/events')) {
-      console.log('[apiClient] Calendar event creation detected, adding special headers');
-      console.log('[apiClient] Calendar event data:', JSON.stringify(data, null, 2));
-      
-      // Set extraHeaders if not already set
-      options.extraHeaders = options.extraHeaders || {};
-      
-      // Add special headers to try to bypass any permission issues
-      options.extraHeaders = {
-        ...options.extraHeaders,
-        'X-User-Role': 'Admin',
-        'X-Permissions-Bypass': 'true',
-        'X-Calendar-Access': 'full'
-      };
-      
-      // Handle potential issues with recurrencePattern
-      if (data && data.recurrencePattern === null) {
-        console.log('[apiClient] Converting null recurrencePattern to undefined');
-        const modifiedData = { ...data };
-        delete modifiedData.recurrencePattern;
-        return apiRequest<T>(endpoint, 'POST', modifiedData, options);
-      }
-    }
+    console.log(`[apiClient] POST ${endpoint}`, { data, options });
     
-    return apiRequest<T>(endpoint, 'POST', data, options);
+    try {
+      const response = await apiRequest<T>(endpoint, 'POST', data, options);
+      console.log(`[apiClient] POST ${endpoint} response:`, response);
+      return response;
+    } catch (error) {
+      console.error(`[apiClient] POST ${endpoint} error:`, error);
+      throw error;
+    }
   },
 
   async put<T = any>(endpoint: string, data?: any, options: { 

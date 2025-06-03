@@ -18,21 +18,30 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 class FocusService {
   async getCurrentFocusSession(): Promise<ApiResponse<FocusSession>> {
     try {
-      const response = await apiClient.get<FocusSession>('/v1/focus/current');
+      const response = await apiClient.get<FocusSession>('/v1/focus/current', { 
+        suppressAuthError: false 
+      });
       
       // Handle 404 gracefully - no current session is normal
       if (response.status === 404) {
+        console.log('[FocusService] No active focus session found (normal state)');
         return { data: undefined, status: 404 };
+      }
+      
+      if (response.data) {
+        console.log('[FocusService] Active focus session found:', response.data.id);
       }
       
       return response;
     } catch (error: any) {
       // Handle 404 errors gracefully - no current session is normal
       if (error?.status === 404 || error?.response?.status === 404) {
+        console.log('[FocusService] No active focus session found (normal state)');
         return { data: undefined, status: 404 };
       }
       
-      // Re-throw other errors
+      // Only log non-404 errors as actual errors
+      console.error('[FocusService] Unexpected error fetching focus session:', error);
       throw error;
     }
   }

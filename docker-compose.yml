@@ -14,6 +14,12 @@ services:
     networks:
       - tasktracker-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 10s bash -c 'cat < /dev/null > /dev/tcp/localhost/1433' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   
   # TaskTrackerAPI
   tasktracker-api:
@@ -25,20 +31,23 @@ services:
       - "5000:8080"
       - "5002:443"
     depends_on:
-      - sqlserver
+      sqlserver:
+        condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DOCKER_ENVIRONMENT=true
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=TaskTracker;User Id=sa;Password=TaskTracker_StrongP@ssw0rd!;TrustServerCertificate=True;
       - AppSettings__TokenKey=your_development_token_key_here_replace_in_production
       - AppSettings__PasswordKey=your_development_password_key_here_replace_in_production
       - AppSettings__DebugKey=DEVELOPMENT_DEBUG_ONLY_7865421
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
     healthcheck:
-        test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/api/v1/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
-        start_period: 40s
+      test: ["CMD-SHELL", "timeout 10s bash -c 'cat < /dev/null > /dev/tcp/localhost/8080' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
@@ -56,13 +65,27 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - tasktracker-api
+      tasktracker-api:
+        condition: service_healthy
     environment:
-      - NEXT_PUBLIC_API_URL=http://tasktracker-api:8080/api
+      # Frontend needs to use localhost URLs since it runs in the browser
+      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+      - NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/hubs
       - NODE_ENV=production
+      - DOCKER_ENVIRONMENT=true
+      - NEXT_TELEMETRY_DISABLED=1
+      # Performance monitoring
+      - NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
+      - NEXT_PUBLIC_SW_ENABLED=true
     networks:
       - tasktracker-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   sqlserver-data:
@@ -72,4 +95,5 @@ volumes:
 
 networks:
   tasktracker-network:
-    name: tasktracker-network 
+    name: tasktracker-network
+    driver: bridge 

@@ -146,6 +146,18 @@ class BoardSignalRService {
   private setupEnhancedBoardEventHandlers() {
     if (!this.enhancedBoardConnection) return;
 
+    // Board state updates (initial state when joining)
+    this.enhancedBoardConnection.on('BoardState', (data: any) => {
+      const update: BoardEvent = {
+        type: 'board_state',
+        data,
+        boardId: data.boardId || data.Board?.id,
+        userId: 0, // Initial state doesn't have a specific user
+        timestamp: new Date().toISOString(),
+      };
+      this.eventHandlers.get('onBoardUpdate')?.forEach(handler => handler(update));
+    });
+
     // Board state updates
     this.enhancedBoardConnection.on('BoardUpdated', (data: any) => {
       const update: BoardEvent = {
@@ -401,7 +413,7 @@ class BoardSignalRService {
   public async joinBoardGroup(boardId: number): Promise<void> {
     try {
       if (this.enhancedBoardConnection?.state === signalR.HubConnectionState.Connected) {
-        await this.enhancedBoardConnection.invoke('JoinBoardGroup', boardId);
+        await this.enhancedBoardConnection.invoke('JoinBoardAsync', boardId);
         this.connectedBoards.add(boardId);
         console.log(`BoardSignalR: Joined board group ${boardId}`);
       }
@@ -413,7 +425,7 @@ class BoardSignalRService {
   public async leaveBoardGroup(boardId: number): Promise<void> {
     try {
       if (this.enhancedBoardConnection?.state === signalR.HubConnectionState.Connected) {
-        await this.enhancedBoardConnection.invoke('LeaveBoardGroup', boardId);
+        await this.enhancedBoardConnection.invoke('LeaveBoardAsync', boardId);
         this.connectedBoards.delete(boardId);
         console.log(`BoardSignalR: Left board group ${boardId}`);
       }
@@ -425,7 +437,7 @@ class BoardSignalRService {
   public async joinTemplateMarketplace(): Promise<void> {
     try {
       if (this.templateMarketplaceConnection?.state === signalR.HubConnectionState.Connected) {
-        await this.templateMarketplaceConnection.invoke('JoinTemplateMarketplace');
+        await this.templateMarketplaceConnection.invoke('JoinMarketplaceAsync');
         console.log('BoardSignalR: Joined template marketplace');
       }
     } catch (error) {
@@ -436,7 +448,7 @@ class BoardSignalRService {
   public async leaveTemplateMarketplace(): Promise<void> {
     try {
       if (this.templateMarketplaceConnection?.state === signalR.HubConnectionState.Connected) {
-        await this.templateMarketplaceConnection.invoke('LeaveTemplateMarketplace');
+        await this.templateMarketplaceConnection.invoke('LeaveMarketplaceAsync');
         console.log('BoardSignalR: Left template marketplace');
       }
     } catch (error) {

@@ -259,13 +259,6 @@ public class BoardColumnService : IBoardColumnService
                 throw new InvalidOperationException($"Cannot delete column because it contains {taskCount} tasks. Move or delete tasks first.");
             }
 
-            // Ensure board has at least one column remaining
-            IEnumerable<BoardColumn> boardColumns = await _boardColumnRepository.GetColumnsByBoardIdAsync(column.BoardId);
-            if (boardColumns.Count() <= 1)
-            {
-                throw new InvalidOperationException("Cannot delete the last column in a board. Boards must have at least one column.");
-            }
-
             bool success = await _boardColumnRepository.DeleteColumnAsync(columnId);
 
             if (success)
@@ -768,14 +761,6 @@ public class BoardColumnService : IBoardColumnService
         {
             result.IsValid = false;
             result.Errors.Add($"Cannot delete column because it contains {taskCount} tasks");
-        }
-
-        // Check if it's the last column
-        IEnumerable<BoardColumn> boardColumns = await _boardColumnRepository.GetColumnsByBoardIdAsync(column.BoardId);
-        if (boardColumns.Count() <= 1)
-        {
-            result.IsValid = false;
-            result.Errors.Add("Cannot delete the last column in a board");
         }
     }
 

@@ -324,14 +324,14 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     ➕ Create Task
                   </Link>
                   <Link
-                    href="/categories"
+                    href="/tasks"
                     className={`sidebar-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      isActiveLink('/categories')
+                      (isActiveLink('/tasks') || pathname === '/categories')
                         ? 'bg-amber-500/20 border-l-4 border-amber-400'
                         : ''
                     }`}
                   >
-                    🏷️ Categories
+                    🏷️ Categories (via Tasks)
                   </Link>
                   <Link
                     href="/focus"

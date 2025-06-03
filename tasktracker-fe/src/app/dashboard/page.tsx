@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, StatsCard, ProgressCard } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -85,12 +85,12 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { tasks: allTasks, error, fetchTasks } = useTasks();
+  const { tasks: allTasks, error } = useTasks();
   const { currentSession, statistics: focusStats } = useFocus();
   const router = useRouter();
   const { showToast } = useToast();
   
-  const tasks = Array.isArray(allTasks) ? allTasks : [];
+  const tasks = useMemo(() => Array.isArray(allTasks) ? allTasks : [], [allTasks]);
 
   // Dashboard state
   const [isLoading, setIsLoading] = useState(true);
@@ -121,6 +121,7 @@ export default function DashboardPage() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [gamificationData, setGamificationData] = useState<any>(null);
+  const [lastDataFetch, setLastDataFetch] = useState<number>(0);
 
   // Authentication redirect
   useEffect(() => {
@@ -129,14 +130,92 @@ export default function DashboardPage() {
     }
   }, [authLoading, user, router]);
 
-  // Fetch all dashboard data
-  const loadDashboardData = useCallback(async () => {
+  // Memoize data processing functions to prevent recreation
+  const processTasksData = useCallback((tasksToProcess: Task[]) => {
+    if (!tasksToProcess || tasksToProcess.length === 0) return;
+
+    const completed = tasksToProcess.filter(task => task.status === 'done').length;
+    const inProgress = tasksToProcess.filter(task => task.status === 'in-progress').length;
+    const total = tasksToProcess.length;
+    
+    const today = new Date();
+    const overdue = tasksToProcess.filter(task => {
+      if (!task.dueDate || task.status === 'done') return false;
+      return new Date(task.dueDate) < today;
+    }).length;
+    
+    const dueSoon = tasksToProcess.filter(task => {
+      if (!task.dueDate || task.status === 'done') return false;
+      const dueDate = new Date(task.dueDate);
+      const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+      return daysDiff >= 0 && daysDiff <= 3;
+    }).length;
+    
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    setDashboardStats(prev => ({
+      ...prev,
+      totalTasks: total,
+      completedTasks: completed,
+      inProgressTasks: inProgress,
+      overdueTasks: overdue,
+      dueSoonTasks: dueSoon,
+      completionRate
+    }));
+    
+    // Set recent tasks (last 5 updated)
+    const sortedTasks = [...tasksToProcess]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+      .slice(0, 5);
+    setRecentTasks(sortedTasks);
+  }, []);
+
+  const processFamiliesData = useCallback((familiesToProcess: Family[]) => {
+    const totalMembers = familiesToProcess.reduce((sum, family) => 
+      sum + (family.members?.length || 0), 0
+    );
+    
+    const familyTasks = familiesToProcess.reduce((sum, family) => 
+      sum + (family.members?.reduce((memberSum, member) => 
+        memberSum + (member.pendingTasks || 0) + (member.completedTasks || 0), 0) || 0), 0
+    );
+    
+    setDashboardStats(prev => ({
+      ...prev,
+      totalFamilies: familiesToProcess.length,
+      totalFamilyMembers: totalMembers,
+      familyTasks
+    }));
+  }, []);
+
+  const processGamificationData = useCallback((data: any) => {
+    const userProgress = data.userProgress || {};
+    const stats = data.stats || {};
+    
+    setDashboardStats(prev => ({
+      ...prev,
+      currentLevel: userProgress.currentLevel || 1,
+      totalPoints: userProgress.totalPointsEarned || 0,
+      pointsToNextLevel: userProgress.pointsToNextLevel || 100,
+      currentStreak: userProgress.currentStreak || 0,
+      totalAchievements: stats.achievementsUnlocked || 0,
+      userTier: userProgress.currentTier || 'bronze'
+    }));
+  }, []);
+
+  // Fetch all dashboard data - REMOVED fetchTasks dependency
+  const loadDashboardData = useCallback(async (force = false) => {
     if (!user) return;
+    
+    // Prevent frequent refetches (minimum 5 seconds between fetches)
+    const now = Date.now();
+    if (!force && now - lastDataFetch < 5000) {
+      return;
+    }
     
     setIsLoading(true);
     try {
-      // Fetch tasks
-      await fetchTasks();
+      setLastDataFetch(now);
       
       // Fetch families
       const familiesResponse = await familyService.getAllFamilies();
@@ -164,131 +243,62 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, fetchTasks, showToast]);
+  }, [user, showToast, lastDataFetch]);
 
-  // Initial data load
+  // Initial data load - only when user becomes available
   useEffect(() => {
-    if (user) {
-      loadDashboardData();
+    if (user && !lastDataFetch) {
+      loadDashboardData(true);
     }
-  }, [user, loadDashboardData]);
+  }, [user]); // SIMPLIFIED dependency array
 
-  // Process data when tasks change
+  // Process data when dependencies change - with proper memoization
   useEffect(() => {
-    if (tasks && tasks.length > 0) {
+    if (tasks.length > 0) {
       processTasksData(tasks);
     }
-  }, [tasks]);
+  }, [tasks, processTasksData]);
 
-  // Process families data
   useEffect(() => {
     if (families.length > 0) {
       processFamiliesData(families);
     }
-  }, [families]);
+  }, [families, processFamiliesData]);
 
-  // Process gamification data
   useEffect(() => {
     if (gamificationData) {
       processGamificationData(gamificationData);
     }
-  }, [gamificationData]);
+  }, [gamificationData, processGamificationData]);
 
-  const processTasksData = (tasks: Task[]) => {
-    const completed = tasks.filter(task => task.status === 'done').length;
-    const inProgress = tasks.filter(task => task.status === 'in-progress').length;
-    const total = tasks.length;
-
-    // Calculate overdue and due soon
-    const now = new Date();
-    const threeDaysFromNow = new Date();
-    threeDaysFromNow.setDate(now.getDate() + 3);
-    
-    const overdue = tasks.filter(task => {
-      if (!task.dueDate || task.status === 'done') return false;
-      return new Date(task.dueDate) < now;
-    }).length;
-    
-    const dueSoon = tasks.filter(task => {
-      if (!task.dueDate || task.status === 'done') return false;
-      const dueDate = new Date(task.dueDate);
-      return dueDate > now && dueDate <= threeDaysFromNow;
-    }).length;
-    
-    // Get recent tasks (last 5 updated)
-    const recent = [...tasks]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt || '').getTime() - new Date(a.updatedAt || a.createdAt || '').getTime())
-      .slice(0, 5);
-    
-    setRecentTasks(recent);
-    
-    setDashboardStats(prev => ({
-      ...prev,
-      totalTasks: total,
-      completedTasks: completed,
-      inProgressTasks: inProgress,
-      overdueTasks: overdue,
-      dueSoonTasks: dueSoon,
-      completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
-    }));
-  };
-
-  const processFamiliesData = (families: Family[]) => {
-    const totalMembers = families.reduce((sum, family) => 
-      sum + (family.members?.length || 0), 0
-    );
-    
-    const familyTasks = families.reduce((sum, family) => 
-      sum + (family.members?.reduce((memberSum, member) => 
-        memberSum + (member.pendingTasks || 0) + (member.completedTasks || 0), 0) || 0), 0
-    );
-    
-    setDashboardStats(prev => ({
-      ...prev,
-      totalFamilies: families.length,
-      totalFamilyMembers: totalMembers,
-      familyTasks
-    }));
-  };
-
-  const processGamificationData = (data: any) => {
-    const userProgress = data.userProgress || {};
-    const stats = data.stats || {};
-    
-    setDashboardStats(prev => ({
-      ...prev,
-      currentLevel: userProgress.currentLevel || 1,
-      totalPoints: userProgress.totalPointsEarned || 0,
-      pointsToNextLevel: userProgress.pointsToNextLevel || 100,
-      currentStreak: userProgress.currentStreak || 0,
-      totalAchievements: stats.achievementsUnlocked || 0,
-      userTier: userProgress.currentTier || 'bronze'
-    }));
-  };
-
-  // Handle error display
+  // Handle error display - with stable showToast
   useEffect(() => {
     if (error) {
-      showToast(error, 'error');
+      console.error('Dashboard task error:', error);
+      // Don't show toast for every error to prevent spam
     }
-  }, [error, showToast]);
+  }, [error]);
 
-  // Quick action handlers
-  const handleQuickCreateTask = () => {
+  // Quick action handlers - memoized to prevent recreation
+  const handleQuickCreateTask = useCallback(() => {
     router.push('/tasks/create');
-  };
+  }, [router]);
 
-  const handleQuickStartFocus = () => {
+  const handleQuickStartFocus = useCallback(() => {
     router.push('/focus');
-  };
+  }, [router]);
 
-  const handleQuickViewFamilies = () => {
+  const handleQuickViewFamilies = useCallback(() => {
     router.push('/family');
-  };
+  }, [router]);
 
-  const handleQuickViewTemplates = () => {
+  const handleQuickViewTemplates = useCallback(() => {
     router.push('/templates');
-  };
+  }, [router]);
+
+  const handleRefreshData = useCallback(() => {
+    loadDashboardData(true);
+  }, [loadDashboardData]);
 
   if (authLoading) {
     return (
@@ -325,7 +335,7 @@ export default function DashboardPage() {
               <div>
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent mb-2">
                   Welcome back, {user?.displayName || user?.username || 'Productivity Champion'}! 
-          </h1>
+                </h1>
                 <p className="text-gray-600 text-lg">
                   Ready to tackle your goals and boost your productivity?
                 </p>
@@ -353,7 +363,7 @@ export default function DashboardPage() {
               
               <div className="flex items-center gap-3">
                 <Button 
-                  onClick={loadDashboardData} 
+                  onClick={handleRefreshData} 
                   variant="outline" 
                   size="sm"
                   className="bg-white hover:bg-gray-50 border-gray-300 hover:border-gray-400 transition-all duration-300"
@@ -415,7 +425,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-8 relative overflow-hidden">
             {/* Decorative elements */}
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-600 opacity-[0.05] rounded-full blur-2xl"></div>
@@ -433,7 +443,7 @@ export default function DashboardPage() {
                     <div className="font-semibold">Overview</div>
                     <div className="text-xs opacity-80">Main dashboard</div>
                   </div>
-            </TabsTrigger>
+                </TabsTrigger>
                 
                 <TabsTrigger 
                   value="tasks" 
@@ -446,7 +456,7 @@ export default function DashboardPage() {
                     <div className="font-semibold">Tasks</div>
                     <div className="text-xs opacity-80">Manage & track</div>
                   </div>
-            </TabsTrigger>
+                </TabsTrigger>
                 
                 <TabsTrigger 
                   value="focus" 
@@ -459,7 +469,7 @@ export default function DashboardPage() {
                     <div className="font-semibold">Focus</div>
                     <div className="text-xs opacity-80">Deep work mode</div>
                   </div>
-            </TabsTrigger>
+                </TabsTrigger>
                 
                 <TabsTrigger 
                   value="family" 
@@ -472,7 +482,7 @@ export default function DashboardPage() {
                     <div className="font-semibold">Family</div>
                     <div className="text-xs opacity-80">Collaborate</div>
                   </div>
-            </TabsTrigger>
+                </TabsTrigger>
                 
                 <TabsTrigger 
                   value="gamification" 
@@ -485,13 +495,13 @@ export default function DashboardPage() {
                     <div className="font-semibold">Achievements</div>
                     <div className="text-xs opacity-80">Level up</div>
                   </div>
-            </TabsTrigger>
-        </TabsList>
+                </TabsTrigger>
+              </TabsList>
             </div>
           </div>
         
           {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-8">
+          <TabsContent value="overview" className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
               {/* Quick Actions */}
@@ -570,7 +580,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="pt-4 relative z-10">
                   <div className="space-y-3">
-                  {isLoading ? (
+                    {isLoading ? (
                       Array(3).fill(0).map((_, i) => (
                         <div key={i} className="animate-pulse">
                           <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
@@ -598,7 +608,7 @@ export default function DashboardPage() {
                               </Link>
                             </Button>
                           </div>
-                    </div>
+                        </div>
                       ))
                     ) : (
                       <div className="text-center py-8 text-gray-500">
@@ -609,7 +619,7 @@ export default function DashboardPage() {
                         </Button>
                       </div>
                     )}
-              </div>
+                  </div>
                   
                   {recentTasks.length > 0 && (
                     <div className="mt-4 pt-3 border-t">
@@ -619,7 +629,7 @@ export default function DashboardPage() {
                           <ArrowRight className="h-4 w-4 ml-2" />
                         </Link>
                       </Button>
-            </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -653,7 +663,7 @@ export default function DashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4 relative z-10">
-                    <div className="space-y-4">
+                  <div className="space-y-4">
                     {dashboardStats.overdueTasks > 0 && (
                       <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
@@ -679,10 +689,10 @@ export default function DashboardPage() {
                         <p className="text-sm text-gray-600">No urgent tasks at the moment</p>
                       </div>
                     )}
-              </div>
+                  </div>
                 </CardContent>
               </Card>
-      </div>
+            </div>
           </TabsContent>
 
           {/* Tasks Tab */}
@@ -751,15 +761,15 @@ export default function DashboardPage() {
                     <span>Analytics</span>
                   </Link>
                 </Button>
+              </div>
             </div>
-          </div>
-        </TabsContent>
-        
+          </TabsContent>
+
           {/* Focus Tab */}
-        <TabsContent value="focus" className="space-y-6">
+          <TabsContent value="focus" className="space-y-6">
             <FocusModeManager showTaskDetails={true} showStreakCounter={true} showKeyboardHelp={false} />
-        </TabsContent>
-        
+          </TabsContent>
+          
           {/* Family Tab */}
           <TabsContent value="family" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -795,7 +805,7 @@ export default function DashboardPage() {
                   <Users className="h-4 w-4 mr-2" />
                   Manage Families
                 </Button>
-                    </div>
+              </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Button variant="outline" className="h-24 flex flex-col items-center justify-center gap-2" asChild>
@@ -825,7 +835,7 @@ export default function DashboardPage() {
                     <span>Calendar</span>
                   </Link>
                 </Button>
-                  </div>
+              </div>
               
               {families.length > 0 && (
                 <div className="mt-6">
@@ -837,21 +847,21 @@ export default function DashboardPage() {
                           <div>
                             <h5 className="font-medium text-green-900">{family.name}</h5>
                             <p className="text-sm text-green-700">{family.members?.length || 0} members</p>
-                    </div>
+                          </div>
                           <Button size="sm" variant="ghost" asChild>
                             <Link href={`/family/${family.id}`}>
                               <ArrowRight className="h-4 w-4" />
                             </Link>
                           </Button>
-                  </div>
-                    </div>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
           </TabsContent>
-        
+          
           {/* Gamification Tab */}
           <TabsContent value="gamification" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -896,12 +906,12 @@ export default function DashboardPage() {
                 </Badge>
               </div>
               
-                <div className="space-y-4">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Level {dashboardStats.currentLevel}</span>
                   <span className="text-sm text-gray-500">
                     {dashboardStats.totalPoints} / {dashboardStats.totalPoints + dashboardStats.pointsToNextLevel} XP
-                        </span>
+                  </span>
                 </div>
                 
                 <Progress 
@@ -929,12 +939,12 @@ export default function DashboardPage() {
                   <Link href="/leaderboard">
                     <BarChart3 className="h-4 w-4 mr-2" />
                     Leaderboard
-                        </Link>
+                  </Link>
                 </Button>
               </div>
-        </div>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -123,18 +123,18 @@ public class BoardColumnsController : BaseApiController
     }
 
     /// <summary>
-    /// Create a new board column
+    /// Create a new column for a board
     /// </summary>
-    /// <param name="boardId">Board ID</param>
-    /// <param name="createDto">Column creation data</param>
-    /// <returns>Created column</returns>
     [HttpPost]
-    [ProducesResponseType(typeof(EnhancedBoardColumnDTO), StatusCodes.Status201Created)]
+#if DEBUG
+    [AllowAnonymous] // Allow anonymous column creation in development
+#endif
+    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<EnhancedBoardColumnDTO>> CreateColumn(
-        int boardId, 
-        [FromBody] CreateEnhancedBoardColumnDTO createDto)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<BoardColumnDTO>> CreateColumn(int boardId, [FromBody] CreateEnhancedBoardColumnDTO columnDto)
     {
         if (!ModelState.IsValid)
         {
@@ -143,9 +143,22 @@ public class BoardColumnsController : BaseApiController
 
         try
         {
-            int userId = int.Parse(_userAccessor.GetCurrentUserId());
+            // For development, use a default user ID if no user is authenticated
+            int userId;
+#if DEBUG
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                userId = int.Parse(_userAccessor.GetCurrentUserId());
+            }
+            else
+            {
+                userId = 1; // Default development user
+            }
+#else
+            userId = int.Parse(_userAccessor.GetCurrentUserId());
+#endif
             
-            EnhancedBoardColumnDTO createdColumn = await _boardColumnService.CreateColumnAsync(boardId, createDto, userId);
+            EnhancedBoardColumnDTO createdColumn = await _boardColumnService.CreateColumnAsync(boardId, columnDto, userId);
             
             return CreatedAtAction(
                 nameof(GetColumn), 
@@ -480,6 +493,56 @@ public class BoardColumnsController : BaseApiController
         {
             _logger.LogError(ex, "Error getting statistics for column {ColumnId}", columnId);
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving column statistics");
+        }
+    }
+
+    /// <summary>
+    /// Create default columns for a board
+    /// </summary>
+    [HttpPost("default")]
+#if DEBUG
+    [AllowAnonymous] // Allow anonymous default column creation in development
+#endif
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<IEnumerable<EnhancedBoardColumnDTO>>> CreateDefaultColumns(int boardId)
+    {
+        try
+        {
+            // For development, use a default user ID if no user is authenticated
+            int userId;
+#if DEBUG
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                userId = int.Parse(_userAccessor.GetCurrentUserId());
+            }
+            else
+            {
+                userId = 1; // Default development user
+            }
+#else
+            userId = int.Parse(_userAccessor.GetCurrentUserId());
+#endif
+            
+            IEnumerable<EnhancedBoardColumnDTO> defaultColumns = await _boardColumnService.CreateDefaultColumnsAsync(boardId, null, userId);
+            
+            return CreatedAtAction(
+                nameof(GetBoardColumns), 
+                new { boardId = boardId }, 
+                defaultColumns);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Unauthorized access to create default columns for board {BoardId}", boardId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating default columns for board {BoardId}", boardId);
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while creating default columns");
         }
     }
 } 

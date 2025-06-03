@@ -11,7 +11,7 @@ export interface GamificationEvent {
 
 // Enhanced Board Events
 export interface BoardEvent {
-  type: 'board_updated' | 'column_updated' | 'task_moved' | 'wip_violation' | 'analytics_updated' | 'settings_updated' | 'template_updated';
+  type: 'board_state' | 'board_updated' | 'column_updated' | 'task_moved' | 'wip_violation' | 'analytics_updated' | 'settings_updated' | 'template_updated';
   data: any;
   boardId: number;
   userId: number;

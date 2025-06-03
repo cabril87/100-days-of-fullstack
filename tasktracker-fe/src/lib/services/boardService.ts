@@ -8,29 +8,37 @@ import {
   BoardColumn, 
   BoardSettings, 
   BoardTemplate, 
-  CreateBoardDTO, 
-  UpdateBoardDTO,
-  CreateBoardColumnDTO,
-  UpdateBoardColumnDTO,
+  CreateBoard, 
+  UpdateBoard,
+  CreateBoardColumn,
+  UpdateBoardColumn,
   CreateBoardFromTemplateDTO,
-  UpdateBoardSettingsDTO,
+  UpdateBoardSettings,
   ColumnStatistics,
   WipLimitStatus,
   BoardAnalytics,
   TemplateMarketplaceFilter,
   BoardExportData,
   BoardImportResult,
-  BoardValidationResult
+  BoardValidationResult,
+  BoardDetail,
+  CreateBoardTemplate,
+  TaskReorder,
+  ColumnOrder,
+  BoardFilter
 } from '@/lib/types/board';
 import { apiClient } from './apiClient';
 import { handleApiError } from '@/lib/utils/errorHandler';
+import { ApiResponse } from '@/lib/types/api';
+import { TaskStatus, TaskStatusType } from '@/lib/types/task';
+import { apiService } from './apiService';
 
 // ==================== BOARD CRUD OPERATIONS ====================
 
 export class BoardService {
   private static instance: BoardService;
-  private baseUrl = '/api/v1/boards';
-  private templateUrl = '/api/v1/board-templates';
+  private baseUrl = '/v1/boards';
+  private templateUrl = '/v1/board-templates';
 
   public static getInstance(): BoardService {
     if (!BoardService.instance) {
@@ -44,119 +52,474 @@ export class BoardService {
   /**
    * Get all boards for the current user
    */
-  async getUserBoards(): Promise<Board[]> {
+  async getAllBoards(): Promise<ApiResponse<Board[]>> {
+    console.log('[BoardService] Getting all boards');
     try {
-      const response = await apiClient.get(this.baseUrl);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to fetch user boards');
+      const response = await apiClient.get<Board[]>(this.baseUrl);
+      
+      if (response.data) {
+        console.log('[BoardService] Found', response.data.length, 'boards');
+        return response;
+      }
+      
+      return { data: [], status: response.status };
+    } catch (error: any) {
+      console.error('[BoardService] Error getting boards:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get boards',
+        status: 500
+      };
     }
   }
 
   /**
    * Get a specific board by ID
    */
-  async getBoardById(boardId: number): Promise<Board> {
+  async getBoardById(boardId: number): Promise<ApiResponse<Board>> {
+    console.log('[BoardService] Getting board:', boardId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to fetch board ${boardId}`);
+      const response = await apiClient.get<any>(`${this.baseUrl}/${boardId}`);
+      
+      if (response.data) {
+        // Convert columns if they are included in the board response
+        if (response.data.columns && Array.isArray(response.data.columns)) {
+          response.data.columns = response.data.columns.map((col: any) => this.convertColumnFromBackend(col));
+        }
+        
+        console.log('[BoardService] Found board:', response.data.name);
+        return {
+          data: response.data as Board,
+          status: response.status
+        };
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error getting board:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get board',
+        status: 500
+      };
+    }
+  }
+
+  /**
+   * Get a board with tasks
+   */
+  async getBoardWithTasks(boardId: number): Promise<ApiResponse<BoardDetail>> {
+    console.log('[BoardService] Getting board with tasks:', boardId);
+    try {
+      const response = await apiClient.get<BoardDetail>(`${this.baseUrl}/${boardId}/tasks`);
+      
+      if (response.data) {
+        console.log('[BoardService] Found board with', response.data.tasks?.length || 0, 'tasks');
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error getting board with tasks:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get board with tasks',
+        status: 500
+      };
     }
   }
 
   /**
    * Create a new board
    */
-  async createBoard(boardData: CreateBoardDTO): Promise<Board> {
+  async createBoard(boardData: CreateBoard): Promise<ApiResponse<Board>> {
+    console.log('[BoardService] Creating board:', boardData.name);
     try {
-      const response = await apiClient.post(this.baseUrl, boardData);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to create board');
+      const response = await apiClient.post<Board>(this.baseUrl, boardData);
+      
+      if (response.data) {
+        console.log('[BoardService] Created board:', response.data.name);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error creating board:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to create board',
+        status: 500
+      };
     }
   }
 
   /**
    * Update an existing board
    */
-  async updateBoard(boardId: number, boardData: UpdateBoardDTO): Promise<Board> {
+  async updateBoard(boardId: number, boardData: UpdateBoard): Promise<ApiResponse<Board>> {
+    console.log('[BoardService] Updating board:', boardId);
     try {
-      const response = await apiClient.put(`${this.baseUrl}/${boardId}`, boardData);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to update board ${boardId}`);
+      const response = await apiClient.put<Board>(`${this.baseUrl}/${boardId}`, boardData);
+      
+      if (response.data) {
+        console.log('[BoardService] Updated board:', response.data.name);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error updating board:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to update board',
+        status: 500
+      };
     }
   }
 
   /**
    * Delete a board
    */
-  async deleteBoard(boardId: number): Promise<void> {
+  async deleteBoard(boardId: number): Promise<ApiResponse<void>> {
+    console.log('[BoardService] Deleting board:', boardId);
     try {
-      await apiClient.delete(`${this.baseUrl}/${boardId}`);
-    } catch (error) {
-      throw handleApiError(error, `Failed to delete board ${boardId}`);
+      const response = await apiClient.delete<void>(`${this.baseUrl}/${boardId}`);
+      console.log('[BoardService] Board deleted successfully');
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error deleting board:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to delete board',
+        status: 500
+      };
     }
   }
 
   // ==================== BOARD COLUMN OPERATIONS ====================
 
   /**
+   * Convert backend column format to frontend format
+   * Enhanced to support custom statuses
+   */
+  private convertColumnFromBackend(backendColumn: any): BoardColumn {
+    // Handle both uppercase IsHidden and lowercase isHidden
+    const isHidden = backendColumn.isHidden ?? backendColumn.IsHidden ?? false;
+    
+    // Enhanced mapping to support custom statuses
+    const mapBackendStatusToFrontend = (backendStatus: number | string): TaskStatusType => {
+      // If it's already a string (custom status), return as-is
+      if (typeof backendStatus === 'string') {
+        return backendStatus;
+      }
+      
+      // If it's a number, map to predefined statuses for backward compatibility
+      if (typeof backendStatus === 'number') {
+        switch (backendStatus) {
+          case 0: // TaskItemStatus.NotStarted
+            return TaskStatus.Todo;
+          case 1: // TaskItemStatus.InProgress
+            return TaskStatus.InProgress;
+          case 2: // TaskItemStatus.OnHold (map to custom status)
+            return 'on-hold';
+          case 3: // TaskItemStatus.Pending (map to custom status)
+            return 'pending';
+          case 4: // TaskItemStatus.Completed
+            return TaskStatus.Done;
+          case 5: // TaskItemStatus.Cancelled (map to custom status)
+            return 'cancelled';
+          default:
+            console.warn(`Unknown backend status: ${backendStatus}, defaulting to Todo`);
+            return TaskStatus.Todo;
+        }
+      }
+      
+      // Fallback
+      return TaskStatus.Todo;
+    };
+    
+    return {
+      ...backendColumn,
+      isVisible: !isHidden, // Convert IsHidden to isVisible
+      mappedStatus: mapBackendStatusToFrontend(backendColumn.mappedStatus),
+      // Remove the backend properties to avoid confusion
+      isHidden: undefined,
+      IsHidden: undefined
+    } as BoardColumn;
+  }
+
+  /**
    * Get all columns for a board
    */
-  async getBoardColumns(boardId: number): Promise<BoardColumn[]> {
+  async getBoardColumns(boardId: number, includeHidden = false): Promise<ApiResponse<BoardColumn[]>> {
+    console.log('[BoardService] Getting columns for board:', boardId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}/columns`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to fetch columns for board ${boardId}`);
+      const params = includeHidden ? '?includeHidden=true' : '';
+      const response = await apiClient.get<any[]>(`${this.baseUrl}/${boardId}/columns${params}`);
+      
+      if (response.data) {
+        // Convert backend format to frontend format
+        const convertedColumns = response.data.map(col => this.convertColumnFromBackend(col));
+        console.log('[BoardService] Found', convertedColumns.length, 'columns');
+        return {
+          data: convertedColumns,
+          status: response.status
+        };
+      }
+      
+      return { data: [], status: response.status };
+    } catch (error: any) {
+      console.error('[BoardService] Error getting columns:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get columns',
+        status: 500
+      };
+    }
+  }
+
+  /**
+   * Enhanced mapping for custom statuses
+   * Map frontend TaskStatusType to backend format
+   */
+  private mapTaskStatusToBackend(status: TaskStatusType): number | string {
+    // Check if it's a predefined TaskStatus enum value
+    if (Object.values(TaskStatus).includes(status as TaskStatus)) {
+      switch (status as TaskStatus) {
+        case TaskStatus.Todo:
+          return 0; // TaskItemStatus.NotStarted
+        case TaskStatus.InProgress:
+          return 1; // TaskItemStatus.InProgress
+        case TaskStatus.Done:
+          return 4; // TaskItemStatus.Completed
+        default:
+          return 0; // Default to NotStarted
+      }
+    }
+    
+    // For custom statuses, we'll send the string directly
+    // The backend should be updated to handle string status values
+    // For now, we'll map common custom statuses to existing numeric values
+    switch (status) {
+      case 'on-hold':
+        return 2; // TaskItemStatus.OnHold
+      case 'pending':
+        return 3; // TaskItemStatus.Pending
+      case 'cancelled':
+        return 5; // TaskItemStatus.Cancelled
+      default:
+        // For other custom statuses, return the string
+        // Note: The backend needs to be updated to handle this
+        console.log('[BoardService] Using custom status:', status);
+        return String(status);
     }
   }
 
   /**
    * Create a new column
    */
-  async createColumn(boardId: number, columnData: CreateBoardColumnDTO): Promise<BoardColumn> {
+  async createColumn(boardId: number, columnData: CreateBoardColumn): Promise<ApiResponse<BoardColumn>> {
+    console.log('[BoardService] Creating column for board:', boardId);
+    console.log('[BoardService] Column data:', columnData);
+    
     try {
-      const response = await apiClient.post(`${this.baseUrl}/${boardId}/columns`, columnData);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to create column');
+      // Convert frontend column data to backend format
+      const backendColumnData = {
+        name: columnData.name,
+        description: columnData.description,
+        order: columnData.order,
+        color: columnData.color || '#6B7280',
+        icon: columnData.icon,
+        mappedStatus: this.mapTaskStatusToBackend(columnData.mappedStatus),
+        taskLimit: columnData.taskLimit,
+        isCollapsible: columnData.isCollapsible ?? true,
+        isDoneColumn: columnData.isDoneColumn ?? false
+      };
+
+      console.log('[BoardService] Backend column data:', backendColumnData);
+      console.log('[BoardService] Mapped status:', columnData.mappedStatus, '->', backendColumnData.mappedStatus);
+
+      // Try sending the data directly first (as per the controller signature)
+      const response = await apiClient.post<any>(`${this.baseUrl}/${boardId}/columns`, backendColumnData);
+      
+      if (response.data) {
+        // Convert backend format to frontend format
+        const convertedColumn = this.convertColumnFromBackend(response.data);
+        console.log('[BoardService] Created column:', convertedColumn.name);
+        return {
+          data: convertedColumn,
+          status: response.status
+        };
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error creating column:', error);
+      console.error('[BoardService] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        columnData,
+        boardId
+      });
+
+      // If the first attempt failed with a validation error about columnDto, try wrapping it
+      if (error.response?.status === 400 && error.response?.data?.errors?.columnDto) {
+        console.log('[BoardService] Retrying with wrapped columnDto structure...');
+        
+        try {
+          const wrappedData = {
+            columnDto: {
+              name: columnData.name,
+              description: columnData.description,
+              order: columnData.order,
+              color: columnData.color || '#6B7280',
+              icon: columnData.icon,
+              mappedStatus: this.mapTaskStatusToBackend(columnData.mappedStatus),
+              taskLimit: columnData.taskLimit,
+              isCollapsible: columnData.isCollapsible ?? true,
+              isDoneColumn: columnData.isDoneColumn ?? false
+            }
+          };
+          
+          console.log('[BoardService] Wrapped data:', wrappedData);
+          const retryResponse = await apiClient.post<BoardColumn>(`${this.baseUrl}/${boardId}/columns`, wrappedData);
+          
+          if (retryResponse.data) {
+            console.log('[BoardService] Created column with wrapped data:', retryResponse.data.name);
+          }
+          
+          return retryResponse;
+        } catch (retryError: any) {
+          console.error('[BoardService] Wrapped retry also failed:', retryError);
+          return {
+            error: retryError instanceof Error ? retryError.message : 'Failed to create column with wrapped data',
+            status: retryError.response?.status || 500
+          };
+        }
+      }
+      
+      return {
+        error: error instanceof Error ? error.message : 'Failed to create column',
+        status: error.response?.status || 500
+      };
     }
   }
 
   /**
    * Update a column
    */
-  async updateColumn(boardId: number, columnId: number, columnData: UpdateBoardColumnDTO): Promise<BoardColumn> {
+  async updateColumn(boardId: number, columnId: number, columnData: UpdateBoardColumn): Promise<ApiResponse<BoardColumn>> {
+    console.log('[BoardService] Updating column:', columnId);
     try {
-      const response = await apiClient.put(`${this.baseUrl}/${boardId}/columns/${columnId}`, columnData);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to update column ${columnId}`);
+      const response = await apiClient.put<any>(`${this.baseUrl}/${boardId}/columns/${columnId}`, columnData);
+      
+      if (response.data) {
+        // Convert backend format to frontend format
+        const convertedColumn = this.convertColumnFromBackend(response.data);
+        console.log('[BoardService] Updated column:', convertedColumn.name);
+        return {
+          data: convertedColumn,
+          status: response.status
+        };
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error updating column:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to update column',
+        status: 500
+      };
     }
   }
 
   /**
    * Delete a column
    */
-  async deleteColumn(boardId: number, columnId: number): Promise<void> {
+  async deleteColumn(boardId: number, columnId: number): Promise<ApiResponse<void>> {
+    console.log('[BoardService] Deleting column:', columnId, 'from board:', boardId);
     try {
-      await apiClient.delete(`${this.baseUrl}/${boardId}/columns/${columnId}`);
-    } catch (error) {
-      throw handleApiError(error, `Failed to delete column ${columnId}`);
+      const response = await apiClient.delete<void>(`${this.baseUrl}/${boardId}/columns/${columnId}`);
+      
+      console.log('[BoardService] Raw delete response:', {
+        status: response.status,
+        data: response.data
+      });
+      
+      // Check for successful status codes
+      if (response.status === 204 || response.status === 200) {
+        console.log('[BoardService] Column deleted successfully - Status:', response.status);
+        return {
+          data: undefined,
+          status: response.status
+        };
+      } else {
+        console.error('[BoardService] Unexpected status code for deletion:', response.status);
+        return {
+          error: `Unexpected response status: ${response.status}`,
+          status: response.status
+        };
+      }
+    } catch (error: any) {
+      console.error('[BoardService] Error deleting column:', error);
+      
+      // Handle specific HTTP error responses
+      if (error.response) {
+        const status = error.response.status;
+        const errorData = error.response.data;
+        
+        console.error('[BoardService] Delete column HTTP error:', {
+          status,
+          data: errorData,
+          url: error.config?.url,
+          method: error.config?.method
+        });
+        
+        // Extract error message from response
+        let errorMessage = 'Failed to delete column';
+        if (errorData?.message) {
+          errorMessage = errorData.message;
+        } else if (errorData?.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (status === 400) {
+          errorMessage = 'Bad request - unable to delete column';
+        } else if (status === 404) {
+          errorMessage = 'Column not found - may have been already deleted';
+        } else if (status === 403) {
+          errorMessage = 'Access denied - insufficient permissions';
+        }
+        
+        return {
+          error: errorMessage,
+          status: status
+        };
+      }
+      
+      // Handle network errors
+      if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+        console.error('[BoardService] Network error during column deletion');
+        return {
+          error: 'Network error - please check your connection',
+          status: 0
+        };
+      }
+      
+      // Fallback for other errors
+      return {
+        error: error instanceof Error ? error.message : 'Failed to delete column',
+        status: 500
+      };
     }
   }
 
   /**
    * Reorder columns
    */
-  async reorderColumns(boardId: number, columnOrders: { columnId: number; order: number }[]): Promise<void> {
+  async reorderColumns(boardId: number, columnOrders: { columnId: number; order: number }[]): Promise<ApiResponse<void>> {
+    console.log('[BoardService] Reordering columns for board:', boardId);
     try {
-      await apiClient.put(`${this.baseUrl}/${boardId}/columns/reorder`, { columnOrders });
-    } catch (error) {
-      throw handleApiError(error, 'Failed to reorder columns');
+      const response = await apiClient.put<void>(`${this.baseUrl}/${boardId}/columns/reorder`, { columnOrders });
+      console.log('[BoardService] Columns reordered successfully');
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error reordering columns:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to reorder columns',
+        status: 500
+      };
     }
   }
 
@@ -191,24 +554,44 @@ export class BoardService {
   /**
    * Get board settings
    */
-  async getBoardSettings(boardId: number): Promise<BoardSettings> {
+  async getBoardSettings(boardId: number): Promise<ApiResponse<BoardSettings>> {
+    console.log('[BoardService] Getting settings for board:', boardId);
     try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}/settings`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to fetch settings for board ${boardId}`);
+      const response = await apiClient.get<BoardSettings>(`${this.baseUrl}/${boardId}/settings`);
+      
+      if (response.data) {
+        console.log('[BoardService] Found board settings');
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error getting settings:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get board settings',
+        status: 500
+      };
     }
   }
 
   /**
    * Update board settings
    */
-  async updateBoardSettings(boardId: number, settings: UpdateBoardSettingsDTO): Promise<BoardSettings> {
+  async updateBoardSettings(boardId: number, settings: UpdateBoardSettings): Promise<ApiResponse<BoardSettings>> {
+    console.log('[BoardService] Updating settings for board:', boardId);
     try {
-      const response = await apiClient.put(`${this.baseUrl}/${boardId}/settings`, settings);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to update settings for board ${boardId}`);
+      const response = await apiClient.put<BoardSettings>(`${this.baseUrl}/${boardId}/settings`, settings);
+      
+      if (response.data) {
+        console.log('[BoardService] Updated board settings');
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error updating settings:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to update board settings',
+        status: 500
+      };
     }
   }
 
@@ -283,12 +666,24 @@ export class BoardService {
   /**
    * Get all public templates
    */
-  async getPublicTemplates(): Promise<BoardTemplate[]> {
+  async getPublicTemplates(): Promise<ApiResponse<BoardTemplate[]>> {
+    console.log('[BoardService] Getting public templates');
     try {
-      const response = await apiClient.get(`${this.templateUrl}/public`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to fetch public templates');
+      const response = await apiClient.get<BoardTemplate[]>(`${this.templateUrl}/public`, {
+        suppressAuthError: true
+      });
+      
+      if (response.data) {
+        console.log('[BoardService] Found', response.data.length, 'public templates');
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error getting templates:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get templates',
+        status: 500
+      };
     }
   }
 
@@ -430,190 +825,121 @@ export class BoardService {
   }
 
   /**
-   * Get WIP limit status for all columns
+   * Get default board for user (creates one if none exists)
    */
-  async getWipLimitStatus(boardId: number): Promise<WipLimitStatus[]> {
+  async getDefaultBoard(): Promise<ApiResponse<Board>> {
+    console.log('[BoardService] Getting default board');
     try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}/columns/wip-status`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to fetch WIP limit status for board ${boardId}`);
-    }
-  }
-
-  /**
-   * Get comprehensive board analytics
-   */
-  async getBoardAnalytics(boardId: number, dateRange?: { from: string; to: string }): Promise<BoardAnalytics> {
-    try {
-      let endpoint = `${this.baseUrl}/${boardId}/analytics`;
-      if (dateRange) {
-        const queryString = `from=${encodeURIComponent(dateRange.from)}&to=${encodeURIComponent(dateRange.to)}`;
-        endpoint += `?${queryString}`;
-      }
-      const response = await apiClient.get(endpoint);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to fetch analytics for board ${boardId}`);
-    }
-  }
-
-  // ==================== EXPORT/IMPORT OPERATIONS ====================
-
-  /**
-   * Export board data
-   */
-  async exportBoard(boardId: number): Promise<string> {
-    try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}/export`);
-      // Convert response to JSON string for download
-      const jsonString = JSON.stringify(response.data, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `board-${boardId}-export.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      return jsonString;
-    } catch (error) {
-      throw handleApiError(error, `Failed to export board ${boardId}`);
-    }
-  }
-
-  /**
-   * Import board data
-   */
-  async importBoard(boardFile: File): Promise<BoardImportResult> {
-    try {
-      const formData = new FormData();
-      formData.append('boardFile', boardFile);
-      
-      const response = await apiClient.post(`${this.baseUrl}/import`, formData, {
-        extraHeaders: {
-          'Content-Type': 'multipart/form-data'
+      // First try to get all boards
+      const boardsResponse = await this.getAllBoards();
+      if (boardsResponse.data && boardsResponse.data.length > 0) {
+        const board = boardsResponse.data[0];
+        console.log('[BoardService] Using existing board as default:', board.name);
+        
+        // Convert columns if they are included
+        if (board.columns && Array.isArray(board.columns)) {
+          board.columns = board.columns.map((col: any) => this.convertColumnFromBackend(col));
         }
-      });
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to import board');
+        
+        return {
+          data: board,
+          status: 200
+        };
+      }
+
+      // If no boards exist, create a default one
+      console.log('[BoardService] No boards found, creating default board');
+      const defaultBoardData: CreateBoard = {
+        name: 'My First Board',
+        description: 'A simple kanban board to get you started'
+      };
+
+      const response = await this.createBoard(defaultBoardData);
+      if (response.data) {
+        console.log('[BoardService] Created default board:', response.data.name);
+        
+        // Convert columns if they are included
+        if (response.data.columns && Array.isArray(response.data.columns)) {
+          response.data.columns = response.data.columns.map((col: any) => this.convertColumnFromBackend(col));
+        }
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error('[BoardService] Error getting default board:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get default board',
+        status: 500
+      };
     }
   }
 
-  // ==================== TASK OPERATIONS ====================
+  // ==================== WIP LIMIT OPERATIONS ====================
 
   /**
-   * Move task between columns
+   * Get WIP limit status for all columns in a board
    */
-  async moveTask(
-    boardId: number, 
-    taskId: number, 
-    sourceColumnId: number, 
-    destinationColumnId: number,
-    newIndex?: number
-  ): Promise<void> {
+  async getWipLimitStatus(boardId: number): Promise<ApiResponse<WipLimitStatus[]>> {
+    console.log('[BoardService] Getting WIP limit status for board:', boardId);
     try {
-      await apiClient.patch(`${this.baseUrl}/${boardId}/tasks/${taskId}/move`, {
-        sourceColumnId,
-        destinationColumnId,
-        newIndex
-      });
-    } catch (error) {
-      throw handleApiError(error, `Failed to move task ${taskId}`);
+      // First get all columns for the board
+      const columnsResponse = await this.getBoardColumns(boardId);
+      
+      if (!columnsResponse.data || columnsResponse.error) {
+        console.log('[BoardService] Failed to get columns for WIP status');
+        return {
+          error: 'Failed to get board columns',
+          status: 500
+        };
+      }
+
+      console.log('[BoardService] Found', columnsResponse.data.length, 'columns');
+      
+      const wipStatuses: WipLimitStatus[] = [];
+
+      // Get WIP status for each column
+      for (const column of columnsResponse.data) {
+        try {
+          console.log('[BoardService] Getting WIP status for column', column.id + ':', column.name);
+          
+          // For now, we'll create a simple WIP status based on the column data
+          // In a real implementation, this would call a specific API endpoint
+          const wipStatus: WipLimitStatus = {
+            columnId: column.id,
+            columnName: column.name,
+            wipLimit: column.taskLimit || undefined,
+            currentTaskCount: column.taskCount || 0,
+            isAtLimit: column.taskCount >= (column.taskLimit || Number.MAX_SAFE_INTEGER),
+            isOverLimit: column.taskCount > (column.taskLimit || Number.MAX_SAFE_INTEGER),
+            utilizationPercentage: column.taskLimit ? 
+              Math.round((column.taskCount || 0) / column.taskLimit * 100) : 0
+          };
+
+          console.log('[BoardService] WIP status for column', column.id + ':', wipStatus);
+          wipStatuses.push(wipStatus);
+          
+          console.log('[BoardService] WIP status retrieved for column', column.id);
+        } catch (columnError) {
+          console.error('[BoardService] Error getting WIP status for column', column.id + ':', columnError);
+          // Continue with other columns even if one fails
+        }
+      }
+
+      console.log('[BoardService] Retrieved WIP limit status for', wipStatuses.length, 'columns');
+      
+      return {
+        data: wipStatuses,
+        status: 200
+      };
+    } catch (error: any) {
+      console.error('[BoardService] Error getting WIP limit status:', error);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to get WIP limit status',
+        status: 500
+      };
     }
-  }
-
-  /**
-   * Bulk move tasks
-   */
-  async bulkMoveTasks(
-    boardId: number,
-    taskMoves: Array<{
-      taskId: number;
-      sourceColumnId: number;
-      destinationColumnId: number;
-      newIndex?: number;
-    }>
-  ): Promise<void> {
-    try {
-      await apiClient.patch(`${this.baseUrl}/${boardId}/tasks/bulk-move`, { taskMoves });
-    } catch (error) {
-      throw handleApiError(error, 'Failed to bulk move tasks');
-    }
-  }
-
-  // ==================== VALIDATION OPERATIONS ====================
-
-  /**
-   * Validate board configuration
-   */
-  async validateBoard(boardId: number): Promise<BoardValidationResult> {
-    try {
-      const response = await apiClient.get(`${this.baseUrl}/${boardId}/validate`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to validate board ${boardId}`);
-    }
-  }
-
-  /**
-   * Validate board settings
-   */
-  async validateBoardSettings(boardId: number, settings: UpdateBoardSettingsDTO): Promise<BoardValidationResult> {
-    try {
-      const response = await apiClient.post(`${this.baseUrl}/${boardId}/settings/validate`, settings);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, `Failed to validate settings for board ${boardId}`);
-    }
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  /**
-   * Get available template categories
-   */
-  async getTemplateCategories(): Promise<string[]> {
-    try {
-      const response = await apiClient.get(`${this.templateUrl}/categories`);
-      return response.data;
-    } catch (error) {
-      throw handleApiError(error, 'Failed to fetch template categories');
-    }
-  }
-
-  /**
-   * Check if WIP limit is exceeded for a column
-   */
-  isWipLimitExceeded(column: BoardColumn): boolean {
-    return column.taskLimit !== null && 
-           column.taskLimit !== undefined && 
-           column.taskCount > column.taskLimit;
-  }
-
-  /**
-   * Calculate WIP limit utilization percentage
-   */
-  getWipLimitUtilization(column: BoardColumn): number {
-    if (!column.taskLimit) return 0;
-    return Math.min((column.taskCount / column.taskLimit) * 100, 100);
-  }
-
-  /**
-   * Get column color based on WIP limit status
-   */
-  getColumnColorByWipStatus(column: BoardColumn): string {
-    if (!column.taskLimit) return column.color;
-    
-    const utilization = this.getWipLimitUtilization(column);
-    
-    if (utilization >= 100) return '#ef4444'; // Red - over limit
-    if (utilization >= 80) return '#f59e0b';  // Orange - approaching limit
-    if (utilization >= 60) return '#eab308';  // Yellow - moderate usage
-    
-    return column.color; // Default color
   }
 }
 
 // Export singleton instance
-export const boardService = BoardService.getInstance(); 
+export const boardService = BoardService.getInstance();
