@@ -633,6 +633,10 @@ public class Program
         // Register marketplace services
         builder.Services.AddScoped<IPointsService, PointsService>();
 
+        // Parental Control service (Family Safety)
+        builder.Services.AddScoped<IParentalControlService, ParentalControlService>();
+        builder.Services.AddScoped<IParentalControlRepository, ParentalControlRepository>();
+
         WebApplication app = builder.Build();
 
         // Get API version description provider

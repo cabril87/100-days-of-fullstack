@@ -142,6 +142,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<ThreatIntelligence> ThreatIntelligence { get; set; } = null!;
     public DbSet<BehavioralAnalytics> BehavioralAnalytics { get; set; } = null!;
 
+    // Parental Control entities (Family Safety)
+    public DbSet<ParentalControl> ParentalControls { get; set; } = null!;
+    public DbSet<PermissionRequest> PermissionRequests { get; set; } = null!;
+    public DbSet<TimeRange> TimeRanges { get; set; } = null!;
+
     // Analytics entities (Day 59)
     public DbSet<SavedFilter> SavedFilters { get; set; } = null!;
     public DbSet<AnalyticsQuery> AnalyticsQueries { get; set; } = null!;
@@ -526,6 +531,37 @@ public class ApplicationDbContext : DbContext
             .WithMany()
             .HasForeignKey(fma => fma.FamilyMemberId)
             .OnDelete(DeleteBehavior.NoAction); // Use NoAction to avoid cascade cycle
+
+        // Configure ParentalControl and related entities
+        modelBuilder.Entity<ParentalControl>()
+            .HasOne(pc => pc.Parent)
+            .WithMany()
+            .HasForeignKey(pc => pc.ParentUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<ParentalControl>()
+            .HasOne(pc => pc.Child)
+            .WithMany()
+            .HasForeignKey(pc => pc.ChildUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TimeRange>()
+            .HasOne(tr => tr.ParentalControl)
+            .WithMany(pc => pc.AllowedHours)
+            .HasForeignKey(tr => tr.ParentalControlId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PermissionRequest>()
+            .HasOne(pr => pr.Parent)
+            .WithMany()
+            .HasForeignKey(pr => pr.ParentUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<PermissionRequest>()
+            .HasOne(pr => pr.Child)
+            .WithMany()
+            .HasForeignKey(pr => pr.ChildUserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     private void SeedGamificationData(ModelBuilder modelBuilder)

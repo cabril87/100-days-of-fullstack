@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250601161402_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250604022854_AddParentalControlEntities")]
+    partial class AddParentalControlEntities
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -6750,6 +6750,121 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("NotificationPreferences");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.ParentalControl", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.PrimitiveCollection<string>("BlockedFeatures")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("CanInviteOthers")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CanViewOtherMembers")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ChatMonitoringEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ChildUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<TimeSpan>("DailyTimeLimit")
+                        .HasColumnType("time");
+
+                    b.Property<int>("MaxPointsWithoutApproval")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ParentUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("PointSpendingApprovalRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("ScreenTimeEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TaskApprovalRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChildUserId");
+
+                    b.HasIndex("ParentUserId");
+
+                    b.ToTable("ParentalControls");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.PermissionRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ChildUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ParentUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ParentalControlId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequestType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResponseMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChildUserId");
+
+                    b.HasIndex("ParentUserId");
+
+                    b.HasIndex("ParentalControlId");
+
+                    b.ToTable("PermissionRequests");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.PointTransaction", b =>
                 {
                     b.Property<int>("Id")
@@ -8437,6 +8552,36 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("TemplateUsageAnalytics");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.TimeRange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ParentalControlId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentalControlId");
+
+                    b.ToTable("TimeRanges");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -9409,6 +9554,48 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.ParentalControl", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "Child")
+                        .WithMany()
+                        .HasForeignKey("ChildUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Child");
+
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.PermissionRequest", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "Child")
+                        .WithMany()
+                        .HasForeignKey("ChildUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "Parent")
+                        .WithMany()
+                        .HasForeignKey("ParentUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.ParentalControl", null)
+                        .WithMany("PermissionRequests")
+                        .HasForeignKey("ParentalControlId");
+
+                    b.Navigation("Child");
+
+                    b.Navigation("Parent");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.PointTransaction", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.TaskItem", "Task")
@@ -9657,6 +9844,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.TimeRange", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.ParentalControl", "ParentalControl")
+                        .WithMany("AllowedHours")
+                        .HasForeignKey("ParentalControlId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ParentalControl");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.User", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.Family", "PrimaryFamily")
@@ -9836,6 +10034,13 @@ namespace TaskTrackerAPI.Migrations
             modelBuilder.Entity("TaskTrackerAPI.Models.Gamification.Badge", b =>
                 {
                     b.Navigation("UserBadges");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.ParentalControl", b =>
+                {
+                    b.Navigation("AllowedHours");
+
+                    b.Navigation("PermissionRequests");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.Reward", b =>
