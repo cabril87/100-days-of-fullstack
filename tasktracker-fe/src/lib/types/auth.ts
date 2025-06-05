@@ -1,88 +1,190 @@
-/**
- * Authentication related types
- */
-
-import { User } from './user';
-
-export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  accessToken: string | null;
-  refreshToken: string | null;
-  tokenExpiry: Date | null;
-  isLoading: boolean;
-  error: string | null;
-  lastAuthenticated: number | null;
-  fingerprint: string | null;
-  lastActivity: number;
+// Enums matching backend exactly
+export enum FamilyMemberAgeGroup {
+  Child = 0,
+  Teen = 1,
+  Adult = 2
 }
 
-export interface AuthResponse {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
-  expiration: Date;
-}
-
-export interface TokenPayload {
-  nameid: string; // user id
-  unique_name: string; // username
+// User Types - matching backend User model exactly
+export interface User {
+  id: number;
+  username: string;
   email: string;
+  firstName: string | null;
+  lastName: string | null;
+  displayName: string;
+  avatarUrl: string | null;
   role: string;
-  jti: string; // token id
-  exp: number; // expiration timestamp
-  iat: number; // issued at timestamp
-  nbf: number; // not valid before timestamp
+  ageGroup: FamilyMemberAgeGroup;
+  createdAt: string;
+  isActive: boolean;
+  points: number;
+  isFamilyAdmin?: boolean; // Whether user is admin of any family
 }
 
-export interface RefreshTokenRequest {
-  refreshToken: string;
-  fingerprint?: string;
-}
-
-export interface AuthContextType {
-  // State
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Auth Actions
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: RegisterRequest) => Promise<boolean>;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<boolean>;
-  clearError: () => void;
-  clearAllStorage: () => void;
-  
-  // Token Management
-  getAccessToken: () => string | null;
-  getTokenExpiry: () => Date | null;
-  isTokenExpired: () => boolean;
-}
-
-export interface AuthActionPayload {
-  type: string;
-  payload?: Record<string, unknown>;
-}
-
-export interface LoginRequest {
+// Authentication DTOs - matching backend AuthDTOs exactly
+export interface UserLoginDTO {
   emailOrUsername: string;
   password: string;
 }
 
-export interface RegisterRequest {
+export interface UserCreateDTO {
   username: string;
   email: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
+  confirmPassword: string;
+  firstName: string | null;
+  lastName: string | null;
+  ageGroup: FamilyMemberAgeGroup;
+  dateOfBirth: string | null;
 }
 
-export interface TokenInfo {
+export interface TokensResponseDTO {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiration: string;
+  refreshTokenExpiration: string;
+  expiration: string;
+  user: User;
+}
+
+export interface UserProfileUpdateDTO {
+  username: string | null;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  preferences: string | null;
+}
+
+export interface PasswordChangeDTO {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface PasswordResetRequestDTO {
+  email: string;
+}
+
+export interface RefreshTokenRequestDTO {
+  refreshToken: string;
+}
+
+export interface LogoutRequestDTO {
+  refreshToken: string;
+}
+
+export interface AdminPasswordChangeDTO {
   userId: number;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+// Form Types for React Hook Form
+export interface LoginFormData {
+  emailOrUsername: string;
+  password: string;
+}
+
+export interface RegisterFormData {
   username: string;
-  role: string;
-  exp: number;
-  iat: number;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+  ageGroup: FamilyMemberAgeGroup;
+}
+
+export interface ProfileUpdateFormData {
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  bio?: string;
+}
+
+export interface PasswordChangeFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+// Auth Context Types
+export interface AuthState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+}
+
+export interface AuthContextType extends AuthState {
+  login: (credentials: UserLoginDTO) => Promise<void>;
+  register: (userData: UserCreateDTO) => Promise<void>;
+  logout: () => Promise<void>;
+  updateProfile: (data: UserProfileUpdateDTO) => Promise<void>;
+  changePassword: (data: PasswordChangeDTO) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  refreshAccessToken: () => Promise<boolean>;
+}
+
+// MFA Types - matching backend MFA DTOs exactly
+export interface MFASetupInitiateDTO {
+  secret: string;
+  qrCode: string;
+  manualEntryKey: string;
+}
+
+export interface MFASetupCompleteDTO {
+  code: string;
+}
+
+export interface MFAVerificationDTO {
+  code: string;
+}
+
+export interface MFADisableDTO {
+  password: string;
+  code?: string;
+}
+
+export interface MFABackupCodesDTO {
+  backupCodes: string[];
+  generatedAt: string;
+}
+
+export interface MFAStatusDTO {
+  isEnabled: boolean;
+  setupDate: string | null;
+  backupCodesRemaining: number;
+}
+
+export interface MFABackupCodeDTO {
+  backupCode: string;
+}
+
+// MFA Form Types for React Hook Form
+export interface MFASetupFormData {
+  code: string;
+}
+
+export interface MFAVerificationFormData {
+  code: string;
+}
+
+export interface MFADisableFormData {
+  password: string;
+  code?: string;
+}
+
+export interface MFABackupCodeFormData {
+  backupCode: string;
+}
+
+// API Response Types
+export interface ApiError {
+  message: string;
+  errors?: Record<string, string[]>;
 } 

@@ -1,7 +1,28 @@
 import type { NextConfig } from "next";
 
+// Configure PWA based on environment
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development', // Disable in development to avoid conflicts with Turbopack
+  register: true,
+  skipWaiting: true,
+  runtimeCaching: [
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        expiration: {
+          maxEntries: 200,
+        },
+      },
+    },
+  ],
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
+  // Docker deployment configuration
   output: 'standalone',
   
   // Enhanced build configuration
@@ -41,185 +62,89 @@ const nextConfig: NextConfig = {
       },
     ],
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; style-src 'unsafe-inline'; sandbox;",
   },
   
-  // Bundle optimization
+  // Turbopack configuration (replaces webpack config)
+  turbopack: {
+    resolveAlias: {
+      // Common aliases for better module resolution
+      '@': './src',
+      '~': './src',
+    },
+    resolveExtensions: [
+      '.tsx',
+      '.ts', 
+      '.jsx',
+      '.js',
+      '.mjs',
+      '.json',
+      '.css',
+      '.scss',
+      '.sass'
+    ],
+  },
+  
+  // Next.js 15 and Turbopack optimizations
   experimental: {
+    // Package import optimizations for Turbopack
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-button',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-label',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
       'chart.js',
       'framer-motion',
       'lodash',
-      'date-fns'
+      'date-fns',
+      'clsx',
+      'class-variance-authority',
+      'tailwind-merge'
     ],
-    webVitalsAttribution: ['CLS', 'LCP'],
-    serverComponentsExternalPackages: ['sharp'],
+    
+    // Enhanced web vitals tracking
+    webVitalsAttribution: ['CLS', 'LCP', 'FCP', 'FID', 'TTFB', 'INP'],
+    
+    // Enable server actions (for future use)
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   
   // Server-side package exclusions
-  serverExternalPackages: ['@microsoft/signalr'],
-  
-  // Enhanced webpack configuration
-  webpack: (config, { dev, isServer, buildId }) => {
-    // Development optimizations
-    if (dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        usedExports: true,
-        sideEffects: false,
-      };
-    }
-    
-    // Production optimizations
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        runtimeChunk: {
-          name: 'runtime',
-        },
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
-              priority: 10,
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 5,
-              reuseExistingChunk: true,
-            },
-            // Framework-specific chunks
-            react: {
-              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
-              name: 'react',
-              chunks: 'all',
-              priority: 20,
-            },
-            chartjs: {
-              test: /[\\/]node_modules[\\/](chart\.js|chartjs-adapter-date-fns)[\\/]/,
-              name: 'chartjs',
-              chunks: 'all',
-              priority: 15,
-            },
-            signalr: {
-              test: /[\\/]node_modules[\\/]@microsoft[\\/]signalr[\\/]/,
-              name: 'signalr',
-              chunks: 'all',
-              priority: 15,
-            },
-          },
-        },
-      };
-    }
-    
-    return config;
-  },
-  
-  // Enable PWA support
-  pwa: {
-    dest: 'public',
-    disable: process.env.NODE_ENV === 'development', // Disable in development to avoid conflicts
-    register: true,
-    skipWaiting: true,
-  },
+  serverExternalPackages: ['@microsoft/signalr', 'sharp'],
 
-  // Comprehensive headers with proper MIME types
-  async headers() {
-    return [
-      // CORS headers for API routes
-      {
-        source: '/api/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-CSRF-Token',
-          },
-        ],
-      },
-      // Security headers
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-        ],
-      },
-      // Service worker specific headers
-      {
-        source: '/sw.js',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/javascript; charset=utf-8',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
-          },
-        ],
-      },
-      // Explicit MIME types for JavaScript files
-      {
-        source: '/_next/static/chunks/:path*',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/javascript; charset=utf-8',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-    ];
-  },
-
-  // Environment-specific redirects and rewrites
+  // Optimized redirects for better SEO
   async redirects() {
     return [
-      // Handle common routing issues
       {
-        source: '/home',
-        destination: '/',
+        source: '/login',
+        destination: '/auth/login',
+        permanent: true,
+          },
+      {
+        source: '/register',
+        destination: '/auth/register',
+        permanent: true,
+          },
+      {
+        source: '/signin',
+        destination: '/auth/login',
+        permanent: true,
+          },
+      {
+        source: '/signup',
+        destination: '/auth/register',
         permanent: true,
       },
     ];
   },
 };
 
-export default nextConfig;
+export default withPWA(nextConfig);

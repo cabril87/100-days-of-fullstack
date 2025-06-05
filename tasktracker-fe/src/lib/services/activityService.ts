@@ -1,426 +1,248 @@
-export interface ActivityItem {
-  id: string;
-  type: 'task_completion' | 'achievement' | 'level_up' | 'badge' | 'reward' | 'challenge' | 'login' | 'streak' | 'family' | 'points';
-  title: string;
-  description: string;
-  points?: number;
-  timestamp: string;
-  data?: {
-    taskId?: string;
-    taskTitle?: string;
-    achievementId?: number;
-    achievementName?: string;
-    badgeId?: number;
-    badgeName?: string;
-    rewardId?: number;
-    rewardName?: string;
-    challengeId?: number;
-    challengeName?: string;
-    oldLevel?: number;
-    newLevel?: number;
-    streakLength?: number;
-    familyId?: number;
-    familyName?: string;
-    memberId?: string;
-    memberName?: string;
+/*
+ * Activity API Service
+ * Copyright (c) 2025 Carlos Abril Jr
+ */
+
+import { FamilyActivityItem, UserProgress } from '../types/dashboard';
+import { ApiResponse, BackendUserProgressResponse } from '../types/task';
+
+// Base API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_VERSION = 'v1';
+
+// Helper function to get auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = localStorage.getItem('accessToken');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
   };
+};
+
+// Custom error class for API errors
+export class ActivityApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+    public details?: Record<string, string[]>
+  ) {
+    super(message);
+    this.name = 'ActivityApiError';
+  }
 }
 
-export interface ActivityStats {
-  totalActivities: number;
-  totalPoints: number;
-  activitiesToday: number;
-  pointsToday: number;
-  currentStreak: number;
-  longestStreak: number;
-}
-
-export interface ActivityFilters {
-  type?: string;
-  dateRange?: 'all' | 'today' | 'week' | 'month' | 'custom';
-  startDate?: string;
-  endDate?: string;
-  search?: string;
-  limit?: number;
-  offset?: number;
-}
-
-class ActivityService {
-  private baseUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/activity`;
-
-  /**
-   * Get user's recent activity with filtering and pagination
-   */
-  async getRecentActivity(filters: ActivityFilters = {}): Promise<{
-    activities: ActivityItem[];
-    total: number;
-    hasMore: boolean;
-  }> {
-    try {
-      const params = new URLSearchParams();
-      
-      if (filters.type && filters.type !== 'all') {
-        params.append('type', filters.type);
-      }
-      if (filters.dateRange && filters.dateRange !== 'all') {
-        params.append('dateRange', filters.dateRange);
-      }
-      if (filters.startDate) {
-        params.append('startDate', filters.startDate);
-      }
-      if (filters.endDate) {
-        params.append('endDate', filters.endDate);
-      }
-      if (filters.search) {
-        params.append('search', filters.search);
-      }
-      if (filters.limit) {
-        params.append('limit', filters.limit.toString());
-      }
-      if (filters.offset) {
-        params.append('offset', filters.offset.toString());
-      }
-
-      const response = await fetch(`${this.baseUrl}/recent?${params}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        activities: data.activities || [],
-        total: data.total || 0,
-        hasMore: data.hasMore || false
-      };
-    } catch (error) {
-      console.error('Failed to fetch recent activity:', error);
-      // Return empty data instead of throwing to prevent UI crashes
-      return {
-        activities: [],
-        total: 0,
-        hasMore: false
-      };
-    }
-  }
-
-  /**
-   * Get activity statistics for the user
-   */
-  async getActivityStats(): Promise<ActivityStats> {
-    try {
-      const response = await fetch(`${this.baseUrl}/stats`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        totalActivities: data.totalActivities || 0,
-        totalPoints: data.totalPoints || 0,
-        activitiesToday: data.activitiesToday || 0,
-        pointsToday: data.pointsToday || 0,
-        currentStreak: data.currentStreak || 0,
-        longestStreak: data.longestStreak || 0
-      };
-    } catch (error) {
-      console.error('Failed to fetch activity stats:', error);
-      // Return default stats instead of throwing
-      return {
-        totalActivities: 0,
-        totalPoints: 0,
-        activitiesToday: 0,
-        pointsToday: 0,
-        currentStreak: 0,
-        longestStreak: 0
-      };
-    }
-  }
-
-  /**
-   * Get activity feed for family members (if in a family)
-   */
-  async getFamilyActivity(familyId: number, filters: ActivityFilters = {}): Promise<{
-    activities: ActivityItem[];
-    total: number;
-    hasMore: boolean;
-  }> {
-    try {
-      const params = new URLSearchParams();
-      
-      if (filters.type && filters.type !== 'all') {
-        params.append('type', filters.type);
-      }
-      if (filters.dateRange && filters.dateRange !== 'all') {
-        params.append('dateRange', filters.dateRange);
-      }
-      if (filters.limit) {
-        params.append('limit', filters.limit.toString());
-      }
-      if (filters.offset) {
-        params.append('offset', filters.offset.toString());
-      }
-
-      const response = await fetch(`${this.baseUrl}/family/${familyId}?${params}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return {
-        activities: data.activities || [],
-        total: data.total || 0,
-        hasMore: data.hasMore || false
-      };
-    } catch (error) {
-      console.error('Failed to fetch family activity:', error);
-      return {
-        activities: [],
-        total: 0,
-        hasMore: false
-      };
-    }
-  }
-
-  /**
-   * Get activity by specific ID with full details
-   */
-  async getActivityById(activityId: string): Promise<ActivityItem | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/${activityId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Failed to fetch activity by ID:', error);
+// Helper function to handle API responses
+async function handleApiResponse<T>(response: Response, allowNotFound: boolean = false): Promise<T | null> {
+  if (!response.ok) {
+    if (response.status === 404 && allowNotFound) {
       return null;
     }
+    
+    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    throw new ActivityApiError(
+      errorData.message || `HTTP ${response.status}`,
+      response.status,
+      errorData.code,
+      errorData.errors
+    );
+  }
+  
+  return response.json();
+}
+
+export class ActivityService {
+  private readonly baseUrl: string;
+
+  constructor() {
+    this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
   }
 
   /**
-   * Mark activity as read/seen
+   * Get recent family activity for dashboard
    */
-  async markActivityAsRead(activityId: string): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/${activityId}/read`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      return response.ok;
-    } catch (error) {
-      console.error('Failed to mark activity as read:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Get activity types and their counts
-   */
-  async getActivityTypeCounts(dateRange: string = 'all'): Promise<{
-    [key: string]: number;
-  }> {
-    try {
-      const params = new URLSearchParams();
-      if (dateRange !== 'all') {
-        params.append('dateRange', dateRange);
-      }
-
-      const response = await fetch(`${this.baseUrl}/types/counts?${params}`, {
+  async getFamilyActivity(familyId: number, limit: number = 10): Promise<FamilyActivityItem[]> {
+    const response = await fetch(
+      `${this.baseUrl}/activity/family/${familyId}/recent?limit=${limit}`,
+      {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        headers: getAuthHeaders(),
       }
+    );
 
-      const data = await response.json();
-      return data.counts || {};
-    } catch (error) {
-      console.error('Failed to fetch activity type counts:', error);
-      return {};
+    const result = await handleApiResponse<FamilyActivityItem[]>(response, true);
+    
+    // Return mock data for now until backend implements activity tracking
+    if (!result) {
+      return this.getMockFamilyActivity();
     }
+
+    return result;
   }
 
   /**
-   * Get activity timeline data for charts/graphs
+   * Get user's progress and achievements
    */
-  async getActivityTimeline(
-    dateRange: string = 'month',
-    groupBy: 'day' | 'week' | 'month' = 'day'
-  ): Promise<{
-    labels: string[];
-    data: number[];
-    pointsData: number[];
-  }> {
-    try {
-      const params = new URLSearchParams();
-      params.append('dateRange', dateRange);
-      params.append('groupBy', groupBy);
+     async getUserProgress(): Promise<UserProgress> {
+     const response = await fetch(
+       `${this.baseUrl}/gamification/progress`,
+       {
+         method: 'GET',
+         headers: getAuthHeaders(),
+       }
+     );
 
-      const response = await fetch(`${this.baseUrl}/timeline?${params}`, {
+     const result = await handleApiResponse<ApiResponse<BackendUserProgressResponse>>(response, true);
+     
+     // Transform backend UserProgressDTO to our frontend UserProgress type
+     if (result && result.data) {
+       const backendProgress = result.data;
+       return {
+         currentLevel: backendProgress.currentLevel || 1,
+         pointsToNextLevel: backendProgress.pointsToNextLevel || 100,
+         experiencePercentage: this.calculateExperiencePercentage(
+           backendProgress.totalPoints || 0, 
+           backendProgress.pointsToNextLevel || 100
+         ),
+         totalExperience: backendProgress.totalPoints || 0,
+         achievements: [] // Will be populated when achievements endpoint is connected
+       };
+     }
+     
+     // Return mock data for development
+     return this.getMockUserProgress();
+   }
+
+   /**
+    * Calculate experience percentage for the progress bar
+    */
+   private calculateExperiencePercentage(totalPoints: number, pointsToNext: number): number {
+     if (pointsToNext <= 0) return 100;
+     const currentLevelPoints = totalPoints % (pointsToNext + totalPoints);
+     return Math.min(100, Math.round((currentLevelPoints / pointsToNext) * 100));
+   }
+
+  /**
+   * Get user's recent activity
+   */
+  async getUserActivity(limit: number = 10): Promise<FamilyActivityItem[]> {
+    const response = await fetch(
+      `${this.baseUrl}/activity/recent?limit=${limit}`,
+      {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        headers: getAuthHeaders(),
       }
+    );
 
-      const data = await response.json();
-      return {
-        labels: data.labels || [],
-        data: data.data || [],
-        pointsData: data.pointsData || []
-      };
-    } catch (error) {
-      console.error('Failed to fetch activity timeline:', error);
-      return {
-        labels: [],
-        data: [],
-        pointsData: []
-      };
+    const result = await handleApiResponse<FamilyActivityItem[]>(response, true);
+    
+    // Return mock data for now until backend implements activity tracking
+    if (!result) {
+      return this.getMockUserActivity();
     }
+
+    return result;
   }
 
   /**
-   * Export activity data to CSV
+   * Mock family activity data for development
    */
-  async exportActivityData(filters: ActivityFilters = {}): Promise<Blob | null> {
-    try {
-      const params = new URLSearchParams();
-      
-      if (filters.type && filters.type !== 'all') {
-        params.append('type', filters.type);
-      }
-      if (filters.dateRange && filters.dateRange !== 'all') {
-        params.append('dateRange', filters.dateRange);
-      }
-      if (filters.startDate) {
-        params.append('startDate', filters.startDate);
-      }
-      if (filters.endDate) {
-        params.append('endDate', filters.endDate);
-      }
-
-      const response = await fetch(`${this.baseUrl}/export?${params}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.blob();
-    } catch (error) {
-      console.error('Failed to export activity data:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Get real-time activity updates via WebSocket/SignalR
-   * This would be integrated with the existing SignalR setup
-   */
-  subscribeToActivityUpdates(callback: (activity: ActivityItem) => void): () => void {
-    // This would integrate with the existing SignalR connection
-    // For now, return a no-op unsubscribe function
-    console.log('Activity updates subscription would be implemented here');
-    return () => {
-      console.log('Unsubscribing from activity updates');
-    };
-  }
-
-  /**
-   * Helper method to format activity for display
-   */
-  formatActivityForDisplay(activity: ActivityItem): {
-    icon: string;
-    color: string;
-    formattedTitle: string;
-    formattedDescription: string;
-    timeAgo: string;
-  } {
+  private getMockFamilyActivity(): FamilyActivityItem[] {
     const now = new Date();
-    const activityDate = new Date(activity.timestamp);
-    const diffInSeconds = Math.floor((now.getTime() - activityDate.getTime()) / 1000);
+    return [
+      {
+        id: '1',
+        type: 'task_completed',
+        memberName: 'Sarah Johnson',
+        description: 'completed "Clean the kitchen"',
+        timestamp: new Date(now.getTime() - 30 * 60 * 1000), // 30 minutes ago
+        points: 25,
+        taskTitle: 'Clean the kitchen'
+      },
+      {
+        id: '2',
+        type: 'member_joined',
+        memberName: 'Mike Johnson',
+        description: 'joined the family',
+        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 hours ago
+        points: 50
+      },
+      {
+        id: '3',
+        type: 'goal_achieved',
+        memberName: 'Emma Johnson',
+        description: 'achieved "Complete 5 tasks this week"',
+        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000), // 4 hours ago
+        points: 100,
+        goalTitle: 'Complete 5 tasks this week'
+      },
+      {
+        id: '4',
+        type: 'points_earned',
+        memberName: 'Dad',
+        description: 'earned 15 points from "Take out trash"',
+        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000), // 6 hours ago
+        points: 15
+      }
+    ];
+  }
 
-    let timeAgo: string;
-    if (diffInSeconds < 60) timeAgo = 'Just now';
-    else if (diffInSeconds < 3600) timeAgo = `${Math.floor(diffInSeconds / 60)}m ago`;
-    else if (diffInSeconds < 86400) timeAgo = `${Math.floor(diffInSeconds / 3600)}h ago`;
-    else if (diffInSeconds < 604800) timeAgo = `${Math.floor(diffInSeconds / 86400)}d ago`;
-    else timeAgo = activityDate.toLocaleDateString();
-
-    const typeConfig = {
-      task_completion: { icon: '✅', color: 'green' },
-      achievement: { icon: '🏆', color: 'yellow' },
-      level_up: { icon: '👑', color: 'purple' },
-      badge: { icon: '🎖️', color: 'blue' },
-      reward: { icon: '🎁', color: 'pink' },
-      challenge: { icon: '🎯', color: 'red' },
-      login: { icon: '📅', color: 'gray' },
-      streak: { icon: '⚡', color: 'amber' },
-      family: { icon: '👨‍👩‍👧‍👦', color: 'orange' },
-      points: { icon: '⭐', color: 'blue' }
-    };
-
-    const config = typeConfig[activity.type] || { icon: 'ℹ️', color: 'gray' };
-
+  /**
+   * Mock user progress data for development
+   */
+  private getMockUserProgress(): UserProgress {
     return {
-      icon: config.icon,
-      color: config.color,
-      formattedTitle: activity.title,
-      formattedDescription: activity.description,
-      timeAgo
+      currentLevel: 5,
+      pointsToNextLevel: 150,
+      experiencePercentage: 75,
+      totalExperience: 850,
+      achievements: [
+        {
+          id: 'first_task',
+          title: 'First Steps',
+          description: 'Complete your first task',
+          pointsRewarded: 25,
+          unlockedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+          category: 'productivity'
+        },
+        {
+          id: 'team_player',
+          title: 'Team Player',
+          description: 'Join a family',
+          pointsRewarded: 50,
+          unlockedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          category: 'family'
+        }
+      ]
     };
+  }
+
+  /**
+   * Mock user activity data for development
+   */
+  private getMockUserActivity(): FamilyActivityItem[] {
+    const now = new Date();
+    return [
+      {
+        id: '1',
+        type: 'task_completed',
+        memberName: 'You',
+        description: 'completed "Review family budget"',
+        timestamp: new Date(now.getTime() - 45 * 60 * 1000), // 45 minutes ago
+        points: 30,
+        taskTitle: 'Review family budget'
+      },
+      {
+        id: '2',
+        type: 'family_created',
+        memberName: 'You',
+        description: 'created the Johnson Family',
+        timestamp: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        points: 100
+      }
+    ];
   }
 }
 
+// Export singleton instance
 export const activityService = new ActivityService(); 

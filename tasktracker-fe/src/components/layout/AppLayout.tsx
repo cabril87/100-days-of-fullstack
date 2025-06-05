@@ -1,22 +1,21 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useAuth } from '@/lib/providers/AuthContext';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSidebar } from '@/lib/providers/SidebarContext';
 import { usePathname } from 'next/navigation';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
-import { Footer } from './Footer';
-import RealTimeNotificationWidget from '@/components/notifications/RealTimeNotificationWidget';
+import { AppLayoutProps } from '@/lib/types';
 
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-export const AppLayout = React.memo(function AppLayout({ children }: AppLayoutProps) {
-  const { user } = useAuth();
+export function AppLayout({ children }: AppLayoutProps) {
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+  
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   // Define public pages that should not show sidebar
   const publicPages = [
@@ -36,17 +35,44 @@ export const AppLayout = React.memo(function AppLayout({ children }: AppLayoutPr
     '/forgot-password'
   ];
   
-  // Don't show sidebar on public pages or when user is not authenticated
+  // Show sidebar on all pages for now (can be customized later)
   const isPublicPage = publicPages.some(page => pathname === page || pathname.startsWith(page + '/'));
-  const shouldShowSidebar = user && !isPublicPage;
+  const shouldShowSidebar = !isPublicPage;
 
-  const handleDropdownToggle = useCallback((isOpen: boolean) => {
-    console.log('🔽 AppLayout: handleDropdownToggle called with:', isOpen);
+  const handleDropdownToggle = useCallback(() => {
     // No longer hiding sidebar when dropdown opens - let them coexist
   }, []);
 
+  // Enhanced background classes with theme system integration
+  const backgroundClasses = "main-content";
+
+  if (!mounted) {
+    // Render a consistent layout during hydration
+    return (
+      <div className={backgroundClasses}>
+        <Navbar 
+          onToggleSidebar={toggleSidebar} 
+          onDropdownToggle={handleDropdownToggle} 
+          isSidebarOpen={isSidebarOpen}
+        />
+        <div className="flex relative">
+          {shouldShowSidebar && (
+            <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
+          )}
+          <main className={`flex-1 min-h-[calc(100vh-4rem)] transition-all duration-300 ${
+            shouldShowSidebar && isSidebarOpen ? 'lg:mx-10' : ''
+          }`}>
+            <div className="container mx-auto px-4 py-6 w-full">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-navy-dark">
+    <div className={backgroundClasses}>
       {/* Navbar */}
       <Navbar 
         onToggleSidebar={toggleSidebar} 
@@ -55,7 +81,7 @@ export const AppLayout = React.memo(function AppLayout({ children }: AppLayoutPr
       />
 
       <div className="flex relative">
-        {/* Sidebar - only show for authenticated users, but not on home page */}
+        {/* Sidebar */}
         {shouldShowSidebar && (
           <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
         )}
@@ -69,12 +95,6 @@ export const AppLayout = React.memo(function AppLayout({ children }: AppLayoutPr
           </div>
         </main>
       </div>
-
-      {/* Footer */}
-      <Footer />
-
-      {/* Real-time Notification Widget - only show for authenticated users */}
-      {user && <RealTimeNotificationWidget />}
     </div>
   );
-}); 
+} 
