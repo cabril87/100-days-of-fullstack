@@ -25,8 +25,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiVersion("1.0")]
     [Authorize]
     [ApiController]
-    [Route("api/v{version:apiVersion}/user/calendar")]
-    [Route("api/user/calendar")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class UserCalendarController : BaseApiController
     {
         private readonly IUserCalendarService _userCalendarService;

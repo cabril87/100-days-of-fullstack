@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Security;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces;
@@ -48,4 +49,18 @@ public interface ISecurityMonitoringService
     
     // Security Monitoring methods
     Task<SecurityMonitoringSummaryDTO> GetSecurityMonitoringSummaryAsync();
+    
+    // Device management methods
+    Task<List<UserDeviceDTO>> GetUserDevicesAsync(int userId);
+    Task UpdateDeviceTrustAsync(int userId, string deviceId, bool trusted, string? deviceName = null);
+    Task RemoveDeviceAsync(int userId, string deviceId);
+
+    // User Security Settings methods
+    Task<UserSecuritySettingsDTO> GetUserSecuritySettingsAsync(int userId);
+    Task<UserSecuritySettingsDTO> CreateUserSecuritySettingsAsync(int userId, UserSecuritySettingsCreateDTO createDto);
+    Task<UserSecuritySettingsDTO> UpdateUserSecuritySettingsAsync(int userId, UserSecuritySettingsUpdateDTO updateDto);
+    Task<bool> DeleteUserSecuritySettingsAsync(int userId);
+    
+    // User Activity Log methods
+    Task<bool> DeleteUserActivityLogAsync(int userId);
 } 

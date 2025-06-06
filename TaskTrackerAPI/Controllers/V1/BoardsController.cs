@@ -30,7 +30,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class BoardsController : BaseApiController
     {
         private readonly ILogger<BoardsController> _logger;

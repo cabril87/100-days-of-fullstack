@@ -456,7 +456,7 @@ namespace TaskTrackerAPI.Services
             
             if (!tasksWithDuration.Any()) return;
 
-            double avgDuration = tasksWithDuration.Average(t => t.EstimatedTimeMinutes!.Value);
+            double avgDuration = tasksWithDuration.Average(t => t.EstimatedTimeMinutes ?? 0);
             int oldDuration = profile.PreferredDuration;
             int newDuration = (int)Math.Round((oldDuration + avgDuration) / 2.0);
 
@@ -486,7 +486,7 @@ namespace TaskTrackerAPI.Services
 
             Dictionary<int, int> categoryUsage = recentTasks
                 .Where(t => t.CategoryId.HasValue)
-                .GroupBy(t => t.CategoryId.Value )
+                .GroupBy(t => t.CategoryId ?? 0)
                 .ToDictionary(g => g.Key, g => g.Count());
 
             if (!categoryUsage.Any()) return;

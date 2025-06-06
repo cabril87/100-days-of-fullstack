@@ -27,7 +27,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/smart-scheduling")]
-    [Route("api/family/{familyId}/smart-scheduling")]
     public class SmartSchedulingController : BaseApiController
     {
         private readonly ISmartSchedulingService _smartSchedulingService;

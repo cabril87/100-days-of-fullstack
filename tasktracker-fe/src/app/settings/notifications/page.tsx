@@ -38,6 +38,7 @@ import {
 import { 
   notificationPreferencesSchema 
 } from '@/lib/schemas/settings';
+import { notificationService } from '@/lib/services/notificationService';
 import {
   DashboardCardSkeleton
 } from '@/components/ui/skeletons/common-ui-skeletons';
@@ -96,19 +97,15 @@ export default function NotificationSettingsPage() {
       setIsLoading(true);
       setIsLoadingStats(true);
       
-      // Real API calls - will be implemented when backend is ready
-      // const [settings, stats] = await Promise.all([
-      //   notificationService.getSettings(),
-      //   notificationService.getStats()
-      // ]);
-      // form.reset(settings);
-      // setNotificationStats(stats);
+      // Real API calls using the notification service
+      const [settings, stats] = await Promise.all([
+        notificationService.getSettings(),
+        notificationService.getStats()
+      ]);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // For now, no stats until API is implemented
-      setNotificationStats(null);
+      // Update form with loaded settings
+      form.reset(settings);
+      setNotificationStats(stats);
       
     } catch (error) {
       console.error('Failed to load notification settings:', error);
@@ -116,11 +113,15 @@ export default function NotificationSettingsPage() {
         type: 'error', 
         text: error instanceof Error ? error.message : 'Failed to load notification settings' 
       });
+      
+      // Set default stats on error
+      setNotificationStats(null);
+      
     } finally {
       setIsLoading(false);
       setIsLoadingStats(false);
     }
-  }, [user]);
+  }, [user, form]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -134,11 +135,36 @@ export default function NotificationSettingsPage() {
     setMessage(null);
 
     try {
-      // Real API call - will be implemented when backend is ready
-      // await notificationService.updateSettings(data);
+      const formData = form.getValues();
       
-      // For now, just show success message
-      setMessage({ type: 'success', text: 'Notification settings saved! Settings will be applied when the notification API is implemented.' });
+      // Convert form data to complete NotificationSettingsDTO format
+      const settingsData = {
+        emailNotifications: {
+          ...formData.emailNotifications,
+          systemUpdates: formData.emailNotifications.securityAlerts // Map securityAlerts to systemUpdates
+        },
+        pushNotifications: {
+          ...formData.pushNotifications,
+          quietHours: false // Default value for quietHours
+        },
+        notificationSchedule: {
+          ...formData.notificationSchedule,
+          weekendsOnly: false, // Default value
+          customDays: [] // Default value
+        },
+        familyNotifications: {
+          childTaskUpdates: formData.emailNotifications.familyActivity || formData.pushNotifications.familyActivity,
+          permissionRequests: formData.emailNotifications.securityAlerts || formData.pushNotifications.securityAlerts,
+          achievementSharing: formData.emailNotifications.achievementAlerts || formData.pushNotifications.achievementAlerts,
+          emergencyAlerts: formData.emailNotifications.securityAlerts || formData.pushNotifications.securityAlerts,
+          parentalControlChanges: formData.emailNotifications.securityAlerts || formData.pushNotifications.securityAlerts
+        }
+      };
+      
+      // Use the notification service to save settings
+      await notificationService.updateSettings(settingsData);
+      
+      setMessage({ type: 'success', text: 'Notification settings saved successfully!' });
     } catch (error) {
       console.error('Failed to save notification settings:', error);
       setMessage({ 
@@ -153,12 +179,12 @@ export default function NotificationSettingsPage() {
   // Test notification handler
   const sendTestNotification = async (type: 'email' | 'push') => {
     try {
-      // Real API call - will be implemented when backend is ready
-      // await notificationService.sendTestNotification(type);
+      // Use the notification service to send test notification
+      await notificationService.sendTestNotification(type);
       
       setMessage({ 
         type: 'success', 
-        text: `Test ${type === 'email' ? 'email' : 'push notification'} will be sent when the notification API is implemented.` 
+        text: `Test ${type === 'email' ? 'email' : 'push notification'} sent successfully!` 
       });
     } catch (error) {
       console.error(`Failed to send test ${type} notification:`, error);
@@ -172,10 +198,10 @@ export default function NotificationSettingsPage() {
   // Clear all notifications handler
   const clearAllNotifications = async () => {
     try {
-      // Real API call - will be implemented when backend is ready
-      // await notificationService.clearAllNotifications();
+      // Use the notification service to clear all notifications
+      await notificationService.clearAllNotifications();
       
-      setMessage({ type: 'success', text: 'All notifications will be cleared when the notification API is implemented.' });
+      setMessage({ type: 'success', text: 'All notifications cleared successfully!' });
     } catch (error) {
       console.error('Failed to clear notifications:', error);
       setMessage({ type: 'error', text: 'Failed to clear notifications' });

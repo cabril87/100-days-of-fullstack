@@ -22,8 +22,9 @@ using TaskTrackerAPI.Services.Interfaces;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+[ApiVersion("1.0")]
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 public class TemplateAutomationController : BaseApiController
 {

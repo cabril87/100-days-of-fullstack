@@ -454,17 +454,46 @@ namespace TaskTrackerAPI.Services
 
         private UserSessionDTO MapToSessionDTO(UserSession session)
         {
+            // Generate device ID based on browser and OS
+            string deviceId = $"{session.DeviceType ?? "Unknown"}_{session.Browser ?? "Unknown"}_{session.OperatingSystem ?? "Unknown"}".Replace(" ", "");
+            
+            // Create location string for frontend compatibility
+            string? location = null;
+            if (!string.IsNullOrEmpty(session.City) && !string.IsNullOrEmpty(session.Country))
+            {
+                location = $"{session.City}, {session.Country}";
+            }
+            else if (!string.IsNullOrEmpty(session.Country))
+            {
+                location = session.Country;
+            }
+
+            // Create device name for frontend display
+            string? deviceName = null;
+            if (!string.IsNullOrEmpty(session.Browser) && !string.IsNullOrEmpty(session.OperatingSystem))
+            {
+                deviceName = $"{session.Browser} on {session.OperatingSystem}";
+            }
+
             return new UserSessionDTO
             {
                 Id = session.Id,
                 UserId = session.UserId,
                 Username = session.User?.Username ?? "Unknown",
                 SessionToken = session.SessionToken,
+                
+                // Frontend compatibility fields
+                DeviceId = deviceId,
+                DeviceName = deviceName,
+                Location = location,
+                IsTrusted = !session.IsSuspicious, // Inverse of suspicious for now
+                CreatedAt = session.CreatedAt.ToString("O"), // ISO 8601 format
+                LastActivityAt = session.LastActivity.ToString("O"), // ISO 8601 format  
+                ExpiresAt = session.ExpiresAt?.ToString("O") ?? string.Empty,
+                
+                // All original security fields preserved
                 IpAddress = session.IpAddress,
                 UserAgent = session.UserAgent,
-                CreatedAt = session.CreatedAt,
-                LastActivity = session.LastActivity,
-                ExpiresAt = session.ExpiresAt,
                 IsActive = session.IsActive,
                 Country = session.Country,
                 City = session.City,

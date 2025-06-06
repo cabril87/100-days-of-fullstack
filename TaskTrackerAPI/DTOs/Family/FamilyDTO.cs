@@ -38,9 +38,45 @@ public class FamilyCreateDTO
 
 public class FamilyUpdateDTO
 {
-    [StringLength(100)]
+    [StringLength(100, MinimumLength = 2)]
     public string? Name { get; set; }
     
     [StringLength(500)]
     public string? Description { get; set; }
+}
+
+public class TransferOwnershipDTO
+{
+    [Required]
+    public int FamilyId { get; set; }
+    
+    [Required]
+    public int NewOwnerId { get; set; }
+    
+    [StringLength(500)]
+    public string? Reason { get; set; }
+}
+
+public class LeaveFamilyDTO
+{
+    public int? FamilyId { get; set; }
+}
+
+public class FamilyManagementPermissionsDTO
+{
+    public bool CanCreateFamily { get; set; }
+    public bool CanTransferOwnership { get; set; }
+    public bool CanManageMembers { get; set; }
+    public bool CanInviteMembers { get; set; }
+    public bool CanManageCurrentFamily { get; set; }
+    public int? MaxFamilySize { get; set; }
+    public string AgeGroup { get; set; } = string.Empty;
+}
+
+public class UserFamilyRelationshipsDTO
+{
+    public List<FamilyDTO> AdminFamilies { get; set; } = new();
+    public List<FamilyDTO> MemberFamilies { get; set; } = new();
+    public List<FamilyDTO> ManagementFamilies { get; set; } = new();
+    public FamilyManagementPermissionsDTO Permissions { get; set; } = new();
 }

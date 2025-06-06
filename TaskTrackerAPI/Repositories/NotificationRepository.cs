@@ -264,9 +264,4 @@ public class NotificationRepository : INotificationRepository
         _context.Notifications.RemoveRange(userNotifications);
         await _context.SaveChangesAsync();
     }
-
-    Task<NotificationCountDTO> INotificationRepository.GetNotificationCountsAsync(int userId)
-    {
-        throw new NotImplementedException();
-    }
 } 

@@ -12,19 +12,7 @@ import {
   BulkPermissionRequestResponseDTO,
   ParentalControlSummaryDTO 
 } from '../types/parental-control';
-
-// Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5001';
-const API_VERSION = 'v1';
-
-// Helper function to get auth headers
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
+import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors
 export class ParentalControlApiError extends Error {
@@ -39,63 +27,33 @@ export class ParentalControlApiError extends Error {
   }
 }
 
-// Helper function to handle API responses
-async function handleApiResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new ParentalControlApiError(
-      errorData.message || `HTTP ${response.status}`,
-      response.status,
-      errorData.code,
-      errorData.errors
-    );
-  }
-  
-  return response.json();
-}
-
 // Parental Control Service Class
 export class ParentalControlService {
-  private readonly baseUrl: string;
-
-  constructor() {
-    this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
-  }
-
   // === PARENTAL CONTROL SETTINGS ===
 
   /**
    * Get parental control settings for a specific child
    */
   async getParentalControlByChildId(childUserId: number): Promise<ParentalControlDTO | null> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/child/${childUserId}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (response.status === 404) {
-      return null; // No parental controls set for this child
+    try {
+      return await apiClient.get<ParentalControlDTO>(`/api/v1/parental-controls/child/${childUserId}`);
+    } catch {
+      // Return null if not found
+      console.debug('No parental controls found for child:', childUserId);
+      return null;
     }
-
-    return handleApiResponse<ParentalControlDTO>(response);
   }
 
   /**
    * Get all children under parental control for the current parent
    */
   async getParentalControlsByParent(): Promise<ParentalControlDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/parent`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    return handleApiResponse<ParentalControlDTO[]>(response);
+    try {
+      return await apiClient.get<ParentalControlDTO[]>('/api/v1/parental-controls/parent');
+    } catch (error) {
+      console.error('Failed to fetch parental controls by parent:', error);
+      return [];
+    }
   }
 
   /**
@@ -105,35 +63,23 @@ export class ParentalControlService {
     childUserId: number, 
     settings: ParentalControlCreateUpdateDTO
   ): Promise<ParentalControlDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}`,
-      {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(settings),
-      }
-    );
-
-    return handleApiResponse<ParentalControlDTO>(response);
+    try {
+      return await apiClient.put<ParentalControlDTO>(`/api/v1/parental-controls/${childUserId}`, settings);
+    } catch (error) {
+      console.error('Failed to create/update parental control:', error);
+      throw error;
+    }
   }
 
   /**
    * Delete parental control settings for a child
    */
   async deleteParentalControl(childUserId: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new ParentalControlApiError(
-        'Failed to delete parental controls',
-        response.status
-      );
+    try {
+      await apiClient.delete<void>(`/api/v1/parental-controls/${childUserId}`);
+    } catch (error) {
+      console.error('Failed to delete parental control:', error);
+      throw error;
     }
   }
 
@@ -141,15 +87,12 @@ export class ParentalControlService {
    * Get parental control summary for a child (includes stats and recent requests)
    */
   async getParentalControlSummary(childUserId: number): Promise<ParentalControlSummaryDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/summary`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    return handleApiResponse<ParentalControlSummaryDTO>(response);
+    try {
+      return await apiClient.get<ParentalControlSummaryDTO>(`/api/v1/parental-controls/${childUserId}/summary`);
+    } catch (error) {
+      console.error('Failed to fetch parental control summary:', error);
+      throw error;
+    }
   }
 
   // === PERMISSION REQUESTS ===
@@ -158,46 +101,36 @@ export class ParentalControlService {
    * Create a new permission request (called by child)
    */
   async createPermissionRequest(request: PermissionRequestCreateDTO): Promise<PermissionRequestDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(request),
-      }
-    );
-
-    return handleApiResponse<PermissionRequestDTO>(response);
+    try {
+      return await apiClient.post<PermissionRequestDTO>('/api/v1/parental-controls/permission-requests', request);
+    } catch (error) {
+      console.error('Failed to create permission request:', error);
+      throw error;
+    }
   }
 
   /**
    * Get permission requests by child ID
    */
   async getPermissionRequestsByChild(childUserId: number): Promise<PermissionRequestDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests/child/${childUserId}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    return handleApiResponse<PermissionRequestDTO[]>(response);
+    try {
+      return await apiClient.get<PermissionRequestDTO[]>(`/api/v1/parental-controls/permission-requests/child/${childUserId}`);
+    } catch (error) {
+      console.error('Failed to fetch permission requests by child:', error);
+      return [];
+    }
   }
 
   /**
    * Get pending permission requests for the current parent
    */
   async getPendingPermissionRequests(): Promise<PermissionRequestDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests/pending`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    return handleApiResponse<PermissionRequestDTO[]>(response);
+    try {
+      return await apiClient.get<PermissionRequestDTO[]>('/api/v1/parental-controls/permission-requests/pending');
+    } catch (error) {
+      console.error('Failed to fetch pending permission requests:', error);
+      return [];
+    }
   }
 
   /**
@@ -207,167 +140,122 @@ export class ParentalControlService {
     requestId: number, 
     response: PermissionRequestResponseDTO
   ): Promise<PermissionRequestDTO> {
-    const httpResponse = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests/${requestId}/respond`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(response),
-      }
-    );
-
-    return handleApiResponse<PermissionRequestDTO>(httpResponse);
+    try {
+      return await apiClient.post<PermissionRequestDTO>(`/api/v1/parental-controls/permission-requests/${requestId}/respond`, response);
+    } catch (error) {
+      console.error('Failed to respond to permission request:', error);
+      throw error;
+    }
   }
 
   /**
-   * Bulk respond to multiple permission requests
+   * Respond to multiple permission requests at once
    */
   async bulkRespondToPermissionRequests(
     bulkResponse: BulkPermissionRequestResponseDTO
   ): Promise<PermissionRequestDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests/bulk-respond`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(bulkResponse),
-      }
-    );
-
-    return handleApiResponse<PermissionRequestDTO[]>(response);
+    try {
+      return await apiClient.post<PermissionRequestDTO[]>('/api/v1/parental-controls/permission-requests/bulk-respond', bulkResponse);
+    } catch (error) {
+      console.error('Failed to bulk respond to permission requests:', error);
+      throw error;
+    }
   }
 
   /**
    * Delete a permission request
    */
   async deletePermissionRequest(requestId: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/permission-requests/${requestId}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new ParentalControlApiError(
-        'Failed to delete permission request',
-        response.status
-      );
+    try {
+      await apiClient.delete<void>(`/api/v1/parental-controls/permission-requests/${requestId}`);
+    } catch (error) {
+      console.error('Failed to delete permission request:', error);
+      throw error;
     }
   }
 
   // === SCREEN TIME TRACKING ===
 
   /**
-   * Record screen time session for a child
+   * Record screen time for a child
    */
   async recordScreenTime(childUserId: number, sessionDurationMinutes: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/screen-time`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ 
-          sessionDurationMinutes,
-          sessionDate: new Date().toISOString()
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new ParentalControlApiError(
-        'Failed to record screen time',
-        response.status
-      );
+    try {
+      await apiClient.post<void>(`/api/v1/parental-controls/${childUserId}/screen-time`, {
+        sessionDurationMinutes
+      });
+    } catch (error) {
+      console.error('Failed to record screen time:', error);
+      throw error;
     }
   }
 
   /**
-   * Get screen time for a specific date
+   * Get total screen time for a child on a specific date
    */
   async getScreenTimeForDate(childUserId: number, date: Date): Promise<number> {
-    const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/screen-time/${dateStr}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ totalMinutes: number }>(response);
-    return result.totalMinutes;
+    try {
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const result = await apiClient.get<{ totalMinutes: number }>(`/api/v1/parental-controls/${childUserId}/screen-time?date=${dateStr}`);
+      return result.totalMinutes || 0;
+    } catch (error) {
+      console.error('Failed to fetch screen time for date:', error);
+      return 0;
+    }
   }
 
   /**
    * Get remaining screen time for today
    */
   async getRemainingScreenTime(childUserId: number): Promise<number> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/screen-time/remaining`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ remainingMinutes: number }>(response);
-    return result.remainingMinutes;
+    try {
+      const result = await apiClient.get<{ remainingMinutes: number }>(`/api/v1/parental-controls/${childUserId}/screen-time/remaining`);
+      return result.remainingMinutes || 0;
+    } catch (error) {
+      console.error('Failed to fetch remaining screen time:', error);
+      return 0;
+    }
   }
 
   /**
-   * Check if child is currently within allowed hours
+   * Check if current time is within allowed hours for the child
    */
   async isWithinAllowedHours(childUserId: number): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/allowed-hours/check`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ isAllowed: boolean }>(response);
-    return result.isAllowed;
-  }
-
-  // === VALIDATION HELPERS ===
-
-  /**
-   * Validate if parent has permission to manage a child's controls
-   */
-  async validateParentPermission(childUserId: number): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/validate-permission/${childUserId}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (response.status === 403) {
+    try {
+      const result = await apiClient.get<{ isAllowed: boolean }>(`/api/v1/parental-controls/${childUserId}/allowed-hours/check`);
+      return result.isAllowed || false;
+    } catch (error) {
+      console.error('Failed to check allowed hours:', error);
       return false;
     }
+  }
 
-    const result = await handleApiResponse<{ hasPermission: boolean }>(response);
-    return result.hasPermission;
+  // === VALIDATION & AUTHORIZATION ===
+
+  /**
+   * Validate that the current user has permission to manage a child's parental controls
+   */
+  async validateParentPermission(childUserId: number): Promise<boolean> {
+    try {
+      const result = await apiClient.get<{ hasPermission: boolean }>(`/api/v1/parental-controls/validate-permission/${childUserId}`);
+      return result.hasPermission || false;
+    } catch (error) {
+      console.error('Failed to validate parent permission:', error);
+      return false;
+    }
   }
 
   /**
-   * Check if an action requires parent approval
+   * Check if a specific action requires parent approval for a child
    */
   async requiresParentApproval(childUserId: number, actionType: string): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/parental-controls/${childUserId}/requires-approval/${actionType}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ requiresApproval: boolean }>(response);
-    return result.requiresApproval;
+    try {
+      const result = await apiClient.get<{ requiresApproval: boolean }>(`/api/v1/parental-controls/${childUserId}/requires-approval?actionType=${encodeURIComponent(actionType)}`);
+      return result.requiresApproval || false;
+    } catch (error) {
+      console.error('Failed to check if action requires approval:', error);
+      return false;
+    }
   }
 }
 

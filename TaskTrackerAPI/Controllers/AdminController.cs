@@ -11,11 +11,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TaskTrackerAPI.DTOs.Gamification;
+using TaskTrackerAPI.DTOs.Auth;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Controllers
 {
@@ -25,11 +28,16 @@ namespace TaskTrackerAPI.Controllers
     public class AdminController : ControllerBase
     {
         private readonly IGamificationService _gamificationService;
+        private readonly IAdminService _adminService;
         private readonly ILogger<AdminController> _logger;
 
-        public AdminController(IGamificationService gamificationService, ILogger<AdminController> logger)
+        public AdminController(
+            IGamificationService gamificationService,
+            IAdminService adminService,
+            ILogger<AdminController> logger)
         {
             _gamificationService = gamificationService;
+            _adminService = adminService;
             _logger = logger;
         }
 
@@ -48,7 +56,7 @@ namespace TaskTrackerAPI.Controllers
                     return Forbid("Only admin users can access reset functionality");
                 }
 
-                var resetStats = await _gamificationService.GetResetStatsAsync(userId);
+                GamificationResetStatsDTO resetStats = await _gamificationService.GetResetStatsAsync(userId);
                 return Ok(resetStats);
             }
             catch (Exception ex)
@@ -112,10 +120,10 @@ namespace TaskTrackerAPI.Controllers
                     return Forbid("Only admin users can access this endpoint");
                 }
 
-                var userProgress = await _gamificationService.GetUserProgressAsync(userId);
-                var achievements = await _gamificationService.GetUserAchievementsAsync(userId);
-                var badges = await _gamificationService.GetUserBadgesAsync(userId);
-                var resetStats = await _gamificationService.GetResetStatsAsync(userId);
+                UserProgressDTO userProgress = await _gamificationService.GetUserProgressAsync(userId);
+                List<UserAchievementDTO> achievements = await _gamificationService.GetUserAchievementsAsync(userId);
+                List<UserBadgeDTO> badges = await _gamificationService.GetUserBadgesAsync(userId);
+                GamificationResetStatsDTO resetStats = await _gamificationService.GetResetStatsAsync(userId);
                 
                 return Ok(new
                 {
@@ -133,9 +141,108 @@ namespace TaskTrackerAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Creates a new user with optional family assignment (Admin only)
+        /// </summary>
+        [HttpPost("users/create")]
+        public async Task<ActionResult<AdminUserCreateResponseDTO>> CreateUser([FromBody] AdminUserCreateDTO userCreateDto)
+        {
+            try
+            {
+                int adminUserId = GetCurrentUserId();
+                
+                if (!IsAdminUser())
+                {
+                    return Forbid("Only admin users can create new users");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                AdminUserCreateResponseDTO result = await _adminService.CreateUserWithFamilyAssignmentAsync(adminUserId, userCreateDto);
+                
+                _logger.LogInformation($"Admin {adminUserId} successfully created user: {result.User.Username}");
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized admin user creation attempt");
+                return Forbid(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Invalid arguments for user creation");
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation during user creation");
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating user via admin");
+                return StatusCode(500, "Internal server error while creating user");
+            }
+        }
+
+        /// <summary>
+        /// Gets all families accessible to the admin for user assignment (Admin only)
+        /// </summary>
+        [HttpGet("families/accessible")]
+        public async Task<ActionResult<List<AdminFamilySelectionDTO>>> GetAccessibleFamilies()
+        {
+            try
+            {
+                int adminUserId = GetCurrentUserId();
+                
+                if (!IsAdminUser())
+                {
+                    return Forbid("Only admin users can access family information");
+                }
+
+                List<AdminFamilySelectionDTO> families = await _adminService.GetAdminAccessibleFamiliesAsync(adminUserId);
+                
+                _logger.LogInformation($"Retrieved {families.Count} accessible families for admin {adminUserId}");
+                return Ok(families);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting accessible families");
+                return StatusCode(500, "Internal server error while getting accessible families");
+            }
+        }
+
+        /// <summary>
+        /// Gets all available family roles for user assignment (Admin only)
+        /// </summary>
+        [HttpGet("families/roles")]
+        public async Task<ActionResult<List<FamilyRoleDTO>>> GetFamilyRoles()
+        {
+            try
+            {
+                if (!IsAdminUser())
+                {
+                    return Forbid("Only admin users can access family role information");
+                }
+
+                List<FamilyRoleDTO> roles = await _adminService.GetFamilyRolesAsync();
+                
+                _logger.LogInformation($"Retrieved {roles.Count} family roles");
+                return Ok(roles);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting family roles");
+                return StatusCode(500, "Internal server error while getting family roles");
+            }
+        }
+
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            string? userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdClaim, out int userId))
             {
                 throw new UnauthorizedAccessException("Invalid user ID in token");
@@ -153,11 +260,11 @@ namespace TaskTrackerAPI.Controllers
             if (userId == 1) return true;
             
             // Additional check: admin role claim
-            var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+            string? roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
             if (roleClaim == "Admin") return true;
             
             // Additional check: admin username
-            var usernameClaim = User.FindFirst(ClaimTypes.Name)?.Value;
+            string? usernameClaim = User.FindFirst(ClaimTypes.Name)?.Value;
             if (usernameClaim?.ToLower() == "admin") return true;
             
             return false;

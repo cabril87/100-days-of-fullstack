@@ -46,9 +46,26 @@ public class FamilyMember
     public int RoleId { get; set; }
 
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
-    public bool IsPending { get; set; } = true;
+    public bool IsPending { get; set; } = false;
     public bool ProfileCompleted { get; set; } = false;
     public DateTime? ApprovedAt { get; set; }
+
+    // New relationship fields
+    public FamilyRelationshipType RelationshipToAdmin { get; set; } = FamilyRelationshipType.Other;
+    
+    public int? RelatedToMemberId { get; set; } // Points to another family member they're related to
+    
+    public FamilyRelationshipType? RelationshipToMember { get; set; } // How they're related to that member
+    
+    public bool IsNaturalLeader { get; set; } = false; // Marked as natural family leader (eldest child, etc.)
+    
+    public DateTime? LastActiveAt { get; set; } = DateTime.UtcNow;
+    
+    public bool WantsAdminRole { get; set; } = false; // Member preference for admin responsibilities
+    
+    public DateTime? DateOfBirth { get; set; } // For age transitions
+    
+    public string? Notes { get; set; } // Family notes about this member
 
     // Navigation properties
     [ForeignKey("UserId")]
@@ -57,5 +74,12 @@ public class FamilyMember
     public virtual Family Family { get; set; } = null!;
     [ForeignKey("RoleId")]
     public virtual FamilyRole Role { get; set; } = null!;
+    [ForeignKey("RelatedToMemberId")]
+    public virtual FamilyMember? RelatedToMember { get; set; }
+    public virtual ICollection<FamilyMember> RelatedMembers { get; set; } = new List<FamilyMember>();
+    
+    // Tasks assigned to this family member
     public virtual ICollection<TaskItem> AssignedTasks { get; set; } = new List<TaskItem>();
 }
+
+// FamilyRelationshipType enum is now defined in FamilyRelationshipType.cs

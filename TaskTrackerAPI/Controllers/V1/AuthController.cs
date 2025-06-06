@@ -29,20 +29,29 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]
 public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
     private readonly ISecurityMonitoringService _securityMonitoringService;
     private readonly IFailedLoginService _failedLoginService;
+    private readonly IPasswordResetService _passwordResetService;
+    private readonly IMFAService _mfaService;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger, ISecurityMonitoringService securityMonitoringService, IFailedLoginService failedLoginService)
+    public AuthController(
+        IAuthService authService, 
+        ILogger<AuthController> logger, 
+        ISecurityMonitoringService securityMonitoringService, 
+        IFailedLoginService failedLoginService,
+        IPasswordResetService passwordResetService,
+        IMFAService mfaService)
     {
         _authService = authService;
         _logger = logger;
         _securityMonitoringService = securityMonitoringService;
         _failedLoginService = failedLoginService;
+        _passwordResetService = passwordResetService;
+        _mfaService = mfaService;
     }
 
     [HttpPost("register")]
@@ -236,8 +245,8 @@ public class AuthController : BaseApiController
         {
             _logger.LogInformation("Password reset request received for: {Email}", forgotPasswordRequest.Email);
             
-            // Always return success to prevent email enumeration attacks
-            // The actual implementation would send an email if the user exists
+            // Send password reset email
+            await _passwordResetService.SendPasswordResetEmailAsync(forgotPasswordRequest.Email);
             
             // Log password reset request
             await _securityMonitoringService.LogSecurityAuditAsync(
@@ -253,10 +262,7 @@ public class AuthController : BaseApiController
                 isSuspicious: false
             );
             
-            // TODO: Implement actual email sending logic here
-            // For now, just log the request
-            _logger.LogInformation("Password reset email would be sent to: {Email}", forgotPasswordRequest.Email);
-            
+            // Always return success to prevent email enumeration attacks
             return Ok(new { message = "If an account with that email exists, a password reset link has been sent." });
         }
         catch (Exception ex)
@@ -279,6 +285,98 @@ public class AuthController : BaseApiController
             
             // Still return success to prevent information disclosure
             return Ok(new { message = "If an account with that email exists, a password reset link has been sent." });
+        }
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword(PasswordResetConfirmDTO resetPasswordRequest)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            _logger.LogInformation("Password reset attempt with token: {Token}", resetPasswordRequest.Token);
+            
+            // Validate and reset password
+            bool success = await _passwordResetService.ResetPasswordAsync(resetPasswordRequest.Token, resetPasswordRequest.NewPassword);
+            
+            if (success)
+            {
+                // Log successful password reset
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "PASSWORD_RESET_SUCCESS",
+                    action: "POST /api/auth/reset-password",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    resource: "/api/auth/reset-password",
+                    severity: "INFO",
+                    details: "Password reset completed successfully",
+                    isSuccessful: true,
+                    isSuspicious: false
+                );
+                
+                return Ok(new { message = "Password has been reset successfully. You can now log in with your new password." });
+            }
+            else
+            {
+                // Log failed password reset
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "PASSWORD_RESET_FAILED",
+                    action: "POST /api/auth/reset-password",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    resource: "/api/auth/reset-password",
+                    severity: "MEDIUM",
+                    details: "Password reset failed - invalid or expired token",
+                    isSuccessful: false,
+                    isSuspicious: true
+                );
+                
+                return BadRequest(new { message = "Invalid or expired reset token. Please request a new password reset." });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password");
+            
+            // Log password reset error
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "PASSWORD_RESET_ERROR",
+                action: "POST /api/auth/reset-password",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                resource: "/api/auth/reset-password",
+                severity: "HIGH",
+                details: $"Password reset error: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true
+            );
+            
+            return StatusCode(500, new { message = "An error occurred while resetting your password. Please try again." });
+        }
+    }
+
+    [HttpGet("validate-reset-token")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ValidateResetToken([FromQuery] string token)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                return BadRequest(new { message = "Token is required" });
+            }
+            
+            bool isValid = await _passwordResetService.ValidateResetTokenAsync(token);
+            
+            return Ok(new { valid = isValid });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating reset token");
+            return StatusCode(500, new { message = "An error occurred while validating the token." });
         }
     }
 
@@ -633,4 +731,354 @@ public class AuthController : BaseApiController
             return StatusCode(500, "An error occurred during logout");
         }
     }
+
+    #region MFA Endpoints
+
+    /// <summary>
+    /// Initiates MFA setup for the authenticated user
+    /// </summary>
+    [Authorize]
+    [HttpPost("mfa/setup")]
+    public async Task<ActionResult<MFASetupInitiateDTO>> InitiateMFASetup()
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        string? username = User.FindFirstValue(ClaimTypes.Name);
+        
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            MFASetupInitiateDTO setupData = await _mfaService.InitiateMFASetupAsync(userId);
+            
+            // Log MFA setup initiation
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "MFA_SETUP_INITIATED",
+                action: "POST /api/auth/mfa/setup",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: userId,
+                username: username,
+                resource: "/api/auth/mfa/setup",
+                severity: "INFO",
+                details: "MFA setup initiated",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            return Ok(setupData);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initiating MFA setup");
+            return StatusCode(500, new { message = "An error occurred while setting up MFA." });
+        }
+    }
+
+    /// <summary>
+    /// Completes MFA setup by verifying the first TOTP code
+    /// </summary>
+    [Authorize]
+    [HttpPost("mfa/setup/complete")]
+    public async Task<ActionResult<MFABackupCodesDTO>> CompleteMFASetup(MFASetupCompleteDTO completeDto)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        string? username = User.FindFirstValue(ClaimTypes.Name);
+        
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            MFABackupCodesDTO backupCodes = await _mfaService.CompleteMFASetupAsync(userId, completeDto);
+            
+            // Log MFA setup completion
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "MFA_SETUP_COMPLETED",
+                action: "POST /api/auth/mfa/setup/complete",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: userId,
+                username: username,
+                resource: "/api/auth/mfa/setup/complete",
+                severity: "INFO",
+                details: "MFA setup completed successfully",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            return Ok(backupCodes);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error completing MFA setup");
+            return StatusCode(500, new { message = "An error occurred while completing MFA setup." });
+        }
+    }
+
+    /// <summary>
+    /// Verifies MFA code during login (called after successful password verification)
+    /// </summary>
+    [HttpPost("mfa/verify")]
+    public async Task<ActionResult> VerifyMFA(MFAVerificationDTO verificationDto)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            // This endpoint would typically be called with a temporary token or session
+            // For now, we'll require the user to be authenticated
+            if (!User.Identity?.IsAuthenticated == true)
+            {
+                return Unauthorized(new { message = "Authentication required" });
+            }
+            
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            string? username = User.FindFirstValue(ClaimTypes.Name);
+            
+            bool isValid = await _mfaService.VerifyMFACodeAsync(userId, verificationDto);
+            
+            if (isValid)
+            {
+                // Log successful MFA verification
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "MFA_VERIFICATION_SUCCESS",
+                    action: "POST /api/auth/mfa/verify",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    userId: userId,
+                    username: username,
+                    resource: "/api/auth/mfa/verify",
+                    severity: "INFO",
+                    details: "MFA verification successful",
+                    isSuccessful: true,
+                    isSuspicious: false
+                );
+                
+                return Ok(new { message = "MFA verification successful" });
+            }
+            else
+            {
+                // Log failed MFA verification
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "MFA_VERIFICATION_FAILED",
+                    action: "POST /api/auth/mfa/verify",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    userId: userId,
+                    username: username,
+                    resource: "/api/auth/mfa/verify",
+                    severity: "MEDIUM",
+                    details: "MFA verification failed",
+                    isSuccessful: false,
+                    isSuspicious: true
+                );
+                
+                return Unauthorized(new { message = "Invalid verification code" });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying MFA code");
+            return StatusCode(500, new { message = "An error occurred while verifying MFA code." });
+        }
+    }
+
+    /// <summary>
+    /// Verifies backup code during login
+    /// </summary>
+    [HttpPost("mfa/verify-backup")]
+    public async Task<ActionResult> VerifyBackupCode(MFABackupCodeDTO backupCodeDto)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            if (!User.Identity?.IsAuthenticated == true)
+            {
+                return Unauthorized(new { message = "Authentication required" });
+            }
+            
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            string? username = User.FindFirstValue(ClaimTypes.Name);
+            
+            bool isValid = await _mfaService.VerifyBackupCodeAsync(userId, backupCodeDto);
+            
+            if (isValid)
+            {
+                // Log successful backup code verification
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "MFA_BACKUP_CODE_SUCCESS",
+                    action: "POST /api/auth/mfa/verify-backup",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    userId: userId,
+                    username: username,
+                    resource: "/api/auth/mfa/verify-backup",
+                    severity: "INFO",
+                    details: "Backup code verification successful",
+                    isSuccessful: true,
+                    isSuspicious: false
+                );
+                
+                return Ok(new { message = "Backup code verification successful" });
+            }
+            else
+            {
+                // Log failed backup code verification
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "MFA_BACKUP_CODE_FAILED",
+                    action: "POST /api/auth/mfa/verify-backup",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    userId: userId,
+                    username: username,
+                    resource: "/api/auth/mfa/verify-backup",
+                    severity: "MEDIUM",
+                    details: "Backup code verification failed",
+                    isSuccessful: false,
+                    isSuspicious: true
+                );
+                
+                return Unauthorized(new { message = "Invalid backup code" });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying backup code");
+            return StatusCode(500, new { message = "An error occurred while verifying backup code." });
+        }
+    }
+
+    /// <summary>
+    /// Disables MFA for the authenticated user
+    /// </summary>
+    [Authorize]
+    [HttpPost("mfa/disable")]
+    public async Task<ActionResult> DisableMFA(MFADisableDTO disableDto)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        string? username = User.FindFirstValue(ClaimTypes.Name);
+        
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            await _mfaService.DisableMFAAsync(userId, disableDto);
+            
+            // Log MFA disable
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "MFA_DISABLED",
+                action: "POST /api/auth/mfa/disable",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: userId,
+                username: username,
+                resource: "/api/auth/mfa/disable",
+                severity: "MEDIUM",
+                details: "MFA disabled for user",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            return Ok(new { message = "MFA disabled successfully" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disabling MFA");
+            return StatusCode(500, new { message = "An error occurred while disabling MFA." });
+        }
+    }
+
+    /// <summary>
+    /// Generates new backup codes for the authenticated user
+    /// </summary>
+    [Authorize]
+    [HttpPost("mfa/backup-codes/regenerate")]
+    public async Task<ActionResult<MFABackupCodesDTO>> RegenerateBackupCodes()
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        string? username = User.FindFirstValue(ClaimTypes.Name);
+        
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            MFABackupCodesDTO backupCodes = await _mfaService.GenerateNewBackupCodesAsync(userId);
+            
+            // Log backup codes regeneration
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "MFA_BACKUP_CODES_REGENERATED",
+                action: "POST /api/auth/mfa/backup-codes/regenerate",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: userId,
+                username: username,
+                resource: "/api/auth/mfa/backup-codes/regenerate",
+                severity: "INFO",
+                details: "MFA backup codes regenerated",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            return Ok(backupCodes);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating backup codes");
+            return StatusCode(500, new { message = "An error occurred while regenerating backup codes." });
+        }
+    }
+
+    /// <summary>
+    /// Gets MFA status for the authenticated user
+    /// </summary>
+    [Authorize]
+    [HttpGet("mfa/status")]
+    public async Task<ActionResult<MFAStatusDTO>> GetMFAStatus()
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            MFAStatusDTO status = await _mfaService.GetMFAStatusAsync(userId);
+            
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting MFA status");
+            return StatusCode(500, new { message = "An error occurred while getting MFA status." });
+        }
+    }
+
+    #endregion
 } 

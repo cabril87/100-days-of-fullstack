@@ -34,4 +34,15 @@ public interface IFamilyRepository
     Task<IEnumerable<FamilyMember>> GetPendingMembersAsync();
     Task<bool> UpdateMemberAsync(FamilyMember member);
     Task<bool> DeleteMemberAsync(int memberId);
+    
+    // Family Admin and Ownership Methods
+    Task<bool> IsUserAdminOfFamilyAsync(int userId, int familyId);
+    Task<bool> IsUserFamilyAdminAsync(int userId);
+    Task<IEnumerable<Family>> GetFamiliesUserIsAdminOfAsync(int userId);
+    Task<IEnumerable<Family>> GetFamiliesUserIsMemberOfAsync(int userId);
+    Task<IEnumerable<Family>> GetFamiliesUserHasManagementPrivilegesAsync(int userId);
+    
+    // Family Ownership Transfer (Pass the Baton)
+    Task<bool> TransferFamilyOwnershipAsync(int familyId, int currentOwnerId, int newOwnerId);
+    Task<bool> CanUserManageFamilyBasedOnAgeAsync(int userId, int familyId);
 } 

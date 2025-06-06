@@ -18,6 +18,10 @@ using TaskTrackerAPI.DTOs.Activity;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs;
+using TaskTrackerAPI.DTOs.Family;
+using System.Linq;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -25,17 +29,22 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class ActivityController : BaseApiController
     {
         private readonly IUserActivityService _userActivityService;
+        private readonly IFamilyActivityService _familyActivityService;
+        private readonly IFamilyService _familyService;
         private readonly ILogger<ActivityController> _logger;
 
         public ActivityController(
             IUserActivityService userActivityService,
+            IFamilyActivityService familyActivityService,
+            IFamilyService familyService,
             ILogger<ActivityController> logger)
         {
             _userActivityService = userActivityService;
+            _familyActivityService = familyActivityService;
+            _familyService = familyService;
             _logger = logger;
         }
 
@@ -59,7 +68,7 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 int userId = User.GetUserIdAsInt();
 
-                var filter = new UserActivityFilterDTO
+                UserActivityFilterDTO filter = new UserActivityFilterDTO
                 {
                     Type = type,
                     DateRange = dateRange ?? "all",
@@ -70,21 +79,51 @@ namespace TaskTrackerAPI.Controllers.V1
                     Offset = offset
                 };
 
-                var result = await _userActivityService.GetRecentActivitiesAsync(userId, filter);
+                UserActivityPagedResultDTO result = await _userActivityService.GetRecentActivitiesAsync(userId, filter);
                 return Ok(result);
-            }
-            catch (FormatException ex)
-            {
-                _logger.LogWarning(ex, "Invalid date format in activity request");
-                return BadRequest(new { error = "Invalid date format" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving recent activity for user");
-                return StatusCode(StatusCodes.Status500InternalServerError, new
+                _logger.LogError(ex, "Error getting recent user activity for user {UserId}", User.GetUserIdAsInt());
+                return StatusCode(500, "An error occurred while retrieving your recent activity.");
+            }
+        }
+
+        /// <summary>
+        /// Get recent family activity for dashboard
+        /// </summary>
+        [HttpGet("family/{familyId}/recent")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<ApiResponse<FamilyActivityDTO[]>>> GetFamilyRecentActivity(
+            int familyId,
+            [FromQuery] int limit = 10)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                _logger.LogInformation("Getting recent activity for family {FamilyId} by user {UserId}", familyId, userId);
+
+                // Check if user is a member of the family
+                bool isMember = await _familyService.IsFamilyMemberAsync(familyId, userId);
+                if (!isMember)
                 {
-                    error = "Error retrieving recent activity"
-                });
+                    return ApiUnauthorized<FamilyActivityDTO[]>("You are not a member of this family");
+                }
+
+                // Get recent family activities using the real service
+                FamilyActivityPagedResultDTO activities = await _familyActivityService.GetAllByFamilyIdAsync(familyId, userId, 1, limit);
+                FamilyActivityDTO[] recentActivities = activities.Activities.ToArray();
+
+                _logger.LogInformation("Successfully retrieved {ActivityCount} recent activities for family {FamilyId}", recentActivities.Length, familyId);
+                return ApiOk<FamilyActivityDTO[]>(recentActivities, "Recent family activity retrieved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting recent family activity for family {FamilyId} by user {UserId}: {ErrorMessage}", familyId, User.GetUserIdAsInt(), ex.Message);
+                return ApiServerError<FamilyActivityDTO[]>($"An error occurred while retrieving recent family activity: {ex.Message}");
             }
         }
 
@@ -99,7 +138,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var result = await _userActivityService.GetActivityStatsAsync(userId);
+                UserActivityStatsDTO result = await _userActivityService.GetActivityStatsAsync(userId);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -125,7 +164,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = User.GetUserIdAsInt();
-                var result = await _userActivityService.GetActivityTimelineAsync(userId, dateRange, groupBy);
+                UserActivityTimelineDTO result = await _userActivityService.GetActivityTimelineAsync(userId, dateRange, groupBy);
                 return Ok(result);
             }
             catch (Exception ex)

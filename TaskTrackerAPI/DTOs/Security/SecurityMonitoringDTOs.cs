@@ -63,4 +63,50 @@ namespace TaskTrackerAPI.DTOs.Security
         public string SessionToken { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
     }
+
+    public class UpdateDeviceTrustRequest
+    {
+        public int UserId { get; set; }
+        public string DeviceId { get; set; } = string.Empty;
+        public bool Trusted { get; set; }
+        public string? DeviceName { get; set; }
+    }
+
+    // User Security Settings DTOs
+    public class UserSecuritySettingsDTO
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public bool MFAEnabled { get; set; }
+        public int SessionTimeout { get; set; }
+        public bool TrustedDevicesEnabled { get; set; }
+        public bool LoginNotifications { get; set; }
+        public bool DataExportRequest { get; set; }
+        public DateTime? DataExportRequestDate { get; set; }
+        public bool AccountDeletionRequest { get; set; }
+        public DateTime? AccountDeletionRequestDate { get; set; }
+        public string? PrivacySettings { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    public class UserSecuritySettingsCreateDTO
+    {
+        public bool MFAEnabled { get; set; } = false;
+        public int SessionTimeout { get; set; } = 480;
+        public bool TrustedDevicesEnabled { get; set; } = true;
+        public bool LoginNotifications { get; set; } = true;
+        public bool DataExportRequest { get; set; } = false;
+        public string? PrivacySettings { get; set; }
+    }
+
+    public class UserSecuritySettingsUpdateDTO
+    {
+        public bool? MFAEnabled { get; set; }
+        public int? SessionTimeout { get; set; }
+        public bool? TrustedDevicesEnabled { get; set; }
+        public bool? LoginNotifications { get; set; }
+        public bool? DataExportRequest { get; set; }
+        public string? PrivacySettings { get; set; }
+    }
 } 

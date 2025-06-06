@@ -6,7 +6,9 @@
 
 // Core types
 export * from './auth';
+export * from './admin';
 export * from './settings';
+export * from './notifications';
 export * from './family-invitation';
 export * from './parental-control';
 export * from './session-management';

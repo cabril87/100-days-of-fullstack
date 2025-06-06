@@ -19,11 +19,19 @@ namespace TaskTrackerAPI.DTOs.Security
         public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string SessionToken { get; set; } = string.Empty;
+        
+        // Frontend compatibility fields
+        public string DeviceId { get; set; } = string.Empty;
+        public string? DeviceName { get; set; }
+        public string? Location { get; set; }
+        public bool IsTrusted { get; set; }
+        public string CreatedAt { get; set; } = string.Empty;
+        public string LastActivityAt { get; set; } = string.Empty;
+        public string ExpiresAt { get; set; } = string.Empty;
+        
+        // Original security fields - keep ALL of these!
         public string IpAddress { get; set; } = string.Empty;
         public string? UserAgent { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime LastActivity { get; set; }
-        public DateTime? ExpiresAt { get; set; }
         public bool IsActive { get; set; }
         public string? Country { get; set; }
         public string? City { get; set; }

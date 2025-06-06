@@ -10,6 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.User
 {
@@ -59,6 +60,16 @@ namespace TaskTrackerAPI.DTOs.User
         
         [StringLength(255)]
         public string? AvatarUrl { get; set; }
+
+        
+        /// User role
+        
+        public string Role { get; set; } = "User";
+
+        
+        /// Age group for family functionality
+        
+        public FamilyMemberAgeGroup? AgeGroup { get; set; }
 
         
         /// Date when the user joined

@@ -12,6 +12,7 @@ export interface DashboardStats {
   familyTasks: number;
   familyPoints: number;
   streakDays: number;
+  totalFamilies: number;
 }
 
 export interface FamilyActivityItem {
@@ -42,4 +43,30 @@ export interface Achievement {
   pointsRewarded: number;
   unlockedAt: Date;
   category: 'productivity' | 'family' | 'consistency' | 'milestone';
+}
+
+// Backend API interfaces for activity service
+export interface BackendActivityItem {
+  id: number;
+  actionType?: string;
+  type?: string; // Alternative field name for actionType
+  actorDisplayName?: string;
+  actor?: { displayName: string };
+  user?: { displayName: string }; // Alternative field name for actor
+  actorId: number;
+  description?: string;
+  timestamp?: string;
+  createdAt?: string; // Alternative field name for timestamp
+  entityType?: string;
+}
+
+export interface BackendUserProgress {
+  currentLevel: number;
+  totalPoints: number;
+  pointsToNextLevel: number;
+}
+
+export interface UserProgressApiResponse {
+  success: boolean;
+  data: BackendUserProgress;
 } 

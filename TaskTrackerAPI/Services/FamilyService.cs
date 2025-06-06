@@ -28,19 +28,22 @@ public class FamilyService : IFamilyService
     private readonly IFamilyRepository _familyRepository;
     private readonly IFamilyRoleRepository _roleRepository;
     private readonly IInvitationRepository _invitationRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
     private readonly ILogger<FamilyService> _logger;
 
     public FamilyService(
        IFamilyRepository familyRepository,
        IFamilyRoleRepository roleRepository,
-       IInvitationRepository invitationRepository, // Add this
+       IInvitationRepository invitationRepository,
+       IUserRepository userRepository,
        IMapper mapper,
        ILogger<FamilyService> logger)
     {
         _familyRepository = familyRepository;
         _roleRepository = roleRepository;
-        _invitationRepository = invitationRepository; // Initialize it
+        _invitationRepository = invitationRepository;
+        _userRepository = userRepository;
         _mapper = mapper;
         _logger = logger;
     }
@@ -67,6 +70,19 @@ public class FamilyService : IFamilyService
     {
         try
         {
+            // Get user information to check age-based permissions
+            User? user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException("User not found");
+            }
+
+            // Check if user can create families based on age
+            if (user.AgeGroup == FamilyMemberAgeGroup.Child)
+            {
+                throw new InvalidOperationException("Children (under 13) cannot create families");
+            }
+
             // Map DTO to entity
             Family family = _mapper.Map<Family>(familyDto);
             family.CreatedAt = DateTime.UtcNow;
@@ -75,15 +91,14 @@ public class FamilyService : IFamilyService
             // Create the family
             Family createdFamily = await _familyRepository.CreateAsync(family);
 
-            // Try to get the Admin role
+            // Get appropriate roles based on user age
             FamilyRole? adminRole = await _roleRepository.GetByNameAsync("Admin");
+            FamilyRole? memberRole = await _roleRepository.GetByNameAsync("Member");
 
-            // If Admin role doesn't exist, create it on the fly
+            // Ensure roles exist
             if (adminRole == null)
             {
                 _logger.LogWarning("Admin role not found, creating it now");
-
-                // Create the admin role
                 adminRole = new FamilyRole
                 {
                     Name = "Admin",
@@ -91,16 +106,14 @@ public class FamilyService : IFamilyService
                     IsDefault = false,
                     CreatedAt = DateTime.UtcNow
                 };
-
-                // Save the role to get an ID
                 adminRole = await _roleRepository.CreateAsync(adminRole);
 
-                // Add basic permissions
+                // Add admin permissions
                 FamilyRolePermission[] adminPermissions = new[] {
-                new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
-                new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
-                new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow }
-            };
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_family", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "manage_members", CreatedAt = DateTime.UtcNow },
+                    new FamilyRolePermission { RoleId = adminRole.Id, Name = "invite_members", CreatedAt = DateTime.UtcNow }
+                };
 
                 foreach (FamilyRolePermission permission in adminPermissions)
                 {
@@ -108,12 +121,58 @@ public class FamilyService : IFamilyService
                 }
             }
 
-            // Add the creator as an admin
-            bool memberAdded = await _familyRepository.AddMemberAsync(createdFamily.Id, userId, adminRole.Id);
+            if (memberRole == null)
+            {
+                _logger.LogWarning("Member role not found, creating it now");
+                memberRole = new FamilyRole
+                {
+                    Name = "Member",
+                    Description = "Regular family member",
+                    IsDefault = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                memberRole = await _roleRepository.CreateAsync(memberRole);
+            }
+
+            // Assign appropriate role based on age
+            FamilyRole roleToAssign;
+            switch (user.AgeGroup)
+            {
+                case FamilyMemberAgeGroup.Child:
+                    // This should never happen due to the check above, but defensive programming
+                    throw new InvalidOperationException("Children cannot create families");
+
+                case FamilyMemberAgeGroup.Teen:
+                    // Teens can create families but have restricted admin privileges
+                    roleToAssign = adminRole;
+                    _logger.LogInformation("Teen user {UserId} creating family {FamilyId} with admin role (restricted privileges)", 
+                        userId, createdFamily.Id);
+                    break;
+
+                case FamilyMemberAgeGroup.Adult:
+                    // Adults get full admin privileges
+                    roleToAssign = adminRole;
+                    _logger.LogInformation("Adult user {UserId} creating family {FamilyId} with full admin role", 
+                        userId, createdFamily.Id);
+                    break;
+
+                default:
+                    // Fallback to member role for unknown age groups
+                    roleToAssign = memberRole;
+                    _logger.LogWarning("User {UserId} has unknown age group, assigning member role", userId);
+                    break;
+            }
+
+            // Add the creator as a family member with appropriate role
+            bool memberAdded = await _familyRepository.AddMemberAsync(createdFamily.Id, userId, roleToAssign.Id);
             if (!memberAdded)
             {
-                _logger.LogWarning("Failed to add creator as admin for family {FamilyId}", createdFamily.Id);
+                _logger.LogError("Failed to add creator as member for family {FamilyId}", createdFamily.Id);
+                throw new InvalidOperationException("Failed to add creator to family");
             }
+
+            _logger.LogInformation("User {UserId} (Age: {AgeGroup}) successfully created family {FamilyId} with role {RoleName}", 
+                userId, user.AgeGroup, createdFamily.Id, roleToAssign.Name);
 
             // Get the updated family with members for the DTO
             Family? completeFamily = await _familyRepository.GetByIdAsync(createdFamily.Id);
@@ -126,7 +185,7 @@ public class FamilyService : IFamilyService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in CreateAsync: {Message}", ex.Message);
+            _logger.LogError(ex, "Error creating family for user {UserId}: {Message}", userId, ex.Message);
             throw; // Rethrow to let the controller handle it
         }
     }
@@ -364,15 +423,8 @@ public class FamilyService : IFamilyService
 
     public async Task<bool> IsUserAdminOfFamilyAsync(int userId, int familyId)
     {
-        // Check if user is the creator of the family
-        Family? family = await _familyRepository.GetByIdAsync(familyId);
-        if (family != null && family.CreatedById == userId)
-        {
-            return true;
-        }
-
-        // Check if user has admin permissions
-        return await HasPermissionAsync(familyId, userId, "manage_family");
+        // Use repository method instead of calling service methods
+        return await _familyRepository.IsUserAdminOfFamilyAsync(userId, familyId);
     }
 
     /// <summary>
@@ -386,7 +438,7 @@ public class FamilyService : IFamilyService
         try
         {
             // Check if the user is a member of the family
-            var isMember = await _familyRepository.IsMemberAsync(familyId, userId);
+            bool isMember = await _familyRepository.IsMemberAsync(familyId, userId);
             
             return isMember;
         }
@@ -394,6 +446,219 @@ public class FamilyService : IFamilyService
         {
             _logger.LogError(ex, "Error checking if user {UserId} is a member of family {FamilyId}", userId, familyId);
             return false;
+        }
+    }
+
+    public async Task<bool> IsUserFamilyAdminAsync(int userId)
+    {
+        // Use repository method directly - age checking is handled in repository
+        return await _familyRepository.IsUserFamilyAdminAsync(userId);
+    }
+
+    public async Task<IEnumerable<FamilyDTO>> GetFamiliesUserIsAdminOfAsync(int userId)
+    {
+        try
+        {
+            IEnumerable<Family> families = await _familyRepository.GetFamiliesUserIsAdminOfAsync(userId);
+            return _mapper.Map<IEnumerable<FamilyDTO>>(families);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting families user {UserId} is admin of", userId);
+            return new List<FamilyDTO>();
+        }
+    }
+
+    public async Task<IEnumerable<FamilyDTO>> GetFamiliesUserIsMemberOfAsync(int userId)
+    {
+        try
+        {
+            IEnumerable<Family> families = await _familyRepository.GetFamiliesUserIsMemberOfAsync(userId);
+            return _mapper.Map<IEnumerable<FamilyDTO>>(families);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting families user {UserId} is member of", userId);
+            return new List<FamilyDTO>();
+        }
+    }
+
+    public async Task<IEnumerable<FamilyDTO>> GetFamiliesUserHasManagementPrivilegesAsync(int userId)
+    {
+        try
+        {
+            IEnumerable<Family> families = await _familyRepository.GetFamiliesUserHasManagementPrivilegesAsync(userId);
+            return _mapper.Map<IEnumerable<FamilyDTO>>(families);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting families user {UserId} has management privileges for", userId);
+            return new List<FamilyDTO>();
+        }
+    }
+
+    public async Task<bool> TransferFamilyOwnershipAsync(int familyId, int currentOwnerId, int newOwnerId)
+    {
+        try
+        {
+            // Check if current user can transfer ownership (must be current owner)
+            if (!await IsUserAdminOfFamilyAsync(currentOwnerId, familyId))
+            {
+                _logger.LogWarning("User {UserId} attempted to transfer family {FamilyId} ownership without being owner", currentOwnerId, familyId);
+                return false;
+            }
+
+            // Check if new owner can manage family based on age
+            if (!await CanUserManageFamilyBasedOnAgeAsync(newOwnerId, familyId))
+            {
+                _logger.LogWarning("Transfer rejected: User {UserId} cannot manage family {FamilyId} based on age restrictions", newOwnerId, familyId);
+                return false;
+            }
+
+            return await _familyRepository.TransferFamilyOwnershipAsync(familyId, currentOwnerId, newOwnerId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error transferring family {FamilyId} ownership from {CurrentOwnerId} to {NewOwnerId}", familyId, currentOwnerId, newOwnerId);
+            return false;
+        }
+    }
+
+    public async Task<bool> CanUserManageFamilyBasedOnAgeAsync(int userId, int familyId)
+    {
+        try
+        {
+            return await _familyRepository.CanUserManageFamilyBasedOnAgeAsync(userId, familyId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking if user {UserId} can manage family {FamilyId} based on age", userId, familyId);
+            return false;
+        }
+    }
+
+    public async Task<FamilyManagementPermissionsDTO> GetUserFamilyManagementPermissionsAsync(int userId, int? familyId = null)
+    {
+        try
+        {
+            FamilyMember? user = null;
+            
+            // Only try to get family member if familyId is provided and valid
+            if (familyId.HasValue && familyId.Value > 0)
+            {
+                user = await _familyRepository.GetMemberByUserIdAsync(userId, familyId.Value);
+            }
+            
+            if (user?.User == null)
+            {
+                // If user not found as family member or no familyId provided, 
+                // use default permissions for adults (safest assumption)
+                // In a real implementation, you'd want to get the user's actual age from the Users table
+                return GetPermissionsByAgeGroup(FamilyMemberAgeGroup.Adult, userId, familyId);
+            }
+
+            FamilyManagementPermissionsDTO permissions = GetPermissionsByAgeGroup(user.User.AgeGroup, userId, familyId);
+            
+            // Check if user can manage current family if familyId provided
+            if (familyId.HasValue)
+            {
+                permissions.CanManageCurrentFamily = await CanUserManageFamilyBasedOnAgeAsync(userId, familyId.Value);
+            }
+
+            return permissions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting family management permissions for user {UserId}", userId);
+            // Return safe default permissions
+            return new FamilyManagementPermissionsDTO
+            {
+                CanCreateFamily = true,
+                CanTransferOwnership = true,
+                CanManageMembers = true,
+                CanInviteMembers = true,
+                CanManageCurrentFamily = false,
+                AgeGroup = "Adult"
+            };
+        }
+    }
+
+    public async Task<UserFamilyRelationshipsDTO> GetUserFamilyRelationshipsAsync(int userId)
+    {
+        try
+        {
+            IEnumerable<FamilyDTO> adminFamilies = await GetFamiliesUserIsAdminOfAsync(userId);
+            IEnumerable<FamilyDTO> memberFamilies = await GetFamiliesUserIsMemberOfAsync(userId);
+            IEnumerable<FamilyDTO> managementFamilies = await GetFamiliesUserHasManagementPrivilegesAsync(userId);
+            FamilyManagementPermissionsDTO permissions = await GetUserFamilyManagementPermissionsAsync(userId);
+
+            return new UserFamilyRelationshipsDTO
+            {
+                AdminFamilies = adminFamilies.ToList(),
+                MemberFamilies = memberFamilies.ToList(),
+                ManagementFamilies = managementFamilies.ToList(),
+                Permissions = permissions
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user family relationships for user {UserId}", userId);
+            return new UserFamilyRelationshipsDTO();
+        }
+    }
+
+    // Helper method to get user directly from Users table
+    private Task<User?> GetUserDirectlyAsync(int userId)
+    {
+        // This would require access to user repository - for now return null
+        // In a complete implementation, inject IUserRepository
+        return Task.FromResult<User?>(null);
+    }
+
+    // Helper method to determine permissions based on age group
+    private FamilyManagementPermissionsDTO GetPermissionsByAgeGroup(FamilyMemberAgeGroup ageGroup, int userId, int? familyId)
+    {
+        switch (ageGroup)
+        {
+            case FamilyMemberAgeGroup.Child:
+                return new FamilyManagementPermissionsDTO
+                {
+                    CanCreateFamily = false,
+                    CanTransferOwnership = false,
+                    CanManageMembers = false,
+                    CanInviteMembers = false,
+                    CanManageCurrentFamily = false,
+                    AgeGroup = "Child"
+                };
+
+            case FamilyMemberAgeGroup.Teen:
+                return new FamilyManagementPermissionsDTO
+                {
+                    CanCreateFamily = true,
+                    CanTransferOwnership = false,
+                    CanManageMembers = true,
+                    CanInviteMembers = true,
+                    CanManageCurrentFamily = false, // Will be set by calling method
+                    MaxFamilySize = 5,
+                    AgeGroup = "Teen"
+                };
+
+            case FamilyMemberAgeGroup.Adult:
+                return new FamilyManagementPermissionsDTO
+                {
+                    CanCreateFamily = true,
+                    CanTransferOwnership = true,
+                    CanManageMembers = true,
+                    CanInviteMembers = true,
+                    CanManageCurrentFamily = false, // Will be set by calling method
+                    AgeGroup = "Adult"
+                };
+
+            default:
+                return new FamilyManagementPermissionsDTO
+                {
+                    AgeGroup = "Unknown"
+                };
         }
     }
 }

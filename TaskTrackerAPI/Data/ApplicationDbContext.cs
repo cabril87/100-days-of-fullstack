@@ -47,6 +47,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
 
+    public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+
     public DbSet<Reminder> Reminders { get; set; } = null!;
 
     public DbSet<Note> Notes { get; set; } = null!;
@@ -137,6 +139,7 @@ public class ApplicationDbContext : DbContext
     // Enhanced security entities
     public DbSet<FailedLoginAttempt> FailedLoginAttempts { get; set; } = null!;
     public DbSet<UserSession> UserSessions { get; set; } = null!;
+    public DbSet<UserSecuritySettings> UserSecuritySettings { get; set; } = null!;
     
     // Advanced security entities
     public DbSet<ThreatIntelligence> ThreatIntelligence { get; set; } = null!;
@@ -374,14 +377,19 @@ public class ApplicationDbContext : DbContext
             entity.Property(b => b.UserId).IsRequired();
         });
 
-        // Fix FamilyMember relationship
+        // Configure FamilyMember-User relationship properly
+        modelBuilder.Entity<FamilyMember>()
+            .HasOne(fm => fm.User)
+            .WithMany(u => u.FamilyMembers)
+            .HasForeignKey(fm => fm.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Ensure FamilyMember properties are configured correctly
         modelBuilder.Entity<FamilyMember>(entity =>
         {
-            // Explicitly ignore the navigation property
-            entity.Ignore(f => f.User);
-            
-            // Manual mapping of the foreign key
             entity.Property(f => f.UserId).IsRequired();
+            entity.Property(f => f.FamilyId).IsRequired();
+            entity.Property(f => f.RoleId).IsRequired();
         });
 
         // Configure TaskTemplate-User relationship

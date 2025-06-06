@@ -1,41 +1,27 @@
 /*
- * Family Invitation API Service
+ * Family Invitation Service - Complete family management API integration
+ * Handles families, members, invitations, roles, and age-based permissions
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
 import {
-  InvitationDTO,
-  InvitationCreateDTO,
-  InvitationResponseDTO,
-  PendingInvitationsResponseDTO,
   FamilyDTO,
+  FamilyMemberDTO,
+  InvitationDTO,
   FamilyCreateDTO,
   FamilyUpdateDTO,
-  FamilyRoleDTO,
-  FamilyMemberDTO,
+  InvitationCreateDTO,
   TransferOwnershipDTO,
   UserFamilyRelationships,
-  FamilyManagementPermissions
+  FamilyManagementPermissions,
+  FamilyRoleDTO,
+  SmartInvitationRequest,
+  InvitationValidationResult,
+  FamilyRelationshipType,
+  getRelationshipDisplayName
 } from '../types/family-invitation';
-
-// Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const API_VERSION = 'v1';
-
-// Helper function to get auth headers
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem('accessToken');
-  
-  // Debug logging for token availability
-  if (!token) {
-    console.debug('No access token found in localStorage for API request');
-  }
-  
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
+import { FamilyMemberAgeGroup } from '../types/auth';
+import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors
 export class FamilyInvitationApiError extends Error {
@@ -50,685 +36,1037 @@ export class FamilyInvitationApiError extends Error {
   }
 }
 
-// Helper function to handle API responses
-async function handleApiResponse<T>(response: Response, allowNotFound: boolean = false): Promise<T | null> {
-  if (!response.ok) {
-    // Handle 404 Not Found gracefully for GET requests (expected for users without families)
-    if (response.status === 404 && allowNotFound) {
-      console.debug(`Expected 404 response handled gracefully for ${response.url}`);
-      return null;
-    }
-    
-    // Handle 401 Unauthorized gracefully for family-related calls (user may not have family access)
-    if (response.status === 401 && allowNotFound) {
-      console.debug(`401 Unauthorized handled gracefully for ${response.url} - user may not have family access`);
-      return null;
-    }
-    
-    // Handle 400 Bad Request gracefully for users without families
-    if (response.status === 400) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData.message?.includes('family') || errorData.message?.includes('not found')) {
-        console.debug(`Family-related 400 response handled gracefully for ${response.url}`);
-        return null;
-      }
-    }
-    
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new FamilyInvitationApiError(
-      errorData.message || `HTTP ${response.status}`,
-      response.status,
-      errorData.code,
-      errorData.errors
-    );
-  }
-  
-  return response.json();
-}
-
 // Family Invitation Service Class
 export class FamilyInvitationService {
-  private readonly baseUrl: string;
-
-  constructor() {
-    this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
-  }
-
-  // === FAMILY MANAGEMENT ===
+  // === FAMILY OPERATIONS ===
 
   /**
-   * Get current user's family
+   * Get all families for current user
+   */
+  async getAllFamilies(): Promise<FamilyDTO[]> {
+    try {
+      return await apiClient.get<FamilyDTO[]>('/api/v1/family');
+    } catch (error) {
+      console.error('Failed to fetch families:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get family by ID
+   */
+  async getFamilyById(id: number): Promise<FamilyDTO> {
+    try {
+      return await apiClient.get<FamilyDTO>(`/api/v1/family/${id}`);
+    } catch (error) {
+      console.error('Failed to fetch family by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get family for current user
+   */
+  async getUserFamily(): Promise<FamilyDTO | null> {
+    try {
+      return await apiClient.get<FamilyDTO>('/api/v1/family/current-family');
+    } catch (error) {
+      console.debug('User has no family:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current family (alias for getUserFamily for backward compatibility)
    */
   async getCurrentFamily(): Promise<FamilyDTO | null> {
-    const response = await fetch(
-      `${this.baseUrl}/family/current-family`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    return handleApiResponse<FamilyDTO>(response, true);
-  }
-
-  /**
-   * Check if current user is admin of any family
-   */
-  async isUserFamilyAdmin(): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/family/is-family-admin`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<boolean>(response, true);
-    return result ?? false; // Return false if null (user has no family)
+    return this.getUserFamily();
   }
 
   /**
    * Create a new family
    */
   async createFamily(familyData: FamilyCreateDTO): Promise<FamilyDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/family`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(familyData),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to create family', 500);
+    try {
+      return await apiClient.post<FamilyDTO>('/api/v1/family', familyData);
+    } catch (error) {
+      console.error('Failed to create family:', error);
+      throw error;
     }
-    return result;
   }
 
   /**
    * Update family information
    */
-  async updateFamily(familyId: number, familyData: FamilyUpdateDTO): Promise<FamilyDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${familyId}`,
-      {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(familyData),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to update family', 500);
+  async updateFamily(id: number, familyData: FamilyUpdateDTO): Promise<FamilyDTO> {
+    try {
+      return await apiClient.put<FamilyDTO>(`/api/v1/family/${id}`, familyData);
+    } catch (error) {
+      console.error('Failed to update family:', error);
+      throw error;
     }
-    return result;
   }
 
   /**
-   * Leave current family
+   * Delete family
    */
-  async leaveFamily(): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/family/leave`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to leave family',
-        response.status
-      );
+  async deleteFamily(id: number): Promise<void> {
+    try {
+      await apiClient.delete<void>(`/api/v1/family/${id}`);
+    } catch (error) {
+      console.error('Failed to delete family:', error);
+      throw error;
     }
   }
 
   /**
-   * Delete family (admin only)
+   * Leave family (remove self as member)
    */
-  async deleteFamily(familyId: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${familyId}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to delete family',
-        response.status
-      );
+  async leaveFamily(familyId: number): Promise<void> {
+    try {
+      await apiClient.post<void>(`/api/v1/family/${familyId}/leave`);
+    } catch (error) {
+      console.error('Failed to leave family:', error);
+      throw error;
     }
   }
 
-  // === FAMILY MEMBERS ===
+  // === FAMILY MEMBER OPERATIONS ===
 
   /**
-   * Get family members
+   * Get all members of a family
    */
   async getFamilyMembers(familyId: number): Promise<FamilyMemberDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${familyId}/members`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
+    try {
+      return await apiClient.get<FamilyMemberDTO[]>(`/api/v1/family/${familyId}/members`);
+    } catch (error) {
+      console.error('Failed to fetch family members:', error);
+      return [];
+    }
+  }
 
-    const result = await handleApiResponse<FamilyMemberDTO[]>(response, true);
-    return result ?? []; // Return empty array if null
+  /**
+   * Get specific family member
+   */
+  async getFamilyMember(familyId: number, memberId: number): Promise<FamilyMemberDTO> {
+    try {
+      return await apiClient.get<FamilyMemberDTO>(`/api/v1/family/${familyId}/members/${memberId}`);
+    } catch (error) {
+      console.error('Failed to fetch family member:', error);
+      throw error;
+    }
   }
 
   /**
    * Update family member role
    */
-  async updateMemberRole(memberId: number, roleId: number): Promise<FamilyMemberDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/family/members/${memberId}/role`,
-      {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ roleId }),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyMemberDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to update member role', 500);
-    }
-    return result;
-  }
-
-  /**
-   * Remove family member
-   */
-  async removeFamilyMember(memberId: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/family/members/${memberId}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to remove family member',
-        response.status
-      );
-    }
-  }
-
-  // === FAMILY ROLES ===
-
-  /**
-   * Get available family roles
-   */
-  async getFamilyRoles(): Promise<FamilyRoleDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/family/roles`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyRoleDTO[]>(response, true);
-    return result ?? []; // Return empty array if null
-  }
-
-  /**
-   * Get family role by ID
-   */
-  async getFamilyRole(roleId: number): Promise<FamilyRoleDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/family/roles/${roleId}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyRoleDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Family role not found', 404);
-    }
-    return result;
-  }
-
-  // === INVITATIONS ===
-
-  /**
-   * Send family invitation
-   */
-  async sendInvitation(invitationData: InvitationCreateDTO): Promise<InvitationResponseDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(invitationData),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationResponseDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to send invitation', 500);
-    }
-    return result;
-  }
-
-  /**
-   * Get sent invitations
-   */
-  async getSentInvitations(): Promise<InvitationDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/sent`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationDTO[]>(response, true);
-    return result ?? []; // Return empty array if null
-  }
-
-  /**
-   * Get pending invitations count
-   */
-  async getPendingInvitations(): Promise<PendingInvitationsResponseDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/pending`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<PendingInvitationsResponseDTO>(response, true);
-    return result ?? { count: 0, invitations: [] }; // Match the actual DTO structure
-  }
-
-  /**
-   * Accept family invitation
-   */
-  async acceptInvitation(token: string): Promise<InvitationResponseDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/accept`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ token }),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationResponseDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to accept invitation', 500);
-    }
-    return result;
-  }
-
-  /**
-   * Decline family invitation
-   */
-  async declineInvitation(token: string): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/decline`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ token }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to decline invitation',
-        response.status
-      );
+  async updateMemberRole(familyId: number, memberId: number, roleId: number): Promise<FamilyMemberDTO> {
+    try {
+      return await apiClient.put<FamilyMemberDTO>(`/api/v1/family/${familyId}/members/${memberId}/role`, { roleId });
+    } catch (error) {
+      console.error('Failed to update member role:', error);
+      throw error;
     }
   }
 
   /**
-   * Cancel/revoke invitation (sender only)
+   * Remove member from family
    */
-  async cancelInvitation(invitationId: number): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/${invitationId}/cancel`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to cancel invitation',
-        response.status
-      );
+  async removeFamilyMember(familyId: number, memberId: number): Promise<void> {
+    try {
+      await apiClient.delete<void>(`/api/v1/family/${familyId}/members/${memberId}`);
+    } catch (error) {
+      console.error('Failed to remove family member:', error);
+      throw error;
     }
   }
 
   /**
-   * Resend invitation (sender only)
+   * Transfer family ownership (Pass the Baton)
    */
-  async resendInvitation(invitationId: number, newMessage?: string): Promise<InvitationResponseDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/${invitationId}/resend`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ message: newMessage }),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationResponseDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to resend invitation', 500);
+  async transferOwnership(familyId: number, transferData: TransferOwnershipDTO): Promise<FamilyDTO> {
+    try {
+      return await apiClient.post<FamilyDTO>(`/api/v1/family/${familyId}/transfer-ownership`, transferData);
+    } catch (error) {
+      console.error('Failed to transfer family ownership:', error);
+      throw error;
     }
-    return result;
+  }
+
+  // === INVITATION OPERATIONS ===
+
+    /**
+   * Get all invitations for a family
+   */
+  async getFamilyInvitations(familyId: number): Promise<InvitationDTO[]> {
+    try {
+      return await apiClient.get<InvitationDTO[]>(`/api/v1/family/${familyId}/invitations`);
+    } catch (error) {
+      console.error('Failed to fetch family invitations:', error);
+      return [];
+    }
+  }
+
+    /**
+   * Get pending invitations for current user
+   */
+  async getPendingInvitations(): Promise<InvitationDTO[]> {
+    try {
+      return await apiClient.get<InvitationDTO[]>('/api/v1/invitation/pending');
+    } catch (error) {
+      console.error('Failed to fetch pending invitations:', error);
+      return [];
+    }
   }
 
   /**
-   * Get invitation details by token (for invitation preview)
+   * Get invitation by ID
+   */
+  async getInvitationById(id: number): Promise<InvitationDTO> {
+    try {
+      return await apiClient.get<InvitationDTO>(`/api/v1/invitation/${id}`);
+    } catch (error) {
+      console.error('Failed to fetch invitation by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get invitation by token (for public acceptance page)
    */
   async getInvitationByToken(token: string): Promise<InvitationDTO> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/token/${token}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationDTO>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Invitation not found', 404);
+    try {
+      return await apiClient.get<InvitationDTO>(`/api/v1/invitation/token/${token}`);
+    } catch (error) {
+      console.error('Failed to fetch invitation by token:', error);
+      throw error;
     }
-    return result;
   }
 
-  // === BULK OPERATIONS ===
-
   /**
-   * Send multiple invitations at once
+   * Create new family invitation
    */
-  async sendBulkInvitations(
-    emails: string[], 
-    roleId: number, 
-    message?: string
-  ): Promise<InvitationResponseDTO[]> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/bulk`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ emails, roleId, message }),
-      }
-    );
-
-    const result = await handleApiResponse<InvitationResponseDTO[]>(response);
-    if (!result) {
-      throw new FamilyInvitationApiError('Failed to send bulk invitations', 500);
+  async createInvitation(invitationData: InvitationCreateDTO): Promise<InvitationDTO> {
+    try {
+      return await apiClient.post<InvitationDTO>(`/api/v1/family/${invitationData.familyId}/invitations`, invitationData);
+    } catch (error) {
+      console.error('Failed to create invitation:', error);
+      throw error;
     }
-    return result;
   }
 
   /**
-   * Cancel multiple invitations
+   * Accept family invitation by ID (kept for backward compatibility)
    */
-  async cancelBulkInvitations(invitationIds: number[]): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/bulk-cancel`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ invitationIds }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to cancel invitations',
-        response.status
-      );
+  async acceptInvitation(): Promise<FamilyMemberDTO> {
+    try {
+      // For backward compatibility, this method still exists
+      // but in practice, the backend uses token-based acceptance
+      throw new Error('Use acceptInvitationByToken instead');
+    } catch (error) {
+      console.error('Failed to accept invitation:', error);
+      throw error;
     }
   }
 
-  // === VALIDATION HELPERS ===
+  /**
+   * Accept family invitation by token
+   */
+  async acceptInvitationByToken(token: string): Promise<{ success: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; message: string }>('/api/v1/invitation/accept', { token });
+    } catch (error) {
+      console.error('Failed to accept invitation by token:', error);
+      throw error;
+    }
+  }
 
   /**
-   * Check if email already exists in family
+   * Decline family invitation by ID (kept for backward compatibility)
+   */
+  async declineInvitation(): Promise<void> {
+    try {
+      // For backward compatibility, this method still exists
+      // but in practice, the backend uses token-based decline
+      throw new Error('Use declineInvitationByToken instead');
+    } catch (error) {
+      console.error('Failed to decline invitation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Decline family invitation by token
+   */
+  async declineInvitationByToken(token: string): Promise<{ success: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; message: string }>('/api/v1/invitation/decline', { token });
+    } catch (error) {
+      console.error('Failed to decline invitation by token:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel family invitation (by sender)
+   */
+  async cancelInvitation(invitationId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      return await apiClient.delete<{ success: boolean; message: string }>(`/api/v1/invitation/${invitationId}`);
+    } catch (error) {
+      console.error('Failed to cancel invitation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resend family invitation
+   */
+  async resendInvitation(invitationId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      return await apiClient.post<{ success: boolean; message: string }>(`/api/v1/invitation/${invitationId}/resend`);
+    } catch (error) {
+      console.error('Failed to resend invitation:', error);
+      throw error;
+    }
+  }
+
+  // === USER FAMILY RELATIONSHIPS ===
+
+  /**
+   * Get user's family relationships and permissions
+   */
+  async getUserFamilyRelationships(): Promise<UserFamilyRelationships> {
+    try {
+      return await apiClient.get<UserFamilyRelationships>('/api/v1/family/user-relationships');
+    } catch (error) {
+      console.error('Failed to fetch user family relationships:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get family management permissions for current user
+   */
+  async getFamilyManagementPermissions(familyId?: number): Promise<FamilyManagementPermissions> {
+    try {
+      const endpoint = familyId 
+        ? `/api/v1/family/management-permissions?familyId=${familyId}`
+        : '/api/v1/family/management-permissions';
+      return await apiClient.get<FamilyManagementPermissions>(endpoint);
+    } catch (error) {
+      console.error('Failed to fetch family management permissions:', error);
+      return {
+        canCreateFamily: false,
+        canManageFamily: false,
+        canInviteMembers: false,
+        canRemoveMembers: false,
+        canUpdateRoles: false,
+        canTransferOwnership: false,
+        isGlobalAdmin: false,
+        isFamilyAdmin: false,
+        maxFamilySize: 0,
+        ageGroup: FamilyMemberAgeGroup.Child,
+        ageRestrictions: []
+      };
+    }
+  }
+
+  /**
+   * Check if user is family admin
+   */
+  async isUserFamilyAdmin(familyId?: number): Promise<boolean> {
+    try {
+      const permissions = await this.getFamilyManagementPermissions(familyId);
+      return permissions.isFamilyAdmin || permissions.isGlobalAdmin;
+    } catch (error) {
+      console.error('Failed to check family admin status:', error);
+      return false;
+    }
+  }
+
+  // === CONVENIENCE METHODS ===
+
+  /**
+   * Create family and return with admin permissions check
+   */
+  async createFamilyWithPermissions(familyData: FamilyCreateDTO): Promise<{ family: FamilyDTO; permissions: FamilyManagementPermissions }> {
+    try {
+      const family = await this.createFamily(familyData);
+      const permissions = await this.getFamilyManagementPermissions(family.id);
+      return { family, permissions };
+    } catch (error) {
+      console.error('Failed to create family with permissions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get family with members and invitations
+   */
+  async getFamilyComplete(familyId: number): Promise<{ family: FamilyDTO; members: FamilyMemberDTO[]; invitations: InvitationDTO[] }> {
+    try {
+      const [family, members, invitations] = await Promise.all([
+        this.getFamilyById(familyId),
+        this.getFamilyMembers(familyId),
+        this.getFamilyInvitations(familyId)
+      ]);
+      return { family, members, invitations };
+    } catch (error) {
+      console.error('Failed to fetch complete family data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's complete family status
+   */
+  async getUserFamilyStatus(): Promise<{
+    family: FamilyDTO | null;
+    relationships: UserFamilyRelationships | null;
+    permissions: FamilyManagementPermissions | null;
+    pendingInvitations: InvitationDTO[];
+  }> {
+    try {
+      const [family, pendingInvitations] = await Promise.all([
+        this.getUserFamily(),
+        this.getPendingInvitations()
+      ]);
+
+      let relationships: UserFamilyRelationships | null = null;
+      let permissions: FamilyManagementPermissions | null = null;
+
+      if (family) {
+        [relationships, permissions] = await Promise.all([
+          this.getUserFamilyRelationships().catch(() => null),
+          this.getFamilyManagementPermissions(family.id).catch(() => null)
+        ]);
+      }
+
+      return {
+        family,
+        relationships,
+        permissions,
+        pendingInvitations
+      };
+    } catch (error) {
+      console.error('Failed to get user family status:', error);
+      return {
+        family: null,
+        relationships: null,
+        permissions: null,
+        pendingInvitations: []
+      };
+    }
+  }
+
+  // === INVITATION GENERATION & QR CODES ===
+
+  /**
+   * Generate invitation link
+   */
+  generateInvitationLink(token: string, baseUrl?: string): string {
+    const base = baseUrl || window.location.origin;
+    return `${base}/invitation/${token}`;
+  }
+
+  /**
+   * Generate QR code data URL for invitation
+   */
+  async generateQRCode(token: string, baseUrl?: string): Promise<string> {
+    try {
+      const link = this.generateInvitationLink(token, baseUrl);
+      // In a real implementation, you would use a QR code library
+      // For now, return a placeholder data URL
+      return `data:image/svg+xml;base64,${btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+          <rect width="200" height="200" fill="white"/>
+          <text x="100" y="100" text-anchor="middle" font-family="Arial" font-size="12">
+            QR Code for: ${link}
+          </text>
+        </svg>
+      `)}`;
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      throw error;
+    }
+  }
+
+  // === AGE-BASED UTILITIES ===
+
+  /**
+   * Calculate age group from date of birth
+   */
+  calculateAgeGroup(dateOfBirth: Date): FamilyMemberAgeGroup {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      return this.getAgeGroupFromAge(age - 1);
+    }
+    
+    return this.getAgeGroupFromAge(age);
+  }
+
+  /**
+   * Get age group from numerical age
+   */
+  getAgeGroupFromAge(age: number): FamilyMemberAgeGroup {
+    if (age < 13) return FamilyMemberAgeGroup.Child;
+    if (age < 18) return FamilyMemberAgeGroup.Teen;
+    return FamilyMemberAgeGroup.Adult;
+  }
+
+  /**
+   * Check if age group can perform family management action
+   */
+  canAgeGroupManageFamily(ageGroup: FamilyMemberAgeGroup): boolean {
+    return ageGroup === FamilyMemberAgeGroup.Teen || ageGroup === FamilyMemberAgeGroup.Adult;
+  }
+
+  /**
+   * Check if age group can transfer ownership
+   */
+  canAgeGroupTransferOwnership(ageGroup: FamilyMemberAgeGroup): boolean {
+    return ageGroup === FamilyMemberAgeGroup.Adult;
+  }
+
+  /**
+   * Get maximum family size for age group
+   */
+  getMaxFamilySizeForAgeGroup(ageGroup: FamilyMemberAgeGroup): number {
+    switch (ageGroup) {
+      case FamilyMemberAgeGroup.Child:
+        return 0; // Children cannot create families
+      case FamilyMemberAgeGroup.Teen:
+        return 5; // Teens can create small families
+      case FamilyMemberAgeGroup.Adult:
+        return 50; // Adults can create large families
+      default:
+        return 0;
+    }
+  }
+
+  // === MISSING METHODS FOR BACKWARD COMPATIBILITY ===
+
+  /**
+   * Get family roles (required by family settings page and contexts)
+   */
+  async getFamilyRoles(): Promise<FamilyRoleDTO[]> {
+    try {
+      return await apiClient.get<FamilyRoleDTO[]>('/api/v1/family/roles');
+    } catch (error) {
+      console.error('Failed to fetch family roles:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Send invitation (required by family invitation context)
+   */
+  async sendInvitation(invitationData: InvitationCreateDTO): Promise<InvitationDTO> {
+    return this.createInvitation(invitationData);
+  }
+
+  /**
+   * Send bulk invitations (required by family invitation context)
+   */
+  async sendBulkInvitations(invitations: InvitationCreateDTO[]): Promise<InvitationDTO[]> {
+    try {
+      const promises = invitations.map(invitation => this.createInvitation(invitation));
+      return await Promise.all(promises);
+    } catch (error) {
+      console.error('Failed to send bulk invitations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get sent invitations (required by family settings and contexts)
+   */
+  async getSentInvitations(): Promise<InvitationDTO[]> {
+    try {
+      return await apiClient.get<InvitationDTO[]>('/api/v1/invitation/sent');
+    } catch (error) {
+      console.error('Failed to fetch sent invitations:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get family stats (required by family settings page and context)
+   */
+  async getFamilyStats(familyId: number): Promise<{
+    memberCount: number;
+    pendingInvitations: number;
+    totalInvitations: number;
+    activeMembers: number;
+    totalTasks: number;
+    totalPoints: number;
+  }> {
+    try {
+      const [members, invitations] = await Promise.all([
+        this.getFamilyMembers(familyId),
+        this.getFamilyInvitations(familyId)
+      ]);
+      
+      return {
+        memberCount: members.length,
+        pendingInvitations: invitations.filter(inv => !inv.isAccepted).length,
+        totalInvitations: invitations.length,
+        activeMembers: members.filter(member => member.isActive).length,
+        totalTasks: 0, // TODO: Add when task service integrated
+        totalPoints: 0 // TODO: Add when points system integrated
+      };
+    } catch (error) {
+      console.error('Failed to fetch family stats:', error);
+      return {
+        memberCount: 0,
+        pendingInvitations: 0,
+        totalInvitations: 0,
+        activeMembers: 0,
+        totalTasks: 0,
+        totalPoints: 0
+      };
+    }
+  }
+
+  /**
+   * Check if email exists (required by family invitation context)
    */
   async checkEmailExists(email: string): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/family/check-email/${encodeURIComponent(email)}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ exists: boolean }>(response);
-    return result?.exists ?? false;
+    try {
+      // This would typically be a separate API endpoint
+      // For now, return false as placeholder
+      console.debug('Checking email existence:', email);
+      return false;
+    } catch (error) {
+      console.error('Failed to check email existence:', error);
+      return false;
+    }
   }
 
   /**
-   * Check if user has pending invitation for email
-   */
-  async hasPendingInvitation(email: string): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/invitations/check-pending/${encodeURIComponent(email)}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{ hasPending: boolean }>(response);
-    return result?.hasPending ?? false;
-  }
-
-  /**
-   * Validate invitation token
+   * Validate invitation token (required by family invitation context)
    */
   async validateInvitationToken(token: string): Promise<boolean> {
     try {
       await this.getInvitationByToken(token);
       return true;
     } catch (error) {
-      if (error instanceof FamilyInvitationApiError && error.status === 404) {
+      console.error('Failed to validate invitation token:', error);
         return false;
       }
+  }
+
+  /**
+   * Can user manage family (required by family settings page)
+   */
+  async canUserManageFamily(familyId: number): Promise<boolean> {
+    try {
+      const permissions = await this.getFamilyManagementPermissions(familyId);
+      return permissions.canManageFamily;
+    } catch (error) {
+      console.error('Failed to check family management permissions:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Transfer family ownership (required by family settings page)
+   */
+  async transferFamilyOwnership(transferData: TransferOwnershipDTO): Promise<FamilyDTO> {
+    try {
+      const userFamily = await this.getUserFamily();
+      if (!userFamily) throw new Error('User has no family');
+      return this.transferOwnership(userFamily.id, transferData);
+    } catch (error) {
+      console.error('Failed to transfer family ownership:', error);
       throw error;
     }
   }
 
   /**
-   * Get family statistics
+   * Update member role (backward compatibility with different parameter signature)
    */
-  async getFamilyStats(familyId: number): Promise<{
-    memberCount: number;
-    activeInvitations: number;
-    totalTasksCompleted: number;
-    totalPointsEarned: number;
-  }> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${familyId}/stats`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<{
-      memberCount: number;
-      activeInvitations: number;
-      totalTasksCompleted: number;
-      totalPointsEarned: number;
-    }>(response, true);
-    
-    // Return default stats if null (user has no family)
-    return result ?? {
-      memberCount: 0,
-      activeInvitations: 0,
-      totalTasksCompleted: 0,
-      totalPointsEarned: 0
-    };
-  }
-
-  // === FAMILY RELATIONSHIPS ===
-
-  /**
-   * Get user family relationships
-   */
-  async getUserFamilyRelationships(): Promise<UserFamilyRelationships> {
-    const response = await fetch(
-      `${this.baseUrl}/family/user-relationships`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<UserFamilyRelationships>(response, true);
-    
-    // Return default relationships if null (user has no family)
-    return result ?? {
-      adminFamilies: [],
-      memberFamilies: [],
-      managementFamilies: [],
-      permissions: {
-        canCreateFamily: false,
-        canTransferOwnership: false,
-        canManageMembers: false,
-        canInviteMembers: false,
-        canManageCurrentFamily: false,
-        ageGroup: 'Adult'
-      }
-    };
+  async updateMemberRoleInUserFamily(memberId: number, roleId: number): Promise<FamilyMemberDTO> {
+    try {
+      const userFamily = await this.getUserFamily();
+      if (!userFamily) throw new Error('User has no family');
+      return this.updateMemberRole(userFamily.id, memberId, roleId);
+    } catch (error) {
+      console.error('Failed to update member role:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get family management permissions
+   * Remove family member (backward compatibility with different parameter signature)
    */
-  async getFamilyManagementPermissions(familyId?: number): Promise<FamilyManagementPermissions> {
-    let url = `${this.baseUrl}/family/management-permissions`;
-    if (familyId) {
-      url += `?familyId=${familyId}`;
+  async removeFamilyMemberFromUserFamily(memberId: number): Promise<void> {
+    try {
+      const userFamily = await this.getUserFamily();
+      if (!userFamily) throw new Error('User has no family');
+      return this.removeFamilyMember(userFamily.id, memberId);
+    } catch (error) {
+      console.error('Failed to remove family member:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Leave family (backward compatibility - no parameters)
+   */
+  async leaveFamilyAsUser(): Promise<void> {
+    try {
+      const userFamily = await this.getUserFamily();
+      if (!userFamily) throw new Error('User has no family');
+      return this.leaveFamily(userFamily.id);
+    } catch (error) {
+      console.error('Failed to leave family:', error);
+      throw error;
+    }
+  }
+
+  // === SMART INVITATION FEATURES ===
+
+  /**
+   * Calculate actual age from date of birth
+   */
+  calculateAgeFromBirthDate(dateOfBirth: string): number {
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust age if birthday hasn't occurred this year
+    return monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
+      ? age - 1 
+      : age;
+  }
+
+  /**
+   * Calculate age group from date of birth
+   */
+  calculateAgeGroupFromDate(dateOfBirth: string): FamilyMemberAgeGroup {
+    const actualAge = this.calculateAgeFromBirthDate(dateOfBirth);
+    if (actualAge < 13) return FamilyMemberAgeGroup.Child;
+    if (actualAge < 18) return FamilyMemberAgeGroup.Teen;
+    return FamilyMemberAgeGroup.Adult;
+  }
+
+  /**
+   * Get recommended role based on relationship and age
+   */
+  getRecommendedRole(
+    relationship: FamilyRelationshipType, 
+    ageGroup: FamilyMemberAgeGroup,
+    availableRoles: FamilyRoleDTO[]
+  ): { roleId: number; roleName: string; reasoning: string } {
+    
+    // Find available roles
+    const parentRole = availableRoles.find(r => r.name === 'Parent');
+    const childRole = availableRoles.find(r => r.name === 'Child');
+    const memberRole = availableRoles.find(r => r.name === 'Member');
+
+    // Default fallback to Member role
+    const fallbackRole = memberRole || availableRoles[0];
+
+    // Age-based restrictions first
+    if (ageGroup === FamilyMemberAgeGroup.Child) {
+      const role = childRole || fallbackRole;
+      return {
+        roleId: role.id,
+        roleName: role.name,
+        reasoning: 'Children (under 13) are automatically assigned the Child role for safety and appropriate permissions.'
+      };
     }
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
+    // Relationship-based role recommendations
+    switch (relationship) {
+      case FamilyRelationshipType.Parent:
+      case FamilyRelationshipType.Stepparent:
+      case FamilyRelationshipType.MotherInLaw:
+      case FamilyRelationshipType.FatherInLaw:
+        if (ageGroup === FamilyMemberAgeGroup.Adult && parentRole) {
+          return {
+            roleId: parentRole.id,
+            roleName: parentRole.name,
+            reasoning: 'Parent figures typically get the Parent role with task and member management capabilities.'
+          };
+        }
+        break;
 
-    const result = await handleApiResponse<FamilyManagementPermissions>(response, true);
-    
-    // Return default permissions if null
-    return result ?? {
-      canCreateFamily: false,
-      canTransferOwnership: false,
-      canManageMembers: false,
-      canInviteMembers: false,
-      canManageCurrentFamily: false,
-      ageGroup: 'Adult'
+      case FamilyRelationshipType.Child:
+      case FamilyRelationshipType.Stepchild:
+      case FamilyRelationshipType.Grandchild:
+        if (ageGroup === FamilyMemberAgeGroup.Teen && memberRole) {
+          return {
+            roleId: memberRole.id,
+            roleName: memberRole.name,
+            reasoning: 'Teen children get Member role with basic permissions appropriate for their age.'
+          };
+        }
+        if (childRole) {
+          return {
+            roleId: childRole.id,
+            roleName: childRole.name,
+            reasoning: 'Child family members get the Child role with age-appropriate permissions.'
+          };
+        }
+        break;
+
+      case FamilyRelationshipType.Spouse:
+        if (ageGroup === FamilyMemberAgeGroup.Adult && parentRole) {
+          return {
+            roleId: parentRole.id,
+            roleName: parentRole.name,
+            reasoning: 'Spouses typically share parental responsibilities and get the Parent role.'
+          };
+        }
+        break;
+
+      case FamilyRelationshipType.Grandparent:
+        if (ageGroup === FamilyMemberAgeGroup.Adult && parentRole) {
+          return {
+            roleId: parentRole.id,
+            roleName: parentRole.name,
+            reasoning: 'Grandparents often help with family management and get the Parent role.'
+          };
+        }
+        break;
+
+      case FamilyRelationshipType.Caregiver:
+      case FamilyRelationshipType.Caregiver:
+        if (parentRole) {
+          return {
+            roleId: parentRole.id,
+            roleName: parentRole.name,
+            reasoning: 'Caregivers need task management permissions and get the Parent role.'
+          };
+        }
+        break;
+
+      case FamilyRelationshipType.FamilyFriend:
+        if (memberRole) {
+          return {
+            roleId: memberRole.id,
+            roleName: memberRole.name,
+            reasoning: 'Tutors get Member role with basic family visibility.'
+          };
+        }
+        break;
+    }
+
+    // Default to Member role for all other cases
+    const defaultRole = memberRole || fallbackRole;
+    return {
+      roleId: defaultRole.id,
+      roleName: defaultRole.name,
+      reasoning: 'Default Member role with basic family permissions.'
     };
   }
 
-  // === OWNERSHIP TRANSFER ===
+  /**
+   * Validate smart invitation request
+   */
+  async validateSmartInvitation(
+    request: SmartInvitationRequest,
+    currentFamily: FamilyDTO,
+    currentMembers: FamilyMemberDTO[],
+    inviterAgeGroup: FamilyMemberAgeGroup,
+    availableRoles: FamilyRoleDTO[]
+  ): Promise<InvitationValidationResult> {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Calculate age group if date of birth provided
+    let calculatedAgeGroup: FamilyMemberAgeGroup | undefined;
+    if (request.dateOfBirth) {
+      calculatedAgeGroup = this.calculateAgeGroupFromDate(request.dateOfBirth);
+    }
+
+    // Get recommended role
+    const ageGroupForRole = calculatedAgeGroup || FamilyMemberAgeGroup.Adult; // Default to adult if no DOB
+    const roleRecommendation = this.getRecommendedRole(request.relationshipToAdmin, ageGroupForRole, availableRoles);
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(request.email)) {
+      errors.push('Please enter a valid email address.');
+    }
+
+    // Check for existing member with same email
+    const existingMember = currentMembers.find(m => 
+      m.user?.email?.toLowerCase() === request.email.toLowerCase()
+    );
+    if (existingMember) {
+      errors.push('A family member with this email address already exists.');
+    }
+
+    // Family size validation for teen creators
+    if (inviterAgeGroup === FamilyMemberAgeGroup.Teen) {
+      const currentSize = currentMembers.length;
+      if (currentSize >= 5) {
+        errors.push('Teen-managed families are limited to 5 members maximum.');
+      } else if (currentSize === 4) {
+        warnings.push('This will be the maximum member (5) for a teen-managed family.');
+      }
+    }
+
+    // Age-relationship logic validation  
+    if (request.dateOfBirth) {
+      const age = this.calculateAgeFromBirthDate(request.dateOfBirth);
+      if (age < 13 && (request.relationshipToAdmin === FamilyRelationshipType.Parent ||
+          request.relationshipToAdmin === FamilyRelationshipType.Spouse)) {
+        warnings.push('This person appears to be under 13 but is being invited as a parent/spouse. Please verify the relationship and age.');
+      }
+    }
+
+    // Role permission warnings
+    if (roleRecommendation.roleName === 'Admin' && inviterAgeGroup !== FamilyMemberAgeGroup.Adult) {
+      warnings.push('Only adults can invite other admins. The role will be adjusted to Parent.');
+      const parentRole = availableRoles.find(r => r.name === 'Parent') || availableRoles.find(r => r.name === 'Member');
+      if (parentRole) {
+        roleRecommendation.roleId = parentRole.id;
+        roleRecommendation.roleName = parentRole.name;
+      }
+    }
+
+    // Family composition warnings
+    const parents = currentMembers.filter(m => m.role.name === 'Parent' || m.role.name === 'Admin');
+    const children = currentMembers.filter(m => m.role.name === 'Child');
+    
+    if (request.relationshipToAdmin === FamilyRelationshipType.Child && children.length >= 6) {
+      warnings.push('This family will have many children. Consider if all need Child role permissions.');
+    }
+
+    if (request.relationshipToAdmin === FamilyRelationshipType.Parent && parents.length >= 4) {
+      warnings.push('This family will have many parents/admins. Consider member roles for some relatives.');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+      suggestedRole: roleRecommendation.roleName,
+      suggestedRoleId: roleRecommendation.roleId,
+      // SmartInvitationValidation properties
+      recommendedRole: roleRecommendation.roleName,
+      recommendationReasoning: roleRecommendation.reasoning,
+      ageGroup: calculatedAgeGroup || ageGroupForRole,
+      relationshipDisplayName: getRelationshipDisplayName(request.relationshipToAdmin),
+      willExceedFamilyLimit: inviterAgeGroup === FamilyMemberAgeGroup.Teen && currentMembers.length >= 5,
+      currentFamilySize: currentMembers.length,
+      maxFamilySize: this.getMaxFamilySizeForAgeGroup(inviterAgeGroup),
+      familySizeWarning: inviterAgeGroup === FamilyMemberAgeGroup.Teen && currentMembers.length >= 4 
+        ? 'Teen-managed families are limited to 5 members' 
+        : undefined
+    };
+  }
 
   /**
-   * Transfer family ownership to another member (Pass the Baton)
+   * Create smart invitation with relationship context
    */
-  async transferFamilyOwnership(transferData: TransferOwnershipDTO): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${transferData.familyId}/transfer-ownership`,
-      {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(transferData),
+  async createSmartInvitation(request: SmartInvitationRequest): Promise<InvitationDTO> {
+    try {
+      // Get current family and validate
+      const currentFamily = await this.getUserFamily();
+      if (!currentFamily) {
+        throw new Error('No family found. Please create a family first.');
       }
-    );
 
-    if (!response.ok) {
-      throw new FamilyInvitationApiError(
-        'Failed to transfer family ownership',
-        response.status
+      // Get family members and roles for validation
+      const [members, roles] = await Promise.all([
+        this.getFamilyMembers(currentFamily.id),
+        this.getFamilyRoles()
+      ]);
+
+      // Get current user permissions
+      const permissions = await this.getFamilyManagementPermissions(currentFamily.id);
+      
+      // Validate the invitation
+      const validation = await this.validateSmartInvitation(
+        request,
+        currentFamily,
+        members,
+        permissions.ageGroup,
+        roles
       );
+
+      if (!validation.isValid) {
+        throw new Error(`Invitation validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      // Create invitation DTO
+      const invitationData: InvitationCreateDTO = {
+        email: request.email,
+        familyId: currentFamily.id,
+        familyRoleId: validation.suggestedRoleId,
+        message: request.personalMessage || `You've been invited to join our family as ${getRelationshipDisplayName(request.relationshipToAdmin)}.`,
+        relationship: request.relationshipToAdmin,
+        suggestedName: request.name,
+        dateOfBirth: request.dateOfBirth,
+        notes: request.notes
+      };
+
+      // Create the invitation
+      const invitation = await this.createInvitation(invitationData);
+      
+      console.log(`Smart invitation created for ${request.email} as ${validation.suggestedRole} (${getRelationshipDisplayName(request.relationshipToAdmin)})`);
+      
+      return invitation;
+
+    } catch (error) {
+      console.error('Failed to create smart invitation:', error);
+      throw error;
     }
   }
 
   /**
-   * Check if user can manage family based on age
+   * Get invitation validation preview without creating
    */
-  async canUserManageFamily(familyId: number): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/family/${familyId}/can-manage`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
+  async getInvitationPreview(request: SmartInvitationRequest): Promise<InvitationValidationResult> {
+    try {
+      const currentFamily = await this.getUserFamily();
+      if (!currentFamily) {
+        throw new Error('No family found.');
       }
-    );
 
-    const result = await handleApiResponse<boolean>(response, true);
-    return result ?? false; // Return false if null (user can't manage)
-  }
+      const [members, roles] = await Promise.all([
+        this.getFamilyMembers(currentFamily.id),
+        this.getFamilyRoles()
+      ]);
 
-  // === AGE-BASED PERMISSIONS ===
+      const permissions = await this.getFamilyManagementPermissions(currentFamily.id);
+      
+      return await this.validateSmartInvitation(
+        request,
+        currentFamily,
+        members,
+        permissions.ageGroup,
+        roles
+      );
 
-  /**
-   * Get management permissions based on user's age
-   */
-  getFamilyManagementPermissionsByAge(ageGroup: 'Child' | 'Teen' | 'Adult'): FamilyManagementPermissions {
-    switch (ageGroup) {
-      case 'Child':
+    } catch (error) {
+      console.error('Failed to get invitation preview:', error);
         return {
-          canCreateFamily: false,
-          canTransferOwnership: false,
-          canManageMembers: false,
-          canInviteMembers: false,
-          canManageCurrentFamily: false,
-          ageGroup: 'Child',
-        };
-      
-      case 'Teen':
-        return {
-          canCreateFamily: true,
-          canTransferOwnership: false,
-          canManageMembers: true,
-          canInviteMembers: true,
-          canManageCurrentFamily: false,
-          maxFamilySize: 5, // Teens can only manage families with <= 5 members
-          ageGroup: 'Teen',
-        };
-      
-      case 'Adult':
-        return {
-          canCreateFamily: true,
-          canTransferOwnership: true,
-          canManageMembers: true,
-          canInviteMembers: true,
-          canManageCurrentFamily: false,
-          ageGroup: 'Adult',
-        };
-      
-      default:
-        return {
-          canCreateFamily: false,
-          canTransferOwnership: false,
-          canManageMembers: false,
-          canInviteMembers: false,
-          canManageCurrentFamily: false,
-          ageGroup: 'Unknown',
+        isValid: false,
+        errors: ['Failed to validate invitation. Please try again.'],
+        warnings: [],
+        suggestedRole: 'Member',
+        suggestedRoleId: 0,
+        // SmartInvitationValidation properties
+        recommendedRole: 'Member',
+        recommendationReasoning: 'Default role due to validation error',
+        ageGroup: FamilyMemberAgeGroup.Adult,
+        relationshipDisplayName: 'Family Member',
+        willExceedFamilyLimit: false,
+        currentFamilySize: 0,
+        maxFamilySize: 10,
+        familySizeWarning: undefined
         };
     }
   }

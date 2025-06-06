@@ -23,11 +23,10 @@ using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
 namespace TaskTrackerAPI.Controllers.V1;
 
+[Authorize]
+[ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/categories")]
-[ApiController]
-[Authorize]
 public class CategoriesController : BaseApiController
 {
     private readonly ICategoryService _categoryService;

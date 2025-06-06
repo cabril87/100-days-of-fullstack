@@ -10,22 +10,14 @@ import {
   UserDeviceDTO,
   SessionManagementDTO,
   SecurityEventDTO,
-  SecurityRecommendationDTO
+  SecurityRecommendationDTO,
+  TerminateSessionRequestDTO,
+  UpdateDeviceTrustRequestDTO,
+  UserSecurityOverviewDTO,
+  ConditionalSecurityService
 } from '../types/session-management';
 import { SecuritySettingsFormData } from '../schemas/settings';
-
-// Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const API_VERSION = 'v1';
-
-// Helper function to get auth headers
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
+import { apiClient, ApiClientError } from '../config/api-client';
 
 // Custom error class for security service
 export class SecurityServiceError extends Error {
@@ -39,351 +31,483 @@ export class SecurityServiceError extends Error {
   }
 }
 
-// Helper function to handle API responses
-async function handleApiResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new SecurityServiceError(
-      errorData.message || `HTTP error! status: ${response.status}`,
-      response.status,
-      errorData.errors
-    );
-  }
-  const result = await response.json();
-  return result.data || result;
-}
+/**
+ * Security Service with conditional endpoints based on user role
+ * - Regular users: /api/v1/user-security/* endpoints
+ * - Admin users: /api/v1/securitymonitoring/* endpoints
+ */
+class SecurityService implements ConditionalSecurityService {
+  public isAdminMode: boolean = false;
+  public userRole: string = 'User';
 
-class SecurityService {
-  
+  /**
+   * Initialize service with current user's role
+   */
+  initialize(userRole: string): void {
+    this.userRole = userRole;
+    this.isAdminMode = userRole === 'Admin';
+  }
+
+  /**
+   * Get the appropriate endpoint prefix based on user role
+   */
+  private getEndpointPrefix(): string {
+    return this.isAdminMode ? '/api/v1/securitymonitoring' : '/api/v1/user-security';
+  }
+
+  /**
+   * Get current user ID from auth context
+   */
+  private getCurrentUserId(): number {
+    // This should be implemented to get the current user ID from auth context
+    // For now, return 0 as placeholder - should be replaced with actual implementation
+    const userString = localStorage.getItem('user');
+    if (userString) {
+      const user = JSON.parse(userString);
+      return user.id;
+    }
+    return 0;
+  }
+
   // ===== SECURITY DASHBOARD =====
   
   /**
-   * Get security dashboard data
+   * Get security dashboard data (conditional based on user role)
    */
-  async getSecurityDashboard(): Promise<SecurityDashboardDTO> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/dashboard`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    return handleApiResponse<SecurityDashboardDTO>(response);
+  async getSecurityDashboard(): Promise<SecurityDashboardDTO | UserSecurityOverviewDTO> {
+    try {
+      if (this.isAdminMode) {
+        // Admin endpoint - full dashboard
+        return await apiClient.get<SecurityDashboardDTO>('/api/v1/securitymonitoring/dashboard');
+      } else {
+        // User endpoint - overview only
+        return await apiClient.get<UserSecurityOverviewDTO>('/api/v1/user-security/overview');
+      }
+    } catch (error) {
+      // Silently handle 403 errors for admin-only endpoints - these are expected for regular users
+      if (error instanceof ApiClientError && error.statusCode === 403) {
+        throw error; // Re-throw without logging
+      }
+      console.error('Failed to fetch security dashboard:', error);
+      throw error;
+    }
   }
 
   // ===== SESSION MANAGEMENT =====
   
   /**
-   * Get session management data
+   * Get session management data (admin only)
    */
   async getSessionManagementData(): Promise<SessionManagementDTO> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    return handleApiResponse<SessionManagementDTO>(response);
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Session management data is only available for admin users', 403);
+      }
+      return await apiClient.get<SessionManagementDTO>('/api/v1/securitymonitoring/sessions');
+    } catch (error) {
+      console.error('Failed to fetch session management data:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get active sessions for current user
+   * Get active sessions (conditional based on user role)
    */
   async getActiveSessions(userId?: number): Promise<ExtendedUserSessionDTO[]> {
-    const url = userId 
-      ? `${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/user/${userId}?activeOnly=true`
-      : `${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/active`;
-      
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
+    try {
+      let sessions: UserSessionDTO[];
+
+      if (this.isAdminMode) {
+        // Admin endpoint - can view any user's sessions
+        const url = userId 
+          ? `/api/v1/securitymonitoring/sessions/user/${userId}?activeOnly=true`
+          : '/api/v1/securitymonitoring/sessions/active';
+        sessions = await apiClient.get<UserSessionDTO[]>(url);
+      } else {
+        // User endpoint - can only view own sessions
+        sessions = await apiClient.get<UserSessionDTO[]>('/api/v1/user-security/sessions');
+      }
     
-    const sessions = await handleApiResponse<UserSessionDTO[]>(response);
-    
-    // Add isCurrentDevice flag to sessions (you could enhance this by comparing device info)
-    return sessions.map((session, index) => ({
-      ...session,
-      isCurrentDevice: index === 0 // Simple logic, first session is current
-    }));
+      // Add isCurrentDevice flag to sessions (you could enhance this by comparing device info)
+      return sessions.map((session, index) => ({
+        ...session,
+        isCurrentDevice: index === 0 // Simple logic, first session is current
+      }));
+    } catch (error) {
+      // Silently handle 403 errors for admin-only endpoints - these are expected for regular users
+      if (error instanceof ApiClientError && error.statusCode === 403) {
+        throw error; // Re-throw without logging
+      }
+      console.error('Failed to fetch active sessions:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get user sessions (active and historical)
+   * Get user sessions (conditional based on user role)
    */
   async getUserSessions(userId: number, activeOnly: boolean = false): Promise<ExtendedUserSessionDTO[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/user/${userId}?activeOnly=${activeOnly}`, 
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
+    try {
+      let sessions: UserSessionDTO[];
+
+      if (this.isAdminMode) {
+        // Admin endpoint - can view any user's sessions
+        sessions = await apiClient.get<UserSessionDTO[]>(
+          `/api/v1/securitymonitoring/sessions/user/${userId}?activeOnly=${activeOnly}`
+        );
+      } else {
+        // User endpoint - can only view own sessions (ignores userId parameter)
+        sessions = await apiClient.get<UserSessionDTO[]>('/api/v1/user-security/sessions');
       }
-    );
     
-    const sessions = await handleApiResponse<UserSessionDTO[]>(response);
-    
-    return sessions.map((session, index) => ({
-      ...session,
-      isCurrentDevice: index === 0 // Simple logic, enhance as needed
-    }));
+      return sessions.map((session, index) => ({
+        ...session,
+        isCurrentDevice: index === 0 // Simple logic, enhance as needed
+      }));
+    } catch (error) {
+      console.error('Failed to fetch user sessions:', error);
+      throw error;
+    }
   }
 
   /**
-   * Terminate a session
+   * Terminate a session (conditional based on user role)
    */
-  async terminateSession(sessionToken: string, reason?: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/terminate`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ 
-        sessionToken, 
-        reason: reason || 'User terminated session'
-      }),
-    });
-    
-    await handleApiResponse<void>(response);
+  async terminateSession(sessionToken: string): Promise<void> {
+    try {
+      if (this.isAdminMode) {
+        // Admin endpoint - can terminate any session
+        await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate', { 
+          sessionToken
+        });
+      } else {
+        // Try user endpoint first, fallback to admin endpoint if not available
+        try {
+          const request: TerminateSessionRequestDTO = { sessionToken };
+          await apiClient.post<void>('/api/v1/user-security/sessions/terminate', request);
+        } catch (userEndpointError) {
+          if (userEndpointError instanceof ApiClientError && userEndpointError.statusCode === 404) {
+            // Fallback to admin endpoint (user security endpoint not implemented yet)
+            console.warn('User security endpoint not available, falling back to admin endpoint');
+            await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate', { 
+              sessionToken
+            });
+          } else {
+            throw userEndpointError;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to terminate session:', error);
+      throw error;
+    }
   }
 
   /**
-   * Terminate all user sessions
+   * Terminate all user sessions (admin only for other users)
    */
   async terminateAllUserSessions(userId: number, reason?: string, excludeSessionToken?: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/terminate-all`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ 
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Terminating all user sessions is only available for admin users', 403);
+      }
+
+      await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate-all', { 
         userId, 
         reason: reason || 'User terminated all sessions',
         excludeSessionToken
-      }),
-    });
-    
-    await handleApiResponse<void>(response);
+      });
+    } catch (error) {
+      console.error('Failed to terminate all sessions:', error);
+      throw error;
+    }
   }
 
   /**
-   * Mark session as suspicious
+   * Mark session as suspicious (admin only)
    */
   async markSessionSuspicious(sessionToken: string, reason: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/sessions/mark-suspicious`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ sessionToken, reason }),
-    });
-    
-    await handleApiResponse<void>(response);
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Marking sessions as suspicious is only available for admin users', 403);
+      }
+
+      await apiClient.post<void>('/api/v1/securitymonitoring/sessions/mark-suspicious', { 
+        sessionToken, 
+        reason 
+      });
+    } catch (error) {
+      console.error('Failed to mark session as suspicious:', error);
+      throw error;
+    }
   }
 
   // ===== DEVICE MANAGEMENT =====
   
   /**
-   * Get user devices (trusted and untrusted)
+   * Get user devices (conditional based on user role)
    */
-  async getUserDevices(userId: number): Promise<UserDeviceDTO[]> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/devices/user/${userId}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    return handleApiResponse<UserDeviceDTO[]>(response);
+  async getUserDevices(userId?: number): Promise<UserDeviceDTO[]> {
+    try {
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can view any user's devices
+        return await apiClient.get<UserDeviceDTO[]>(`/api/v1/securitymonitoring/devices/user/${userId}`);
+      } else {
+        // User endpoint - can only view own devices
+        return await apiClient.get<UserDeviceDTO[]>('/api/v1/user-security/devices');
+      }
+    } catch (error) {
+      // Silently handle 403 errors for admin-only endpoints - these are expected for regular users
+      if (error instanceof ApiClientError && error.statusCode === 403) {
+        throw error; // Re-throw without logging
+      }
+      console.error('Failed to fetch user devices:', error);
+      throw error;
+    }
   }
 
   /**
-   * Update device trust status
+   * Update device trust status (conditional based on user role)
    */
-  async updateDeviceTrust(userId: number, deviceId: string, trusted: boolean, deviceName?: string): Promise<void> {
-    const deviceTrustData = {
-      userId,
-      deviceId,
-      trusted,
-      deviceName
-    };
-
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/devices/trust`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(deviceTrustData),
-    });
-    
-    await handleApiResponse<void>(response);
+  async updateDeviceTrust(deviceId: string, trusted: boolean, deviceName?: string): Promise<void> {
+    try {
+      if (this.isAdminMode) {
+        // Admin endpoint - can modify any device
+        const deviceTrustData = {
+          userId: this.getCurrentUserId(),
+          deviceId,
+          trusted,
+          deviceName
+        };
+        await apiClient.post<void>('/api/v1/securitymonitoring/devices/trust', deviceTrustData);
+      } else {
+        // User endpoint - can only modify own devices (backend verifies ownership)
+        const request: UpdateDeviceTrustRequestDTO = { trusted, deviceName };
+        await apiClient.put<void>(`/api/v1/user-security/devices/${deviceId}/trust`, request);
+      }
+    } catch (error) {
+      console.error('Failed to update device trust:', error);
+      throw error;
+    }
   }
 
   /**
-   * Remove/untrust a device
+   * Remove a device (conditional based on user role)
    */
-  async removeDevice(userId: number, deviceId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/devices/user/${userId}/device/${deviceId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
-    
-    await handleApiResponse<void>(response);
+  async removeDevice(deviceId: string, userId?: number): Promise<void> {
+    try {
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can remove any user's device
+        await apiClient.delete<void>(`/api/v1/securitymonitoring/devices/user/${userId}/device/${deviceId}`);
+      } else {
+        // User endpoint - can only remove own devices
+        // Note: User security endpoint doesn't exist yet for device removal
+        // For now, throw error indicating feature not available
+        throw new SecurityServiceError('Device removal not yet implemented for regular users', 501);
+      }
+    } catch (error) {
+      console.error('Failed to remove device:', error);
+      throw error;
+    }
   }
 
   // ===== SECURITY SETTINGS =====
-  
+
   /**
-   * Get user security settings
+   * Get security settings (conditional based on user role)
    */
-  async getSecuritySettings(userId: number): Promise<SecuritySettingsFormData> {
+  async getSecuritySettings(userId?: number): Promise<SecuritySettingsFormData> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/security-settings`, {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      });
-      
-      return handleApiResponse<SecuritySettingsFormData>(response);
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can view any user's settings
+        return await apiClient.get<SecuritySettingsFormData>(`/api/v1/securitymonitoring/users/${userId}/security-settings`);
+      } else {
+        // User endpoint - can only view own settings
+        return await apiClient.get<SecuritySettingsFormData>('/api/v1/user-security/settings');
+      }
     } catch (error) {
-      // If any error occurs, create default settings via backend
-      console.debug('Security settings not found, creating defaults via backend:', error);
-      
-      try {
-        // Try to create default settings first
-        const defaultSettings = {
-          mfaEnabled: false,
-          sessionTimeout: 480, // 8 hours
-          trustedDevicesEnabled: true,
-          loginNotifications: true,
-          dataExportRequest: false,
-        };
-        
-        await this.createSecuritySettings(userId, defaultSettings);
-        return defaultSettings;
-      } catch (createError) {
-        console.warn('Failed to create default security settings:', createError);
-        // Return default settings as fallback
+      if (error instanceof ApiClientError && error.statusCode === 404) {
+        // Return default settings if none exist
         return {
           mfaEnabled: false,
           sessionTimeout: 480, // 8 hours
           trustedDevicesEnabled: true,
           loginNotifications: true,
-          dataExportRequest: false,
+          dataExportRequest: false
         };
       }
+      console.error('Failed to fetch security settings:', error);
+      throw error;
     }
   }
 
   /**
-   * Create user security settings
+   * Create security settings (user endpoint only)
    */
-  async createSecuritySettings(userId: number, settings: SecuritySettingsFormData): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/security-settings`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(settings),
-    });
-    
-    await handleApiResponse<void>(response);
+  async createSecuritySettings(settings: SecuritySettingsFormData, userId?: number): Promise<void> {
+    try {
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can create settings for any user
+        await apiClient.post<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`, settings);
+      } else {
+        // User endpoint - can only create own settings
+        await apiClient.post<void>('/api/v1/user-security/settings', settings);
+      }
+    } catch (error) {
+      console.error('Failed to create security settings:', error);
+      throw error;
+    }
   }
 
   /**
-   * Update user security settings
+   * Update security settings (conditional based on user role)
    */
-  async updateSecuritySettings(userId: number, settings: SecuritySettingsFormData): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/security-settings`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(settings),
-    });
-    
-    await handleApiResponse<void>(response);
+  async updateSecuritySettings(settings: SecuritySettingsFormData, userId?: number): Promise<void> {
+    try {
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can update any user's settings
+        await apiClient.put<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`, settings);
+      } else {
+        // User endpoint - can only update own settings
+        await apiClient.put<void>('/api/v1/user-security/settings', settings);
+      }
+    } catch (error) {
+      console.error('Failed to update security settings:', error);
+      throw error;
+    }
   }
 
   /**
-   * Delete user security settings
+   * Delete security settings (conditional based on user role)
    */
-  async deleteSecuritySettings(userId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/security-settings`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
-    
-    await handleApiResponse<void>(response);
+  async deleteSecuritySettings(userId?: number): Promise<void> {
+    try {
+      if (this.isAdminMode && userId) {
+        // Admin endpoint - can delete any user's settings
+        await apiClient.delete<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`);
+      } else {
+        // User endpoint - can only delete own settings
+        await apiClient.delete<void>('/api/v1/user-security/settings');
+      }
+    } catch (error) {
+      console.error('Failed to delete security settings:', error);
+      throw error;
+    }
   }
 
-  // ===== DATA EXPORT & PRIVACY =====
-  
+  // ===== ADMIN-ONLY FEATURES =====
+
   /**
-   * Request data export
+   * Request data export (available for all users)
    */
   async requestDataExport(exportType: 'complete' | 'profile_only' | 'activity_only' | 'family_only', format: 'json' | 'csv' | 'pdf' = 'json'): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/dataexport`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ exportType, format }),
-    });
-    
-    await handleApiResponse<void>(response);
+    try {
+      // Data export is available for all users
+      await apiClient.post<void>('/api/v1/dataexport/simple', { 
+        exportType, 
+        format 
+      });
+    } catch (error) {
+      console.error('Failed to request data export:', error);
+      throw error;
+    }
   }
 
   /**
-   * Clear activity log
+   * Clear activity log (admin only for other users)
    */
-  async clearActivityLog(userId: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/activity-log`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
-    
-    await handleApiResponse<void>(response);
-  }
-
-  /**
-   * Delete user account
-   */
-  async deleteAccount(userId: number, currentPassword: string, reason: string, feedback?: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/users/${userId}/delete-account`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ 
-        currentPassword, 
-        reason, 
-        feedback 
-      }),
-    });
-    
-    await handleApiResponse<void>(response);
-  }
-
-  // ===== SECURITY EVENTS & AUDIT =====
-  
-  /**
-   * Get security events for user
-   */
-  async getSecurityEvents(userId: number, limit: number = 50): Promise<SecurityEventDTO[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/events/user/${userId}?limit=${limit}`, 
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
+  async clearActivityLog(userId?: number): Promise<void> {
+    try {
+      const targetUserId = userId || this.getCurrentUserId();
+      
+      if (this.isAdminMode) {
+        // Admin endpoint - can clear any user's activity log
+        await apiClient.delete<void>(`/api/v1/securitymonitoring/users/${targetUserId}/activity-log`);
+      } else {
+        // For regular users, this feature is not implemented yet
+        throw new SecurityServiceError('Activity log clearing not yet implemented for regular users', 501);
       }
-    );
-    
-    return handleApiResponse<SecurityEventDTO[]>(response);
+    } catch (error) {
+      console.error('Failed to clear activity log:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get security recommendations for user
+   * Delete account (admin only for other users)
    */
-  async getSecurityRecommendations(userId: number): Promise<SecurityRecommendationDTO[]> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/recommendations/user/${userId}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    return handleApiResponse<SecurityRecommendationDTO[]>(response);
+  async deleteAccount(currentPassword: string, reason: string, feedback?: string, userId?: number): Promise<void> {
+    try {
+      const targetUserId = userId || this.getCurrentUserId();
+      
+      if (this.isAdminMode) {
+        // Admin endpoint - can delete any user's account
+        await apiClient.post<void>('/api/v1/securitymonitoring/delete-account', { 
+          userId: targetUserId, 
+          currentPassword, 
+          reason, 
+          feedback 
+        });
+      } else {
+        // For regular users, this feature is not implemented yet
+        throw new SecurityServiceError('Account deletion not yet implemented for regular users', 501);
+      }
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      throw error;
+    }
   }
 
   /**
-   * Dismiss security recommendation
+   * Get security events (admin only)
+   */
+  async getSecurityEvents(userId?: number, limit: number = 50): Promise<SecurityEventDTO[]> {
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Security events are only available for admin users', 403);
+      }
+
+      const targetUserId = userId || this.getCurrentUserId();
+      return await apiClient.get<SecurityEventDTO[]>(`/api/v1/securitymonitoring/users/${targetUserId}/security-events?limit=${limit}`);
+    } catch (error) {
+      console.error('Failed to fetch security events:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get security recommendations (admin only)
+   */
+  async getSecurityRecommendations(userId?: number): Promise<SecurityRecommendationDTO[]> {
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Security recommendations are only available for admin users', 403);
+      }
+
+      const targetUserId = userId || this.getCurrentUserId();
+      return await apiClient.get<SecurityRecommendationDTO[]>(`/api/v1/securitymonitoring/users/${targetUserId}/security-recommendations`);
+    } catch (error) {
+      console.error('Failed to fetch security recommendations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Dismiss recommendation (admin only)
    */
   async dismissRecommendation(recommendationId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/${API_VERSION}/securitymonitoring/recommendations/${recommendationId}/dismiss`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    
-    await handleApiResponse<void>(response);
+    try {
+      if (!this.isAdminMode) {
+        throw new SecurityServiceError('Dismissing recommendations is only available for admin users', 403);
+      }
+
+      await apiClient.post<void>('/api/v1/securitymonitoring/recommendations/dismiss', { recommendationId });
+    } catch (error) {
+      console.error('Failed to dismiss recommendation:', error);
+      throw error;
+    }
   }
 }
 
 // Export singleton instance
 export const securityService = new SecurityService();
-export default securityService; 

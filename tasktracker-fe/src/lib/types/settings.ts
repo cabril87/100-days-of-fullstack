@@ -45,48 +45,25 @@ export enum SettingsActivityType {
   DEVICE_REMOVED = 'device_removed'
 }
 
-// Notification settings types
-export interface NotificationSettingsDTO {
-  emailNotifications: EmailNotificationSettings;
-  pushNotifications: PushNotificationSettings;
-  notificationSchedule: NotificationSchedule;
-  familyNotifications: FamilyNotificationSettings;
-}
+// Notification settings types - importing from dedicated notifications module
+import {
+  NotificationSettingsDTO,
+  EmailNotificationSettings,
+  PushNotificationSettings,
+  NotificationSchedule,
+  FamilyNotificationSettings,
+  NotificationSettingsFormData
+} from './notifications';
 
-export interface EmailNotificationSettings {
-  taskReminders: boolean;
-  achievementAlerts: boolean;
-  familyActivity: boolean;
-  securityAlerts: boolean;
-  weeklyDigest: boolean;
-  marketingEmails: boolean;
-  systemUpdates: boolean;
-}
-
-export interface PushNotificationSettings {
-  taskReminders: boolean;
-  achievementAlerts: boolean;
-  familyActivity: boolean;
-  securityAlerts: boolean;
-  immediateAlerts: boolean;
-  quietHours: boolean;
-}
-
-export interface NotificationSchedule {
-  startTime: string; // HH:mm format
-  endTime: string; // HH:mm format
-  timezone: string;
-  weekendsOnly: boolean;
-  customDays: number[]; // 0-6 (Sunday-Saturday)
-}
-
-export interface FamilyNotificationSettings {
-  childTaskUpdates: boolean;
-  permissionRequests: boolean;
-  achievementSharing: boolean;
-  emergencyAlerts: boolean;
-  parentalControlChanges: boolean;
-}
+// Re-export for backward compatibility
+export type {
+  NotificationSettingsDTO,
+  EmailNotificationSettings,
+  PushNotificationSettings,
+  NotificationSchedule,
+  FamilyNotificationSettings,
+  NotificationSettingsFormData
+};
 
 // Privacy settings types
 export interface PrivacySettingsDTO {
@@ -214,14 +191,6 @@ export enum SettingsSectionType {
   SECURITY = 'security',
   APPEARANCE = 'appearance',
   FAMILY = 'family'
-}
-
-// Form data types for settings components
-export interface NotificationSettingsFormData {
-  emailNotifications: EmailNotificationSettings;
-  pushNotifications: PushNotificationSettings;
-  notificationSchedule: NotificationSchedule;
-  familyNotifications: FamilyNotificationSettings;
 }
 
 export interface PrivacySettingsFormData {

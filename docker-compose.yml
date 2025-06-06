@@ -56,36 +56,36 @@ services:
       - tasktracker-network
     restart: unless-stopped
   
-  # Next.js Frontend
-  tasktracker-fe:
-    build:
-      context: ./tasktracker-fe
-      dockerfile: Dockerfile
-    container_name: tasktracker-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      tasktracker-api:
-        condition: service_healthy
-    environment:
-      # Frontend needs to use localhost URLs since it runs in the browser
-      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
-      - NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/hubs
-      - NODE_ENV=production
-      - DOCKER_ENVIRONMENT=true
-      - NEXT_TELEMETRY_DISABLED=1
-      # Performance monitoring
-      - NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
-      - NEXT_PUBLIC_SW_ENABLED=true
-    networks:
-      - tasktracker-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+  # Next.js Frontend - COMMENTED OUT FOR MANUAL DEVELOPMENT
+  # tasktracker-fe:
+  #   build:
+  #     context: ./tasktracker-fe
+  #     dockerfile: Dockerfile
+  #   container_name: tasktracker-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     tasktracker-api:
+  #       condition: service_healthy
+  #   environment:
+  #     # Frontend needs to use localhost URLs since it runs in the browser
+  #     - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+  #     - NEXT_PUBLIC_SIGNALR_URL=http://localhost:5000/hubs
+  #     - NODE_ENV=production
+  #     - DOCKER_ENVIRONMENT=true
+  #     - NEXT_TELEMETRY_DISABLED=1
+  #     # Performance monitoring
+  #     - NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
+  #     - NEXT_PUBLIC_SW_ENABLED=true
+  #   networks:
+  #     - tasktracker-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
 
 volumes:
   sqlserver-data:

@@ -240,8 +240,6 @@ export type DataExportRequestFormData = z.infer<typeof dataExportRequestSchema>;
 export const notificationSettingsFormSchema = notificationPreferencesSchema;
 export const privacySettingsFormSchema = privacySettingsSchema;
 
-export type NotificationSettingsFormData = z.infer<typeof notificationSettingsFormSchema>;
-
 // Appearance settings schema
 export const appearanceSettingsSchema = z.object({
   theme: z.enum(['light', 'dark', 'system', 'auto']),

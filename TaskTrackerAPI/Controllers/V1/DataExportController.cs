@@ -19,13 +19,14 @@ using System.Threading.Tasks;
 using System;
 using System.IO;
 using TaskTrackerAPI.Controllers.V2;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
     [ApiVersion("1.0")]
     [Authorize]
     [ApiController]
-    [Route("api/v{version:apiVersion}/data-export")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]
     public class DataExportController : BaseApiController
     {
@@ -50,7 +51,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var requests = await _dataExportService.GetUserExportRequestsAsync(userId);
+                IEnumerable<DataExportRequestDTO> requests = await _dataExportService.GetUserExportRequestsAsync(userId);
                 return Ok(requests);
             }
             catch (Exception ex)
@@ -71,7 +72,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
+                DataExportRequestDTO? request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
                 
                 if (request == null)
                 {
@@ -98,7 +99,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var request = await _dataExportService.CreateExportRequestAsync(createDto, userId);
+                DataExportRequestDTO request = await _dataExportService.CreateExportRequestAsync(createDto, userId);
                 return CreatedAtAction(nameof(GetExportRequestById), new { id = request.Id }, request);
             }
             catch (ArgumentException ex)
@@ -108,6 +109,40 @@ namespace TaskTrackerAPI.Controllers.V1
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating export request");
+                return StatusCode(500, "An error occurred while creating the export request.");
+            }
+        }
+
+        /// <summary>
+        /// Create a new export request with simplified format (for frontend compatibility)
+        /// </summary>
+        /// <param name="simpleRequest">Simple export request with exportType and format</param>
+        /// <returns>Created export request</returns>
+        [HttpPost("simple")]
+        public async Task<IActionResult> CreateSimpleExportRequest([FromBody] SimpleDataExportRequestDTO simpleRequest)
+        {
+            try
+            {
+                int userId = GetUserIdFromClaims();
+                
+                // Convert to the expected DTO format
+                CreateDataExportRequestDTO createDto = new CreateDataExportRequestDTO
+                {
+                    ExportType = simpleRequest.Format, // Use the format as export type (json, csv, pdf)
+                    DateRange = "{\"range\":\"all\",\"startDate\":null,\"endDate\":null}", // Default date range
+                    Filters = "{\"type\":\"" + simpleRequest.ExportType + "\",\"includeAll\":true}" // Include export type in filters
+                };
+                
+                DataExportRequestDTO request = await _dataExportService.CreateExportRequestAsync(createDto, userId);
+                return CreatedAtAction(nameof(GetExportRequestById), new { id = request.Id }, request);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating simple export request");
                 return StatusCode(500, "An error occurred while creating the export request.");
             }
         }
@@ -123,7 +158,7 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var success = await _dataExportService.DeleteExportRequestAsync(id, userId);
+                bool success = await _dataExportService.DeleteExportRequestAsync(id, userId);
                 
                 if (!success)
                 {
@@ -152,14 +187,14 @@ namespace TaskTrackerAPI.Controllers.V1
                 int userId = GetUserIdFromClaims();
                 var fileBytes = await _dataExportService.DownloadExportFileAsync(id, userId);
                 
-                var request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
+                DataExportRequestDTO? request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
                 if (request == null)
                 {
                     return NotFound("Export request not found or access denied.");
                 }
 
-                var fileName = $"export_{id}_{DateTime.UtcNow:yyyyMMdd}.{request.ExportType}";
-                var contentType = GetContentType(request.ExportType);
+                string fileName = $"export_{id}_{DateTime.UtcNow:yyyyMMdd}.{request.ExportType}";
+                string contentType = GetContentType(request.ExportType);
 
                 return File(fileBytes, contentType, fileName);
             }
@@ -189,15 +224,15 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 int userId = GetUserIdFromClaims();
-                var request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
+                DataExportRequestDTO? request = await _dataExportService.GetExportRequestByIdAsync(id, userId);
                 
                 if (request == null)
                 {
                     return NotFound("Export request not found or access denied.");
                 }
 
-                var isReady = await _dataExportService.IsExportReadyAsync(id);
-                var fileSize = await _dataExportService.GetExportFileSizeAsync(id);
+                bool isReady = await _dataExportService.IsExportReadyAsync(id);
+                long fileSize = await _dataExportService.GetExportFileSizeAsync(id);
 
                 return Ok(new
                 {
@@ -225,7 +260,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var formats = await _dataExportService.GetSupportedFormatsAsync();
+                IEnumerable<string> formats = await _dataExportService.GetSupportedFormatsAsync();
                 return Ok(formats);
             }
             catch (Exception ex)
@@ -245,7 +280,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             try
             {
-                var success = await _dataExportService.CleanupExpiredExportsAsync();
+                bool success = await _dataExportService.CleanupExpiredExportsAsync();
                 
                 if (success)
                 {

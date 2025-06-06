@@ -26,8 +26,8 @@ namespace TaskTrackerAPI.Controllers.V1
     /// Controller for background service status and monitoring
     /// </summary>
     [ApiController]
-    [Route("api/v1/[controller]")]
-    [Authorize]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class BackgroundServiceController : BaseApiController
     {
         private readonly IBackgroundServiceStatusService _backgroundServiceStatusService;
@@ -72,12 +72,12 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 BackgroundServiceStatusDTO? status = await _backgroundServiceStatusService.GetServiceStatusAsync(serviceName);
-                
+
                 if (status == null)
                 {
                     return ApiNotFound<BackgroundServiceStatusDTO>($"Service '{serviceName}' not found");
                 }
-                
+
                 return ApiOk(status, "Service status retrieved successfully");
             }
             catch (Exception ex)
@@ -103,7 +103,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 {
                     return ApiBadRequest<IEnumerable<BackgroundServiceExecutionDTO>>("Count must be between 1 and 100");
                 }
-                
+
                 IEnumerable<BackgroundServiceExecutionDTO> history = await _backgroundServiceStatusService.GetServiceExecutionHistoryAsync(serviceName, count);
                 return ApiOk(history, "Service execution history retrieved successfully");
             }
@@ -149,7 +149,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 {
                     return ApiBadRequest<SystemMaintenanceNotificationDTO>("Invalid maintenance notification data");
                 }
-                
+
                 SystemMaintenanceNotificationDTO notification = await _backgroundServiceStatusService.CreateMaintenanceNotificationAsync(dto);
                 return ApiCreated(notification, message: "Maintenance notification created successfully");
             }
@@ -196,7 +196,7 @@ namespace TaskTrackerAPI.Controllers.V1
                 {
                     return ApiBadRequest<BackgroundServiceMetricsDTO>("From date cannot be later than to date");
                 }
-                
+
                 BackgroundServiceMetricsDTO metrics = await _backgroundServiceStatusService.GetServiceMetricsAsync(fromDate, toDate);
                 return ApiOk(metrics, "Service metrics retrieved successfully");
             }
@@ -217,12 +217,12 @@ namespace TaskTrackerAPI.Controllers.V1
             try
             {
                 IEnumerable<BackgroundServiceStatusDTO> statuses = await _backgroundServiceStatusService.GetAllServiceStatusAsync();
-                
+
                 int totalServices = 0;
                 int healthyServices = 0;
                 int errorServices = 0;
                 string overallHealth = "Healthy";
-                
+
                 foreach (BackgroundServiceStatusDTO status in statuses)
                 {
                     totalServices++;
@@ -235,12 +235,12 @@ namespace TaskTrackerAPI.Controllers.V1
                         errorServices++;
                     }
                 }
-                
+
                 if (errorServices > 0)
                 {
                     overallHealth = errorServices >= totalServices / 2 ? "Critical" : "Degraded";
                 }
-                
+
                 object healthSummary = new
                 {
                     OverallHealth = overallHealth,
@@ -249,7 +249,7 @@ namespace TaskTrackerAPI.Controllers.V1
                     ErrorServices = errorServices,
                     Services = statuses
                 };
-                
+
                 return ApiOk(healthSummary, "Service health retrieved successfully");
             }
             catch (Exception ex)
@@ -259,4 +259,4 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
     }
-} 
+}

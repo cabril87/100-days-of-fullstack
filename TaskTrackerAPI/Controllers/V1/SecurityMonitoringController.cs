@@ -22,6 +22,7 @@ using TaskTrackerAPI.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Family;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -29,7 +30,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 /// Security monitoring and management controller for admin operations
 /// </summary>
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/security")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
 [RateLimit(50, 60)] // Admin endpoints get higher limits
@@ -868,56 +869,279 @@ public class SecurityMonitoringController : BaseApiController
             return StatusCode(500, ApiResponse<SecurityMonitoringSummaryDTO>.ServerErrorResponse());
         }
     }
+
+    // ===== DEVICE MANAGEMENT =====
+
+    /// <summary>
+    /// Gets user devices for security monitoring
+    /// </summary>
+    /// <param name="userId">User ID to get devices for</param>
+    /// <returns>List of user devices</returns>
+    [HttpGet("devices/user/{userId}")]
+    [ProducesResponseType(typeof(ApiResponse<List<UserDeviceDTO>>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<List<UserDeviceDTO>>>> GetUserDevices(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Admin requesting devices for user {UserId}", userId);
+            
+            List<UserDeviceDTO> devices = await _securityMonitoringService.GetUserDevicesAsync(userId);
+            
+            return Ok(ApiResponse<List<UserDeviceDTO>>.SuccessResponse(devices));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving user devices for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<List<UserDeviceDTO>>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Updates device trust status
+    /// </summary>
+    /// <param name="request">Device trust update request</param>
+    /// <returns>Success response</returns>
+    [HttpPost("devices/trust")]
+    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<object>>> UpdateDeviceTrust([FromBody] UpdateDeviceTrustRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.DeviceId))
+            {
+                return BadRequest(ApiResponse<object>.BadRequestResponse("Device ID is required"));
+            }
+
+            _logger.LogInformation("Admin updating device trust - UserId: {UserId}, DeviceId: {DeviceId}, Trusted: {Trusted}", 
+                request.UserId, request.DeviceId, request.Trusted);
+            
+            await _securityMonitoringService.UpdateDeviceTrustAsync(
+                request.UserId, 
+                request.DeviceId, 
+                request.Trusted, 
+                request.DeviceName);
+            
+            return Ok(ApiResponse<object>.SuccessResponse(new object(), "Device trust status updated successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.NotFoundResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating device trust");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Removes a user device
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="deviceId">Device ID to remove</param>
+    /// <returns>Success response</returns>
+    [HttpDelete("devices/user/{userId}/device/{deviceId}")]
+    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<object>>> RemoveUserDevice(int userId, string deviceId)
+    {
+        try
+        {
+            _logger.LogInformation("Admin removing device - UserId: {UserId}, DeviceId: {DeviceId}", userId, deviceId);
+            
+            await _securityMonitoringService.RemoveDeviceAsync(userId, deviceId);
+            
+            return Ok(ApiResponse<object>.SuccessResponse(new object(), "Device removed successfully"));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.NotFoundResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing user device");
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Deletes all activity logs for a specific user
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>Success response</returns>
+    [HttpDelete("users/{userId}/activity-log")]
+    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteUserActivityLog(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Admin deleting activity log for user {UserId}", userId);
+            
+            bool deleted = await _securityMonitoringService.DeleteUserActivityLogAsync(userId);
+            
+            if (deleted)
+            {
+                return Ok(ApiResponse<object>.SuccessResponse(new object(), "User activity log cleared successfully"));
+            }
+            else
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse("User activity log not found"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting activity log for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // ===== USER SECURITY SETTINGS ENDPOINTS =====
+
+    /// <summary>
+    /// Gets user security settings by user ID
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>User security settings</returns>
+    [HttpGet("users/{userId}/security-settings")]
+    [ProducesResponseType(typeof(ApiResponse<UserSecuritySettingsDTO>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<UserSecuritySettingsDTO>>> GetUserSecuritySettings(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Getting security settings for user {UserId}", userId);
+
+            UserSecuritySettingsDTO settings = await _securityMonitoringService.GetUserSecuritySettingsAsync(userId);
+            
+            return Ok(ApiResponse<UserSecuritySettingsDTO>.SuccessResponse(settings));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Security settings not found for user {UserId}", userId);
+            return NotFound(ApiResponse<UserSecuritySettingsDTO>.ErrorResponse("Security settings not found"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting security settings for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<UserSecuritySettingsDTO>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Creates user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="createDto">Security settings data</param>
+    /// <returns>Created security settings</returns>
+    [HttpPost("users/{userId}/security-settings")]
+    [ProducesResponseType(typeof(ApiResponse<UserSecuritySettingsDTO>), 201)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 409)]
+    public async Task<ActionResult<ApiResponse<UserSecuritySettingsDTO>>> CreateUserSecuritySettings(
+        int userId, 
+        [FromBody] UserSecuritySettingsCreateDTO createDto)
+    {
+        try
+        {
+            _logger.LogInformation("Creating security settings for user {UserId}", userId);
+
+            UserSecuritySettingsDTO settings = await _securityMonitoringService.CreateUserSecuritySettingsAsync(userId, createDto);
+            
+            return CreatedAtAction(
+                nameof(GetUserSecuritySettings), 
+                new { userId = userId }, 
+                ApiResponse<UserSecuritySettingsDTO>.SuccessResponse(settings));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Security settings already exist for user {UserId}", userId);
+            return Conflict(ApiResponse<UserSecuritySettingsDTO>.ErrorResponse("Security settings already exist for this user"));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid security settings data for user {UserId}", userId);
+            return BadRequest(ApiResponse<UserSecuritySettingsDTO>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating security settings for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<UserSecuritySettingsDTO>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Updates user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="updateDto">Security settings data to update</param>
+    /// <returns>Updated security settings</returns>
+    [HttpPut("users/{userId}/security-settings")]
+    [ProducesResponseType(typeof(ApiResponse<UserSecuritySettingsDTO>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<UserSecuritySettingsDTO>>> UpdateUserSecuritySettings(
+        int userId, 
+        [FromBody] UserSecuritySettingsUpdateDTO updateDto)
+    {
+        try
+        {
+            _logger.LogInformation("Updating security settings for user {UserId}", userId);
+
+            UserSecuritySettingsDTO settings = await _securityMonitoringService.UpdateUserSecuritySettingsAsync(userId, updateDto);
+            
+            return Ok(ApiResponse<UserSecuritySettingsDTO>.SuccessResponse(settings));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Security settings not found for user {UserId}", userId);
+            return NotFound(ApiResponse<UserSecuritySettingsDTO>.ErrorResponse("Security settings not found"));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid security settings data for user {UserId}", userId);
+            return BadRequest(ApiResponse<UserSecuritySettingsDTO>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating security settings for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<UserSecuritySettingsDTO>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Deletes user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>Success response</returns>
+    [HttpDelete("users/{userId}/security-settings")]
+    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<ActionResult<ApiResponse<object>>> DeleteUserSecuritySettings(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting security settings for user {UserId}", userId);
+
+            bool deleted = await _securityMonitoringService.DeleteUserSecuritySettingsAsync(userId);
+            
+            if (deleted)
+            {
+                return Ok(ApiResponse<object>.SuccessResponse(new object(), "Security settings deleted successfully"));
+            }
+            else
+            {
+                return NotFound(ApiResponse<object>.ErrorResponse("Security settings not found"));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting security settings for user {UserId}", userId);
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+        }
+    }
 }
 
-// Request DTOs
-public class CreateSecurityAlertRequest
-{
-    public string Type { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
-    public string? Source { get; set; }
-    public string? RecommendedAction { get; set; }
-}
-
-public class LogSecurityMetricRequest
-{
-    public string MetricType { get; set; } = string.Empty;
-    public string MetricName { get; set; } = string.Empty;
-    public double Value { get; set; }
-    public string? Description { get; set; }
-    public string? Source { get; set; }
-    public string? Severity { get; set; }
-}
-
-public class ClearLogsResultDTO
-{
-    public int ClearedCount { get; set; }
-    public DateTime ClearedDate { get; set; }
-    public string Message { get; set; } = string.Empty;
-}
-
-// Enhanced Security Request DTOs
-public class UnlockAccountRequest
-{
-    public string EmailOrUsername { get; set; } = string.Empty;
-}
-
-public class TerminateSessionRequest
-{
-    public string SessionToken { get; set; } = string.Empty;
-}
-
-public class TerminateAllSessionsRequest
-{
-    public int UserId { get; set; }
-    public string Reason { get; set; } = string.Empty;
-    public string? ExcludeSessionToken { get; set; }
-}
-
-public class MarkSessionSuspiciousRequest
-{
-    public string SessionToken { get; set; } = string.Empty;
-    public string Reason { get; set; } = string.Empty;
-} 

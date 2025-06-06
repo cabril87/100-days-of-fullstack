@@ -20,6 +20,7 @@ using TaskTrackerAPI.DTOs.Gamification;
 namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiController]
+[ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 public class PointsController : BaseApiController

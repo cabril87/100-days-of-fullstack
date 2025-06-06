@@ -26,7 +26,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/board-templates")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 public class BoardTemplatesController : ControllerBase
 {

@@ -31,7 +31,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class GamificationController : BaseApiController
     {
         private readonly IGamificationService _gamificationService;

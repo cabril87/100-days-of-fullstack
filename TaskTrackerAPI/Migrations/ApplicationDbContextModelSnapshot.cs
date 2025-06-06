@@ -2342,8 +2342,8 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FailureReason")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("IpAddress")
                         .IsRequired()
@@ -2718,11 +2718,17 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("FamilyId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsNaturalLeader")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsPending")
                         .HasColumnType("bit");
@@ -2730,15 +2736,30 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastActiveAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("ProfileCompleted")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("RelatedToMemberId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Relationship")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RelationshipToAdmin")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelationshipToMember")
                         .HasColumnType("int");
 
                     b.Property<int>("RoleId")
@@ -2752,9 +2773,14 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("WantsAdminRole")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FamilyId");
+
+                    b.HasIndex("RelatedToMemberId");
 
                     b.HasIndex("RoleId");
 
@@ -6808,6 +6834,55 @@ namespace TaskTrackerAPI.Migrations
                     b.ToTable("ParentalControls");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.PasswordResetToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("ExpirationTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                        .HasColumnName("expiration_time");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_used");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("used_at");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("password_reset_tokens");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.PermissionRequest", b =>
                 {
                     b.Property<int>("Id")
@@ -8590,6 +8665,9 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("AgeGroup")
                         .HasColumnType("int");
 
+                    b.Property<string>("BackupCodes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -8613,6 +8691,15 @@ namespace TaskTrackerAPI.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)")
                         .HasComment("Encrypted field - PII");
+
+                    b.Property<bool>("MFAEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("MFASecret")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("MFASetupDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -8888,6 +8975,61 @@ namespace TaskTrackerAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserRewards");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserSecuritySettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AccountDeletionRequest")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("AccountDeletionRequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<bool>("DataExportRequest")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("DataExportRequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("LoginNotifications")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("MFAEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PrivacySettings")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SessionTimeout")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("TrustedDevicesEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSecuritySettings");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.UserSession", b =>
@@ -9327,13 +9469,17 @@ namespace TaskTrackerAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskTrackerAPI.Models.FamilyMember", "RelatedToMember")
+                        .WithMany("RelatedMembers")
+                        .HasForeignKey("RelatedToMemberId");
+
                     b.HasOne("TaskTrackerAPI.Models.FamilyRole", "Role")
                         .WithMany("Members")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskTrackerAPI.Models.User", null)
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
                         .WithMany("FamilyMembers")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -9341,7 +9487,11 @@ namespace TaskTrackerAPI.Migrations
 
                     b.Navigation("Family");
 
+                    b.Navigation("RelatedToMember");
+
                     b.Navigation("Role");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMemberAvailability", b =>
@@ -9568,6 +9718,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("Child");
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.PasswordResetToken", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.PermissionRequest", b =>
@@ -9941,6 +10102,17 @@ namespace TaskTrackerAPI.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserSecuritySettings", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TaskTrackerAPI.Models.UserSession", b =>
                 {
                     b.HasOne("TaskTrackerAPI.Models.User", "User")
@@ -10009,6 +10181,8 @@ namespace TaskTrackerAPI.Migrations
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMember", b =>
                 {
                     b.Navigation("AssignedTasks");
+
+                    b.Navigation("RelatedMembers");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyRole", b =>

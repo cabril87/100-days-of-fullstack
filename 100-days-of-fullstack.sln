@@ -5,10 +5,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskTrackerAPI", "TaskTrackerAPI\TaskTrackerAPI.csproj", "{7661C022-221A-6E50-E4AA-77E4BE66652F}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PortfolioRebuild", "PortfolioRebuild", "{1D3CEA36-E172-ECCB-4CF2-7147C3452F23}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PortfolioBackend", "PortfolioRebuild\PortfolioBackend\PortfolioBackend.csproj", "{17B66712-B4AA-317D-D383-6E110E3AAFE3}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskTrackerAPI.UnitTests", "TaskTrackerAPI.UnitTests\TaskTrackerAPI.UnitTests.csproj", "{59E225A0-9240-4228-9780-C05B3CC4BEA4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskTrackerAPI.ServiceTests", "TaskTrackerAPI.ServiceTests\TaskTrackerAPI.ServiceTests.csproj", "{F12F9299-3040-48DE-BD73-D66A8E0FC71D}"

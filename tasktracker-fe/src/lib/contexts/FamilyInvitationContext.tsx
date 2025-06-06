@@ -38,9 +38,11 @@ interface FamilyInvitationState {
   // Stats
   familyStats: {
     memberCount: number;
-    activeInvitations: number;
-    totalTasksCompleted: number;
-    totalPointsEarned: number;
+    pendingInvitations: number;
+    totalInvitations: number;
+    activeMembers: number;
+    totalTasks: number;
+    totalPoints: number;
   } | null;
   
   // Error state
@@ -107,7 +109,7 @@ interface FamilyInvitationContextType {
   acceptInvitation: (token: string) => Promise<void>;
   declineInvitation: (token: string) => Promise<void>;
   cancelInvitation: (invitationId: number) => Promise<void>;
-  resendInvitation: (invitationId: number, newMessage?: string) => Promise<void>;
+  resendInvitation: (invitationId: number) => Promise<void>;
   
   // Stats and Validation
   loadFamilyStats: () => Promise<void>;
@@ -328,7 +330,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      await familyInvitationService.leaveFamily();
+      await familyInvitationService.leaveFamilyAsUser();
       dispatch({ type: 'RESET_STATE' });
     } catch (error) {
       handleError(error);
@@ -375,7 +377,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      const updatedMember = await familyInvitationService.updateMemberRole(memberId, roleId);
+      const updatedMember = await familyInvitationService.updateMemberRoleInUserFamily(memberId, roleId);
       dispatch({ type: 'UPDATE_MEMBER', payload: updatedMember });
     } catch (error) {
       handleError(error);
@@ -389,7 +391,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      await familyInvitationService.removeFamilyMember(memberId);
+      await familyInvitationService.removeFamilyMemberFromUserFamily(memberId);
       dispatch({ type: 'REMOVE_MEMBER', payload: memberId });
     } catch (error) {
       handleError(error);
@@ -422,14 +424,14 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_ERROR', payload: null });
       
       const invitationData = {
-        ...data,
+        email: data.email,
         familyId: state.currentFamily.id,
+        familyRoleId: data.roleId,
+        message: data.message,
       };
       
-      const response = await familyInvitationService.sendInvitation(invitationData);
-      if (response.invitation) {
-        dispatch({ type: 'ADD_INVITATION', payload: response.invitation });
-      }
+      const invitation = await familyInvitationService.sendInvitation(invitationData);
+      dispatch({ type: 'ADD_INVITATION', payload: invitation });
       
       dispatch({ type: 'TOGGLE_INVITE_MODAL', payload: false });
     } catch (error) {
@@ -445,16 +447,17 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      const responses = await familyInvitationService.sendBulkInvitations(
-        data.emails,
-        data.roleId,
-        data.message
-      );
+      const invitations = data.emails.map(email => ({
+        email,
+        familyId: state.currentFamily!.id,
+        familyRoleId: data.roleId,
+        message: data.message
+      }));
       
-      responses.forEach(response => {
-        if (response.invitation) {
-          dispatch({ type: 'ADD_INVITATION', payload: response.invitation });
-        }
+      const responses = await familyInvitationService.sendBulkInvitations(invitations);
+      
+      responses.forEach(invitation => {
+        dispatch({ type: 'ADD_INVITATION', payload: invitation });
       });
       
       dispatch({ type: 'TOGGLE_BULK_INVITE_MODAL', payload: false });
@@ -464,7 +467,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
     } finally {
       dispatch({ type: 'SET_SUBMITTING', payload: false });
     }
-  }, [handleError]);
+  }, [handleError, state.currentFamily]);
 
   const loadSentInvitations = useCallback(async () => {
     try {
@@ -485,8 +488,8 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      const response = await familyInvitationService.getPendingInvitations();
-      dispatch({ type: 'SET_PENDING_INVITATIONS', payload: response.invitations });
+      const invitations = await familyInvitationService.getPendingInvitations();
+      dispatch({ type: 'SET_PENDING_INVITATIONS', payload: invitations });
     } catch (error) {
       handleError(error);
     } finally {
@@ -499,7 +502,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      await familyInvitationService.acceptInvitation(token);
+      await familyInvitationService.acceptInvitationByToken(token);
       
       // Refresh family data
       await loadCurrentFamily();
@@ -517,7 +520,7 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      await familyInvitationService.declineInvitation(token);
+      await familyInvitationService.declineInvitationByToken(token);
       await loadPendingInvitations();
     } catch (error) {
       handleError(error);
@@ -540,21 +543,20 @@ export function FamilyInvitationProvider({ children }: FamilyInvitationProviderP
     }
   }, [handleError]);
 
-  const resendInvitation = useCallback(async (invitationId: number, newMessage?: string) => {
+  const resendInvitation = useCallback(async (invitationId: number) => {
     try {
       dispatch({ type: 'SET_SUBMITTING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      const response = await familyInvitationService.resendInvitation(invitationId, newMessage);
-      if (response.invitation) {
-        dispatch({ type: 'UPDATE_INVITATION', payload: response.invitation });
-      }
+      await familyInvitationService.resendInvitation(invitationId);
+      // Refresh invitations after resend
+      await loadSentInvitations();
     } catch (error) {
       handleError(error);
     } finally {
       dispatch({ type: 'SET_SUBMITTING', payload: false });
     }
-  }, [handleError]);
+  }, [handleError, loadSentInvitations]);
 
   // Stats and Validation
   const loadFamilyStats = useCallback(async () => {

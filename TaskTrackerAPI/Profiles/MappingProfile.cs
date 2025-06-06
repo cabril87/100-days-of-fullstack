@@ -72,6 +72,19 @@ namespace TaskTrackerAPI.Profiles
             CreateMap<FailedLoginAttempt, FailedLoginAttemptDTO>();
             CreateMap<UserSession, UserSessionDTO>()
                 .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User != null ? src.User.Username : "Unknown"))
+                .ForMember(dest => dest.DeviceId, opt => opt.MapFrom(src => 
+                    $"{src.DeviceType ?? "Unknown"}_{src.Browser ?? "Unknown"}_{src.OperatingSystem ?? "Unknown"}".Replace(" ", "")))
+                .ForMember(dest => dest.DeviceName, opt => opt.MapFrom(src => 
+                    !string.IsNullOrEmpty(src.Browser) && !string.IsNullOrEmpty(src.OperatingSystem) 
+                        ? $"{src.Browser} on {src.OperatingSystem}" : null))
+                .ForMember(dest => dest.Location, opt => opt.MapFrom(src => 
+                    !string.IsNullOrEmpty(src.City) && !string.IsNullOrEmpty(src.Country) 
+                        ? $"{src.City}, {src.Country}" 
+                        : src.Country))
+                .ForMember(dest => dest.IsTrusted, opt => opt.MapFrom(src => !src.IsSuspicious))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt.ToString("O")))
+                .ForMember(dest => dest.LastActivityAt, opt => opt.MapFrom(src => src.LastActivity.ToString("O")))
+                .ForMember(dest => dest.ExpiresAt, opt => opt.MapFrom(src => src.ExpiresAt.HasValue ? src.ExpiresAt.Value.ToString("O") : ""))
                 .ForMember(dest => dest.SessionDuration, opt => opt.MapFrom(src => 
                     src.IsActive ? DateTime.UtcNow - src.CreatedAt : 
                     (src.TerminatedAt ?? DateTime.UtcNow) - src.CreatedAt))
@@ -80,6 +93,18 @@ namespace TaskTrackerAPI.Profiles
             // Advanced security mappings
             CreateMap<ThreatIntelligence, ThreatIntelligenceDTO>();
             CreateMap<BehavioralAnalytics, BehavioralAnalyticsDTO>();
+
+            // User Security Settings mappings
+            CreateMap<UserSecuritySettings, UserSecuritySettingsDTO>();
+            CreateMap<UserSecuritySettingsCreateDTO, UserSecuritySettings>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore())
+                .ForMember(dest => dest.DataExportRequestDate, opt => opt.Ignore())
+                .ForMember(dest => dest.AccountDeletionRequest, opt => opt.Ignore())
+                .ForMember(dest => dest.AccountDeletionRequestDate, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
         }
 
         private int ConvertPriorityToInt(string priority)

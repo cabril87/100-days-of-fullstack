@@ -183,6 +183,8 @@ namespace TaskTrackerAPI.Repositories
             int failedExecutions = totalExecutions - successfulExecutions;
             double overallSuccessRate = totalExecutions > 0 ? (double)successfulExecutions / totalExecutions * 100 : 0;
             
+            DateTime? lastExecutionTime = executions.Count > 0 ? executions.Max(e => e.ExecutionTime) : default;
+            
             Dictionary<string, object> stats = new Dictionary<string, object>
             {
                 ["TotalServices"] = statuses.Count,
@@ -193,7 +195,7 @@ namespace TaskTrackerAPI.Repositories
                 ["SuccessfulExecutions"] = successfulExecutions,
                 ["FailedExecutions"] = failedExecutions,
                 ["OverallSuccessRate"] = overallSuccessRate,
-                ["LastExecutionTime"] = executions.Any() ? (DateTime?)executions.Max(e => e.ExecutionTime) : default(DateTime?)
+                ["LastExecutionTime"] = lastExecutionTime
             };
             
             return stats;

@@ -68,7 +68,7 @@ public class Program
             {
                 // Add our custom model binder provider
                 options.ModelBinderProviders.Insert(0, new SanitizedStringModelBinderProvider());
-                
+
                 // Add our model state validation filter
                 options.Filters.Add<ValidateModelStateFilter>();
             })
@@ -79,7 +79,7 @@ public class Program
             });
 
         // Add security headers service
-        builder.Services.AddAntiforgery(options => 
+        builder.Services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-XSRF-TOKEN";
         });
@@ -114,10 +114,10 @@ public class Program
             options.GroupNameFormat = "'v'VVV";
             options.SubstituteApiVersionInUrl = true;
         });
-            
+
         // Add services to the container.
         builder.Services.AddEndpointsApiExplorer();
-        
+
         builder.Services.AddCors(options =>
         {
             // Development CORS policy - permissive for local testing
@@ -129,7 +129,7 @@ public class Program
                     .AllowCredentials() // Enable credentials for testing
                     .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
-            
+
             // Docker development CORS policy - for when testing with Docker
             options.AddPolicy("DockerDevCors", (corsBuilder) =>
             {
@@ -148,7 +148,7 @@ public class Program
                     .AllowCredentials()
                     .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
-            
+
             // Staging CORS policy - more restricted but allows test domains
             options.AddPolicy("StagingCors", (corsBuilder) =>
             {
@@ -162,7 +162,7 @@ public class Program
                     .AllowCredentials()
                     .WithExposedHeaders("Content-Disposition", "Set-Cookie");
             });
-            
+
             // Production CORS policy - strict and secure
             options.AddPolicy("ProdCors", (corsBuilder) =>
             {
@@ -186,7 +186,7 @@ public class Program
 
         // Add Memory Cache for rate limiting and response caching
         builder.Services.AddMemoryCache();
-        
+
         // Add distributed cache for more robust caching across multiple instances
         builder.Services.AddDistributedMemoryCache();
 
@@ -202,7 +202,7 @@ public class Program
         builder.Services.AddScoped<IFamilyRoleRepository, FamilyRoleRepository>();
         builder.Services.AddScoped<IFocusRepository, FocusRepository>();
         builder.Services.AddScoped<IChecklistItemRepository, ChecklistItemRepository>();
-        
+
         // Add repositories that exist in the project
         builder.Services.AddScoped<IInvitationRepository, InvitationRepository>();
         builder.Services.AddScoped<IUserDeviceRepository, UserDeviceRepository>();
@@ -210,10 +210,13 @@ public class Program
         builder.Services.AddScoped<IFamilyCalendarRepository, FamilyCalendarRepository>();
         builder.Services.AddScoped<IUserCalendarRepository, UserCalendarRepository>();
         builder.Services.AddScoped<IFamilyActivityRepository, FamilyActivityRepository>();
-        
+
         // Add notification preference repository
         builder.Services.AddScoped<INotificationPreferenceRepository, NotificationPreferenceRepository>();
-        
+
+        // Add password reset repository
+        builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+
         // Register AuthHelper (critical dependency)
         builder.Services.AddScoped<AuthHelper>();
 
@@ -224,25 +227,31 @@ public class Program
         builder.Services.AddScoped<ITagService, TagService>();
         builder.Services.AddScoped<IReminderService, ReminderService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
-        
+
         // Add services that exist in the project
         builder.Services.AddScoped<IFamilyService, FamilyService>();
         builder.Services.AddScoped<IFamilyAchievementService, FamilyAchievementService>();
         builder.Services.AddScoped<IFamilyActivityService, FamilyActivityService>();
         builder.Services.AddScoped<IInvitationService, InvitationService>();
-        
+
         // Add notification preference service
         builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
-        
+
+        // Add family seeding service (Admin only)
+        builder.Services.AddScoped<IFamilySeedingService, FamilySeedingService>();
+
+        // Add smart role recommendation service
+        builder.Services.AddScoped<ISmartRoleRecommendationService, SmartRoleRecommendationService>();
+
         // Add real-time services
         builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
-        
+
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
         builder.Services.AddScoped<IUserCalendarService, UserCalendarService>();
         builder.Services.AddScoped<ISmartSchedulingService, SmartSchedulingService>();
         builder.Services.AddScoped<ITaskSharingService, TaskSharingService>();
-        
+
         builder.Services.AddScoped<IGamificationService, GamificationService>();
         builder.Services.AddScoped<IUserActivityService, UserActivityService>();
         builder.Services.AddScoped<IFocusService, FocusService>();
@@ -251,7 +260,17 @@ public class Program
 
         // Register auth services
         builder.Services.AddScoped<IAuthService, AuthService>();
-        
+
+        // Register admin services
+        builder.Services.AddScoped<IAdminService, AdminService>();
+
+        // Register email and password reset services
+        builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+
+        // Register MFA service
+        builder.Services.AddScoped<IMFAService, MFAService>();
+
         // Re-add working services and add any missing ones from before
         builder.Services.AddScoped<IReminderService, ReminderService>();
         builder.Services.AddScoped<IBoardService, BoardService>();
@@ -259,10 +278,10 @@ public class Program
         builder.Services.AddScoped<IFamilyRoleService, FamilyRoleService>();
         builder.Services.AddScoped<IAchievementService, AchievementService>();
         builder.Services.AddScoped<IBadgeService, BadgeService>();
-        
+
         // Register TaskTemplateService (required for TaskTemplatesController)
         builder.Services.AddScoped<ITaskTemplateService, TaskTemplateService>();
-        
+
         // Register marketplace services
         builder.Services.AddScoped<IPointsService, PointsService>();
 
@@ -272,16 +291,16 @@ public class Program
             options.EnableDetailedErrors = builder.Environment.IsDevelopment();
             options.MaximumReceiveMessageSize = 102400; // 100KB
         });
-        
+
         // Register notification real-time service
         builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
-        
+
         // Register gamification real-time service
         builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
-        
+
         // Register calendar real-time service
         builder.Services.AddScoped<ICalendarRealTimeService, CalendarRealTimeService>();
-        
+
         // Register task synchronization service
         builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
 
@@ -346,7 +365,8 @@ public class Program
 
         // Register RateLimitBackoffHelper as singleton
         builder.Services.AddHttpClient();
-        builder.Services.AddSingleton<Utils.RateLimitBackoffHelper>(sp => {
+        builder.Services.AddSingleton<Utils.RateLimitBackoffHelper>(sp =>
+        {
             HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             ILogger<Utils.RateLimitBackoffHelper> logger = sp.GetRequiredService<ILogger<Utils.RateLimitBackoffHelper>>();
             return new Utils.RateLimitBackoffHelper(httpClient, logger);
@@ -354,7 +374,7 @@ public class Program
 
         // Register SecurityService
         builder.Services.AddScoped<ISecurityService, SecurityService>();
-        
+
         // Register Security Monitoring Service
         builder.Services.AddScoped<ISecurityMonitoringService, SecurityMonitoringService>();
 
@@ -469,8 +489,9 @@ public class Program
         {
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseSqlServer(defaultConn, 
-                    sqlOptions => {
+                options.UseSqlServer(defaultConn,
+                    sqlOptions =>
+                    {
                         sqlOptions.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(30),
@@ -484,13 +505,13 @@ public class Program
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = tokenValidationParameters;
-                
+
                 // In production, require HTTPS for tokens
                 if (!builder.Environment.IsDevelopment())
                 {
                     options.RequireHttpsMetadata = true;
                 }
-                
+
                 // Add events for additional security checks and SignalR support
                 options.Events = new JwtBearerEvents
                 {
@@ -498,7 +519,7 @@ public class Program
                     OnMessageReceived = context =>
                     {
                         var accessToken = context.Request.Query["access_token"];
-                        
+
                         // If the request is for our SignalR hub...
                         var path = context.HttpContext.Request.Path;
                         if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
@@ -512,21 +533,21 @@ public class Program
                     {
                         // Additional validation if needed, e.g. check if user still exists and is active
                         IUserService userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
-                        
+
                         // Get user ID from claims
                         string? userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                        
+
                         if (!string.IsNullOrEmpty(userId) && int.TryParse(userId, out int id))
                         {
                             UserDTO? user = await userService.GetUserByIdAsync(id);
-                            
+
                             // Reject token if user no longer exists 
                             if (user == null)
                             {
                                 context.Fail("User no longer exists");
                             }
                             // Check if the IsActive property exists and is false
-                            else 
+                            else
                             {
                                 System.Reflection.PropertyInfo? isActiveProperty = user.GetType().GetProperty("IsActive");
                                 if (isActiveProperty != null)
@@ -545,13 +566,13 @@ public class Program
 
         // Add Data Protection API with key storage
         string keyDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Keys");
-        
+
         // Ensure the directory exists
         if (!Directory.Exists(keyDirectory))
         {
             Directory.CreateDirectory(keyDirectory);
         }
-        
+
         // Configure Data Protection with improved settings for development/production
         IDataProtectionBuilder dataProtectionBuilder = builder.Services.AddDataProtection()
             .SetApplicationName("TaskTrackerAPI")
@@ -562,7 +583,7 @@ public class Program
         {
             // Use longer key lifetime in development to avoid frequent key rotation issues
             dataProtectionBuilder.SetDefaultKeyLifetime(TimeSpan.FromDays(365)); // 1 year for development
-            
+
             // Check for keys before disabling generation
             if (Directory.GetFiles(keyDirectory, "*.xml").Length == 0)
             {
@@ -570,31 +591,36 @@ public class Program
                 builder.Services.AddDataProtection()
                     .SetApplicationName("TaskTrackerAPI")
                     .PersistKeysToFileSystem(new DirectoryInfo(keyDirectory));
-                    
+
                 // Create a directory watcher to monitor key changes
-                builder.Services.AddSingleton<FileSystemWatcher>(provider => {
+                builder.Services.AddSingleton<FileSystemWatcher>(provider =>
+                {
                     var logger = provider.GetRequiredService<ILogger<FileSystemWatcher>>();
-                    
+
                     var watcher = new FileSystemWatcher(keyDirectory);
                     watcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
                     watcher.Filter = "*.xml";
-                    
-                    watcher.Changed += (sender, e) => {
+
+                    watcher.Changed += (sender, e) =>
+                    {
                         logger.LogInformation("Data protection key changed: {FileName}", e.Name);
                     };
-                    
-                    watcher.Created += (sender, e) => {
+
+                    watcher.Created += (sender, e) =>
+                    {
                         logger.LogInformation("New data protection key created: {FileName}", e.Name);
                     };
-                    
-                    watcher.Deleted += (sender, e) => {
+
+                    watcher.Deleted += (sender, e) =>
+                    {
                         logger.LogWarning("Data protection key deleted: {FileName}", e.Name);
                     };
-                    
-                    watcher.Renamed += (sender, e) => {
+
+                    watcher.Renamed += (sender, e) =>
+                    {
                         logger.LogInformation("Data protection key renamed: {OldName} to {NewName}", e.OldName, e.Name);
                     };
-                    
+
                     watcher.EnableRaisingEvents = true;
                     return watcher;
                 });
@@ -610,7 +636,7 @@ public class Program
             // Production key lifetime
             dataProtectionBuilder.SetDefaultKeyLifetime(TimeSpan.FromDays(90)); // 90 days for production
         }
-            
+
         // Only use DPAPI on Windows platforms
         if (OperatingSystem.IsWindows())
         {
@@ -629,6 +655,7 @@ public class Program
         builder.Services.AddScoped<IMLAnalyticsRepository, MLAnalyticsRepository>();
         builder.Services.AddScoped<IAdaptationLearningRepository, AdaptationLearningRepository>();
         builder.Services.AddScoped<ISecurityMonitoringRepository, SecurityMonitoringRepository>();
+        builder.Services.AddScoped<IUserSecuritySettingsRepository, UserSecuritySettingsRepository>();
 
         // Register marketplace services
         builder.Services.AddScoped<IPointsService, PointsService>();
@@ -646,7 +673,8 @@ public class Program
         app.UseResponseCompression();
 
         // Add diagnostic middleware to log requests
-        app.Use(async (context, next) => {
+        app.Use(async (context, next) =>
+        {
             Console.WriteLine($"Request path: {context.Request.Path}, Method: {context.Request.Method}");
             await next();
             Console.WriteLine($"Response status: {context.Response.StatusCode} for {context.Request.Path}");
@@ -657,7 +685,7 @@ public class Program
         {
             // Check if running in Docker (environment variable set in docker-compose.yml)
             bool isRunningInDocker = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
-            
+
             if (isRunningInDocker)
             {
                 // Use Docker-specific CORS policy
@@ -670,54 +698,54 @@ public class Program
                 app.UseCors("DevCors");
                 Console.WriteLine("Using permissive development CORS policy");
             }
-            
+
             // Remove HTTPS redirection for local development to avoid the warning
             // app.UseHttpsRedirection();
-            
+
             // Use developer exception page for detailed error information
             app.UseDeveloperExceptionPage();
-            
+
             Console.WriteLine("Using DeveloperExceptionPage for exception handling in development");
         }
         else if (app.Environment.IsStaging())
         {
             // Use staging CORS policy
             app.UseCors("StagingCors");
-            
+
             // Enable HTTP Strict Transport Security (HSTS)
             app.UseHsts();
-            
+
             // Force HTTPS
             app.UseHttpsRedirection();
-            
+
             // Add global exception handling middleware for staging
             app.UseGlobalExceptionHandling();
-            
+
             Console.WriteLine("Using staging environment configuration with custom exception handling");
         }
         else
         {
             // Production environment
             app.UseCors("ProdCors");
-            
+
             // Enable HTTP Strict Transport Security (HSTS)
             app.UseHsts();
-            
+
             // Force HTTPS
             app.UseHttpsRedirection();
-            
+
             // Add global exception handling middleware for production
             app.UseGlobalExceptionHandling();
-            
+
             Console.WriteLine("Using production environment configuration with custom exception handling");
         }
 
         // Add rate limiting middleware BEFORE security headers and CSRF protection
         app.UseRateLimiting();
-        
+
         // Add security audit middleware AFTER rate limiting but before other middleware
-            app.UseSecurityAudit();
-            Console.WriteLine("Security Audit Middleware enabled");
+        app.UseSecurityAudit();
+        Console.WriteLine("Security Audit Middleware enabled");
 
         // Add security headers middleware
         app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -744,7 +772,7 @@ public class Program
         app.MapHub<NotificationHub>("/hubs/notifications");
         app.MapHub<GamificationHub>("/hubs/gamification");
         app.MapHub<CalendarHub>("/hubs/calendar");
-        
+
         // Map Enhanced Kanban Board SignalR hubs
         app.MapHub<EnhancedBoardHub>("/hubs/enhanced-board");
         app.MapHub<TemplateMarketplaceHub>("/hubs/template-marketplace");
@@ -761,7 +789,7 @@ public class Program
         {
             var services = scope.ServiceProvider;
             var logger = services.GetRequiredService<ILogger<Program>>();
-            
+
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
@@ -769,7 +797,7 @@ public class Program
 
                 // Wait for SQL Server to be ready (especially important in Docker)
                 logger.LogInformation("Waiting for database to be ready...");
-                
+
                 // Add initial delay in Docker to give SQL Server more startup time
                 bool isRunningInDocker = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOCKER_ENVIRONMENT"));
                 if (isRunningInDocker)
@@ -777,7 +805,7 @@ public class Program
                     logger.LogInformation("Docker environment detected, waiting 10 seconds for SQL Server startup...");
                     await Task.Delay(10000);
                 }
-                
+
                 await WaitForDatabaseAsync(context, logger);
 
                 if (app.Environment.IsDevelopment())
@@ -787,15 +815,15 @@ public class Program
                     await context.Database.MigrateAsync();
                     logger.LogInformation("Migrations applied successfully.");
                 }
-                else 
+                else
                 {
                     // Production: use migrations
                     await context.Database.MigrateAsync();
                 }
-                
+
                 var seeder = new Data.SeedData.DataSeeder();
                 await seeder.SeedAsync(context, logger, authHelper);
-                
+
                 logger.LogInformation("Database seeding completed successfully.");
             }
             catch (Exception ex)
@@ -806,7 +834,7 @@ public class Program
 
         app.Run();
     }
-    
+
     /// <summary>
     /// Waits for the database server to become available with exponential backoff
     /// </summary>
@@ -814,11 +842,11 @@ public class Program
     {
         var delay = TimeSpan.FromSeconds(1);
         const int maxRetries = 30;
-        
+
         // Get connection string and modify it to connect to master database for initial check
         var connectionString = context.Database.GetConnectionString();
         var masterConnectionString = connectionString?.Replace("Database=TaskTracker", "Database=master");
-        
+
         for (int i = 0; i < maxRetries; i++)
         {
             try
@@ -834,13 +862,13 @@ public class Program
             catch (Exception ex)
             {
                 logger.LogWarning($"SQL Server connection attempt {i + 1}/{maxRetries} failed: {ex.Message}");
-                
+
                 if (i == maxRetries - 1)
                 {
                     logger.LogError("Max SQL Server connection retries reached. SQL Server may not be available.");
                     throw;
                 }
-                
+
                 await Task.Delay(delay);
                 delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 10000)); // Max 10 second delay
             }

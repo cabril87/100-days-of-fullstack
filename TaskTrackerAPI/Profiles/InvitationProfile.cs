@@ -20,7 +20,9 @@ public class InvitationProfile : Profile
     {
         // Entity to DTO
         CreateMap<Invitation, InvitationDTO>()
-            .ForMember(dest => dest.FamilyRole, opt => opt.MapFrom(src => src.Role));
+            .ForMember(dest => dest.FamilyRole, opt => opt.MapFrom(src => src.Role))
+            .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom(src => src.CreatedBy))
+            .ForMember(dest => dest.Family, opt => opt.MapFrom(src => src.Family));
         
         // DTO to Entity
         CreateMap<InvitationCreateDTO, Invitation>()

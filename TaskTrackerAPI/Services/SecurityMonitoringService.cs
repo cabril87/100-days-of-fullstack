@@ -22,6 +22,7 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Utils;
 using AutoMapper;
 using TaskTrackerAPI.Repositories.Interfaces;
+using TaskTrackerAPI.DTOs.Family;
 
 namespace TaskTrackerAPI.Services;
 
@@ -30,6 +31,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
     private readonly ISecurityMonitoringRepository _securityMonitoringRepository;
     private readonly IGeolocationRepository _geolocationRepository;
     private readonly IUserSubscriptionRepository _userSubscriptionRepository;
+    private readonly IUserSecuritySettingsRepository _userSecuritySettingsRepository;
     private readonly ILogger<SecurityMonitoringService> _logger;
     private readonly IMapper _mapper;
     private readonly IUserSubscriptionService _userSubscriptionService;
@@ -41,6 +43,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         ISecurityMonitoringRepository securityMonitoringRepository,
         IGeolocationRepository geolocationRepository,
         IUserSubscriptionRepository userSubscriptionRepository,
+        IUserSecuritySettingsRepository userSecuritySettingsRepository,
         ILogger<SecurityMonitoringService> logger,
         IMapper mapper,
         IUserSubscriptionService userSubscriptionService,
@@ -51,6 +54,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
         _securityMonitoringRepository = securityMonitoringRepository ?? throw new ArgumentNullException(nameof(securityMonitoringRepository));
         _geolocationRepository = geolocationRepository ?? throw new ArgumentNullException(nameof(geolocationRepository));
         _userSubscriptionRepository = userSubscriptionRepository ?? throw new ArgumentNullException(nameof(userSubscriptionRepository));
+        _userSecuritySettingsRepository = userSecuritySettingsRepository ?? throw new ArgumentNullException(nameof(userSecuritySettingsRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         _userSubscriptionService = userSubscriptionService ?? throw new ArgumentNullException(nameof(userSubscriptionService));
@@ -492,7 +496,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             List<SecurityAuditLog> logsToDelete = await _securityMonitoringRepository.GetSecurityAuditLogsAsync(olderThan);
             
             int count = logsToDelete.Count;
-            _securityMonitoringRepository.RemoveSecurityAuditLogs(logsToDelete);
+            await _securityMonitoringRepository.RemoveSecurityAuditLogs(logsToDelete);
             await _securityMonitoringRepository.SaveChangesAsync();
             
             _logger.LogInformation($"Cleared {count} security audit logs older than {olderThan}");
@@ -525,7 +529,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             List<SecurityMetrics> metricsToDelete = await _securityMonitoringRepository.GetSecurityMetricsAsync(olderThan);
             
             int count = metricsToDelete.Count;
-            _securityMonitoringRepository.RemoveSecurityMetrics(metricsToDelete);
+            await _securityMonitoringRepository.RemoveSecurityMetrics(metricsToDelete);
             await _securityMonitoringRepository.SaveChangesAsync();
             
             _logger.LogInformation($"Cleared {count} security metrics older than {olderThan}");
@@ -559,7 +563,7 @@ public class SecurityMonitoringService : ISecurityMonitoringService
             int healthMetricsCount = await _securityMonitoringRepository.GetSystemHealthMetricsCountAsync();
             
             // Clear all security-related logs
-            _securityMonitoringRepository.RemoveAllSecurityLogs();
+            await _securityMonitoringRepository.RemoveAllSecurityLogs();
             
             await _securityMonitoringRepository.SaveChangesAsync();
             
@@ -1188,6 +1192,383 @@ public class SecurityMonitoringService : ISecurityMonitoringService
                 EventsBySeverity = new List<SecurityEventSeverityStatDTO>(),
                 RecentEvents = new List<SecurityMonitoringEventDTO>()
             };
+        }
+    }
+
+    // ===== DEVICE MANAGEMENT =====
+
+    /// <summary>
+    /// Get user devices with trust and security information
+    /// </summary>
+    /// <param name="userId">User ID to get devices for</param>
+    /// <returns>List of user devices</returns>
+    public async Task<List<UserDeviceDTO>> GetUserDevicesAsync(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Getting devices for user {UserId}", userId);
+            
+            IEnumerable<UserDevice> devices = await _securityMonitoringRepository.GetUserDevicesAsync(userId);
+            
+            List<UserDeviceDTO> deviceDTOs = _mapper.Map<List<UserDeviceDTO>>(devices.ToList());
+            
+            _logger.LogInformation("Retrieved {DeviceCount} devices for user {UserId}", deviceDTOs.Count, userId);
+            
+            return deviceDTOs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user devices for user {UserId}", userId);
+            return new List<UserDeviceDTO>();
+        }
+    }
+
+    /// <summary>
+    /// Update device trust status and name
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="deviceId">Device ID</param>
+    /// <param name="trusted">Whether device should be trusted</param>
+    /// <param name="deviceName">Optional new device name</param>
+    public async Task UpdateDeviceTrustAsync(int userId, string deviceId, bool trusted, string? deviceName = null)
+    {
+        try
+        {
+            _logger.LogInformation("Updating device trust for user {UserId}, device {DeviceId}, trusted: {Trusted}", 
+                userId, deviceId, trusted);
+            
+            UserDevice? device = await _securityMonitoringRepository.GetUserDeviceAsync(userId, deviceId);
+            
+            if (device == null)
+            {
+                throw new KeyNotFoundException($"Device {deviceId} not found for user {userId}");
+            }
+            
+            // Update device properties
+            device.IsVerified = trusted;
+            if (!string.IsNullOrWhiteSpace(deviceName))
+            {
+                device.DeviceName = deviceName;
+            }
+            device.LastActiveAt = DateTime.UtcNow;
+            
+            // Use the context to update - assuming SecurityMonitoringRepository has access to context
+            await _securityMonitoringRepository.UpdateUserDeviceAsync(device);
+            
+            // Log security audit for device trust change
+            await LogSecurityAuditAsync(
+                eventType: "DeviceManagement",
+                action: trusted ? "Device Trusted" : "Device Untrusted",
+                userId: userId,
+                resource: $"Device:{deviceId}",
+                severity: "Medium",
+                details: $"Device {deviceId} trust status changed to {trusted}" + 
+                        (deviceName != null ? $", name updated to {deviceName}" : ""),
+                isSuccessful: true
+            );
+            
+            _logger.LogInformation("Device trust updated successfully for user {UserId}, device {DeviceId}", userId, deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating device trust for user {UserId}, device {DeviceId}", userId, deviceId);
+            
+            // Log security audit for failed device update
+            await LogSecurityAuditAsync(
+                eventType: "DeviceManagement",
+                action: "Device Trust Update Failed",
+                userId: userId,
+                resource: $"Device:{deviceId}",
+                severity: "High",
+                details: $"Failed to update device {deviceId} trust status: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true
+            );
+            
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Remove/delete a user device
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="deviceId">Device ID to remove</param>
+    public async Task RemoveDeviceAsync(int userId, string deviceId)
+    {
+        try
+        {
+            _logger.LogInformation("Removing device for user {UserId}, device {DeviceId}", userId, deviceId);
+            
+            UserDevice? device = await _securityMonitoringRepository.GetUserDeviceAsync(userId, deviceId);
+            
+            if (device == null)
+            {
+                throw new KeyNotFoundException($"Device {deviceId} not found for user {userId}");
+            }
+            
+            // Remove device using repository
+            await _securityMonitoringRepository.DeleteUserDeviceAsync(device.Id);
+            
+            // Log security audit for device removal
+            await LogSecurityAuditAsync(
+                eventType: "DeviceManagement",
+                action: "Device Removed",
+                userId: userId,
+                resource: $"Device:{deviceId}",
+                severity: "Medium",
+                details: $"Device {deviceId} ({device.DeviceName}) removed from user account",
+                isSuccessful: true
+            );
+            
+            _logger.LogInformation("Device removed successfully for user {UserId}, device {DeviceId}", userId, deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing device for user {UserId}, device {DeviceId}", userId, deviceId);
+            
+            // Log security audit for failed device removal
+            await LogSecurityAuditAsync(
+                eventType: "DeviceManagement",
+                action: "Device Removal Failed",
+                userId: userId,
+                resource: $"Device:{deviceId}",
+                severity: "High",
+                details: $"Failed to remove device {deviceId}: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true
+            );
+            
+            throw;
+        }
+    }
+
+    // ===== USER SECURITY SETTINGS =====
+
+    /// <summary>
+    /// Gets user security settings by user ID
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>UserSecuritySettingsDTO</returns>
+    public async Task<UserSecuritySettingsDTO> GetUserSecuritySettingsAsync(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Getting security settings for user {UserId}", userId);
+
+            UserSecuritySettings settings = await _userSecuritySettingsRepository.GetOrCreateDefaultAsync(userId);
+            
+            UserSecuritySettingsDTO result = _mapper.Map<UserSecuritySettingsDTO>(settings);
+            
+            _logger.LogInformation("Successfully retrieved security settings for user {UserId}", userId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting security settings for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="createDto">Security settings data</param>
+    /// <returns>UserSecuritySettingsDTO</returns>
+    public async Task<UserSecuritySettingsDTO> CreateUserSecuritySettingsAsync(int userId, UserSecuritySettingsCreateDTO createDto)
+    {
+        try
+        {
+            _logger.LogInformation("Creating security settings for user {UserId}", userId);
+
+            // Check if settings already exist
+            bool exists = await _userSecuritySettingsRepository.ExistsAsync(userId);
+            if (exists)
+            {
+                throw new InvalidOperationException($"Security settings already exist for user {userId}");
+            }
+
+            UserSecuritySettings settings = _mapper.Map<UserSecuritySettings>(createDto);
+            settings.UserId = userId;
+
+            UserSecuritySettings createdSettings = await _userSecuritySettingsRepository.CreateAsync(settings);
+            UserSecuritySettingsDTO result = _mapper.Map<UserSecuritySettingsDTO>(createdSettings);
+
+            // Log security audit
+            await LogSecurityAuditAsync(
+                eventType: "SecuritySettings", 
+                action: "Create", 
+                userId: userId, 
+                resource: "UserSecuritySettings", 
+                severity: "Info", 
+                details: "User security settings created");
+
+            _logger.LogInformation("Successfully created security settings for user {UserId}", userId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating security settings for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Updates user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="updateDto">Security settings data to update</param>
+    /// <returns>UserSecuritySettingsDTO</returns>
+    public async Task<UserSecuritySettingsDTO> UpdateUserSecuritySettingsAsync(int userId, UserSecuritySettingsUpdateDTO updateDto)
+    {
+        try
+        {
+            _logger.LogInformation("Updating security settings for user {UserId}", userId);
+
+            UserSecuritySettings? existingSettings = await _userSecuritySettingsRepository.GetByUserIdAsync(userId);
+            if (existingSettings == null)
+            {
+                throw new KeyNotFoundException($"Security settings not found for user {userId}");
+            }
+
+            // Apply updates only for non-null fields
+            if (updateDto.MFAEnabled.HasValue)
+                existingSettings.MFAEnabled = updateDto.MFAEnabled.Value;
+            
+            if (updateDto.SessionTimeout.HasValue)
+                existingSettings.SessionTimeout = updateDto.SessionTimeout.Value;
+            
+            if (updateDto.TrustedDevicesEnabled.HasValue)
+                existingSettings.TrustedDevicesEnabled = updateDto.TrustedDevicesEnabled.Value;
+            
+            if (updateDto.LoginNotifications.HasValue)
+                existingSettings.LoginNotifications = updateDto.LoginNotifications.Value;
+            
+            if (updateDto.DataExportRequest.HasValue)
+            {
+                existingSettings.DataExportRequest = updateDto.DataExportRequest.Value;
+                if (updateDto.DataExportRequest.Value)
+                {
+                    existingSettings.DataExportRequestDate = DateTime.UtcNow;
+                }
+            }
+            
+            if (updateDto.PrivacySettings != null)
+                existingSettings.PrivacySettings = updateDto.PrivacySettings;
+
+            UserSecuritySettings updatedSettings = await _userSecuritySettingsRepository.UpdateAsync(existingSettings);
+            UserSecuritySettingsDTO result = _mapper.Map<UserSecuritySettingsDTO>(updatedSettings);
+
+            // Log security audit
+            await LogSecurityAuditAsync(
+                eventType: "SecuritySettings", 
+                action: "Update", 
+                userId: userId, 
+                resource: "UserSecuritySettings", 
+                severity: "Info", 
+                details: "User security settings updated");
+
+            _logger.LogInformation("Successfully updated security settings for user {UserId}", userId);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating security settings for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes user security settings
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>True if deleted successfully</returns>
+    public async Task<bool> DeleteUserSecuritySettingsAsync(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting security settings for user {UserId}", userId);
+
+            bool deleted = await _userSecuritySettingsRepository.DeleteAsync(userId);
+
+            if (deleted)
+            {
+                // Log security audit
+                await LogSecurityAuditAsync(
+                    eventType: "SecuritySettings", 
+                    action: "Delete", 
+                    userId: userId, 
+                    resource: "UserSecuritySettings", 
+                    severity: "Warning", 
+                    details: "User security settings deleted");
+
+                _logger.LogInformation("Successfully deleted security settings for user {UserId}", userId);
+            }
+            else
+            {
+                _logger.LogWarning("No security settings found to delete for user {UserId}", userId);
+            }
+
+            return deleted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting security settings for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes all activity logs for a specific user
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <returns>True if deleted successfully</returns>
+    public async Task<bool> DeleteUserActivityLogAsync(int userId)
+    {
+        try
+        {
+            _logger.LogInformation("Deleting activity log for user {UserId}", userId);
+
+            bool deleted = await _securityMonitoringRepository.DeleteUserActivityLogAsync(userId);
+
+            if (deleted)
+            {
+                // Log security audit for activity log deletion
+                await LogSecurityAuditAsync(
+                    eventType: "ActivityLog", 
+                    action: "Delete User Activity Log", 
+                    userId: userId, 
+                    resource: "UserActivityLog", 
+                    severity: "Warning", 
+                    details: $"All activity logs deleted for user {userId}",
+                    isSuccessful: true);
+
+                _logger.LogInformation("Successfully deleted activity log for user {UserId}", userId);
+            }
+            else
+            {
+                _logger.LogWarning("No activity log found to delete for user {UserId}", userId);
+            }
+
+            return deleted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting activity log for user {UserId}", userId);
+            
+            // Log security audit for failed deletion
+            await LogSecurityAuditAsync(
+                eventType: "ActivityLog", 
+                action: "Delete User Activity Log Failed", 
+                userId: userId, 
+                resource: "UserActivityLog", 
+                severity: "High", 
+                details: $"Failed to delete activity logs for user {userId}: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true);
+            
+            throw;
         }
     }
 } 

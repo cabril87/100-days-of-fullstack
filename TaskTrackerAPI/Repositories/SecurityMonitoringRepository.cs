@@ -64,7 +64,7 @@ namespace TaskTrackerAPI.Repositories
         // Security Audit Events
         public async Task<IEnumerable<SecurityAuditLog>> GetSecurityEventsAsync(DateTime? startDate = null, DateTime? endDate = null)
         {
-                IQueryable<SecurityAuditLog> query = _context.SecurityAuditLogs.AsQueryable();
+            IQueryable<SecurityAuditLog> query = _context.SecurityAuditLogs.AsQueryable();
 
             if (startDate.HasValue)
                 query = query.Where(s => s.Timestamp >= startDate.Value);
@@ -142,6 +142,22 @@ namespace TaskTrackerAPI.Repositories
         {
             return await _context.UserDevices
                 .FirstOrDefaultAsync(d => d.UserId == userId && d.DeviceId == deviceId);
+        }
+
+        public async Task UpdateUserDeviceAsync(UserDevice device)
+        {
+            _context.UserDevices.Update(device);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteUserDeviceAsync(int deviceId)
+        {
+            UserDevice? device = await _context.UserDevices.FindAsync(deviceId);
+            if (device != null)
+            {
+                _context.UserDevices.Remove(device);
+                await _context.SaveChangesAsync();
+            }
         }
 
         // Suspicious Activity
@@ -309,7 +325,7 @@ namespace TaskTrackerAPI.Repositories
         {
             List<SecurityAuditLog> auditLogs = await _context.SecurityAuditLogs
                 .Where(log => log.Timestamp >= since && log.UserId.HasValue)
-                .GroupBy(log => log.UserId.Value )
+                .GroupBy(log => log.UserId ?? 0)
                 .Select(g => g.OrderByDescending(log => log.Timestamp).First())
                 .ToListAsync();
 
@@ -373,9 +389,9 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityAuditLog>> GetApiAuditLogsAsync(DateTime since)
         {
             return await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= since && 
-                            log.Resource != null && 
-                            !log.Resource.Contains("/hubs/") && 
+                .Where(log => log.Timestamp >= since &&
+                            log.Resource != null &&
+                            !log.Resource.Contains("/hubs/") &&
                             !log.Resource.Contains("websocket"))
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();
@@ -399,7 +415,7 @@ namespace TaskTrackerAPI.Repositories
         {
             List<SecurityAuditLog> suspiciousLogs = await _context.SecurityAuditLogs
                 .Where(log => log.Timestamp >= since && log.IsSuspicious && log.UserId.HasValue)
-                .GroupBy(log => log.UserId.Value)
+                .GroupBy(log => log.UserId ?? 0)
                 .Select(g => g.OrderByDescending(log => log.Timestamp).First())
                 .Take(limit)
                 .ToListAsync();
@@ -417,10 +433,10 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityAuditLog>> GetResponseTimeAuditLogsAsync(DateTime since)
         {
             return await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= since && 
-                            log.Details != null && 
+                .Where(log => log.Timestamp >= since &&
+                            log.Details != null &&
                             log.Details.Contains("Elapsed:") &&
-                            log.Resource != null && 
+                            log.Resource != null &&
                             !log.Resource.Contains("/hubs/"))
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();
@@ -429,9 +445,9 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityAuditLog>> GetTopEndpointsAuditLogsAsync(DateTime since)
         {
             return await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= since && 
-                            log.Resource != null && 
-                            !log.Resource.Contains("/hubs/") && 
+                .Where(log => log.Timestamp >= since &&
+                            log.Resource != null &&
+                            !log.Resource.Contains("/hubs/") &&
                             !log.Resource.Contains("websocket"))
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();
@@ -440,10 +456,10 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<UserActivityDTO>> GetTopUsersAsync(DateTime since, int limit)
         {
             List<UserActivityDTO> result = new List<UserActivityDTO>();
-            
+
             IEnumerable<IGrouping<int, SecurityAuditLog>> userGroups = await _context.SecurityAuditLogs
                 .Where(log => log.Timestamp >= since && log.UserId.HasValue)
-                .GroupBy(log => log.UserId.Value)
+                .GroupBy(log => log.UserId ?? 0)
                 .OrderByDescending(g => g.Count())
                 .Take(limit)
                 .ToListAsync();
@@ -467,8 +483,8 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityAuditLog>> GetStatusCodeAuditLogsAsync(DateTime since)
         {
             return await _context.SecurityAuditLogs
-                .Where(log => log.Timestamp >= since && 
-                            log.Details != null && 
+                .Where(log => log.Timestamp >= since &&
+                            log.Details != null &&
                             log.Details.Contains("Response:"))
                 .OrderByDescending(log => log.Timestamp)
                 .ToListAsync();
@@ -496,17 +512,17 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityAuditLog>> GetSecurityAuditLogsAsync(DateTime? olderThan)
         {
             IQueryable<SecurityAuditLog> query = _context.SecurityAuditLogs;
-            
+
             if (olderThan.HasValue)
                 query = query.Where(log => log.Timestamp < olderThan.Value);
-            
+
             return await query.ToListAsync();
         }
 
-        public async Task RemoveSecurityAuditLogs(List<SecurityAuditLog> logsToDelete)
+        public Task RemoveSecurityAuditLogs(List<SecurityAuditLog> logsToDelete)
         {
             _context.SecurityAuditLogs.RemoveRange(logsToDelete);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         public async Task SaveChangesAsync()
@@ -517,17 +533,17 @@ namespace TaskTrackerAPI.Repositories
         public async Task<List<SecurityMetrics>> GetSecurityMetricsAsync(DateTime? olderThan)
         {
             IQueryable<SecurityMetrics> query = _context.SecurityMetrics;
-            
+
             if (olderThan.HasValue)
                 query = query.Where(m => m.Timestamp < olderThan.Value);
-            
+
             return await query.ToListAsync();
         }
 
-        public async Task RemoveSecurityMetrics(List<SecurityMetrics> metricsToDelete)
+        public Task RemoveSecurityMetrics(List<SecurityMetrics> metricsToDelete)
         {
             _context.SecurityMetrics.RemoveRange(metricsToDelete);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         public async Task<int> GetSecurityAuditLogsCountAsync()
@@ -545,12 +561,12 @@ namespace TaskTrackerAPI.Repositories
             return await _context.SystemHealthMetrics.CountAsync();
         }
 
-        public async Task RemoveAllSecurityLogs()
+        public Task RemoveAllSecurityLogs()
         {
             _context.SecurityAuditLogs.RemoveRange(_context.SecurityAuditLogs);
             _context.SecurityMetrics.RemoveRange(_context.SecurityMetrics);
             _context.SystemHealthMetrics.RemoveRange(_context.SystemHealthMetrics);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
         public async Task<int> GetRecentActivityAsync(DateTime since)
@@ -559,5 +575,28 @@ namespace TaskTrackerAPI.Repositories
                 .Where(log => log.Timestamp >= since)
                 .CountAsync();
         }
+
+        public async Task<bool> DeleteUserActivityLogAsync(int userId)
+        {
+            try
+            {
+                List<SecurityAuditLog> userLogs = await _context.SecurityAuditLogs
+                    .Where(log => log.UserId == userId)
+                    .ToListAsync();
+
+                if (userLogs.Any())
+                {
+                    _context.SecurityAuditLogs.RemoveRange(userLogs);
+                    await _context.SaveChangesAsync();
+                    return true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
-} 
+}

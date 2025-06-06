@@ -77,6 +77,17 @@ public class User
     
     public virtual ICollection<UserDevice> Devices { get; set; } = new List<UserDevice>();
 
+    // Multi-Factor Authentication fields
+    [Encrypt(purpose: "MFA")]
+    public string? MFASecret { get; set; }
+
+    public bool MFAEnabled { get; set; } = false;
+
+    [Encrypt(purpose: "MFA")]
+    public string? BackupCodes { get; set; } // JSON array of backup codes
+
+    public DateTime? MFASetupDate { get; set; }
+
     public FamilyMemberAgeGroup AgeGroup { get; set; } = FamilyMemberAgeGroup.Adult;
 }
 

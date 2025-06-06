@@ -32,7 +32,7 @@ namespace TaskTrackerAPI.Models
         [Required]
         public DateTime AttemptTime { get; set; }
         
-        [MaxLength(100)]
+        [MaxLength(1000)]
         public string? FailureReason { get; set; }
         
         // Geolocation data

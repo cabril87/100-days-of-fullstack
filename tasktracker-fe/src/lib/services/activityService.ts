@@ -3,21 +3,8 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
-import { FamilyActivityItem, UserProgress } from '../types/dashboard';
-import { ApiResponse, BackendUserProgressResponse } from '../types/task';
-
-// Base API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-const API_VERSION = 'v1';
-
-// Helper function to get auth headers
-const getAuthHeaders = (): HeadersInit => {
-  const token = localStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
+import { FamilyActivityItem, UserProgress, BackendActivityItem, UserProgressApiResponse } from '../types/dashboard';
+import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors
 export class ActivityApiError extends Error {
@@ -32,215 +19,203 @@ export class ActivityApiError extends Error {
   }
 }
 
-// Helper function to handle API responses
-async function handleApiResponse<T>(response: Response, allowNotFound: boolean = false): Promise<T | null> {
-  if (!response.ok) {
-    if (response.status === 404 && allowNotFound) {
-      return null;
-    }
-    
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new ActivityApiError(
-      errorData.message || `HTTP ${response.status}`,
-      response.status,
-      errorData.code,
-      errorData.errors
-    );
-  }
-  
-  return response.json();
-}
-
 export class ActivityService {
-  private readonly baseUrl: string;
-
-  constructor() {
-    this.baseUrl = `${API_BASE_URL}/api/${API_VERSION}`;
-  }
-
   /**
    * Get recent family activity for dashboard
    */
   async getFamilyActivity(familyId: number, limit: number = 10): Promise<FamilyActivityItem[]> {
-    const response = await fetch(
-      `${this.baseUrl}/activity/family/${familyId}/recent?limit=${limit}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
-      }
-    );
-
-    const result = await handleApiResponse<FamilyActivityItem[]>(response, true);
-    
-    // Return mock data for now until backend implements activity tracking
-    if (!result) {
-      return this.getMockFamilyActivity();
+    // Return empty array if familyId is invalid
+    if (!familyId || familyId === undefined || isNaN(familyId)) {
+      return [];
     }
 
-    return result;
+    try {
+      const result = await apiClient.get<{ success: boolean; data: BackendActivityItem[] }>(
+        `/api/v1/activity/family/${familyId}/recent?limit=${limit}`
+      );
+      
+      if (result && result.data) {
+        // Transform backend FamilyActivityDTO to frontend FamilyActivityItem
+        return result.data.map((activity: BackendActivityItem) => {
+          const actionType = activity.actionType || activity.type || 'UNKNOWN';
+          const actorName = activity.actorDisplayName || activity.actor?.displayName || `User ${activity.actorId}`;
+          const timestamp = activity.timestamp || activity.createdAt || new Date().toISOString();
+          
+          return {
+            id: activity.id.toString(),
+            type: this.mapBackendActionTypeToFrontend(actionType),
+            memberName: actorName,
+            description: activity.description || `performed ${actionType}`,
+            timestamp: new Date(timestamp),
+            points: this.estimatePointsFromActivity(actionType),
+            taskTitle: activity.entityType === 'Task' ? activity.description : undefined,
+            goalTitle: activity.entityType === 'Goal' ? activity.description : undefined
+          };
+        });
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch family activity:', error);
+      
+      // Check if it's a 401 unauthorized error (user not member of family)
+      if (error instanceof Error && error.message.includes('401')) {
+        console.warn('User not authorized to view family activity, likely not a family member');
+      }
+      
+      return [];
+    }
   }
 
   /**
    * Get user's progress and achievements
    */
-     async getUserProgress(): Promise<UserProgress> {
-     const response = await fetch(
-       `${this.baseUrl}/gamification/progress`,
-       {
-         method: 'GET',
-         headers: getAuthHeaders(),
-       }
-     );
+  async getUserProgress(): Promise<UserProgress> {
+    try {
+      const result = await apiClient.get<UserProgressApiResponse>('/api/v1/gamification/progress');
+      
+      // Transform backend UserProgressDTO to our frontend UserProgress type
+      if (result && result.data) {
+        const backendProgress = result.data;
+        const totalExperience = backendProgress.totalPoints || 0;
+        const pointsToNext = backendProgress.pointsToNextLevel || 100;
+        
+        return {
+          currentLevel: backendProgress.currentLevel || 1,
+          pointsToNextLevel: pointsToNext,
+          experiencePercentage: this.calculateExperiencePercentage(totalExperience, pointsToNext),
+          totalExperience: totalExperience,
+          achievements: [] // Will be populated when achievements endpoint is connected
+        };
+      }
+      
+      // Return default progress for new users
+      return {
+        currentLevel: 1,
+        pointsToNextLevel: 100,
+        experiencePercentage: 0,
+        totalExperience: 0,
+        achievements: []
+      };
+    } catch (error) {
+      console.error('Failed to fetch user progress:', error);
+      
+      // Return default progress
+      return {
+        currentLevel: 1,
+        pointsToNextLevel: 100,
+        experiencePercentage: 0,
+        totalExperience: 0,
+        achievements: []
+      };
+    }
+  }
 
-     const result = await handleApiResponse<ApiResponse<BackendUserProgressResponse>>(response, true);
-     
-     // Transform backend UserProgressDTO to our frontend UserProgress type
-     if (result && result.data) {
-       const backendProgress = result.data;
-       return {
-         currentLevel: backendProgress.currentLevel || 1,
-         pointsToNextLevel: backendProgress.pointsToNextLevel || 100,
-         experiencePercentage: this.calculateExperiencePercentage(
-           backendProgress.totalPoints || 0, 
-           backendProgress.pointsToNextLevel || 100
-         ),
-         totalExperience: backendProgress.totalPoints || 0,
-         achievements: [] // Will be populated when achievements endpoint is connected
-       };
-     }
-     
-     // Return mock data for development
-     return this.getMockUserProgress();
-   }
-
-   /**
-    * Calculate experience percentage for the progress bar
-    */
-   private calculateExperiencePercentage(totalPoints: number, pointsToNext: number): number {
-     if (pointsToNext <= 0) return 100;
-     const currentLevelPoints = totalPoints % (pointsToNext + totalPoints);
-     return Math.min(100, Math.round((currentLevelPoints / pointsToNext) * 100));
-   }
+  /**
+   * Calculate experience percentage for the progress bar
+   */
+  private calculateExperiencePercentage(totalPoints: number, pointsToNext: number): number {
+    if (pointsToNext <= 0) return 100;
+    const currentLevelPoints = totalPoints % (pointsToNext + totalPoints);
+    return Math.min(100, Math.round((currentLevelPoints / pointsToNext) * 100));
+  }
 
   /**
    * Get user's recent activity
    */
   async getUserActivity(limit: number = 10): Promise<FamilyActivityItem[]> {
-    const response = await fetch(
-      `${this.baseUrl}/activity/recent?limit=${limit}`,
-      {
-        method: 'GET',
-        headers: getAuthHeaders(),
+    try {
+      const result = await apiClient.get<{ success: boolean; data: BackendActivityItem[] }>(
+        `/api/v1/activity/recent?limit=${limit}`
+      );
+      
+      if (result && result.data) {
+        // Transform backend user activity to frontend FamilyActivityItem
+        return result.data.map((activity: BackendActivityItem) => {
+          const actionType = activity.actionType || activity.type || 'UNKNOWN';
+          const actorName = activity.actorDisplayName || activity.user?.displayName || 'You';
+          const timestamp = activity.timestamp || activity.createdAt || new Date().toISOString();
+          
+          return {
+            id: activity.id.toString(),
+            type: this.mapBackendActionTypeToFrontend(actionType),
+            memberName: actorName,
+            description: activity.description || `performed ${actionType}`,
+            timestamp: new Date(timestamp),
+            points: this.estimatePointsFromActivity(actionType)
+          };
+        });
       }
-    );
-
-    const result = await handleApiResponse<FamilyActivityItem[]>(response, true);
-    
-    // Return mock data for now until backend implements activity tracking
-    if (!result) {
-      return this.getMockUserActivity();
+      
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch user activity:', error);
+      return [];
     }
-
-    return result;
   }
 
   /**
-   * Mock family activity data for development
+   * Map backend action types to frontend activity types
    */
-  private getMockFamilyActivity(): FamilyActivityItem[] {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'task_completed',
-        memberName: 'Sarah Johnson',
-        description: 'completed "Clean the kitchen"',
-        timestamp: new Date(now.getTime() - 30 * 60 * 1000), // 30 minutes ago
-        points: 25,
-        taskTitle: 'Clean the kitchen'
-      },
-      {
-        id: '2',
-        type: 'member_joined',
-        memberName: 'Mike Johnson',
-        description: 'joined the family',
-        timestamp: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 hours ago
-        points: 50
-      },
-      {
-        id: '3',
-        type: 'goal_achieved',
-        memberName: 'Emma Johnson',
-        description: 'achieved "Complete 5 tasks this week"',
-        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000), // 4 hours ago
-        points: 100,
-        goalTitle: 'Complete 5 tasks this week'
-      },
-      {
-        id: '4',
-        type: 'points_earned',
-        memberName: 'Dad',
-        description: 'earned 15 points from "Take out trash"',
-        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000), // 6 hours ago
-        points: 15
-      }
-    ];
+  private mapBackendActionTypeToFrontend(actionType: string): 'task_completed' | 'goal_achieved' | 'member_joined' | 'points_earned' | 'family_created' | 'invitation_sent' {
+    switch (actionType.toLowerCase()) {
+      case 'task_completed':
+      case 'completed_task':
+      case 'taskcompletion':
+        return 'task_completed';
+      case 'goal_achieved':
+      case 'achieved_goal':
+      case 'goalcompletion':
+        return 'goal_achieved';
+      case 'member_joined':
+      case 'joined_family':
+      case 'familymemberadded':
+        return 'member_joined';
+      case 'points_earned':
+      case 'earned_points':
+      case 'pointsearned':
+        return 'points_earned';
+      case 'family_created':
+      case 'created_family':
+      case 'familycreated':
+        return 'family_created';
+      case 'invitation_sent':
+      case 'sent_invitation':
+      case 'invitationsent':
+        return 'invitation_sent';
+      default:
+        return 'points_earned'; // Default fallback
+    }
   }
 
   /**
-   * Mock user progress data for development
+   * Estimate points from activity type
    */
-  private getMockUserProgress(): UserProgress {
-    return {
-      currentLevel: 5,
-      pointsToNextLevel: 150,
-      experiencePercentage: 75,
-      totalExperience: 850,
-      achievements: [
-        {
-          id: 'first_task',
-          title: 'First Steps',
-          description: 'Complete your first task',
-          pointsRewarded: 25,
-          unlockedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-          category: 'productivity'
-        },
-        {
-          id: 'team_player',
-          title: 'Team Player',
-          description: 'Join a family',
-          pointsRewarded: 50,
-          unlockedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
-          category: 'family'
-        }
-      ]
-    };
-  }
-
-  /**
-   * Mock user activity data for development
-   */
-  private getMockUserActivity(): FamilyActivityItem[] {
-    const now = new Date();
-    return [
-      {
-        id: '1',
-        type: 'task_completed',
-        memberName: 'You',
-        description: 'completed "Review family budget"',
-        timestamp: new Date(now.getTime() - 45 * 60 * 1000), // 45 minutes ago
-        points: 30,
-        taskTitle: 'Review family budget'
-      },
-      {
-        id: '2',
-        type: 'family_created',
-        memberName: 'You',
-        description: 'created the Johnson Family',
-        timestamp: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        points: 100
-      }
-    ];
+  private estimatePointsFromActivity(actionType: string): number {
+    switch (actionType.toLowerCase()) {
+      case 'task_completed':
+      case 'completed_task':
+      case 'taskcompletion':
+        return 10;
+      case 'goal_achieved':
+      case 'achieved_goal':
+      case 'goalcompletion':
+        return 50;
+      case 'member_joined':
+      case 'joined_family':
+      case 'familymemberadded':
+        return 25;
+      case 'family_created':
+      case 'created_family':
+      case 'familycreated':
+        return 100;
+      case 'invitation_sent':
+      case 'sent_invitation':
+      case 'invitationsent':
+        return 5;
+      default:
+        return 0;
+    }
   }
 }
 

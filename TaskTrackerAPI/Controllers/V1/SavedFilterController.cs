@@ -25,7 +25,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiVersion("1.0")]
     [Authorize]
     [ApiController]
-    [Route("api/v{version:apiVersion}/saved-filters")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]
     public class SavedFilterController : BaseApiController
     {

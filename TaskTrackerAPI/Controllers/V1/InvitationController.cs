@@ -20,6 +20,7 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Collections.Generic;
 using TaskTrackerAPI.Controllers.V2;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -27,7 +28,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class InvitationController : BaseApiController
     {
         private readonly IInvitationService _invitationService;
@@ -107,6 +107,30 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 _logger.LogError(ex, "Error retrieving pending invitations");
                 return ApiServerError<IEnumerable<InvitationResponseDTO>>("An error occurred while retrieving pending invitations.");
+            }
+        }
+
+        [HttpGet("sent")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<InvitationDTO>>>> GetSentInvitations()
+        {
+            try
+            {
+                if (!User.TryGetUserIdAsInt(out int userId))
+                {
+                    _logger.LogWarning("Unable to retrieve user ID from claims in GetSentInvitations");
+                    return ApiUnauthorized<IEnumerable<InvitationDTO>>("User authentication failed");
+                }
+                
+                IEnumerable<InvitationDTO> invitations = await _invitationService.GetAllAsync();
+                // Filter invitations created by the current user with null safety
+                IEnumerable<InvitationDTO> sentInvitations = invitations.Where(i => i.CreatedBy?.Id == userId);
+                
+                return ApiOk(sentInvitations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving sent invitations");
+                return ApiServerError<IEnumerable<InvitationDTO>>("An error occurred while retrieving sent invitations.");
             }
         }
 

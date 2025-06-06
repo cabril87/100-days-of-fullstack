@@ -316,7 +316,7 @@ public class BoardSettingsRepository : IBoardSettingsRepository
 
             List<BoardSettings> archivedSettings = await _context.BoardSettings
                 .Include(s => s.Board)
-                .Where(s => s.Board.UserId == userId && s.IsArchived)
+                .Where(s => s.Board != null && s.Board.UserId == userId && s.IsArchived)
                 .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
                 .ToListAsync();
 
@@ -341,8 +341,8 @@ public class BoardSettingsRepository : IBoardSettingsRepository
 
             List<BoardSettings> themeSettings = await _context.BoardSettings
                 .Include(s => s.Board)
-                .Where(s => s.Board.UserId == userId && s.Theme == theme && !s.IsArchived)
-                .OrderBy(s => s.Board.Name)
+                .Where(s => s.Board != null && s.Board.UserId == userId && s.Theme == theme && !s.IsArchived)
+                .OrderBy(s => s.Board != null ? s.Board.Name : "")
                 .ToListAsync();
 
             _logger.LogInformation("Found {Count} board settings with theme {Theme} for user {UserId}", 
@@ -366,8 +366,8 @@ public class BoardSettingsRepository : IBoardSettingsRepository
 
             List<BoardSettings> gamifiedSettings = await _context.BoardSettings
                 .Include(s => s.Board)
-                .Where(s => s.Board.UserId == userId && s.EnableGamification && !s.IsArchived)
-                .OrderBy(s => s.Board.Name)
+                .Where(s => s.Board != null && s.Board.UserId == userId && s.EnableGamification && !s.IsArchived)
+                .OrderBy(s => s.Board != null ? s.Board.Name : "")
                 .ToListAsync();
 
             _logger.LogInformation("Found {Count} gamified board settings for user {UserId}", 

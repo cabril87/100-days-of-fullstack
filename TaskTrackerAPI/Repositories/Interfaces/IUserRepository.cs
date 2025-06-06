@@ -43,4 +43,12 @@ public interface IUserRepository
     // Authentication helper methods
     Task<bool> IsValidUserCredentialsAsync(string email, string password);
     Task<User?> GetByIdAsync(int id);
+    
+    // MFA methods
+    Task<bool> IsMFAEnabledAsync(int userId);
+    Task<string?> GetMFASecretAsync(int userId);
+    Task UpdateMFASecretAsync(int userId, string secret);
+    Task EnableMFAAsync(int userId, string secret, string backupCodes);
+    Task DisableMFAAsync(int userId);
+    Task UpdateBackupCodesAsync(int userId, string backupCodes);
 }

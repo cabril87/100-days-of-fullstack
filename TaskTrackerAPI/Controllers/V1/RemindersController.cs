@@ -28,7 +28,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class RemindersController : BaseApiController
     {
         private readonly ILogger<RemindersController> _logger;

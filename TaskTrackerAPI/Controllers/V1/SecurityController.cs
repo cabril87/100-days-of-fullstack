@@ -25,8 +25,9 @@ namespace TaskTrackerAPI.Controllers.V1
     /// Controller for handling security-related functionality
     /// </summary>
     [ApiController]
-    [Route("api/v1/security")]
-    [Route("api/security")] // Legacy route for backward compatibility
+    [Authorize]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class SecurityController : BaseApiController
     {
         private readonly ILogger<SecurityController> _logger;

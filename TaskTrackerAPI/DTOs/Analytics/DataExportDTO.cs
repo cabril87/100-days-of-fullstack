@@ -119,4 +119,18 @@ namespace TaskTrackerAPI.DTOs.Analytics
         public bool Required { get; set; }
         public object? DefaultValue { get; set; }
     }
+
+    /// <summary>
+    /// Simple data export request DTO for frontend compatibility
+    /// </summary>
+    public class SimpleDataExportRequestDTO
+    {
+        [Required]
+        [StringLength(50)]
+        public string ExportType { get; set; } = "complete"; // complete, profile_only, activity_only, family_only
+
+        [Required]
+        [StringLength(20)]
+        public string Format { get; set; } = "json"; // json, csv, pdf
+    }
 } 

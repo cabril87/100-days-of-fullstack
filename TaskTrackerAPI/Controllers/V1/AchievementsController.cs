@@ -25,7 +25,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiVersion("1.0")]
     [Authorize]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class AchievementsController : BaseApiController
     {
         private readonly IAchievementService _achievementService;

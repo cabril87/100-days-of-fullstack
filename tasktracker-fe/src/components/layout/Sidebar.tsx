@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { useState, useEffect, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
 
@@ -15,9 +15,11 @@ interface SidebarProps {
 export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     dashboard: true,
     tasks: true,
+    families: true,
     family: true,
     gamification: true,
     admin: true,
@@ -27,6 +29,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
 
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
   const isAdmin = user?.role.toLowerCase() === 'admin';
+  const isGlobalAdmin = user?.email === 'admin@tasktracker.com' || user?.role.toLowerCase() === 'globaladmin';
   const isFamilyAdmin = user?.isFamilyAdmin || isAdmin;
   const userPoints = user?.points || 0;
 
@@ -258,6 +261,44 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               )}
             </div>
 
+            {/* Families Section */}
+            <div>
+              <button
+                onClick={() => toggleSection('families')}
+                className="flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              >
+                <span className="flex items-center gap-2">
+                  👨‍👩‍👧‍👦 Family
+                  <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse"></span>
+                </span>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${expandedSections.families ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {expandedSections.families && (
+                <div className="space-y-1 ml-4">
+                  <Link
+                    href="/families"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/families')
+                        ? 'bg-purple-500/20 border-l-4 border-purple-400 text-purple-700 dark:text-purple-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    🏠 My Families
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      NEW
+                    </span>
+                  </Link>
+                </div>
+              )}
+            </div>
+
             {/* Settings Section */}
             <div>
               <button
@@ -306,6 +347,9 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     >
                       👨‍👩‍👧‍👦 Family Management
                       {isAdmin && <span className="text-xs">👑</span>}
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                        ✨ Smart
+                      </span>
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         ✓
                       </span>
@@ -392,14 +436,117 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               )}
             </div>
 
+            {/* Global Admin Section */}
+            {isGlobalAdmin && (
+              <div>
+                <button
+                  onClick={() => toggleSection('admin')}
+                  className="flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <span className="flex items-center gap-2">
+                    👑 Global Admin
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-orange-500 text-white shadow-sm">
+                      ADMIN
+                    </span>
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transform transition-transform ${expandedSections.admin ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {expandedSections.admin && (
+                  <div className="space-y-1 ml-4">
+                    <Link
+                      href="/admin"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin') && pathname === '/admin'
+                          ? 'bg-yellow-500/20 border-l-4 border-yellow-400 text-yellow-700 dark:text-yellow-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      👑 Admin Dashboard
+                    </Link>
+                    <Link
+                      href="/admin/user-creation"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/user-creation')
+                          ? 'bg-blue-500/20 border-l-4 border-blue-400 text-blue-700 dark:text-blue-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      👥 User Creation
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        ADMIN
+                      </span>
+                    </Link>
+                    <Link
+                      href="/admin/family-seeding"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/family-seeding')
+                          ? 'bg-green-500/20 border-l-4 border-green-400 text-green-700 dark:text-green-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      🌱 Family Seeding
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        DEV
+                      </span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Quick Actions */}
             <div className="pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">⚡ Quick Actions</h3>
               <div className="space-y-2">
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300">
+                <button 
+                  onClick={() => {
+                    router.push('/tasks');
+                    handleClose();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                >
                   ➕ New Task
                 </button>
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300">
+                <button 
+                  onClick={() => {
+                    router.push('/families');
+                    handleClose();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                >
+                  👨‍👩‍👧‍👦 My Families
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    NEW
+                  </span>
+                </button>
+                {isFamilyAdmin && (
+                  <button 
+                    onClick={() => {
+                      router.push('/settings/family');
+                      handleClose();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                  >
+                    ✨ Smart Invite
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      NEW
+                    </span>
+                  </button>
+                )}
+                <button 
+                  onClick={() => {
+                    router.push('/dashboard');
+                    handleClose();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                >
                   ⏰ Set Reminder
                 </button>
               </div>

@@ -50,7 +50,7 @@ namespace TaskTrackerAPI.Middleware
                 "/images"
             };
             
-            // Endpoints to apply reduced validation (task-related endpoints)
+            // Endpoints to apply reduced validation (task-related endpoints and session management)
             _reducedValidationPaths = new HashSet<string>
             {
                 "/api/v1/taskitems",
@@ -61,7 +61,9 @@ namespace TaskTrackerAPI.Middleware
                 "/api/v1/family",
                 "/api/v1/boards",
                 "/api/v1/board-templates",
-                "/api/v1/board-settings"
+                "/api/v1/board-settings",
+                "/api/v1/securitymonitoring/sessions",
+                "/api/v1/notifications"
             };
         }
 

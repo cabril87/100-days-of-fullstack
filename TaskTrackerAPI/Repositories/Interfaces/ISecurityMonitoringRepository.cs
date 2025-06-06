@@ -24,36 +24,38 @@ namespace TaskTrackerAPI.Repositories.Interfaces
         Task<IEnumerable<FailedLoginAttempt>> GetFailedLoginsAsync(string? emailOrUsername = null, DateTime? startDate = null, DateTime? endDate = null);
         Task<int> GetFailedLoginCountAsync(string emailOrUsername, DateTime sinceDate);
         Task<FailedLoginAttempt> CreateFailedLoginAttemptAsync(FailedLoginAttempt attempt);
-        
+
         // Security Audit Events
         Task<IEnumerable<SecurityAuditLog>> GetSecurityEventsAsync(DateTime? startDate = null, DateTime? endDate = null);
         Task<IEnumerable<SecurityAuditLog>> GetUserSecurityEventsAsync(int userId, DateTime? startDate = null, DateTime? endDate = null);
         Task<SecurityAuditLog> CreateSecurityEventAsync(SecurityAuditLog securityEvent);
         Task<int> GetSecurityEventCountAsync(string eventType, DateTime sinceDate);
-        
+
         // IP Address Monitoring
         Task<IEnumerable<string>> GetFailedLoginIPAddressesAsync(DateTime? sinceDate = null);
         Task<IEnumerable<FailedLoginAttempt>> GetLoginsFromIPAsync(string ipAddress, DateTime? sinceDate = null);
         Task<bool> IsIPAddressBlockedAsync(string ipAddress);
-        
+
         // Device Monitoring
         Task<IEnumerable<UserDevice>> GetUserDevicesAsync(int userId);
         Task<UserDevice?> GetUserDeviceAsync(int userId, string deviceId);
-        
+        Task UpdateUserDeviceAsync(UserDevice device);
+        Task DeleteUserDeviceAsync(int deviceId);
+
         // Suspicious Activity
         Task<IEnumerable<FailedLoginAttempt>> GetSuspiciousLoginsAsync(DateTime? sinceDate = null);
         Task<IEnumerable<SecurityAuditLog>> GetHighRiskEventsAsync(DateTime? sinceDate = null);
         Task<bool> HasSuspiciousActivityAsync(string identifier, DateTime sinceDate);
-        
+
         // Rate Limiting
         Task<int> GetRequestCountAsync(string identifier, DateTime sinceDate);
         Task<DateTime?> GetLastRequestTimeAsync(string identifier);
         Task RecordRequestAsync(string identifier, string endpoint, string method);
-        
+
         // Geographic Analytics
         Task<Dictionary<string, int>> GetLoginsByLocationAsync(DateTime? startDate = null, DateTime? endDate = null);
         Task<IEnumerable<FailedLoginAttempt>> GetLoginsFromUnusualLocationsAsync(string emailOrUsername);
-        
+
         // Session Management
         Task<IEnumerable<UserSession>> GetActiveSessionsAsync(int userId);
         Task<UserSession?> GetSessionAsync(string sessionId);
@@ -61,7 +63,7 @@ namespace TaskTrackerAPI.Repositories.Interfaces
         Task UpdateSessionAsync(UserSession session);
         Task InvalidateSessionAsync(string sessionId);
         Task InvalidateUserSessionsAsync(int userId, string? excludeSessionId = null);
-        
+
         // Security Monitoring Service specific methods
         Task<List<SecurityAuditLog>> GetSecurityAuditLogsAsync(DateTime startDate, DateTime endDate);
         Task<int> GetActiveUsersAsync(DateTime since);
@@ -80,7 +82,7 @@ namespace TaskTrackerAPI.Repositories.Interfaces
         Task<List<SecurityAuditLog>> GetTopEndpointsAuditLogsAsync(DateTime since);
         Task<List<UserActivityDTO>> GetTopUsersAsync(DateTime since, int limit);
         Task<List<SecurityAuditLog>> GetStatusCodeAuditLogsAsync(DateTime since);
-        
+
         // Data persistence methods
         Task AddSecurityMetricAsync(SecurityMetrics metric);
         Task AddSecurityAuditLogAsync(SecurityAuditLog auditLog);
@@ -95,5 +97,8 @@ namespace TaskTrackerAPI.Repositories.Interfaces
         Task<int> GetSystemHealthMetricsCountAsync();
         Task RemoveAllSecurityLogs();
         Task<int> GetRecentActivityAsync(DateTime since);
+        
+        // User Activity Log methods
+        Task<bool> DeleteUserActivityLogAsync(int userId);
     }
-} 
+}

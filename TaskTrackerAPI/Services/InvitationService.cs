@@ -52,8 +52,21 @@ public class InvitationService : IInvitationService
 
     public async Task<IEnumerable<InvitationDTO>> GetAllAsync()
     {
-        IEnumerable<Invitation> invitations = await _invitationRepository.GetAllAsync();
-        return _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
+        try
+        {
+            IEnumerable<Invitation> invitations = await _invitationRepository.GetAllAsync();
+            IEnumerable<InvitationDTO> mappedInvitations = _mapper.Map<IEnumerable<InvitationDTO>>(invitations);
+            
+            // Log any potential mapping issues
+            _logger.LogInformation("Retrieved {Count} invitations successfully", mappedInvitations.Count());
+            
+            return mappedInvitations;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all invitations");
+            throw;
+        }
     }
 
     public async Task<InvitationDTO?> GetByIdAsync(int id)

@@ -30,7 +30,8 @@ export default function DashboardPage() {
     familyMembers: 0,
     familyTasks: 0,
     familyPoints: 0,
-    streakDays: 0
+    streakDays: 0,
+    totalFamilies: 0
   });
   const [currentFamily, setCurrentFamily] = useState<FamilyDTO | null>(null);
   const [hasFamily, setHasFamily] = useState(false);
@@ -53,8 +54,9 @@ export default function DashboardPage() {
       setError('');
 
       // Load all dashboard data in parallel
-      const [family, userTaskStats, userProgressData] = await Promise.all([
-        familyInvitationService.getCurrentFamily(),
+      const [allFamilies, family, userTaskStats, userProgressData] = await Promise.all([
+        familyInvitationService.getAllFamilies(),
+        familyInvitationService.getUserFamily(),
         taskService.getUserTaskStats(),
         activityService.getUserProgress()
       ]);
@@ -72,16 +74,32 @@ export default function DashboardPage() {
 
       let activityData: FamilyActivityItem[] = [];
 
-      if (family) {
-        // Load family-specific data only if user has a family
+      if (family?.id) {
+        // Load family-specific data only if user has a family with valid ID
         try {
-          [familyStats, activityData] = await Promise.all([
-            familyInvitationService.getFamilyStats(family.id),
+          const [members, activityDataResult] = await Promise.all([
+            familyInvitationService.getFamilyMembers(family.id),
             activityService.getFamilyActivity(family.id, 5)
           ]);
+          
+          // Calculate basic family stats from members
+          familyStats = {
+            memberCount: members.length,
+            activeInvitations: 0,
+            totalTasksCompleted: 0,
+            totalPointsEarned: members.reduce((sum, member) => sum + (member.user?.points || 0), 0)
+          };
+          
+          activityData = activityDataResult;
         } catch (error) {
           console.warn('Failed to load some family data:', error);
-          // Continue with default values
+          // If family activity fails with 401, it means user doesn't have permission
+          // Fall back to user activity
+          try {
+            activityData = await activityService.getUserActivity(5);
+          } catch (fallbackError) {
+            console.warn('Failed to load user activity as fallback:', fallbackError);
+          }
         }
       } else {
         // Load user activity if no family
@@ -96,14 +114,16 @@ export default function DashboardPage() {
 
       // Update dashboard stats with real data
       setDashboardStats({
-        tasksCompleted: userTaskStats.tasksCompletedThisWeek,
-        activeGoals: userTaskStats.activeGoals,
-        focusTime: userTaskStats.focusTimeToday,
-        totalPoints: userTaskStats.totalPoints,
-        familyMembers: familyStats.memberCount,
-        familyTasks: familyStats.totalTasksCompleted,
-        familyPoints: familyStats.totalPointsEarned,
-        streakDays: userTaskStats.streakDays
+        tasksCompleted: userTaskStats?.tasksCompletedThisWeek || 0,
+        activeGoals: userTaskStats?.activeGoals || 0,
+        focusTime: userTaskStats?.focusTimeToday || 0,
+        totalPoints: userTaskStats?.totalPoints || 0,
+        familyMembers: familyStats?.memberCount || 0,
+        familyTasks: familyStats?.totalTasksCompleted || 0,
+        familyPoints: familyStats?.totalPointsEarned || 0,
+        streakDays: userTaskStats?.streakDays || 0,
+        // Add total families count from getAllFamilies()
+        totalFamilies: allFamilies?.length || 0
       });
 
     } catch (error) {
@@ -240,7 +260,7 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Total Points"
-          value={dashboardStats.totalPoints.toLocaleString()}
+          value={(dashboardStats.totalPoints || 0).toLocaleString()}
           subtitle="lifetime"
           icon={Star}
           variant="purple"
@@ -249,7 +269,20 @@ export default function DashboardPage() {
 
       {/* Family Stats (if user has family) */}
       {hasFamily && currentFamily && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="border-indigo-200 dark:border-indigo-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <Users className="h-8 w-8 text-indigo-600" />
+                <div className="ml-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Your Families</p>
+                  <p className="text-2xl font-bold">{dashboardStats.totalFamilies}</p>
+                  <p className="text-xs text-gray-500">total joined</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-blue-200 dark:border-blue-800">
             <CardContent className="pt-6">
               <div className="flex items-center">
@@ -282,9 +315,37 @@ export default function DashboardPage() {
                 <TrendingUp className="h-8 w-8 text-purple-600" />
                 <div className="ml-4">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Family Points</p>
-                  <p className="text-2xl font-bold">{dashboardStats.familyPoints.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{(dashboardStats.familyPoints || 0).toLocaleString()}</p>
                   <p className="text-xs text-gray-500">total earned</p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Show family count even if user doesn't have a current family but belongs to families */}
+      {!hasFamily && dashboardStats.totalFamilies > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <Card className="border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-indigo-600" />
+                  <div className="ml-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Your Families</p>
+                    <p className="text-2xl font-bold">{dashboardStats.totalFamilies}</p>
+                    <p className="text-xs text-gray-500">families joined</p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => router.push('/families')}
+                  variant="outline"
+                  size="sm"
+                  className="border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+                >
+                  View All Families
+                </Button>
               </div>
             </CardContent>
           </Card>

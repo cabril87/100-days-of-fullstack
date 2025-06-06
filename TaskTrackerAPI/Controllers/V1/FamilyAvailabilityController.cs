@@ -26,7 +26,6 @@ namespace TaskTrackerAPI.Controllers.V1
     [Authorize]
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/availability")]
-    [Route("api/family/{familyId}/availability")]
     public class FamilyAvailabilityController : BaseApiController
     {
         private readonly IFamilyCalendarService _calendarService;

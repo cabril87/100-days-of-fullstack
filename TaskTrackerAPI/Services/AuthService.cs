@@ -173,12 +173,13 @@ public class AuthService : IAuthService
                 user.PasswordHash = newPasswordHash;
                 user.Salt = newSalt;
                 
-                // Save the updated user
-                await _userRepository.UpdateUserAsync(user);
-                
                 _logger.LogInformation("Password hash upgraded successfully for user: {EmailOrUsername}", 
                     loginDto.EmailOrUsername);
             }
+
+            // Update last login time (and password hash if upgraded)
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateUserAsync(user);
 
             // Generate JWT token
             string accessToken = GenerateAccessToken(user);
@@ -200,10 +201,6 @@ public class AuthService : IAuthService
             };
             
             await _userRepository.CreateRefreshTokenAsync(refreshTokenEntity);
-            
-            // Update last login time
-            user.UpdatedAt = DateTime.UtcNow;
-            await _userRepository.UpdateUserAsync(user);
 
             // Create session tracking entry
             try

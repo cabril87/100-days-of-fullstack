@@ -25,10 +25,9 @@ using TaskTrackerAPI.Controllers.V2;
 namespace TaskTrackerAPI.Controllers.V1
 {
     [ApiController]
-    [ApiVersion("1.0")]
     [Authorize]
+    [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
-    [Route("api/[controller]")]
     public class BadgesController : BaseApiController
     {
         private readonly ILogger<BadgesController> _logger;

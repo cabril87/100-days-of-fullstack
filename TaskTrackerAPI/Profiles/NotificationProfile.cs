@@ -28,6 +28,16 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.User, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedBy, opt => opt.Ignore());
                 
+            // CreateNotificationDTO -> Notification
+            CreateMap<CreateNotificationDTO, Notification>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ReadAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.User, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedBy, opt => opt.Ignore());
+                
             // NotificationPreference -> NotificationPreferenceDTO
             CreateMap<NotificationPreference, NotificationPreferenceDTO>()
                 .ForMember(dest => dest.FamilyName, opt => opt.MapFrom(src => src.Family != null ? src.Family.Name : null));

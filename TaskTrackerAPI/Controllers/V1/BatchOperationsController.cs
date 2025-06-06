@@ -28,8 +28,7 @@ using TaskTrackerAPI.Utils;
 namespace TaskTrackerAPI.Controllers.V1
 {
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/batch")]
-    [Route("api/batch")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     [Authorize]
     [RateLimit(20, 60)] // Strict limit for batch operations

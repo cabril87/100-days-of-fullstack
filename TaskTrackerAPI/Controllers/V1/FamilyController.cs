@@ -24,21 +24,24 @@ namespace TaskTrackerAPI.Controllers.V1
 {
     [Authorize]
     [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/family")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     public class FamilyController : BaseApiController
     {
         private readonly IFamilyService _familyService;
         private readonly IInvitationService _invitationService;
+        private readonly IFamilyRoleService _familyRoleService;
         private readonly ILogger<FamilyController> _logger;
 
         public FamilyController(
             IFamilyService familyService,
             IInvitationService invitationService,
+            IFamilyRoleService familyRoleService,
             ILogger<FamilyController> logger)
         {
             _familyService = familyService;
             _invitationService = invitationService;
+            _familyRoleService = familyRoleService;
             _logger = logger;
         }
 
@@ -81,7 +84,23 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
         
-        [HttpPost("createFamily")]
+        [HttpGet("is-family-admin")]
+        public async Task<ActionResult<ApiResponse<bool>>> IsUserFamilyAdmin()
+        {
+            try
+            {
+                int userId = GetUserId();
+                bool isFamilyAdmin = await _familyService.IsUserFamilyAdminAsync(userId);
+                return ApiOk(isFamilyAdmin);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if user is family admin");
+                return ApiServerError<bool>("An error occurred while checking family admin status.");
+            }
+        }
+        
+        [HttpPost]
         public async Task<ActionResult<ApiResponse<FamilyDTO>>> CreateFamily([FromBody] FamilyCreateDTO familyDto)
         {
             if (!ModelState.IsValid)
@@ -99,14 +118,26 @@ namespace TaskTrackerAPI.Controllers.V1
                 FamilyDTO family = await _familyService.CreateAsync(familyDto, userId);
                 return ApiCreated(family, "Family created successfully. You are now the leader of this family. Use the invite endpoint to invite members.");
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Children") || ex.Message.Contains("age"))
+            {
+                // Handle age-related restrictions with specific error codes
+                _logger.LogWarning("User {UserId} attempted to create family but failed age restrictions: {Message}", GetUserId(), ex.Message);
+                return ApiBadRequest<FamilyDTO>(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Handle other business logic errors
+                _logger.LogWarning("User {UserId} family creation failed: {Message}", GetUserId(), ex.Message);
+                return ApiBadRequest<FamilyDTO>(ex.Message);
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating family with details: {ex.Message}");
+                _logger.LogError(ex, "Error creating family for user {UserId}: {Message}", GetUserId(), ex.Message);
                 if (ex.InnerException != null)
                 {
-                    _logger.LogError(ex.InnerException, $"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
-                return ApiServerError<FamilyDTO>($"An error occurred while creating the family: {ex.Message}");
+                return ApiServerError<FamilyDTO>("An error occurred while creating the family. Please try again later.");
             }
         }
 
@@ -126,6 +157,41 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 _logger.LogError(ex, "Error retrieving family");
                 return ApiServerError<FamilyDTO>("An error occurred while retrieving the family.");
+            }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> UpdateFamily(int id, [FromBody] FamilyUpdateDTO familyDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                List<string> errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return ApiBadRequest<FamilyDTO>("Invalid family data", errors);
+            }
+
+            try
+            {
+                int userId = GetUserId();
+                FamilyDTO? updatedFamily = await _familyService.UpdateAsync(id, familyDto, userId);
+                
+                if (updatedFamily == null)
+                {
+                    return ApiNotFound<FamilyDTO>("Family not found or access denied");
+                }
+
+                return ApiOk(updatedFamily, "Family updated successfully");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return ApiUnauthorized<FamilyDTO>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating family with ID {FamilyId}", id);
+                return ApiServerError<FamilyDTO>("An error occurred while updating the family.");
             }
         }
 
@@ -156,6 +222,66 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 _logger.LogError(ex, "Error creating invitation: {Message}", ex.Message);
                 return ApiServerError<InvitationDTO>("An error occurred while creating the invitation.");
+            }
+        }
+
+        [HttpGet("{familyId}/members")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyMemberDTO>>>> GetFamilyMembers(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                _logger.LogInformation("Getting members for family {FamilyId} by user {UserId}", familyId, userId);
+                
+                IEnumerable<FamilyMemberDTO> members = await _familyService.GetMembersAsync(familyId, userId);
+                _logger.LogInformation("Successfully retrieved {MemberCount} members for family {FamilyId}", members.Count(), familyId);
+                
+                return ApiOk(members);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving family members for family {FamilyId} by user {UserId}: {ErrorMessage}", familyId, GetUserId(), ex.Message);
+                return ApiServerError<IEnumerable<FamilyMemberDTO>>($"An error occurred while retrieving family members: {ex.Message}");
+            }
+        }
+
+        [HttpGet("{familyId}/stats")]
+        public async Task<ActionResult<ApiResponse<object>>> GetFamilyStats(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                _logger.LogInformation("Getting stats for family {FamilyId} by user {UserId}", familyId, userId);
+                
+                // Check if user is a member of the family
+                if (!await _familyService.IsFamilyMemberAsync(familyId, userId))
+                {
+                    return ApiUnauthorized<object>("You are not a member of this family");
+                }
+
+                // Get family members count
+                IEnumerable<FamilyMemberDTO> members = await _familyService.GetMembersAsync(familyId, userId);
+                
+                // Create basic stats - you can expand this later
+                var stats = new
+                {
+                    MemberCount = members.Count(),
+                    AdminCount = members.Count(m => m.Role.Name == "Admin"),
+                    AdultCount = members.Count(m => m.Role.Name == "Adult"),
+                    ChildCount = members.Count(m => m.Role.Name == "Child"),
+                    TotalTasks = 0, // Placeholder - would need task service integration
+                    CompletedTasks = 0, // Placeholder
+                    PendingTasks = 0, // Placeholder
+                    LastActivity = DateTime.UtcNow // Placeholder
+                };
+                
+                _logger.LogInformation("Successfully retrieved stats for family {FamilyId}", familyId);
+                return ApiOk<object>(stats);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving family stats for family {FamilyId} by user {UserId}: {ErrorMessage}", familyId, GetUserId(), ex.Message);
+                return ApiServerError<object>($"An error occurred while retrieving family stats: {ex.Message}");
             }
         }
 
@@ -313,6 +439,248 @@ namespace TaskTrackerAPI.Controllers.V1
             {
                 _logger.LogError(ex, "Error deleting family with ID {FamilyId}", id);
                 return ApiServerError<object>($"An error occurred while deleting the family: {ex.Message}");
+            }
+        }
+
+        [HttpGet("admin-families")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyDTO>>>> GetAdminFamilies()
+        {
+            try
+            {
+                int userId = GetUserId();
+                var families = await _familyService.GetFamiliesUserIsAdminOfAsync(userId);
+                return ApiOk(families);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving admin families");
+                return ApiServerError<IEnumerable<FamilyDTO>>("An error occurred while retrieving admin families.");
+            }
+        }
+
+        [HttpGet("member-families")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyDTO>>>> GetMemberFamilies()
+        {
+            try
+            {
+                int userId = GetUserId();
+                var families = await _familyService.GetFamiliesUserIsMemberOfAsync(userId);
+                return ApiOk(families);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving member families");
+                return ApiServerError<IEnumerable<FamilyDTO>>("An error occurred while retrieving member families.");
+            }
+        }
+
+        [HttpGet("management-families")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyDTO>>>> GetManagementFamilies()
+        {
+            try
+            {
+                int userId = GetUserId();
+                var families = await _familyService.GetFamiliesUserHasManagementPrivilegesAsync(userId);
+                return ApiOk(families);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving management families");
+                return ApiServerError<IEnumerable<FamilyDTO>>("An error occurred while retrieving management families.");
+            }
+        }
+
+        [HttpPost("{familyId}/transfer-ownership")]
+        public async Task<ActionResult<ApiResponse<object>>> TransferFamilyOwnership(int familyId, [FromBody] TransferOwnershipDTO transferDto)
+        {
+            try
+            {
+                int currentOwnerId = GetUserId();
+                
+                if (familyId != transferDto.FamilyId)
+                {
+                    return ApiBadRequest<object>("Family ID in URL does not match the Family ID in request body");
+                }
+
+                bool success = await _familyService.TransferFamilyOwnershipAsync(familyId, currentOwnerId, transferDto.NewOwnerId);
+                
+                if (!success)
+                {
+                    return ApiBadRequest<object>("Family ownership transfer failed. Check permissions and age restrictions.");
+                }
+
+                return ApiOk<object>(new object(), "Family ownership transferred successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error transferring family ownership");
+                return ApiServerError<object>("An error occurred while transferring family ownership.");
+            }
+        }
+
+        [HttpGet("{familyId}/can-manage")]
+        public async Task<ActionResult<ApiResponse<bool>>> CanUserManageFamily(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                bool canManage = await _familyService.CanUserManageFamilyBasedOnAgeAsync(userId, familyId);
+                return ApiOk(canManage);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if user can manage family");
+                return ApiServerError<bool>("An error occurred while checking management permissions.");
+            }
+        }
+
+        [HttpGet("management-permissions")]
+        public async Task<ActionResult<ApiResponse<FamilyManagementPermissionsDTO>>> GetFamilyManagementPermissions([FromQuery] int? familyId = null)
+        {
+            try
+            {
+                int userId = GetUserId();
+                var permissions = await _familyService.GetUserFamilyManagementPermissionsAsync(userId, familyId);
+                return ApiOk(permissions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting family management permissions");
+                return ApiServerError<FamilyManagementPermissionsDTO>("An error occurred while getting management permissions.");
+            }
+        }
+
+        [HttpGet("user-relationships")]
+        public async Task<ActionResult<ApiResponse<UserFamilyRelationshipsDTO>>> GetUserFamilyRelationships()
+        {
+            try
+            {
+                int userId = GetUserId();
+                _logger.LogInformation("Getting family relationships for user ID: {UserId}", userId);
+                
+                UserFamilyRelationshipsDTO relationships = await _familyService.GetUserFamilyRelationshipsAsync(userId);
+                
+                _logger.LogInformation("User {UserId} family relationships: Admin={AdminCount}, Member={MemberCount}, Management={ManagementCount}", 
+                    userId, 
+                    relationships.AdminFamilies?.Count() ?? 0,
+                    relationships.MemberFamilies?.Count() ?? 0,
+                    relationships.ManagementFamilies?.Count() ?? 0);
+                
+                // Debug: Log family IDs if any exist
+                if (relationships.AdminFamilies?.Any() == true)
+                {
+                    List<int> adminFamilyIds = relationships.AdminFamilies.Select(f => f.Id).ToList();
+                    _logger.LogInformation("User {UserId} is admin of family IDs: [{FamilyIds}]", userId, string.Join(", ", adminFamilyIds));
+                }
+                if (relationships.MemberFamilies?.Any() == true)
+                {
+                    List<int> memberFamilyIds = relationships.MemberFamilies.Select(f => f.Id).ToList();
+                    _logger.LogInformation("User {UserId} is member of family IDs: [{FamilyIds}]", userId, string.Join(", ", memberFamilyIds));
+                }
+                
+                return ApiOk(relationships);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting user family relationships");
+                return ApiServerError<UserFamilyRelationshipsDTO>("An error occurred while getting family relationships.");
+            }
+        }
+
+        [HttpGet("roles")]
+        public async Task<ActionResult<ApiResponse<IEnumerable<FamilyRoleDTO>>>> GetFamilyRoles()
+        {
+            try
+            {
+                var roles = await _familyRoleService.GetAllAsync();
+                return ApiOk(roles);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting family roles");
+                return ApiServerError<IEnumerable<FamilyRoleDTO>>("An error occurred while retrieving family roles.");
+            }
+        }
+
+        [HttpPost("leave")]
+        public async Task<ActionResult<ApiResponse<object>>> LeaveFamily([FromBody] LeaveFamilyDTO? leaveFamilyDto = null)
+        {
+            try
+            {
+                int userId = GetUserId();
+                
+                FamilyDTO? targetFamily = null;
+                
+                // If family ID is specified, use that family
+                if (leaveFamilyDto?.FamilyId.HasValue == true)
+                {
+                    targetFamily = await _familyService.GetByIdAsync(leaveFamilyDto.FamilyId.Value);
+                    if (targetFamily == null)
+                    {
+                        return ApiBadRequest<object>("Specified family not found");
+                    }
+                    
+                    // Verify user is a member of this family
+                    IEnumerable<FamilyMemberDTO> members = await _familyService.GetMembersAsync(targetFamily.Id, userId);
+                    if (!members.Any(m => m.User.Id == userId))
+                    {
+                        return ApiBadRequest<object>("You are not a member of the specified family");
+                    }
+                }
+                else
+                {
+                    // No family ID specified - get user's families and use logic to determine which one
+                    IEnumerable<FamilyDTO> userFamilies = await _familyService.GetByUserIdAsync(userId);
+                    
+                    if (!userFamilies.Any())
+                    {
+                        return ApiBadRequest<object>("You are not a member of any family");
+                    }
+                    
+                    // If user belongs to only one family, use that one
+                    if (userFamilies.Count() == 1)
+                    {
+                        targetFamily = userFamilies.First();
+                    }
+                    else
+                    {
+                        // Multiple families - require the frontend to specify which one
+                        return ApiBadRequest<object>($"You are a member of {userFamilies.Count()} families. Please specify which family you want to leave by providing a familyId in the request body.");
+                    }
+                }
+
+                // Remove user from the family - find their member ID first
+                IEnumerable<FamilyMemberDTO> familyMembers = await _familyService.GetMembersAsync(targetFamily.Id, userId);
+                FamilyMemberDTO? userMember = familyMembers.FirstOrDefault(m => m.User.Id == userId);
+                
+                if (userMember == null)
+                {
+                    return ApiBadRequest<object>("You are not a member of this family");
+                }
+
+                // Check if user is the only admin
+                int adminCount = familyMembers.Count(m => m.Role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+                bool userIsAdmin = userMember.Role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+                
+                if (userIsAdmin && adminCount == 1)
+                {
+                    return ApiBadRequest<object>($"Cannot leave '{targetFamily.Name}' because you are the only admin. Please promote another member to admin first, or transfer ownership.");
+                }
+
+                // Remove user from the family
+                bool success = await _familyService.RemoveMemberAsync(targetFamily.Id, userMember.Id, userId);
+                
+                if (!success)
+                {
+                    return ApiBadRequest<object>("Failed to leave family due to an unknown error.");
+                }
+
+                return ApiOk<object>(new object(), $"Successfully left '{targetFamily.Name}'");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error leaving family for user {UserId}", GetUserId());
+                return ApiServerError<object>("An error occurred while leaving the family.");
             }
         }
     }

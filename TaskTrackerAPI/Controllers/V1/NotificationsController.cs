@@ -24,8 +24,8 @@ namespace TaskTrackerAPI.Controllers.V1
 {
     [ApiVersion("1.0")]
     [Authorize]
-    [Route("api/v{version:apiVersion}/notifications")]
-    [Route("api/notifications")]
+    [ApiController]
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class NotificationsController : BaseApiController
     {
         private readonly INotificationService _notificationService;

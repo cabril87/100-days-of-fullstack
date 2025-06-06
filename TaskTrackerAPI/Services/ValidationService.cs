@@ -145,6 +145,13 @@ namespace TaskTrackerAPI.Services
                 return false;
             }
             
+            // Skip checks for session tokens (base64-like strings with dashes and underscores)
+            if (IsSessionToken(input))
+            {
+                _logger.LogDebug("Session token detected, skipping SQL injection check: {Input}", input);
+                return false;
+            }
+            
             // Skip checks for common controller action method patterns
             if (input.StartsWith("Create", StringComparison.OrdinalIgnoreCase) ||
                 input.StartsWith("Update", StringComparison.OrdinalIgnoreCase) ||
@@ -250,6 +257,36 @@ namespace TaskTrackerAPI.Services
                 .SetSlidingExpiration(TimeSpan.FromMinutes(expirationMinutes));
 
             _cache.Set(cacheKey, result, cacheEntryOptions);
+        }
+
+        /// <summary>
+        /// Checks if the input appears to be a session token (base64-like string with dashes/underscores)
+        /// </summary>
+        private bool IsSessionToken(string input)
+        {
+            if (string.IsNullOrEmpty(input) || input.Length < 20)
+                return false;
+
+            // Session tokens are typically base64-like strings that may contain:
+            // - Letters (a-z, A-Z)
+            // - Numbers (0-9) 
+            // - Dashes (-)
+            // - Underscores (_)
+            // - Plus signs (+)
+            // - Forward slashes (/)
+            // - Equal signs (=) for padding
+            
+            // Check if string matches session token pattern
+            bool isSessionTokenPattern = Regex.IsMatch(input, @"^[a-zA-Z0-9\-_+/=]+$");
+            
+            // Additional heuristic: session tokens often have a good mix of characters
+            // and are typically longer than typical user input
+            bool hasGoodCharacterMix = input.Length >= 20 && 
+                                     (input.Contains('-') || input.Contains('_')) &&
+                                     Regex.IsMatch(input, @"[a-zA-Z]") &&
+                                     Regex.IsMatch(input, @"[0-9]");
+            
+            return isSessionTokenPattern && hasGoodCharacterMix;
         }
     }
 } 

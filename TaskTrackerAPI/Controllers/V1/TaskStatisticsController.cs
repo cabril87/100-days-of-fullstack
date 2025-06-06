@@ -28,8 +28,7 @@ namespace TaskTrackerAPI.Controllers.V1
     [ApiVersion("1.0")]
     [Authorize]
     [ApiController]
-    [Route("api/v{version:apiVersion}/statistics")]
-    [Route("api/statistics")]  // Keep this lowercase route
+    [Route("api/v{version:apiVersion}/[controller]")]
     public class TaskStatisticsController : BaseApiController
     {
         private readonly ITaskStatisticsService _taskStatisticsService;

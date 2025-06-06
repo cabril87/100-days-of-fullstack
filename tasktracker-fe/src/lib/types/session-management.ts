@@ -206,4 +206,54 @@ export interface MemberSecuritySummaryDTO {
   trustedDevicesCount: number;
   lastLogin: string;
   riskFactors: string[];
+}
+
+// ===== USER SECURITY TYPES (for regular users, non-admin endpoints) =====
+
+/**
+ * DTO for terminating a user session - User Security endpoint
+ */
+export interface TerminateSessionRequestDTO {
+  sessionToken: string;
+}
+
+/**
+ * DTO for updating device trust status - User Security endpoint
+ */
+export interface UpdateDeviceTrustRequestDTO {
+  trusted: boolean;
+  deviceName?: string;
+}
+
+/**
+ * DTO for user security overview information - User Security endpoint
+ */
+export interface UserSecurityOverviewDTO {
+  mfaEnabled: boolean;
+  activeSessionsCount: number;
+  trustedDevicesCount: number;
+  totalDevicesCount: number;
+  lastSecurityScan: string;
+  securityScore: number;
+}
+
+// ===== CONDITIONAL SERVICE TYPES =====
+
+/**
+ * Types for conditional service usage based on user role
+ */
+export interface ConditionalSecurityService {
+  isAdminMode: boolean;
+  userRole: string;
+}
+
+/**
+ * Security service method signatures that work for both admin and user endpoints
+ */
+export interface SecurityServiceMethods {
+  getSecurityDashboard(): Promise<SecurityDashboardDTO | UserSecurityOverviewDTO>;
+  getActiveSessions(): Promise<ExtendedUserSessionDTO[]>;
+  getUserDevices(): Promise<UserDeviceDTO[]>;
+  terminateSession(sessionToken: string): Promise<void>;
+  updateDeviceTrust(deviceId: string, trusted: boolean, deviceName?: string): Promise<void>;
 } 

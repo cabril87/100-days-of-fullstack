@@ -244,7 +244,16 @@ export class ApiClient {
     
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return response.json();
+      const jsonResponse = await response.json();
+      
+      // Check if response has the API wrapper format with data property
+      if (jsonResponse && typeof jsonResponse === 'object' && 'data' in jsonResponse && 'success' in jsonResponse) {
+        // Extract the data from the API wrapper
+        return jsonResponse.data as T;
+      }
+      
+      // Return the response as-is if it's not in the wrapper format
+      return jsonResponse as T;
     }
     
     // Return empty object for successful responses with no content

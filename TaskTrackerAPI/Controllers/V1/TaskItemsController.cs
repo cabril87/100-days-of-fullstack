@@ -29,8 +29,6 @@ namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
-[Route("api/[controller]")]
-[Route("api/tasks")]
 [ApiController]
 [Authorize]
 [RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds

@@ -28,7 +28,7 @@ using TaskTrackerAPI.Utils;
 namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/rate-limits")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize(Roles = "Admin")]
 public class RateLimitMonitoringController : BaseApiController

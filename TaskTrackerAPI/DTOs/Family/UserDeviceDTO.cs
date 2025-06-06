@@ -55,4 +55,15 @@ public class UserDeviceVerifyDTO
     
     [Required]
     public string VerificationCode { get; set; } = string.Empty;
+}
+
+public class DeviceTrustDTO
+{
+    [Required]
+    public string DeviceId { get; set; } = string.Empty;
+    
+    [Required]
+    public bool Trusted { get; set; }
+    
+    public string? Name { get; set; }
 } 

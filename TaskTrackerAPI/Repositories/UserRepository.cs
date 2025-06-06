@@ -249,4 +249,94 @@ public class UserRepository : IUserRepository
 
         await _context.SaveChangesAsync();
     }
+
+    #region MFA Methods
+
+    /// <summary>
+    /// Checks if MFA is enabled for a user
+    /// </summary>
+    public async Task<bool> IsMFAEnabledAsync(int userId)
+    {
+        User? user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+        
+        return user?.MFAEnabled == true;
+    }
+
+    /// <summary>
+    /// Gets the MFA secret for a user
+    /// </summary>
+    public async Task<string?> GetMFASecretAsync(int userId)
+    {
+        User? user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+        
+        return user?.MFASecret;
+    }
+
+    /// <summary>
+    /// Updates the MFA secret for a user (during setup)
+    /// </summary>
+    public async Task UpdateMFASecretAsync(int userId, string secret)
+    {
+        User? user = await _context.Users.FindAsync(userId);
+        if (user != null && user.IsActive)
+        {
+            user.MFASecret = secret;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Enables MFA for a user with secret and backup codes
+    /// </summary>
+    public async Task EnableMFAAsync(int userId, string secret, string backupCodes)
+    {
+        User? user = await _context.Users.FindAsync(userId);
+        if (user != null && user.IsActive)
+        {
+            user.MFAEnabled = true;
+            user.MFASecret = secret;
+            user.BackupCodes = backupCodes;
+            user.MFASetupDate = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Disables MFA for a user
+    /// </summary>
+    public async Task DisableMFAAsync(int userId)
+    {
+        User? user = await _context.Users.FindAsync(userId);
+        if (user != null && user.IsActive)
+        {
+            user.MFAEnabled = false;
+            user.MFASecret = null;
+            user.BackupCodes = null;
+            user.MFASetupDate = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Updates backup codes for a user
+    /// </summary>
+    public async Task UpdateBackupCodesAsync(int userId, string backupCodes)
+    {
+        User? user = await _context.Users.FindAsync(userId);
+        if (user != null && user.IsActive)
+        {
+            user.BackupCodes = backupCodes;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    #endregion
 }

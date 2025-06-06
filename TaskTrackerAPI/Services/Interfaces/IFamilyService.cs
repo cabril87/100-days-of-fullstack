@@ -36,4 +36,18 @@ public interface IFamilyService
     Task<bool> RejectMemberAsync(int memberId, int adminId, string reason);
     Task<FamilyDTO> JoinFamilyAsync(string inviteCode, int userId);
     Task<bool> IsUserAdminOfFamilyAsync(int userId, int familyId);
+    Task<bool> IsUserFamilyAdminAsync(int userId);
+    
+    // Family relationship tracking
+    Task<IEnumerable<FamilyDTO>> GetFamiliesUserIsAdminOfAsync(int userId);
+    Task<IEnumerable<FamilyDTO>> GetFamiliesUserIsMemberOfAsync(int userId);
+    Task<IEnumerable<FamilyDTO>> GetFamiliesUserHasManagementPrivilegesAsync(int userId);
+    
+    // Family ownership transfer (Pass the Baton)
+    Task<bool> TransferFamilyOwnershipAsync(int familyId, int currentOwnerId, int newOwnerId);
+    Task<bool> CanUserManageFamilyBasedOnAgeAsync(int userId, int familyId);
+    
+    // Enhanced family management
+    Task<FamilyManagementPermissionsDTO> GetUserFamilyManagementPermissionsAsync(int userId, int? familyId = null);
+    Task<UserFamilyRelationshipsDTO> GetUserFamilyRelationshipsAsync(int userId);
 }
