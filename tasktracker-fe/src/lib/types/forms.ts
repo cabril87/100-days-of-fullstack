@@ -8,10 +8,12 @@ import {
   appearanceSettingsSchema,
   notificationPreferencesSchema 
 } from '../schemas/settings';
+import { profileUpdateSchema } from '../schemas/auth';
 
-// Page-specific form data types (ProfileUpdateFormData is in auth.ts)
+// Form data types derived from schemas
 export type AppearanceFormData = z.infer<typeof appearanceSettingsSchema>;
 export type NotificationPreferencesFormData = z.infer<typeof notificationPreferencesSchema>;
+export type ProfileUpdateFormData = z.infer<typeof profileUpdateSchema>;
 
 // Password Reset Form (separate from auth.ts PasswordResetRequestDTO)
 export interface PasswordResetFormData {

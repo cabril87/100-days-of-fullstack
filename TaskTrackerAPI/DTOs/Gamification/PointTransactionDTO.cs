@@ -89,4 +89,35 @@ namespace TaskTrackerAPI.DTOs.Gamification
         
         public int? RelatedEntityId { get; set; }
     }
+
+    /// <summary>
+    /// DTO for family members to award bonus points to other family members
+    /// </summary>
+    public class FamilyBonusPointsDTO
+    {
+        /// <summary>
+        /// Target family member to receive bonus points
+        /// </summary>
+        [Required]
+        public int TargetUserId { get; set; }
+
+        /// <summary>
+        /// Number of bonus points to award (limited to prevent abuse)
+        /// </summary>
+        [Required]
+        [Range(1, 500, ErrorMessage = "Bonus points must be between 1 and 500")]
+        public int Points { get; set; }
+
+        /// <summary>
+        /// Reason for awarding bonus points (e.g., "Helped with dishes", "Good behavior")
+        /// </summary>
+        [Required]
+        [StringLength(200, ErrorMessage = "Reason cannot exceed 200 characters")]
+        public string Reason { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional family ID for validation (if not provided, will use requester's primary family)
+        /// </summary>
+        public int? FamilyId { get; set; }
+    }
 } 

@@ -19,13 +19,20 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Template automation controller - manages automated template workflows.
+/// Accessible to all authenticated users (RegularUser and above).
+/// </summary>
 [ApiVersion("1.0")]
-[ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
+[ApiController]
 [Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class TemplateAutomationController : BaseApiController
 {
     private readonly ITemplateAutomationService _automationService;

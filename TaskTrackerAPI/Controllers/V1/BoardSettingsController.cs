@@ -19,6 +19,9 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -30,6 +33,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/boards/{boardId:int}/settings")]
 [Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class BoardSettingsController : BaseApiController
 {
     private readonly IBoardSettingsService _boardSettingsService;

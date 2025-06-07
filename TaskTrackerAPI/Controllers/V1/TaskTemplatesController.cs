@@ -19,13 +19,21 @@ using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Task templates controller - handles task template creation, management, and marketplace.
+/// Accessible to all authenticated users (RegularUser and above).
+/// Marketplace features are publicly accessible for browsing.
+/// </summary>
 [ApiVersion("1.0")]
 [ApiController]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
+[RequireRole(UserRole.RegularUser)] // All authenticated users can manage their templates
 public class TaskTemplatesController : BaseApiController
 {
     private readonly ITaskTemplateService _templateService;

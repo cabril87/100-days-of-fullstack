@@ -21,13 +21,20 @@ using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
-    [ApiController]
-    [Authorize]
+    /// <summary>
+    /// Badges controller - manages user badges and achievements.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class BadgesController : BaseApiController
     {
         private readonly ILogger<BadgesController> _logger;

@@ -18,13 +18,21 @@ using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Achievements controller - manages user achievements and badges.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Administrative functions require Global Admin privileges.
+    /// </summary>
     [ApiController]
     [ApiVersion("1.0")]
-    [Authorize]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class AchievementsController : BaseApiController
     {
         private readonly IAchievementService _achievementService;
@@ -107,7 +115,7 @@ namespace TaskTrackerAPI.Controllers.V1
         /// <param name="achievementDto">Achievement data</param>
         /// <returns>The created achievement</returns>
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can create achievements
         public async Task<ActionResult<AchievementDTO>> CreateAchievement(AchievementCreateUpdateDTO achievementDto)
         {
             try
@@ -129,7 +137,7 @@ namespace TaskTrackerAPI.Controllers.V1
         /// <param name="achievementDto">Updated achievement data</param>
         /// <returns>No content if successful</returns>
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can update achievements
         public async Task<IActionResult> UpdateAchievement(int id, AchievementCreateUpdateDTO achievementDto)
         {
             try
@@ -156,7 +164,7 @@ namespace TaskTrackerAPI.Controllers.V1
         /// <param name="id">Achievement ID</param>
         /// <returns>No content if successful</returns>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can delete achievements
         public async Task<IActionResult> DeleteAchievement(int id)
         {
             try
@@ -183,7 +191,7 @@ namespace TaskTrackerAPI.Controllers.V1
         /// <param name="id">Achievement ID</param>
         /// <returns>No content if successful</returns>
         [HttpPatch("{id}/deactivate")]
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can deactivate achievements
         public async Task<IActionResult> DeactivateAchievement(int id)
         {
             try

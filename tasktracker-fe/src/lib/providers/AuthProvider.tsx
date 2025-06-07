@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { authService, AuthServiceError } from '../services/authService';
 import { familyInvitationService } from '../services/familyInvitationService';
 import { 
@@ -72,6 +73,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const router = useRouter();
 
   // Token storage helpers
   const storeTokens = (accessToken: string, refreshToken: string): void => {
@@ -140,9 +142,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Logout error:', error);
+      // Continue with logout even if server call fails
     } finally {
       clearTokens();
       dispatch({ type: 'CLEAR_AUTH' });
+      
+      // Redirect to homepage after logout (standard convention)
+      router.push('/');
     }
   };
 

@@ -21,13 +21,19 @@ using TaskTrackerAPI.Extensions;
 using System.Collections.Generic;
 using TaskTrackerAPI.Controllers.V2;
 using System.Linq;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Invitation controller - manages family invitation system.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class InvitationController : BaseApiController
     {
         private readonly IInvitationService _invitationService;

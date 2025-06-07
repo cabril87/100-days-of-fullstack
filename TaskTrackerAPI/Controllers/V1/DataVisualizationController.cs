@@ -17,11 +17,20 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using System;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Analytics;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Data visualization controller - generates charts and visual analytics for user data.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Provides personalized data visualization for productivity insights.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can visualize their data
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]

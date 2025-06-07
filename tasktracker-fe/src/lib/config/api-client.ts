@@ -268,6 +268,7 @@ export class ApiClient {
         const response = await fetch(url, {
           method: 'GET',
           headers: { ...getAuthHeaders(), ...headers },
+          credentials: 'include', // Include cookies for HTTP-only cookie support
         });
         
         return this.handleResponse<T>(response);
@@ -284,6 +285,7 @@ export class ApiClient {
           method: 'POST',
           headers: { ...getAuthHeaders(), ...headers },
           body: body ? JSON.stringify(body) : undefined,
+          credentials: 'include', // Include cookies for HTTP-only cookie support
         });
         
         return this.handleResponse<T>(response);
@@ -300,6 +302,7 @@ export class ApiClient {
           method: 'PUT',
           headers: { ...getAuthHeaders(), ...headers },
           body: body ? JSON.stringify(body) : undefined,
+          credentials: 'include', // Include cookies for HTTP-only cookie support
         });
         
         return this.handleResponse<T>(response);
@@ -315,6 +318,7 @@ export class ApiClient {
         const response = await fetch(url, {
           method: 'DELETE',
           headers: { ...getAuthHeaders(), ...headers },
+          credentials: 'include', // Include cookies for HTTP-only cookie support
         });
         
         return this.handleResponse<T>(response);

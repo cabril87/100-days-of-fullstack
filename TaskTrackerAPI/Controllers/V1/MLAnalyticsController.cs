@@ -6,12 +6,19 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Models.ML;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
 
-namespace TaskTrackerAPI.Controllers
+namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// ML Analytics controller - provides machine learning insights and model management.
+    /// Accessible to Developers and Global Admins only.
+    /// Used for AI-powered productivity analytics and predictions.
+    /// </summary>
     [ApiController]
     [Route("api/v1/[controller]")]
     [Authorize]
+    [RequireDeveloper] // ML analytics for Developers and Global Admins
     public class MLAnalyticsController : ControllerBase
     {
         private readonly IMLAnalyticsService _mlAnalyticsService;

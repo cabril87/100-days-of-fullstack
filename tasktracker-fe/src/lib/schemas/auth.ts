@@ -87,36 +87,40 @@ export const passwordResetSchema = z.object({
     .max(100, 'Email cannot exceed 100 characters'),
 });
 
-// MFA Validation Schemas
-export const mfaSetupSchema = z.object({
-  code: z
-    .string()
-    .length(6, 'Code must be exactly 6 digits')
-    .regex(/^\d{6}$/, 'Code must contain only digits'),
+// === MFA SCHEMAS ===
+
+export const mfaSetupCompleteSchema = z.object({
+  code: z.string()
+    .min(6, 'Code must be exactly 6 digits')
+    .max(6, 'Code must be exactly 6 digits')
+    .regex(/^\d{6}$/, 'Code must be exactly 6 digits')
 });
 
 export const mfaVerificationSchema = z.object({
-  code: z
-    .string()
-    .length(6, 'Code must be exactly 6 digits')
-    .regex(/^\d{6}$/, 'Code must contain only digits'),
+  code: z.string()
+    .min(6, 'Code must be exactly 6 digits')
+    .max(6, 'Code must be exactly 6 digits')
+    .regex(/^\d{6}$/, 'Code must be exactly 6 digits')
 });
 
 export const mfaDisableSchema = z.object({
-  password: z
-    .string()
-    .min(1, 'Password is required'),
-  code: z
-    .string()
-    .length(6, 'Code must be exactly 6 digits')
-    .regex(/^\d{6}$/, 'Code must contain only digits')
+  password: z.string().min(1, 'Password is required'),
+  code: z.string()
+    .min(6, 'Code must be exactly 6 digits')
+    .max(6, 'Code must be exactly 6 digits')
+    .regex(/^\d{6}$/, 'Code must be exactly 6 digits')
     .optional()
-    .or(z.literal('')),
 });
 
 export const mfaBackupCodeSchema = z.object({
-  backupCode: z
-    .string()
-    .min(1, 'Backup code is required')
-    .max(20, 'Invalid backup code format'),
-}); 
+  code: z.string()
+    .min(8, 'Backup code must be exactly 8 characters')
+    .max(8, 'Backup code must be exactly 8 characters')
+    .regex(/^[A-Z0-9]{8}$/, 'Backup code must be 8 uppercase letters or numbers')
+});
+
+// MFA Form Data Types (derived from schemas)
+export type MFASetupCompleteFormData = z.infer<typeof mfaSetupCompleteSchema>;
+export type MFAVerificationFormData = z.infer<typeof mfaVerificationSchema>;
+export type MFADisableFormData = z.infer<typeof mfaDisableSchema>;
+export type MFABackupCodeFormData = z.infer<typeof mfaBackupCodeSchema>; 

@@ -19,13 +19,21 @@ using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Tags controller - manages task tags and labeling.
+/// Accessible to all authenticated users (RegularUser and above).
+/// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class TagsController : BaseApiController
 {
     private readonly ITagService _tagService;

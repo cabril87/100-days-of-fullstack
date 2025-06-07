@@ -19,10 +19,17 @@ using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family management controller - handles family creation, management, and member operations.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Age-based restrictions apply for certain operations (children cannot create families).
+    /// </summary>
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can access family features
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
@@ -326,7 +333,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can view all pending family members
         [HttpGet("pending-members")]
         public async Task<ActionResult<ApiResponse<IEnumerable<FamilyMemberDTO>>>> GetPendingMembers()
         {
@@ -342,7 +349,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can approve family members system-wide
         [HttpPost("members/{memberId}/approve")]
         public async Task<ActionResult<ApiResponse<FamilyMemberDTO>>> ApproveMember(int memberId)
         {
@@ -367,7 +374,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
-        [Authorize(Roles = "Admin")]
+        [RequireGlobalAdmin] // Only Global Admins can reject family members system-wide
         [HttpPost("members/{memberId}/reject")]
         public async Task<ActionResult<ApiResponse<object>>> RejectMember(int memberId, [FromBody] RejectMemberDTO rejectDto)
         {

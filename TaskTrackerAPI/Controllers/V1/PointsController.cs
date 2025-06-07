@@ -16,13 +16,20 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Gamification;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Points controller - manages user points and scoring system.
+/// Accessible to all authenticated users (RegularUser and above).
+/// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class PointsController : BaseApiController
 {
     private readonly IPointsService _pointsService;

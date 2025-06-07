@@ -19,13 +19,21 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Saved filter controller - manages user's saved task filters.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]
     public class SavedFilterController : BaseApiController
     {

@@ -6,15 +6,21 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.ML;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models.ML;
+using TaskTrackerAPI.Models;
 
-namespace TaskTrackerAPI.Controllers
+namespace TaskTrackerAPI.Controllers.V1
 {
     /// <summary>
-    /// Controller for adaptation learning system
+    /// Adaptation learning controller - manages ML adaptation and learning algorithms.
+    /// Accessible to Developers and Global Admins only.
+    /// Used for AI system improvement and learning.
     /// </summary>
     [ApiController]
-    [Route("api/v1/learning")]
+    [Route("api/v1/[controller]")]
     [Authorize]
+    [RequireDeveloper]
     public class AdaptationLearningController : ControllerBase
     {
         private readonly IAdaptationLearningService _learningService;

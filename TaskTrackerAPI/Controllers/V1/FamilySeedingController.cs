@@ -17,16 +17,23 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
 /// <summary>
-/// Controller for family data seeding (Global Admin only)
+/// Family seeding controller - provides demo data and testing utilities.
+/// Accessible to Global Admins only.
+/// Used for development and demonstration purposes.
 /// </summary>
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-[Route("api/v1/admin/family-seeding")]
 [Authorize]
-public class FamilySeedingController : ControllerBase
+[RequireGlobalAdmin]
+public class FamilySeedingController : BaseApiController
 {
     private readonly IFamilySeedingService _familySeedingService;
     private readonly ILogger<FamilySeedingController> _logger;

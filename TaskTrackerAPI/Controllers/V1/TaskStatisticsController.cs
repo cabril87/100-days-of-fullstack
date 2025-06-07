@@ -22,11 +22,18 @@ using TaskTrackerAPI.Services.Interfaces;
 using System.Linq;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Task statistics controller - provides detailed analytics and insights for user task data.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Users can only view statistics for their own tasks with privacy protection.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can view their task statistics
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class TaskStatisticsController : BaseApiController

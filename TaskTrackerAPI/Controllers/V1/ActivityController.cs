@@ -22,13 +22,19 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Family;
 using System.Linq;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Activity controller - manages user activity tracking and history.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class ActivityController : BaseApiController
     {
         private readonly IUserActivityService _userActivityService;

@@ -490,4 +490,11 @@ export const getInvitableRelationships = (): Array<{ value: FamilyRelationshipTy
     { value: FamilyRelationshipType.Godchild, label: "Godchild", category: "Extended" },
     { value: FamilyRelationshipType.Other, label: "Other", category: "Extended" },
   ];
-}; 
+};
+
+// Extended family interfaces for enhanced views
+export interface FamilyWithMembers extends FamilyDTO {
+  members: FamilyMemberDTO[];
+  myRole: string;
+  memberCount: number;
+} 

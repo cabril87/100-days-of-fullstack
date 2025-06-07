@@ -1,33 +1,27 @@
-'use client';
-
-import {  ArrowRight, CheckCircle, Users, Zap } from 'lucide-react';
+import { ArrowRight, CheckCircle, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/providers/AuthProvider';
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getServerSession } from '@/lib/utils/serverAuth';
 
-export default function HomePage() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
+export default async function HomePage() {
+  // Server-side authentication check - redirect authenticated users
+  const session = await getServerSession();
+  
+  if (session) {
+    redirect('/dashboard');
+  }
 
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
-
-  // Always show public landing page
+  // Render public landing page for unauthenticated users
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-16">
         <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-6">
-                TaskTracker
-              </h1>
+            TaskTracker
+          </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Transform your productivity with gamified task management. Earn points, level up, and achieve your goals with style.
           </p>
@@ -38,12 +32,12 @@ export default function HomePage() {
                 🚀 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-          </Link>
+            </Link>
             <Link href="/auth/login">
               <Button variant="outline" size="lg" className="font-bold px-8 py-3 rounded-xl border-2 hover:bg-gray-50 transition-all duration-300">
                 🔑 Sign In
               </Button>
-          </Link>
+            </Link>
           </div>
         </div>
 
@@ -90,13 +84,13 @@ export default function HomePage() {
               </CardDescription>
             </CardContent>
           </Card>
-                </div>
-                
+        </div>
+        
         {/* CTA Section */}
         <div className="text-center mt-20">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             Ready to Transform Your Productivity?
-                </h2>
+          </h2>
           <p className="text-lg text-gray-600 mb-8">
             Join thousands of users who have leveled up their task management game.
           </p>
@@ -105,7 +99,7 @@ export default function HomePage() {
               Start Your Journey
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-              </Link>
+          </Link>
         </div>
       </div>
     </div>

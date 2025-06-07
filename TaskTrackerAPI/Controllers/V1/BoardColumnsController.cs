@@ -18,17 +18,22 @@ using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
 /// <summary>
-/// API controller for board column management operations
-/// Supports custom columns, WIP limits, reordering, and visibility management
+/// Board columns controller - manages columns within specific boards.
+/// Accessible to all authenticated users (RegularUser and above).
+/// Unique route: boards/{boardId:int}/columns
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/boards/{boardId:int}/columns")]
 [Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class BoardColumnsController : BaseApiController
 {
     private readonly IBoardColumnService _boardColumnService;

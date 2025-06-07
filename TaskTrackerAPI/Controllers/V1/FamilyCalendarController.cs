@@ -20,13 +20,19 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family calendar controller - manages family calendar and shared events.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/calendar")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class FamilyCalendarController : BaseApiController
     {
         private readonly IFamilyCalendarService _calendarService;

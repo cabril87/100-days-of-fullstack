@@ -14,6 +14,8 @@ using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -25,6 +27,7 @@ namespace TaskTrackerAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [RequireGlobalAdmin] // Only Global Admins can access admin functions
     public class AdminController : ControllerBase
     {
         private readonly IGamificationService _gamificationService;

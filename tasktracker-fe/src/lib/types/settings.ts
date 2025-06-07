@@ -3,6 +3,10 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
+
+import { User } from './auth';
+import { SecurityDashboardDTO, ExtendedUserSessionDTO, UserDeviceDTO } from './session-management';
+
 // Settings overview types
 export interface SettingsOverviewDTO {
   user: UserSummary;
@@ -207,4 +211,40 @@ export interface AppearanceSettingsFormData {
   animations: AnimationSettings;
   accessibility: AccessibilitySettings;
   gamification: GamificationAppearance;
-} 
+}
+
+export interface ProfileSettingsContentProps {
+  user: User;
+}
+
+export interface SecuritySettingsContentProps {
+  user: User;
+  initialData: {
+    securityDashboard: SecurityDashboardDTO | null;
+    sessions: ExtendedUserSessionDTO[];
+    devices: UserDeviceDTO[];
+    mfaStatus: {
+      enabled: boolean;
+      setupDate: string | null;
+      backupCodesRemaining: number;
+    };
+  };
+}
+
+// Component props interfaces for consistent typing
+export interface NotificationSettingsContentProps {
+  user: User;
+}
+
+export interface AppearanceSettingsContentProps {
+  user: User;
+}
+
+export interface FamilyManagementContentProps {
+  user: User;
+}
+
+// Component-specific form data types  
+// Note: AppearanceFormData is defined in forms.ts using z.infer for proper schema validation
+
+// ProfileUpdateFormData is defined in auth.ts as the authoritative source 

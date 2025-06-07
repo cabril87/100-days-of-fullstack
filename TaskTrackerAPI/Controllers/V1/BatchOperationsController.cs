@@ -27,10 +27,16 @@ using TaskTrackerAPI.Utils;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Batch operations controller - handles bulk task operations for efficiency.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Rate limited for performance protection.
+    /// </summary>
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can perform batch operations
     [RateLimit(20, 60)] // Strict limit for batch operations
     public class BatchOperationsController : BaseApiController
     {

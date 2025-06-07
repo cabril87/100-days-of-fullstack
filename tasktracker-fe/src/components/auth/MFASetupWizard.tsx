@@ -13,10 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
     MFASetupInitiateDTO,
-    MFABackupCodesDTO,
-    MFASetupFormData
+    MFABackupCodesDTO
 } from '@/lib/types/auth';
-import { mfaSetupSchema } from '@/lib/schemas/auth';
+import { mfaSetupCompleteSchema, MFASetupCompleteFormData } from '@/lib/schemas/auth';
 import { authService, AuthServiceError } from '@/lib/services/authService';
 import {
     QRCodeSkeleton,
@@ -45,8 +44,8 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
     const [showManualEntry, setShowManualEntry] = useState<boolean>(false);
     const [savedCodes, setSavedCodes] = useState<boolean>(false);
 
-    const form = useForm<MFASetupFormData>({
-        resolver: zodResolver(mfaSetupSchema),
+    const form = useForm<MFASetupCompleteFormData>({
+        resolver: zodResolver(mfaSetupCompleteSchema),
         defaultValues: {
             code: ''
         }
@@ -86,7 +85,7 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
         }
     };
 
-    const verifySetupCode = async (data: MFASetupFormData): Promise<void> => {
+    const verifySetupCode = async (data: MFASetupCompleteFormData): Promise<void> => {
         if (!setupData) return;
 
         setIsLoading(true);
@@ -219,7 +218,7 @@ Instructions:
 
                         <div className="flex justify-center">
                             {isLoading || !setupData ? (
-                                <QRCodeSkeleton size="medium" showBorder={true} showScanningAnimation={true} />
+                                <QRCodeSkeleton size="lg" variant="gamified" />
                             ) : (
                                 <div className="text-center">
                                     <Image
@@ -305,7 +304,7 @@ Instructions:
                         <form onSubmit={handleSubmit(verifySetupCode)} className="space-y-4">
                             <div>
                                 {isLoading ? (
-                                    <MFACodeInputSkeleton digitCount={6} showFocusState={false} showErrorState={false} />
+                                    <MFACodeInputSkeleton variant="gamified" />
                                 ) : (
                                     <div className="flex justify-center">
                                         <Input

@@ -756,6 +756,9 @@ public class Program
         // Add CSRF protection middleware
         app.UseMiddleware<CsrfProtectionMiddleware>();
 
+        // Add cookie authentication middleware for HTTP-only cookies support
+        app.UseCookieAuthentication();
+
         // Add response caching after authentication and rate limiting
         // but before endpoints are executed
         app.UseAuthentication();

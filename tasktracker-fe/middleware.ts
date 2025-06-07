@@ -11,8 +11,10 @@ const protectedRoutes = [
   '/reminders',
   '/gamification',
   '/family',
+  '/families',
   '/profile',
-  '/admin'
+  '/admin',
+  '/settings'
 ];
 
 // Define public routes that should redirect to dashboard if authenticated
@@ -24,9 +26,9 @@ const publicRoutes = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Get the token from cookies
-  const token = request.cookies.get('token')?.value;
-  const isAuthenticated = !!token;
+  // Get the HTTP-only access token from cookies (for server-side auth)
+  const accessToken = request.cookies.get('access_token')?.value;
+  const isAuthenticated = !!accessToken;
   
   // Check if the current path is a protected route
   const isProtectedRoute = protectedRoutes.some(route => 
@@ -37,6 +39,13 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => 
     pathname.startsWith(route)
   );
+  
+  // Skip middleware for API routes and static files
+  if (pathname.startsWith('/api') || 
+      pathname.startsWith('/_next') || 
+      pathname === '/favicon.ico') {
+    return NextResponse.next();
+  }
   
   // Redirect unauthenticated users from protected routes to login
   if (isProtectedRoute && !isAuthenticated) {

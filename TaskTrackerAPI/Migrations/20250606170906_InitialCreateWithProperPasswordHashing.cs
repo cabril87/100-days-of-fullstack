@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TaskTrackerAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialCreateWithProperPasswordHashing : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -158,7 +158,7 @@ namespace TaskTrackerAPI.Migrations
                     IpAddress = table.Column<string>(type: "nvarchar(45)", maxLength: 45, nullable: false),
                     UserAgent = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     AttemptTime = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
-                    FailureReason = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    FailureReason = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     Country = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     CountryCode = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
@@ -863,6 +863,10 @@ namespace TaskTrackerAPI.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     Points = table.Column<int>(type: "int", nullable: false),
                     PrimaryFamilyId = table.Column<int>(type: "int", nullable: true),
+                    MFASecret = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    MFAEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    BackupCodes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    MFASetupDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     AgeGroup = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -970,7 +974,15 @@ namespace TaskTrackerAPI.Migrations
                     JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsPending = table.Column<bool>(type: "bit", nullable: false),
                     ProfileCompleted = table.Column<bool>(type: "bit", nullable: false),
-                    ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RelationshipToAdmin = table.Column<int>(type: "int", nullable: false),
+                    RelatedToMemberId = table.Column<int>(type: "int", nullable: true),
+                    RelationshipToMember = table.Column<int>(type: "int", nullable: true),
+                    IsNaturalLeader = table.Column<bool>(type: "bit", nullable: false),
+                    LastActiveAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    WantsAdminRole = table.Column<bool>(type: "bit", nullable: false),
+                    DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -981,6 +993,11 @@ namespace TaskTrackerAPI.Migrations
                         principalTable: "Families",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FamilyMembers_FamilyMembers_RelatedToMemberId",
+                        column: x => x.RelatedToMemberId,
+                        principalTable: "FamilyMembers",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_FamilyMembers_FamilyRoles_RoleId",
                         column: x => x.RoleId,
@@ -1095,6 +1112,67 @@ namespace TaskTrackerAPI.Migrations
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Notifications_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ParentalControls",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ParentUserId = table.Column<int>(type: "int", nullable: false),
+                    ChildUserId = table.Column<int>(type: "int", nullable: false),
+                    ScreenTimeEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    DailyTimeLimit = table.Column<TimeSpan>(type: "time", nullable: false),
+                    TaskApprovalRequired = table.Column<bool>(type: "bit", nullable: false),
+                    PointSpendingApprovalRequired = table.Column<bool>(type: "bit", nullable: false),
+                    BlockedFeatures = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ChatMonitoringEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    MaxPointsWithoutApproval = table.Column<int>(type: "int", nullable: false),
+                    CanInviteOthers = table.Column<bool>(type: "bit", nullable: false),
+                    CanViewOtherMembers = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ParentalControls", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ParentalControls_Users_ChildUserId",
+                        column: x => x.ChildUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ParentalControls_Users_ParentUserId",
+                        column: x => x.ParentUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "password_reset_tokens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Email = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    token = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    expiration_time = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    is_used = table.Column<bool>(type: "bit", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    used_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_password_reset_tokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_password_reset_tokens_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -1510,6 +1588,36 @@ namespace TaskTrackerAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "UserSecuritySettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    MFAEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    SessionTimeout = table.Column<int>(type: "int", nullable: false),
+                    TrustedDevicesEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    LoginNotifications = table.Column<bool>(type: "bit", nullable: false),
+                    DataExportRequest = table.Column<bool>(type: "bit", nullable: false),
+                    DataExportRequestDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    AccountDeletionRequest = table.Column<bool>(type: "bit", nullable: false),
+                    AccountDeletionRequestDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    PrivacySettings = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValue: new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified))
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSecuritySettings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserSecuritySettings_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UserSessions",
                 columns: table => new
                 {
@@ -1738,6 +1846,67 @@ namespace TaskTrackerAPI.Migrations
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PermissionRequests",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ChildUserId = table.Column<int>(type: "int", nullable: false),
+                    ParentUserId = table.Column<int>(type: "int", nullable: false),
+                    RequestType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    RequestedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RespondedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResponseMessage = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ParentalControlId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PermissionRequests", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PermissionRequests_ParentalControls_ParentalControlId",
+                        column: x => x.ParentalControlId,
+                        principalTable: "ParentalControls",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_PermissionRequests_Users_ChildUserId",
+                        column: x => x.ChildUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PermissionRequests_Users_ParentUserId",
+                        column: x => x.ParentUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TimeRanges",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    StartTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    EndTime = table.Column<TimeSpan>(type: "time", nullable: false),
+                    DayOfWeek = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    ParentalControlId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TimeRanges", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TimeRanges_ParentalControls_ParentalControlId",
+                        column: x => x.ParentalControlId,
+                        principalTable: "ParentalControls",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -2642,6 +2811,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "FamilyId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_FamilyMembers_RelatedToMemberId",
+                table: "FamilyMembers",
+                column: "RelatedToMemberId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_FamilyMembers_RoleId",
                 table: "FamilyMembers",
                 column: "RoleId");
@@ -2710,6 +2884,36 @@ namespace TaskTrackerAPI.Migrations
                 name: "IX_Notifications_UserId",
                 table: "Notifications",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ParentalControls_ChildUserId",
+                table: "ParentalControls",
+                column: "ChildUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ParentalControls_ParentUserId",
+                table: "ParentalControls",
+                column: "ParentUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_password_reset_tokens_UserId",
+                table: "password_reset_tokens",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PermissionRequests_ChildUserId",
+                table: "PermissionRequests",
+                column: "ChildUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PermissionRequests_ParentalControlId",
+                table: "PermissionRequests",
+                column: "ParentalControlId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PermissionRequests_ParentUserId",
+                table: "PermissionRequests",
+                column: "ParentUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PointTransactions_TaskId",
@@ -2867,6 +3071,11 @@ namespace TaskTrackerAPI.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TimeRanges_ParentalControlId",
+                table: "TimeRanges",
+                column: "ParentalControlId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UserAchievements_AchievementId",
                 table: "UserAchievements",
                 column: "AchievementId");
@@ -2947,6 +3156,11 @@ namespace TaskTrackerAPI.Migrations
                 table: "Users",
                 column: "Username",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSecuritySettings_UserId",
+                table: "UserSecuritySettings",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserSessions_UserId",
@@ -3162,6 +3376,12 @@ namespace TaskTrackerAPI.Migrations
                 name: "Notifications");
 
             migrationBuilder.DropTable(
+                name: "password_reset_tokens");
+
+            migrationBuilder.DropTable(
+                name: "PermissionRequests");
+
+            migrationBuilder.DropTable(
                 name: "PointTransactions");
 
             migrationBuilder.DropTable(
@@ -3216,6 +3436,9 @@ namespace TaskTrackerAPI.Migrations
                 name: "ThreatIntelligence");
 
             migrationBuilder.DropTable(
+                name: "TimeRanges");
+
+            migrationBuilder.DropTable(
                 name: "UserAchievements");
 
             migrationBuilder.DropTable(
@@ -3240,6 +3463,9 @@ namespace TaskTrackerAPI.Migrations
                 name: "UserRewards");
 
             migrationBuilder.DropTable(
+                name: "UserSecuritySettings");
+
+            migrationBuilder.DropTable(
                 name: "UserSessions");
 
             migrationBuilder.DropTable(
@@ -3259,6 +3485,9 @@ namespace TaskTrackerAPI.Migrations
 
             migrationBuilder.DropTable(
                 name: "Tags");
+
+            migrationBuilder.DropTable(
+                name: "ParentalControls");
 
             migrationBuilder.DropTable(
                 name: "Achievements");

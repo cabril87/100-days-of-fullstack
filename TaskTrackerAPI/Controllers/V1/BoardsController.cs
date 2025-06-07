@@ -20,14 +20,18 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using Microsoft.AspNetCore.Http;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
     /// <summary>
-    /// API controller for managing boards
+    /// Board management controller - handles personal and collaborative task boards.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Provides kanban-style board management for enhanced productivity.
     /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can manage their boards
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class BoardsController : BaseApiController

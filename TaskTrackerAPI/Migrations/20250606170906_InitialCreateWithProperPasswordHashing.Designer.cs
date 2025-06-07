@@ -12,8 +12,8 @@ using TaskTrackerAPI.Data;
 namespace TaskTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250605014116_AddUserSecuritySettings")]
-    partial class AddUserSecuritySettings
+    [Migration("20250606170906_InitialCreateWithProperPasswordHashing")]
+    partial class InitialCreateWithProperPasswordHashing
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2721,11 +2721,17 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
+                    b.Property<DateTime?>("DateOfBirth")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("FamilyId")
                         .HasColumnType("int");
+
+                    b.Property<bool>("IsNaturalLeader")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsPending")
                         .HasColumnType("bit");
@@ -2733,15 +2739,30 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("LastActiveAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("ProfileCompleted")
                         .HasColumnType("bit");
 
+                    b.Property<int?>("RelatedToMemberId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Relationship")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RelationshipToAdmin")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RelationshipToMember")
                         .HasColumnType("int");
 
                     b.Property<int>("RoleId")
@@ -2755,9 +2776,14 @@ namespace TaskTrackerAPI.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("WantsAdminRole")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("FamilyId");
+
+                    b.HasIndex("RelatedToMemberId");
 
                     b.HasIndex("RoleId");
 
@@ -9446,13 +9472,17 @@ namespace TaskTrackerAPI.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskTrackerAPI.Models.FamilyMember", "RelatedToMember")
+                        .WithMany("RelatedMembers")
+                        .HasForeignKey("RelatedToMemberId");
+
                     b.HasOne("TaskTrackerAPI.Models.FamilyRole", "Role")
                         .WithMany("Members")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("TaskTrackerAPI.Models.User", null)
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
                         .WithMany("FamilyMembers")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -9460,7 +9490,11 @@ namespace TaskTrackerAPI.Migrations
 
                     b.Navigation("Family");
 
+                    b.Navigation("RelatedToMember");
+
                     b.Navigation("Role");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMemberAvailability", b =>
@@ -10150,6 +10184,8 @@ namespace TaskTrackerAPI.Migrations
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyMember", b =>
                 {
                     b.Navigation("AssignedTasks");
+
+                    b.Navigation("RelatedMembers");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.FamilyRole", b =>

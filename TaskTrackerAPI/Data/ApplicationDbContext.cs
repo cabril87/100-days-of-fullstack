@@ -21,6 +21,8 @@ using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models.Analytics;
 using TaskTrackerAPI.Models.ML;
 using TaskTrackerAPI.Models.BackgroundServices;
+using System.Text;
+using TaskTrackerAPI.Helpers;
 
 namespace TaskTrackerAPI.Data;
 
@@ -473,6 +475,9 @@ public class ApplicationDbContext : DbContext
         // Seed Kanban board templates and columns
         SeedKanbanBoardData(modelBuilder);
         
+        // Seed default users (admin and customer support)
+        SeedUsers(modelBuilder);
+        
         // If this fails to compile, ensure GamificationSeedData.cs is included in the project
 
         // Configure Reminder relationships
@@ -580,5 +585,68 @@ public class ApplicationDbContext : DbContext
     private void SeedKanbanBoardData(ModelBuilder modelBuilder)
     {
         KanbanBoardSeedData.SeedKanbanBoardData(modelBuilder);
+    }
+
+    private void SeedUsers(ModelBuilder modelBuilder)
+    {
+        // For seeding, we need to use the actual password hashing logic
+        string? defaultPassword = _configuration?.GetSection("SeedData:DefaultPassword").Value;
+        
+        // Only seed users if default password is configured (for security)
+        if (string.IsNullOrEmpty(defaultPassword))
+        {
+            // Don't seed users if no default password is configured
+            return;
+        }
+
+        // Create AuthHelper instance to generate proper password hashes
+        if (_configuration == null)
+        {
+            // Skip seeding if configuration is not available
+            return;
+        }
+
+        var authHelper = new AuthHelper(_configuration);
+        
+        // Generate proper password hash and salt for the default password
+        authHelper.CreatePasswordHash(defaultPassword, out string passwordHash, out string salt);
+
+        // Seed admin user with proper Argon2id hash
+        modelBuilder.Entity<User>().HasData(
+            new User
+            {
+                Id = 1,
+                Username = "admin",
+                Email = "admin@tasktracker.com",
+                FirstName = "Admin",
+                LastName = "User",
+                PasswordHash = passwordHash,
+                Salt = salt,
+                Role = "GlobalAdmin",
+                UserRole = Models.UserRole.GlobalAdmin,
+                IsActive = true,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1),
+                AgeGroup = Models.FamilyMemberAgeGroup.Adult,
+                MFAEnabled = false
+            },
+            new User
+            {
+                Id = 2,
+                Username = "customersupport",
+                Email = "customersupport@tasktracker.com",
+                FirstName = "Customer",
+                LastName = "Support",
+                PasswordHash = passwordHash,
+                Salt = salt,
+                Role = "CustomerSupport",
+                UserRole = Models.UserRole.CustomerSupport,
+                IsActive = true,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1),
+                AgeGroup = Models.FamilyMemberAgeGroup.Adult,
+                MFAEnabled = false
+            }
+        );
     }
 }

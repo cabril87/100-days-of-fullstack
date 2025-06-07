@@ -27,10 +27,16 @@ using TaskTrackerAPI.Controllers.V2;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Task management controller - handles core task CRUD operations and task-related features.
+/// Accessible to all authenticated users (RegularUser and above).
+/// Some admin functions require elevated privileges.
+/// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize]
+[RequireRole(UserRole.RegularUser)] // All authenticated users can access task management
 [RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds
 public class TaskItemsController : BaseApiController
 {

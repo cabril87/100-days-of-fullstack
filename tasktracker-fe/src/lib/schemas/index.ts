@@ -20,4 +20,7 @@ export * from './settings';
 export * from './notifications';
 
 // Smart relationship schemas
-export * from './smart-relationship'; 
+export * from './smart-relationship';
+
+// Customer support schemas
+export * from './customer-support'; 

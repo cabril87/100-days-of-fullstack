@@ -21,12 +21,18 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 namespace TaskTrackerAPI.Controllers.V1;
 
-[Authorize]
-[ApiController]
+/// <summary>
+/// Categories controller - manages task categories.
+/// Accessible to all authenticated users (RegularUser and above).
+/// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[ApiController]
+[Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class CategoriesController : BaseApiController
 {
     private readonly ICategoryService _categoryService;

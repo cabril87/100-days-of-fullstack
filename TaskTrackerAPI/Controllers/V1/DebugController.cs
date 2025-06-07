@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Hosting;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Attributes;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Collections.Generic;
@@ -13,12 +14,14 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs.Auth;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[RequireAdminOrDeveloper] // Only Global Admins and Developers can access debug tools
 public class DebugController : BaseApiController
 {
     private readonly IConfiguration _configuration;
@@ -398,14 +401,14 @@ modelBuilder.Entity<User>().HasData(
         try 
         {
             // First, remove any tasks that reference users
-            var tasks = _dbContext.Tasks.ToList();
+            List<TaskItem> tasks = _dbContext.Tasks.ToList();
             _dbContext.Tasks.RemoveRange(tasks);
             _dbContext.SaveChanges();
             
             _logger.LogInformation("Removed {Count} tasks that had User references", tasks.Count);
             
             // Next, remove any categories that reference users
-            var categories = _dbContext.Categories.ToList();
+            List<Category> categories = _dbContext.Categories.ToList();
             _dbContext.Categories.RemoveRange(categories);
             _dbContext.SaveChanges();
             
@@ -414,15 +417,16 @@ modelBuilder.Entity<User>().HasData(
             // Now it's safe to remove users
             _logger.LogInformation("Preparing to clear all users from the database");
             
-            var allUsers = _dbContext.Users.ToList();
+            List<User> allUsers = _dbContext.Users.ToList();
             _dbContext.Users.RemoveRange(allUsers);
             _dbContext.SaveChanges();
             
             _logger.LogInformation("Removed {Count} existing users", allUsers.Count);
             
             // Create a fresh admin user with known credentials
-            var passwordDebugHelper = new PasswordDebugHelper(_configuration);
-            var (passwordHash, salt) = passwordDebugHelper.GeneratePasswordHashForSeed("password");
+            PasswordDebugHelper passwordDebugHelper = new PasswordDebugHelper(_configuration);
+            string seedPassword = _configuration["SeedData:DefaultPassword"] ?? "DefaultSeedPassword123!";
+            (string passwordHash, string salt) = passwordDebugHelper.GeneratePasswordHashForSeed(seedPassword);
             
             // Create admin user
             User admin = new User
@@ -441,17 +445,37 @@ modelBuilder.Entity<User>().HasData(
             };
             
             _dbContext.Users.Add(admin);
+            
+            // Create customer support user as well
+            User customerSupport = new User
+            {
+                Username = "customersupport",
+                Email = "customersupport@tasktracker.com",
+                FirstName = "Customer",
+                LastName = "Support",
+                PasswordHash = passwordHash,
+                Salt = salt,
+                Role = "CustomerSupport",
+                IsActive = true,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now,
+                AgeGroup = Models.FamilyMemberAgeGroup.Adult
+            };
+            
+            _dbContext.Users.Add(customerSupport);
             _dbContext.SaveChanges();
             
             _logger.LogInformation("Created fresh admin user with ID {Id}", admin.Id);
+            _logger.LogInformation("Created fresh customer support user with ID {Id}", customerSupport.Id);
             
             return Ok(new {
-                Message = $"Completely reset the database. Removed {tasks.Count} tasks, {categories.Count} categories and {allUsers.Count} users, then created a fresh admin user",
+                Message = $"Completely reset the database. Removed {tasks.Count} tasks, {categories.Count} categories and {allUsers.Count} users, then created fresh admin and customer support users",
                 RemovedTaskCount = tasks.Count,
                 RemovedCategoryCount = categories.Count,
                 RemovedUserCount = allUsers.Count,
                 NewAdmin = new { admin.Id, admin.Email, admin.Username },
-                Note = "You can now log in with admin@tasktracker.com and password 'password'"
+                NewCustomerSupport = new { customerSupport.Id, customerSupport.Email, customerSupport.Username },
+                Note = "You can now log in with admin@tasktracker.com or customersupport@tasktracker.com, both with password 'password'"
             });
         }
         catch (Exception ex)
@@ -476,7 +500,7 @@ modelBuilder.Entity<User>().HasData(
             IAuthService authService = HttpContext.RequestServices.GetRequiredService<IAuthService>();
             
             // Create the login DTO
-            var loginDto = new TaskTrackerAPI.DTOs.Auth.UserLoginDTO
+            UserLoginDTO loginDto = new UserLoginDTO
             {
                 EmailOrUsername = model.EmailOrUsername,
                 Password = model.Password
@@ -541,7 +565,7 @@ modelBuilder.Entity<User>().HasData(
             _logger.LogInformation("Searching for user with email: {Email}", email);
             
             // Get all users for debugging
-            var allUsers = _dbContext.Users.ToList();
+            List<User> allUsers = _dbContext.Users.ToList();
             _logger.LogInformation("Total users in database: {Count}", allUsers.Count);
             
             foreach (var u in allUsers)
@@ -551,17 +575,17 @@ modelBuilder.Entity<User>().HasData(
             }
             
             // Different case variations to try
-            var exactMatch = allUsers.FirstOrDefault(u => u.Email == email);
-            var lowerCaseMatch = allUsers.FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
-            var ignoreCase = allUsers.FirstOrDefault(u => 
+            User? exactMatch = allUsers.FirstOrDefault(u => u.Email == email);
+            User? lowerCaseMatch = allUsers.FirstOrDefault(u => u.Email.ToLower() == email.ToLower());
+            User? ignoreCase = allUsers.FirstOrDefault(u => 
                 string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
             
             // Try to find user by username instead of email as a fallback
-            var usernameMatch = allUsers.FirstOrDefault(u => 
+            User? usernameMatch = allUsers.FirstOrDefault(u => 
                 string.Equals(u.Username, "admin", StringComparison.OrdinalIgnoreCase));
             
             // Choose which user to return
-            var user = exactMatch ?? lowerCaseMatch ?? ignoreCase ?? usernameMatch;
+            User? user = exactMatch ?? lowerCaseMatch ?? ignoreCase ?? usernameMatch;
             
             if (user == null)
             {
@@ -622,7 +646,7 @@ modelBuilder.Entity<User>().HasData(
         try 
         {
             // Find user by ID
-            var user = _dbContext.Users.Find(model.UserId);
+            User? user = _dbContext.Users.Find(model.UserId);
             
             if (user == null)
             {
@@ -689,14 +713,14 @@ modelBuilder.Entity<User>().HasData(
             _logger.LogInformation("Testing repository query for {Email}", model.EmailOrUsername);
             
             // Try both methods to find the user
-            var userByEmail = await userRepository.GetUserByEmailAsync(model.EmailOrUsername);
-            var userByUsername = await userRepository.GetUserByUsernameAsync(model.EmailOrUsername);
+            User? userByEmail = await userRepository.GetUserByEmailAsync(model.EmailOrUsername);
+            User? userByUsername = await userRepository.GetUserByUsernameAsync(model.EmailOrUsername);
             
             // Also try the exact match to check if we're having issues with case sensitivity
-            var exactMatch = _dbContext.Users.FirstOrDefault(u => u.Email == model.EmailOrUsername);
+            User? exactMatch = _dbContext.Users.FirstOrDefault(u => u.Email == model.EmailOrUsername);
             
             // Query all users for debugging
-            var allUsers = _dbContext.Users.ToList();
+            List<User> allUsers = _dbContext.Users.ToList();
             
             return Ok(new {
                 EmailInput = model.EmailOrUsername,

@@ -19,13 +19,21 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Advanced analytics controller - provides comprehensive analytics and insights.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Unique route: analytics/advanced
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/analytics/advanced")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]
     public class AdvancedAnalyticsController : BaseApiController
     {

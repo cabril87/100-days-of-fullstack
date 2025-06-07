@@ -21,11 +21,18 @@ using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family task management controller - handles family task assignment, approval, and coordination.
+    /// Accessible to all authenticated users (RegularUser and above) who are family members.
+    /// Permissions are validated through family membership and family-specific roles.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can participate in family tasks
     [Route("api/v{version:apiVersion}/family/{familyId}/tasks")]
     [ApiController]
     public class FamilyTasksController : BaseApiController

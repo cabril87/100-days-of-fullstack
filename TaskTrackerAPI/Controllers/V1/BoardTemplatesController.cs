@@ -17,6 +17,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -28,7 +32,8 @@ namespace TaskTrackerAPI.Controllers.V1;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
-public class BoardTemplatesController : ControllerBase
+[RequireRole(UserRole.RegularUser)]
+public class BoardTemplatesController : BaseApiController
 {
     private readonly IBoardTemplateService _boardTemplateService;
     private readonly IUserAccessor _userAccessor;

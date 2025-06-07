@@ -50,6 +50,20 @@ public class DataSeeder
             {
                 logger.LogInformation("Admin user already exists, skipping admin user creation.");
             }
+
+            // Check if customer support user exists
+            bool customerSupportExists = await context.Users.AnyAsync(u => u.Username == "customersupport");
+            
+            // Seed customer support user if not found
+            if (!customerSupportExists && authHelper != null)
+            {
+                logger.LogInformation("Customer support user not found, creating customer support user...");
+                await SeedCustomerSupportUserAsync(context, logger, authHelper);
+            }
+            else if (customerSupportExists)
+            {
+                logger.LogInformation("Customer support user already exists, skipping customer support user creation.");
+            }
             
             // Seed family roles
             if (!await context.FamilyRoles.AnyAsync())
@@ -75,7 +89,7 @@ public class DataSeeder
         try
         {
             // Double-check if admin exists (only check username since email is encrypted)
-            var adminByUsername = await context.Users
+            User? adminByUsername = await context.Users
                 .FirstOrDefaultAsync(u => u.Username == "admin");
 
             if (adminByUsername != null)
@@ -91,8 +105,9 @@ public class DataSeeder
             
             // Use the exact same hash generation method as in debug controller
             // so we're guaranteed they match for testing
-            var passwordDebugHelper = new PasswordDebugHelper(authHelper._configuration);
-            var (passwordHash, salt) = passwordDebugHelper.GeneratePasswordHashForSeed("password");
+            PasswordDebugHelper passwordDebugHelper = new PasswordDebugHelper(authHelper._configuration);
+            string seedPassword = authHelper._configuration["SeedData:DefaultPassword"] ?? "DefaultSeedPassword123!";
+            (string passwordHash, string salt) = passwordDebugHelper.GeneratePasswordHashForSeed(seedPassword);   
             
             logger.LogInformation("Seeding admin user...");
             
@@ -107,20 +122,74 @@ public class DataSeeder
                 Salt = salt,
                 Role = "Admin",
                 IsActive = true,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                AgeGroup = Models.FamilyMemberAgeGroup.Adult
             };
             
             await context.Users.AddAsync(admin);
             await context.SaveChangesAsync();
             logger.LogInformation("Admin user created with ID: {AdminId}", admin.Id);
         }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException?.Message?.Contains("duplicate key") == true)
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("duplicate key") == true)
         {
             logger.LogWarning("Admin user already exists (duplicate key constraint), skipping creation.");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error seeding admin user");
+            throw; // Re-throw non-duplicate key errors
+        }
+    }
+
+    private async Task SeedCustomerSupportUserAsync(ApplicationDbContext context, ILogger logger, AuthHelper authHelper)
+    {
+        try
+        {
+            // Double-check if customer support user exists
+            User? customerSupportByUsername = await context.Users
+                .FirstOrDefaultAsync(u => u.Username == "customersupport");
+
+            if (customerSupportByUsername != null)
+            {
+                logger.LogInformation("User with username 'customersupport' already exists with ID: {CustomerSupportId}", customerSupportByUsername.Id);
+                return;
+            }
+
+            logger.LogInformation("Customer support user not found, creating customer support user...");
+            
+            // Use the same password hash generation as admin user
+            PasswordDebugHelper passwordDebugHelper = new PasswordDebugHelper(authHelper._configuration);
+            string seedPassword = authHelper._configuration["SeedData:DefaultPassword"] ?? "DefaultSeedPassword123!";
+            (string passwordHash, string salt) = passwordDebugHelper.GeneratePasswordHashForSeed(seedPassword);
+            
+            logger.LogInformation("Seeding customer support user...");
+            
+            // Create customer support user
+            User customerSupport = new User
+            {
+                Username = "customersupport",
+                Email = "customersupport@tasktracker.com",
+                FirstName = "Customer",
+                LastName = "Support",
+                PasswordHash = passwordHash,
+                Salt = salt,
+                Role = "CustomerSupport",
+                IsActive = true,
+                CreatedAt = DateTime.Now,
+                AgeGroup = Models.FamilyMemberAgeGroup.Adult
+            };
+            
+            await context.Users.AddAsync(customerSupport);
+            await context.SaveChangesAsync();
+            logger.LogInformation("Customer support user created with ID: {CustomerSupportId}", customerSupport.Id);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("duplicate key") == true)
+        {
+            logger.LogWarning("Customer support user already exists (duplicate key constraint), skipping creation.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error seeding customer support user");
             throw; // Re-throw non-duplicate key errors
         }
     }

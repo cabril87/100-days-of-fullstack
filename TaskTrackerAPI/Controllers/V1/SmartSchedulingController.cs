@@ -20,13 +20,19 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Smart scheduling controller - provides AI-powered task scheduling and optimization.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/smart-scheduling")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class SmartSchedulingController : BaseApiController
     {
         private readonly ISmartSchedulingService _smartSchedulingService;

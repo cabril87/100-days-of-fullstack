@@ -1,16 +1,10 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/utils/serverAuth';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function SettingsPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirect to profile as the default settings page
-    router.replace('/settings/profile');
-  }, [router]);
-
-  // This component will not render as it redirects immediately
-  return null;
+export default async function SettingsPage() {
+  // Server-side authentication - redirect if not authenticated
+  await requireAuth();
+  
+  // Server-side redirect to profile as the default settings page
+  redirect('/settings/profile');
 } 

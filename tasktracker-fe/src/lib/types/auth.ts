@@ -97,13 +97,7 @@ export interface RegisterFormData {
   ageGroup: FamilyMemberAgeGroup;
 }
 
-export interface ProfileUpdateFormData {
-  username: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
-}
+// ProfileUpdateFormData moved to lib/types/forms.ts
 
 export interface PasswordChangeFormData {
   currentPassword: string;
@@ -162,29 +156,70 @@ export interface MFAStatusDTO {
 }
 
 export interface MFABackupCodeDTO {
-  backupCode: string;
-}
-
-// MFA Form Types for React Hook Form
-export interface MFASetupFormData {
   code: string;
 }
 
-export interface MFAVerificationFormData {
-  code: string;
+// MFA UI State Types
+export interface MFASetupState {
+  step: 'setup' | 'verify' | 'backup-codes' | 'complete';
+  setupData: MFASetupInitiateDTO | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
-export interface MFADisableFormData {
-  password: string;
-  code?: string;
+export interface MFAManagementState {
+  status: MFAStatusDTO | null;
+  isLoading: boolean;
+  error: string | null;
+  showBackupCodes: boolean;
+  showDisableDialog: boolean;
 }
 
-export interface MFABackupCodeFormData {
-  backupCode: string;
+// MFA Component Props
+export interface MFASetupWizardProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: (backupCodes: string[]) => void;
+}
+
+export interface MFAStatusCardProps {
+  status: MFAStatusDTO;
+  onSetup: () => void;
+  onDisable: () => void;
+  onViewBackupCodes: () => void;
+  onRegenerateBackupCodes: () => void;
+}
+
+export interface MFADisableDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (password: string, code?: string) => void;
+  isLoading: boolean;
+}
+
+export interface MFABackupCodesDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  backupCodes: string[];
+  onRegenerate: () => void;
+  isLoading: boolean;
+}
+
+export interface MFAVerificationFormProps {
+  onVerify: (code: string) => void;
+  onUseBackupCode: () => void;
+  isLoading: boolean;
+  error: string | null;
 }
 
 // API Response Types
 export interface ApiError {
   message: string;
   errors?: Record<string, string[]>;
+}
+
+export interface MFAStatusResponse {
+  enabled: boolean;
+  setupDate: string | null;
+  backupCodesRemaining: number;
 } 

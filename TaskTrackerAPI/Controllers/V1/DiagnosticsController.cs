@@ -5,13 +5,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
+using TaskTrackerAPI.Controllers.V2;
 
-namespace TaskTrackerAPI.Controllers
+namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Diagnostics controller - provides system diagnostics and health checks.
+    /// Accessible to Developers and Global Admins only.
+    /// Used for system monitoring and troubleshooting.
+    /// </summary>
     [ApiController]
-    [Route("api/v1/[controller]")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiVersion("1.0")]
-    public class DiagnosticsController : ControllerBase
+    [Authorize]
+    [RequireDeveloper]
+    public class DiagnosticsController : BaseApiController
     {
         private readonly ILogger<DiagnosticsController> _logger;
 
@@ -45,7 +55,7 @@ namespace TaskTrackerAPI.Controllers
         }
 
         [HttpGet("environment")]
-        [Authorize(Roles = "Admin")]
+        [RequireDeveloper] // Updated from legacy Admin role
         public IActionResult GetEnvironment()
         {
             var environmentVars = Environment.GetEnvironmentVariables()

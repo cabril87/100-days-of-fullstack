@@ -33,6 +33,12 @@ export class TaskService {
       if (result && result.data) {
         const backendData = result.data;
         return {
+          // Basic stats
+          totalTasks: 0,
+          completedTasks: backendData.completedTasks || 0,
+          activeTasks: 0,
+          overdueTasks: 0,
+          // Extended dashboard properties
           tasksCompleted: backendData.completedTasks || 0,
           tasksCompletedThisWeek: backendData.completedTasksThisWeek || 0,
           activeGoals: backendData.activeGoals || 0,
@@ -43,6 +49,10 @@ export class TaskService {
       }
       
       return {
+        totalTasks: 0,
+        completedTasks: 0,
+        activeTasks: 0,
+        overdueTasks: 0,
         tasksCompleted: 0,
         tasksCompletedThisWeek: 0,
         activeGoals: 0,
@@ -55,6 +65,10 @@ export class TaskService {
       
       // Return default values instead of mock data
       return {
+        totalTasks: 0,
+        completedTasks: 0,
+        activeTasks: 0,
+        overdueTasks: 0,
         tasksCompleted: 0,
         tasksCompletedThisWeek: 0,
         activeGoals: 0,

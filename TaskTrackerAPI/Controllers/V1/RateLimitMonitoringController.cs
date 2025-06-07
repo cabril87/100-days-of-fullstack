@@ -24,13 +24,20 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Utils;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
+/// <summary>
+/// Rate limit monitoring controller - manages API rate limiting, quotas, and circuit breakers.
+/// Accessible to Developers and Global Admins only.
+/// Used for system monitoring and performance management.
+/// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize]
+[RequireDeveloper] // Rate limit monitoring for Developers and Global Admins
 public class RateLimitMonitoringController : BaseApiController
 {
     private readonly ILogger<RateLimitMonitoringController> _logger;

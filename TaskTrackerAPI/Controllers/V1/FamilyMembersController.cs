@@ -20,13 +20,19 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family members controller - manages family member information and relationships.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class FamilyMembersController : BaseApiController
     {
         private readonly ILogger<FamilyMembersController> _logger;

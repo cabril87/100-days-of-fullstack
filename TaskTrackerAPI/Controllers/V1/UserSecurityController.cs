@@ -22,18 +22,20 @@ using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs.Security;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
     /// <summary>
-    /// Controller for user-specific security settings and management
-    /// This controller allows regular users to manage their own security settings,
-    /// sessions, and devices without requiring admin privileges.
+    /// User security controller - manages individual user security configurations.
+    /// Accessible to all authenticated users (RegularUser and above).
     /// </summary>
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     [Authorize]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/user-security")]
+    [RequireRole(UserRole.RegularUser)]
     public class UserSecurityController : BaseApiController
     {
         private readonly ISecurityMonitoringService _securityMonitoringService;

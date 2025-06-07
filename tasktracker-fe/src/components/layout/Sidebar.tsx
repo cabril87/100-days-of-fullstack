@@ -23,6 +23,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
     family: true,
     gamification: true,
     admin: true,
+    customerSupport: true,
     templates: true,
     settings: true,
   });
@@ -30,6 +31,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
   const isAdmin = user?.role.toLowerCase() === 'admin';
   const isGlobalAdmin = user?.email === 'admin@tasktracker.com' || user?.role.toLowerCase() === 'globaladmin';
+  const isCustomerSupport = user?.role.toLowerCase() === 'customersupport';
   const isFamilyAdmin = user?.isFamilyAdmin || isAdmin;
   const userPoints = user?.points || 0;
 
@@ -494,6 +496,61 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                       🌱 Family Seeding
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
                         DEV
+                      </span>
+                    </Link>
+                    <Link
+                      href="/admin/support"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/support')
+                          ? 'bg-blue-500/20 border-l-4 border-blue-400 text-blue-700 dark:text-blue-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      🎧 Customer Support
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        NEW
+                      </span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Customer Support Section */}
+            {isCustomerSupport && (
+              <div>
+                <button
+                  onClick={() => toggleSection('customerSupport')}
+                  className="flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
+                  <span className="flex items-center gap-2">
+                    🎧 Customer Support
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-sm">
+                      SUPPORT
+                    </span>
+                  </span>
+                  <svg
+                    className={`w-4 h-4 transform transition-transform ${expandedSections.customerSupport ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {expandedSections.customerSupport && (
+                  <div className="space-y-1 ml-4">
+                    <Link
+                      href="/admin/support"
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isActiveLink('/admin/support')
+                          ? 'bg-blue-500/20 border-l-4 border-blue-400 text-blue-700 dark:text-blue-300'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      🎧 Support Dashboard
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        NEW
                       </span>
                     </Link>
                   </div>

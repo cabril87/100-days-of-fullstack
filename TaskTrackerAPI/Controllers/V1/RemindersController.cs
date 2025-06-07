@@ -21,11 +21,18 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
 using ModelReminderStatus = TaskTrackerAPI.Models.ReminderStatus;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Reminders controller - manages task reminders and notifications.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Core productivity feature for reminder management.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can manage reminders
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class RemindersController : BaseApiController

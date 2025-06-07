@@ -20,11 +20,18 @@ using System;
 using System.IO;
 using TaskTrackerAPI.Controllers.V2;
 using System.Collections.Generic;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Data export controller - handles user data export requests in various formats.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Users can only export their own data with privacy protections.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can export their own data
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]

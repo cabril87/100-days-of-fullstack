@@ -13,10 +13,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '../ui/alert';
 import { Mail, ArrowLeft, Key, CheckCircle2 } from 'lucide-react';
 import { passwordResetSchema } from '../../lib/schemas';
+import { PasswordResetFormData } from '../../lib/types/forms';
 
-interface PasswordResetFormData {
-  email: string;
-}
+// PasswordResetFormData is imported from lib/types/forms
 
 export const PasswordResetForm: React.FC = () => {
   const { requestPasswordReset, isAuthenticated } = useAuth();

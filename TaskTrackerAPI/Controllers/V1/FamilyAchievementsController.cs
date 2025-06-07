@@ -19,13 +19,20 @@ using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs.Gamification;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family achievements controller - manages family-wide achievements and rewards.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class FamilyAchievementsController : BaseApiController
     {
         private readonly IFamilyAchievementService _achievementService;

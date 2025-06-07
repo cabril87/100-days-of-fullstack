@@ -19,11 +19,18 @@ using TaskTrackerAPI.DTOs.User;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// User calendar controller - handles personal and family calendar integration views.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Provides unified calendar view across all user's families.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can access calendar features
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class UserCalendarController : BaseApiController

@@ -23,6 +23,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -558,7 +559,7 @@ public class AuthController : BaseApiController
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [RequireGlobalAdmin] // Only Global Admins can view all users
     [HttpGet("users")]
     public async Task<ActionResult<IEnumerable<UserDTO>>> GetAllUsers()
     {
@@ -574,7 +575,7 @@ public class AuthController : BaseApiController
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [RequireGlobalAdmin] // Only Global Admins can change user roles
     [HttpPut("users/{id}/role")]
     public async Task<IActionResult> UpdateUserRole(int id, [FromBody] string role)
     {
@@ -603,7 +604,7 @@ public class AuthController : BaseApiController
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [RequireGlobalAdmin] // Only Global Admins can delete users
     [HttpDelete("users/{id}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
@@ -628,7 +629,7 @@ public class AuthController : BaseApiController
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [RequireAdminOrSupport] // Global Admins and Customer Support can reset passwords
     [HttpPost("users/change-password")]
     public async Task<IActionResult> AdminChangePassword(AdminPasswordChangeDTO changePasswordDto)
     {
@@ -682,37 +683,16 @@ public class AuthController : BaseApiController
                 username: username,
                 resource: "/api/auth/logout",
                 severity: "INFO",
-                details: $"User logged out successfully: {username}",
+                details: "User logged out successfully",
                 isSuccessful: true,
                 isSuspicious: false
             );
             
-            // Clear cookies
-            Response.Headers.Append("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"");
-            
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            // Log logout attempt for non-existent user
-            await _securityMonitoringService.LogSecurityAuditAsync(
-                eventType: "USER_LOGOUT_FAILED",
-                action: "POST /api/auth/logout",
-                ipAddress: ipAddress,
-                userAgent: userAgent,
-                username: username,
-                resource: "/api/auth/logout",
-                severity: "MEDIUM",
-                details: "Logout failed: User not found",
-                isSuccessful: false,
-                isSuspicious: true
-            );
-            
-            return NotFound("User not found");
+            return Ok(new { message = "Logged out successfully" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during logout");
+            _logger.LogError(ex, "Error during logout for user {Username}: {ErrorMessage}", username, ex.Message);
             
             // Log logout error
             await _securityMonitoringService.LogSecurityAuditAsync(
@@ -722,13 +702,330 @@ public class AuthController : BaseApiController
                 userAgent: userAgent,
                 username: username,
                 resource: "/api/auth/logout",
-                severity: "HIGH",
+                severity: "MEDIUM",
                 details: $"Logout error: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: false
+            );
+            
+            return StatusCode(500, new { message = "An error occurred during logout" });
+        }
+    }
+
+    /// <summary>
+    /// Login with HTTP-only cookies for enhanced security (Server Components)
+    /// </summary>
+    [HttpPost("login/cookie")]
+    [AllowAnonymous]
+    public async Task<ActionResult> LoginWithCookie(UserLoginDTO userLoginDto)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            _logger.LogInformation("Cookie login request received: {@UserLoginDto}", new { Email = userLoginDto.EmailOrUsername });
+            
+            // Check if account is locked out
+            bool isLockedOut = await _failedLoginService.IsAccountLockedAsync(userLoginDto.EmailOrUsername);
+            if (isLockedOut)
+            {
+                _logger.LogWarning("Cookie login attempt for locked account: {Email}", userLoginDto.EmailOrUsername);
+                
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "ACCOUNT_LOCKOUT_ATTEMPT",
+                    action: "POST /api/auth/login/cookie",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    username: userLoginDto.EmailOrUsername,
+                    resource: "/api/auth/login/cookie",
+                    severity: "HIGH",
+                    details: "Cookie login attempt on locked account",
                 isSuccessful: false,
                 isSuspicious: true
             );
             
-            return StatusCode(500, "An error occurred during logout");
+                return Unauthorized(new { message = "Account is temporarily locked due to multiple failed login attempts. Please try again later." });
+            }
+            
+            TokensResponseDTO response = await _authService.LoginAsync(userLoginDto, ipAddress, userAgent);
+            
+            // Set HTTP-only cookies for enhanced security
+            CookieOptions accessTokenOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // HTTPS only in production
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(15), // Short expiry for access token
+                Path = "/",
+                IsEssential = true
+            };
+            
+            CookieOptions refreshTokenOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true, // HTTPS only in production
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(7), // Longer expiry for refresh token
+                Path = "/api/auth", // Restrict to auth endpoints only
+                IsEssential = true
+            };
+            
+            Response.Cookies.Append("access_token", response.AccessToken, accessTokenOptions);
+            Response.Cookies.Append("refresh_token", response.RefreshToken, refreshTokenOptions);
+            
+            _logger.LogInformation("User logged in successfully with cookies: {Email}", userLoginDto.EmailOrUsername);
+            
+            // Log successful cookie login to security audit
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "USER_COOKIE_LOGIN",
+                action: "POST /api/auth/login/cookie",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: response.User.Id,
+                username: response.User.Username,
+                resource: "/api/auth/login/cookie",
+                severity: "INFO",
+                details: $"User logged in successfully with cookies: {userLoginDto.EmailOrUsername}",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            // Return user info without tokens (tokens are in HTTP-only cookies)
+            return Ok(new { 
+                user = response.User,
+                message = "Logged in successfully"
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized cookie login: {Message}", ex.Message);
+            
+            await _failedLoginService.LogFailedLoginAttemptAsync(
+                userLoginDto.EmailOrUsername,
+                ipAddress,
+                userAgent,
+                ex.Message
+            );
+            
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "USER_COOKIE_LOGIN_FAILED",
+                action: "POST /api/auth/login/cookie",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                username: userLoginDto.EmailOrUsername,
+                resource: "/api/auth/login/cookie",
+                severity: "MEDIUM",
+                details: $"Cookie login failed: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true
+            );
+            
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during cookie login for {Email}: {ErrorMessage}", 
+                userLoginDto.EmailOrUsername, ex.Message);
+            
+            await _failedLoginService.LogFailedLoginAttemptAsync(
+                userLoginDto.EmailOrUsername,
+                ipAddress,
+                userAgent,
+                $"System error: {ex.Message}"
+            );
+            
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "USER_COOKIE_LOGIN_ERROR",
+                action: "POST /api/auth/login/cookie",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                username: userLoginDto.EmailOrUsername,
+                resource: "/api/auth/login/cookie",
+                severity: "HIGH",
+                details: $"Cookie login error: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: true
+            );
+            
+            return StatusCode(500, new { message = "An error occurred during login. Please try again later." });
+        }
+    }
+
+    /// <summary>
+    /// Logout with HTTP-only cookies cleanup
+    /// </summary>
+    [HttpPost("logout/cookie")]
+    [Authorize]
+    public async Task<IActionResult> LogoutWithCookie()
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        string? username = User.FindFirstValue(ClaimTypes.Name);
+        
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            
+            // Get refresh token from cookie
+            string? refreshToken = Request.Cookies["refresh_token"];
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await _authService.LogoutAsync(userId, refreshToken, ipAddress);
+            }
+            
+            // Clear HTTP-only cookies
+            CookieOptions clearOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(-1), // Expire immediately
+                Path = "/"
+            };
+            
+            Response.Cookies.Append("access_token", "", clearOptions);
+            Response.Cookies.Append("refresh_token", "", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(-1),
+                Path = "/api/auth"
+            });
+            
+            // Log successful logout to security audit
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "USER_COOKIE_LOGOUT",
+                action: "POST /api/auth/logout/cookie",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                userId: userId,
+                username: username,
+                resource: "/api/auth/logout/cookie",
+                severity: "INFO",
+                details: "User logged out successfully with cookie cleanup",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+            
+            return Ok(new { message = "Logged out successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during cookie logout for user {Username}: {ErrorMessage}", username, ex.Message);
+            
+            // Log logout error
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "USER_COOKIE_LOGOUT_ERROR",
+                action: "POST /api/auth/logout/cookie",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                username: username,
+                resource: "/api/auth/logout/cookie",
+                severity: "MEDIUM",
+                details: $"Cookie logout error: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: false
+            );
+            
+            return StatusCode(500, new { message = "An error occurred during logout" });
+        }
+    }
+
+    /// <summary>
+    /// Refresh access token using HTTP-only refresh cookie
+    /// </summary>
+    [HttpPost("refresh-token/cookie")]
+    [AllowAnonymous]
+    public async Task<ActionResult> RefreshTokenWithCookie()
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            string? refreshToken = Request.Cookies["refresh_token"];
+            
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return Unauthorized(new { message = "Refresh token not found" });
+            }
+            
+            RefreshTokenRequestDTO refreshRequest = new RefreshTokenRequestDTO
+            {
+                RefreshToken = refreshToken
+            };
+            
+            TokensResponseDTO response = await _authService.RefreshTokenAsync(refreshRequest.RefreshToken, ipAddress);
+            
+            // Update HTTP-only cookies with new tokens
+            CookieOptions accessTokenOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddMinutes(15),
+                Path = "/",
+                IsEssential = true
+            };
+            
+            CookieOptions refreshTokenOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTimeOffset.UtcNow.AddDays(7),
+                Path = "/api/auth",
+                IsEssential = true
+            };
+            
+            Response.Cookies.Append("access_token", response.AccessToken, accessTokenOptions);
+            Response.Cookies.Append("refresh_token", response.RefreshToken, refreshTokenOptions);
+            
+            return Ok(new { 
+                user = response.User,
+                message = "Token refreshed successfully"
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized token refresh: {Message}", ex.Message);
+            
+            // Clear invalid cookies
+            Response.Cookies.Delete("access_token");
+            Response.Cookies.Delete("refresh_token");
+            
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during token refresh: {ErrorMessage}", ex.Message);
+            return StatusCode(500, new { message = "An error occurred during token refresh" });
+        }
+    }
+
+    /// <summary>
+    /// Get current user from HTTP-only cookie authentication
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<UserDTO>> GetCurrentUser()
+    {
+        try
+        {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            UserDTO profile = await _authService.GetUserProfileAsync(userId);
+            return Ok(profile);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving current user profile");
+            return StatusCode(500, "An error occurred while retrieving your profile.");
         }
     }
 

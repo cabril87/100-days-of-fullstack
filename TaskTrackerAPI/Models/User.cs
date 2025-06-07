@@ -47,7 +47,18 @@ public class User
     public string? LastName { get; set; }
 
     [Required]
-    public required string Role { get; set; } = "User";
+    public required string Role { get; set; } = "RegularUser";
+
+    /// <summary>
+    /// Gets the UserRole enum value from the Role string property.
+    /// Provides type-safe access to user roles with legacy support.
+    /// </summary>
+    [NotMapped]
+    public UserRole UserRole 
+    { 
+        get => UserRoleConstants.FromString(Role);
+        set => Role = UserRoleConstants.ToString(value);
+    }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

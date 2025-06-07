@@ -122,4 +122,77 @@ namespace TaskTrackerAPI.DTOs.Notifications
         [MaxLength(50)]
         public string RelatedEntityType { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// DTO for notification statistics
+    /// </summary>
+    public class NotificationStats
+    {
+        public int TotalSent { get; set; }
+        public int UnreadCount { get; set; }
+        public int ThisWeek { get; set; }
+        public int DeliveryRate { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for comprehensive notification settings
+    /// </summary>
+    public class NotificationSettingsDTO
+    {
+        public EmailNotificationSettings EmailNotifications { get; set; } = new();
+        public PushNotificationSettings PushNotifications { get; set; } = new();
+        public NotificationSchedule NotificationSchedule { get; set; } = new();
+        public FamilyNotificationSettings FamilyNotifications { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Email notification settings
+    /// </summary>
+    public class EmailNotificationSettings
+    {
+        public bool TaskReminders { get; set; } = true;
+        public bool AchievementAlerts { get; set; } = true;
+        public bool FamilyActivity { get; set; } = true;
+        public bool SecurityAlerts { get; set; } = true;
+        public bool WeeklyDigest { get; set; } = true;
+        public bool MarketingEmails { get; set; } = false;
+        public bool SystemUpdates { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Push notification settings
+    /// </summary>
+    public class PushNotificationSettings
+    {
+        public bool TaskReminders { get; set; } = true;
+        public bool AchievementAlerts { get; set; } = true;
+        public bool FamilyActivity { get; set; } = true;
+        public bool SecurityAlerts { get; set; } = true;
+        public bool ImmediateAlerts { get; set; } = true;
+        public bool QuietHours { get; set; } = false;
+    }
+
+    /// <summary>
+    /// Notification schedule settings
+    /// </summary>
+    public class NotificationSchedule
+    {
+        public string StartTime { get; set; } = "09:00";
+        public string EndTime { get; set; } = "22:00";
+        public string Timezone { get; set; } = "UTC";
+        public bool WeekendsOnly { get; set; } = false;
+        public List<int> CustomDays { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Family notification settings
+    /// </summary>
+    public class FamilyNotificationSettings
+    {
+        public bool ChildTaskUpdates { get; set; } = true;
+        public bool PermissionRequests { get; set; } = true;
+        public bool AchievementSharing { get; set; } = true;
+        public bool EmergencyAlerts { get; set; } = true;
+        public bool ParentalControlChanges { get; set; } = true;
+    }
 } 

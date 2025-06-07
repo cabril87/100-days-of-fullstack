@@ -398,17 +398,11 @@ export class NotificationService {
   // === TEST & UTILITY ===
 
   /**
-   * Send test notification
+   * Send test notification (Admin-only functionality)
+   * Removed per Family Auth Implementation Checklist rules
    */
-  async sendTestNotification(type: 'email' | 'push'): Promise<void> {
-    try {
-      await apiClient.post<void>('/api/v1/notifications/test', {
-        notificationType: type
-      });
-    } catch (error) {
-      console.error('Failed to send test notification:', error);
-      throw error;
-    }
+  async sendTestNotification(): Promise<void> {
+    throw new NotificationApiError('Test notifications require administrator privileges', 403);
   }
 
   /**

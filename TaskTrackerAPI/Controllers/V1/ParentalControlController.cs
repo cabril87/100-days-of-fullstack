@@ -19,16 +19,21 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
 /// <summary>
-/// Controller for parental control and family safety operations
+/// Parental control controller - handles child safety, screen time, and permission request management.
+/// Accessible to all authenticated users (RegularUser and above).
+/// Primary users are parents, family admins, and child accounts requesting permissions.
 /// </summary>
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
+[RequireRole(UserRole.RegularUser)] // All authenticated users can access parental controls
 public class ParentalControlController : BaseApiController
 {
     private readonly IParentalControlService _parentalControlService;

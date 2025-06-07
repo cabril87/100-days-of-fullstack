@@ -19,4 +19,13 @@ export * from './ui';
 export * from './dashboard';
 export * from './providers';
 export * from './forms';
-export * from './skeleton'; 
+export * from './skeleton';
+
+// Customer support types
+export * from './customer-support';
+
+// Component props types
+export * from './component-props';
+
+// Note: familySeeding types excluded to avoid conflicts with family-invitation types
+// Import directly from './familySeeding' if needed 

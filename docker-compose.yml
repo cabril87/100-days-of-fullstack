@@ -41,6 +41,7 @@ services:
       - AppSettings__TokenKey=your_development_token_key_here_replace_in_production
       - AppSettings__PasswordKey=your_development_password_key_here_replace_in_production
       - AppSettings__DebugKey=DEVELOPMENT_DEBUG_ONLY_7865421
+      - SeedData__DefaultPassword=password
       - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
     healthcheck:
       test: ["CMD-SHELL", "timeout 10s bash -c 'cat < /dev/null > /dev/tcp/localhost/8080' || exit 1"]

@@ -28,11 +28,13 @@ namespace TaskTrackerAPI.Controllers.V1;
 
 /// <summary>
 /// Security monitoring and management controller for admin operations
+/// Accessible by Global Admins, Customer Support, and Developers
 /// </summary>
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize]
+[RequireRole(UserRole.GlobalAdmin, UserRole.CustomerSupport, UserRole.Developer)] // Security monitoring for support/admin roles
 [RateLimit(50, 60)] // Admin endpoints get higher limits
 public class SecurityMonitoringController : BaseApiController
 {

@@ -293,6 +293,62 @@ class AuthService {
       throw new AuthServiceError('Network error occurred');
     }
   }
+
+  // HTTP-Only Cookie Authentication Methods
+  async loginWithCookie(credentials: UserLoginDTO): Promise<{ user: User; message: string }> {
+    try {
+      return await apiClient.post<{ user: User; message: string }>(
+        `${API_ENDPOINTS.AUTH.BASE}/login/cookie`,
+        credentials
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw new AuthServiceError(error.message, error.statusCode, error.errors);
+      }
+      throw new AuthServiceError('Network error occurred');
+    }
+  }
+
+  async logoutWithCookie(): Promise<{ message: string }> {
+    try {
+      return await apiClient.post<{ message: string }>(
+        `${API_ENDPOINTS.AUTH.BASE}/logout/cookie`,
+        {}
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw new AuthServiceError(error.message, error.statusCode, error.errors);
+      }
+      throw new AuthServiceError('Network error occurred');
+    }
+  }
+
+  async refreshTokenWithCookie(): Promise<{ user: User; message: string }> {
+    try {
+      return await apiClient.post<{ user: User; message: string }>(
+        `${API_ENDPOINTS.AUTH.BASE}/refresh-token/cookie`,
+        {}
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw new AuthServiceError(error.message, error.statusCode, error.errors);
+      }
+      throw new AuthServiceError('Network error occurred');
+    }
+  }
+
+  async getCurrentUser(): Promise<User> {
+    try {
+      return await apiClient.get<User>(
+        `${API_ENDPOINTS.AUTH.BASE}/me`
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw new AuthServiceError(error.message, error.statusCode, error.errors);
+      }
+      throw new AuthServiceError('Network error occurred');
+    }
+  }
 }
 
 export const authService = new AuthService();

@@ -19,13 +19,19 @@ using TaskTrackerAPI.Models;
 using System;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Extensions;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Task priority controller - manages task priority levels and settings.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class TaskPriorityController : BaseApiController
     {
         private readonly ITaskPriorityService _priorityService;

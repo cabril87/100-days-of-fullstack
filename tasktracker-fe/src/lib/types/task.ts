@@ -3,6 +3,8 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
+import { User } from './auth';
+
 export interface Task {
   id: number;
   title: string;
@@ -52,6 +54,11 @@ export interface UpdateTaskDTO {
 }
 
 export interface TaskStats {
+  totalTasks: number;
+  completedTasks: number;
+  activeTasks: number;
+  overdueTasks: number;
+  // Extended properties for dashboard use
   tasksCompleted: number;
   tasksCompletedThisWeek: number;
   activeGoals: number;
@@ -140,4 +147,13 @@ export interface BackendUserProgressResponse {
   highestStreak: number;
   lastActivityDate: string;
   lastUpdated: string;
+}
+
+export interface TasksPageContentProps {
+  user: User;
+  initialData: {
+    tasks: Task[];
+    categories: TaskCategory[];
+    stats: TaskStats;
+  };
 } 

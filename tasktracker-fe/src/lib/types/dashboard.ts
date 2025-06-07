@@ -3,6 +3,9 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
+import { User } from './auth';
+import { FamilyDTO } from './family-invitation';
+
 export interface DashboardStats {
   tasksCompleted: number;
   activeGoals: number;
@@ -13,6 +16,14 @@ export interface DashboardStats {
   familyPoints: number;
   streakDays: number;
   totalFamilies: number;
+}
+
+export interface DashboardContentProps {
+  user: User;
+  initialData: {
+    family: FamilyDTO | null;
+    stats: DashboardStats;
+  };
 }
 
 export interface FamilyActivityItem {

@@ -23,12 +23,14 @@ using TaskTrackerAPI.Models;
 namespace TaskTrackerAPI.Controllers.V1;
 
 /// <summary>
-/// Controller for family activity management
+/// Family activity controller - manages family-wide activity tracking.
+/// Accessible to all authenticated users (RegularUser and above).
 /// </summary>
-[Authorize]
-[ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/family/{familyId}/activity")]
+[ApiController]
+[Authorize]
+[RequireRole(UserRole.RegularUser)]
 public class FamilyActivityController : BaseApiController
 {
     private readonly IFamilyActivityService _activityService;

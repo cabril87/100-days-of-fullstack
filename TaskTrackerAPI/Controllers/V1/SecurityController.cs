@@ -18,16 +18,22 @@ using TaskTrackerAPI.DTOs.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Services.Interfaces;
+using TaskTrackerAPI.Extensions;
+using TaskTrackerAPI.Attributes;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
     /// <summary>
-    /// Controller for handling security-related functionality
+    /// Security controller - manages user security settings and preferences.
+    /// Accessible to all authenticated users (RegularUser and above).
     /// </summary>
-    [ApiController]
-    [Authorize]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     public class SecurityController : BaseApiController
     {
         private readonly ILogger<SecurityController> _logger;

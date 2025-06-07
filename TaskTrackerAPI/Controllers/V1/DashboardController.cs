@@ -22,13 +22,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Dashboard controller - provides user dashboard and overview data.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
-    [Authorize]
-    [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
+    [ApiController]
+    [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     [SecurityRequirements(SecurityRequirementLevel.Authenticated)]
     public class DashboardController : BaseApiController
     {

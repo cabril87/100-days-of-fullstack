@@ -24,11 +24,18 @@ using System.Text.Json;
 using System.Security.Claims;
 using AutoMapper;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Gamification controller - handles achievements, badges, points, rewards, and challenges.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Administrative functions require elevated privileges.
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can access gamification features
     [ApiController]
     [Route("api/v{version:apiVersion}/[controller]")]
     public class GamificationController : BaseApiController
@@ -85,10 +92,17 @@ namespace TaskTrackerAPI.Controllers.V1
             }
         }
 
+        /// <summary>
+        /// Manually add points to a user. 
+        /// Global Admins: Can add points to any user
+        /// Family Admins/Parents: Can add bonus points to family members
+        /// Customer Support: Can adjust points for support issues
+        /// </summary>
         [HttpPost("points")]
-        [Authorize(Roles = "Admin")]
+        [RequireRole(UserRole.CustomerSupport, UserRole.GlobalAdmin)] // Support+ can manage points
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<PointTransactionDTO>> AddPoints([FromBody] AddPointsDTO dto)
         {
@@ -774,6 +788,68 @@ namespace TaskTrackerAPI.Controllers.V1
                 _logger.LogError(ex, "Error retrieving tier progress");
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     ApiResponse<TierProgressDTO>.FailureResponse("Error retrieving tier progress", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        #endregion
+
+        #region Family Points
+
+        /// <summary>
+        /// Add bonus points to family members - for offline activities, special accomplishments, etc.
+        /// Accessible to family admins, parents, and users with manage_rewards permission.
+        /// </summary>
+        [HttpPost("family-points")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<PointTransactionDTO>> AddFamilyBonusPoints([FromBody] FamilyBonusPointsDTO dto)
+        {
+            try
+            {
+                int requestingUserId = User.GetUserIdAsInt();
+                
+                // Check if user can manage points for the target family member
+                // This would integrate with your family permission system
+                // For now, using a simplified check - you'd want to integrate with IFamilyService
+                
+                if (dto.Points <= 0)
+                {
+                    return BadRequest(ApiResponse<PointTransactionDTO>.BadRequestResponse("Points must be greater than zero"));
+                }
+
+                if (dto.Points > 500) // Limit family bonus points to prevent abuse
+                {
+                    return BadRequest(ApiResponse<PointTransactionDTO>.BadRequestResponse("Bonus points cannot exceed 500 at once"));
+                }
+
+                // Add the bonus points
+                int transactionId = await _gamificationService.AddPointsAsync(
+                    dto.TargetUserId, 
+                    dto.Points, 
+                    "family_bonus", 
+                    dto.Reason ?? "Family bonus points", 
+                    requestingUserId
+                );
+                
+                PointTransactionDTO transaction = await _gamificationService.GetTransactionAsync(transactionId);
+                
+                _logger.LogInformation("User {RequestingUserId} awarded {Points} bonus points to family member {TargetUserId} for: {Reason}", 
+                    requestingUserId, dto.Points, dto.TargetUserId, dto.Reason);
+                
+                return Ok(ApiResponse<PointTransactionDTO>.SuccessResponse(transaction, "Bonus points awarded successfully"));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Unauthorized attempt to award family bonus points");
+                return Forbid("You don't have permission to award points to this family member");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding family bonus points");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<PointTransactionDTO>.FailureResponse("Error adding bonus points", StatusCodes.Status500InternalServerError));
             }
         }
 

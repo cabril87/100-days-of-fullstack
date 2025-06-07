@@ -1,4 +1,4 @@
-import { FamilyMemberAgeGroup } from './auth';
+import { FamilyMemberAgeGroup, User } from './auth';
 
 // Admin User Creation Types
 export interface AdminUserCreateRequest {
@@ -119,4 +119,34 @@ export const canTransferOwnership = (ageGroup: FamilyMemberAgeGroup): boolean =>
 
 export const canCreateFamily = (ageGroup: FamilyMemberAgeGroup): boolean => {
   return ageGroup === FamilyMemberAgeGroup.Teen || ageGroup === FamilyMemberAgeGroup.Adult;
-}; 
+};
+
+export interface AdminStats {
+  totalUsers: number;
+  totalFamilies: number;
+  activeSessions: number;
+  systemHealth: 'good' | 'warning' | 'critical';
+}
+
+export interface AdminSystemMetrics {
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+}
+
+export interface AdminActivityItem {
+  id: string;
+  action: string;
+  adminName: string;
+  timestamp: Date;
+  details?: string;
+}
+
+export interface AdminDashboardContentProps {
+  user: User;
+  initialData: {
+    stats: AdminStats;
+    recentActivity: AdminActivityItem[];
+    systemMetrics: AdminSystemMetrics;
+  };
+} 

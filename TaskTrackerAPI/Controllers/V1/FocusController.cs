@@ -20,35 +20,20 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Focus;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
-    public class HourlySessionData
-    {
-        public int Count { get; set; }
-        public double AvgQuality { get; set; }
-        public double AvgLength { get; set; }
-        public double CompletionRate { get; set; }
-    }
 
-    public class CategorySessionData
-    {
-        public int Count { get; set; }
-        public double AvgQuality { get; set; }
-        public int TotalTime { get; set; }
-        public int CompletedTasks { get; set; }
-    }
-
-    public class HourlyRecommendationData
-    {
-        public int Count { get; set; }
-        public double AvgQuality { get; set; }
-    }
-
+    /// <summary>
+    /// Focus session management controller - handles deep work sessions, productivity tracking, and distraction management.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// Integrates with gamification system for focus-based achievements and rewards.
+    /// </summary>
     [Authorize]
+    [RequireRole(UserRole.RegularUser)] // All authenticated users can access focus features  
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/[controller]")]
     [ApiController]
@@ -928,11 +913,11 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             TimeOfDayInsights insights = new TimeOfDayInsights();
             
-            Dictionary<int, HourlySessionData> hourlyData = sessions
+            Dictionary<int, HourlySessionDataDTO> hourlyData = sessions
                 .GroupBy(s => s.StartTime.Hour)
                 .ToDictionary(
                     g => g.Key,
-                    g => new HourlySessionData
+                    g => new HourlySessionDataDTO
                     {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue).DefaultIfEmpty()
@@ -948,8 +933,8 @@ namespace TaskTrackerAPI.Controllers.V1
 
             if (hourlyData.Any())
             {
-                KeyValuePair<int, HourlySessionData> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
-                KeyValuePair<int, HourlySessionData> worstHour = hourlyData.OrderBy(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlySessionDataDTO> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlySessionDataDTO> worstHour = hourlyData.OrderBy(kv => kv.Value.AvgQuality).First();
                 
                 insights.BestFocusHour = bestHour.Key;
                 insights.BestHourQuality = bestHour.Value.AvgQuality;
@@ -1108,9 +1093,9 @@ namespace TaskTrackerAPI.Controllers.V1
             
             if (taskSessions.Any())
             {
-                Dictionary<string, CategorySessionData> categoryData = taskSessions
+                Dictionary<string, CategorySessionDataDTO> categoryData = taskSessions
                     .GroupBy(s => s.TaskItem!.Category!.Name!)
-                    .ToDictionary(g => g.Key, g => new CategorySessionData
+                    .ToDictionary(g => g.Key, g => new CategorySessionDataDTO
                     {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue)
@@ -1131,8 +1116,8 @@ namespace TaskTrackerAPI.Controllers.V1
 
                 if (categoryData.Any())
                 {
-                    KeyValuePair<string, CategorySessionData> mostFocused = categoryData.OrderByDescending(kv => kv.Value.Count).First();
-                    KeyValuePair<string, CategorySessionData> highestQuality = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                    KeyValuePair<string, CategorySessionDataDTO> mostFocused = categoryData.OrderByDescending(kv => kv.Value.Count).First();
+                    KeyValuePair<string, CategorySessionDataDTO> highestQuality = categoryData.OrderByDescending(kv => kv.Value.AvgQuality).First();
                     
                     insights.MostFocusedCategory = mostFocused.Key;
                     insights.HighestQualityCategory = highestQuality.Key;
@@ -1158,11 +1143,11 @@ namespace TaskTrackerAPI.Controllers.V1
             if (!sessions.Any()) return recommendations;
 
             // Calculate time of day insights for best time recommendation
-            Dictionary<int, HourlyRecommendationData> hourlyData = sessions
+            Dictionary<int, HourlyRecommendationDataDTO> hourlyData = sessions
                 .GroupBy(s => s.StartTime.Hour)
                 .ToDictionary(
                     g => g.Key,
-                    g => new HourlyRecommendationData
+                    g => new HourlyRecommendationDataDTO
                     {
                         Count = g.Count(),
                         AvgQuality = g.Where(s => s.SessionQualityRating.HasValue).DefaultIfEmpty()
@@ -1172,7 +1157,7 @@ namespace TaskTrackerAPI.Controllers.V1
             // Best time recommendation
             if (hourlyData.Any())
             {
-                KeyValuePair<int, HourlyRecommendationData> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
+                KeyValuePair<int, HourlyRecommendationDataDTO> bestHour = hourlyData.OrderByDescending(kv => kv.Value.AvgQuality).First();
                 recommendations.Add(new ProductivityRecommendation
                 {
                     Id = "best-time",

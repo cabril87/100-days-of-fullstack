@@ -19,11 +19,17 @@ using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.Attributes;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
+    /// <summary>
+    /// Family availability controller - manages family member availability and scheduling.
+    /// Accessible to all authenticated users (RegularUser and above).
+    /// </summary>
     [ApiVersion("1.0")]
     [Authorize]
+    [RequireRole(UserRole.RegularUser)]
     [ApiController]
     [Route("api/v{version:apiVersion}/family/{familyId}/availability")]
     public class FamilyAvailabilityController : BaseApiController
