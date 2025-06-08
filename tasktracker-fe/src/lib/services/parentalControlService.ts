@@ -36,7 +36,7 @@ export class ParentalControlService {
    */
   async getParentalControlByChildId(childUserId: number): Promise<ParentalControlDTO | null> {
     try {
-      return await apiClient.get<ParentalControlDTO>(`/api/v1/parental-controls/child/${childUserId}`);
+      return await apiClient.get<ParentalControlDTO>(`/v1/parental-controls/child/${childUserId}`);
     } catch {
       // Return null if not found
       console.debug('No parental controls found for child:', childUserId);
@@ -49,7 +49,7 @@ export class ParentalControlService {
    */
   async getParentalControlsByParent(): Promise<ParentalControlDTO[]> {
     try {
-      return await apiClient.get<ParentalControlDTO[]>('/api/v1/parental-controls/parent');
+      return await apiClient.get<ParentalControlDTO[]>('/v1/parental-controls/parent');
     } catch (error) {
       console.error('Failed to fetch parental controls by parent:', error);
       return [];
@@ -64,7 +64,7 @@ export class ParentalControlService {
     settings: ParentalControlCreateUpdateDTO
   ): Promise<ParentalControlDTO> {
     try {
-      return await apiClient.put<ParentalControlDTO>(`/api/v1/parental-controls/${childUserId}`, settings);
+      return await apiClient.put<ParentalControlDTO>(`/v1/parental-controls/${childUserId}`, settings);
     } catch (error) {
       console.error('Failed to create/update parental control:', error);
       throw error;
@@ -76,7 +76,7 @@ export class ParentalControlService {
    */
   async deleteParentalControl(childUserId: number): Promise<void> {
     try {
-      await apiClient.delete<void>(`/api/v1/parental-controls/${childUserId}`);
+      await apiClient.delete<void>(`/v1/parental-controls/${childUserId}`);
     } catch (error) {
       console.error('Failed to delete parental control:', error);
       throw error;
@@ -88,7 +88,7 @@ export class ParentalControlService {
    */
   async getParentalControlSummary(childUserId: number): Promise<ParentalControlSummaryDTO> {
     try {
-      return await apiClient.get<ParentalControlSummaryDTO>(`/api/v1/parental-controls/${childUserId}/summary`);
+      return await apiClient.get<ParentalControlSummaryDTO>(`/v1/parental-controls/${childUserId}/summary`);
     } catch (error) {
       console.error('Failed to fetch parental control summary:', error);
       throw error;
@@ -102,7 +102,7 @@ export class ParentalControlService {
    */
   async createPermissionRequest(request: PermissionRequestCreateDTO): Promise<PermissionRequestDTO> {
     try {
-      return await apiClient.post<PermissionRequestDTO>('/api/v1/parental-controls/permission-requests', request);
+      return await apiClient.post<PermissionRequestDTO>('/v1/parental-controls/permission-requests', request);
     } catch (error) {
       console.error('Failed to create permission request:', error);
       throw error;
@@ -114,7 +114,7 @@ export class ParentalControlService {
    */
   async getPermissionRequestsByChild(childUserId: number): Promise<PermissionRequestDTO[]> {
     try {
-      return await apiClient.get<PermissionRequestDTO[]>(`/api/v1/parental-controls/permission-requests/child/${childUserId}`);
+      return await apiClient.get<PermissionRequestDTO[]>(`/v1/parental-controls/permission-requests/child/${childUserId}`);
     } catch (error) {
       console.error('Failed to fetch permission requests by child:', error);
       return [];
@@ -126,7 +126,7 @@ export class ParentalControlService {
    */
   async getPendingPermissionRequests(): Promise<PermissionRequestDTO[]> {
     try {
-      return await apiClient.get<PermissionRequestDTO[]>('/api/v1/parental-controls/permission-requests/pending');
+      return await apiClient.get<PermissionRequestDTO[]>('/v1/parental-controls/permission-requests/pending');
     } catch (error) {
       console.error('Failed to fetch pending permission requests:', error);
       return [];
@@ -141,7 +141,7 @@ export class ParentalControlService {
     response: PermissionRequestResponseDTO
   ): Promise<PermissionRequestDTO> {
     try {
-      return await apiClient.post<PermissionRequestDTO>(`/api/v1/parental-controls/permission-requests/${requestId}/respond`, response);
+      return await apiClient.post<PermissionRequestDTO>(`/v1/parental-controls/permission-requests/${requestId}/respond`, response);
     } catch (error) {
       console.error('Failed to respond to permission request:', error);
       throw error;
@@ -155,7 +155,7 @@ export class ParentalControlService {
     bulkResponse: BulkPermissionRequestResponseDTO
   ): Promise<PermissionRequestDTO[]> {
     try {
-      return await apiClient.post<PermissionRequestDTO[]>('/api/v1/parental-controls/permission-requests/bulk-respond', bulkResponse);
+      return await apiClient.post<PermissionRequestDTO[]>('/v1/parental-controls/permission-requests/bulk-respond', bulkResponse);
     } catch (error) {
       console.error('Failed to bulk respond to permission requests:', error);
       throw error;
@@ -167,7 +167,7 @@ export class ParentalControlService {
    */
   async deletePermissionRequest(requestId: number): Promise<void> {
     try {
-      await apiClient.delete<void>(`/api/v1/parental-controls/permission-requests/${requestId}`);
+      await apiClient.delete<void>(`/v1/parental-controls/permission-requests/${requestId}`);
     } catch (error) {
       console.error('Failed to delete permission request:', error);
       throw error;
@@ -181,7 +181,7 @@ export class ParentalControlService {
    */
   async recordScreenTime(childUserId: number, sessionDurationMinutes: number): Promise<void> {
     try {
-      await apiClient.post<void>(`/api/v1/parental-controls/${childUserId}/screen-time`, {
+      await apiClient.post<void>(`/v1/parental-controls/${childUserId}/screen-time`, {
         sessionDurationMinutes
       });
     } catch (error) {
@@ -196,7 +196,7 @@ export class ParentalControlService {
   async getScreenTimeForDate(childUserId: number, date: Date): Promise<number> {
     try {
       const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-      const result = await apiClient.get<{ totalMinutes: number }>(`/api/v1/parental-controls/${childUserId}/screen-time?date=${dateStr}`);
+      const result = await apiClient.get<{ totalMinutes: number }>(`/v1/parental-controls/${childUserId}/screen-time?date=${dateStr}`);
       return result.totalMinutes || 0;
     } catch (error) {
       console.error('Failed to fetch screen time for date:', error);
@@ -209,7 +209,7 @@ export class ParentalControlService {
    */
   async getRemainingScreenTime(childUserId: number): Promise<number> {
     try {
-      const result = await apiClient.get<{ remainingMinutes: number }>(`/api/v1/parental-controls/${childUserId}/screen-time/remaining`);
+      const result = await apiClient.get<{ remainingMinutes: number }>(`/v1/parental-controls/${childUserId}/screen-time/remaining`);
       return result.remainingMinutes || 0;
     } catch (error) {
       console.error('Failed to fetch remaining screen time:', error);
@@ -222,7 +222,7 @@ export class ParentalControlService {
    */
   async isWithinAllowedHours(childUserId: number): Promise<boolean> {
     try {
-      const result = await apiClient.get<{ isAllowed: boolean }>(`/api/v1/parental-controls/${childUserId}/allowed-hours/check`);
+      const result = await apiClient.get<{ isAllowed: boolean }>(`/v1/parental-controls/${childUserId}/allowed-hours/check`);
       return result.isAllowed || false;
     } catch (error) {
       console.error('Failed to check allowed hours:', error);
@@ -237,7 +237,7 @@ export class ParentalControlService {
    */
   async validateParentPermission(childUserId: number): Promise<boolean> {
     try {
-      const result = await apiClient.get<{ hasPermission: boolean }>(`/api/v1/parental-controls/validate-permission/${childUserId}`);
+      const result = await apiClient.get<{ hasPermission: boolean }>(`/v1/parental-controls/validate-permission/${childUserId}`);
       return result.hasPermission || false;
     } catch (error) {
       console.error('Failed to validate parent permission:', error);
@@ -250,7 +250,7 @@ export class ParentalControlService {
    */
   async requiresParentApproval(childUserId: number, actionType: string): Promise<boolean> {
     try {
-      const result = await apiClient.get<{ requiresApproval: boolean }>(`/api/v1/parental-controls/${childUserId}/requires-approval?actionType=${encodeURIComponent(actionType)}`);
+      const result = await apiClient.get<{ requiresApproval: boolean }>(`/v1/parental-controls/${childUserId}/requires-approval?actionType=${encodeURIComponent(actionType)}`);
       return result.requiresApproval || false;
     } catch (error) {
       console.error('Failed to check if action requires approval:', error);

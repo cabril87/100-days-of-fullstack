@@ -24,6 +24,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Attributes;
+using System.Linq;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -751,11 +752,14 @@ public class AuthController : BaseApiController
             TokensResponseDTO response = await _authService.LoginAsync(userLoginDto, ipAddress, userAgent);
             
             // Set HTTP-only cookies for enhanced security
+            // Development-friendly settings that work with HTTP
+            bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
             CookieOptions accessTokenOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true, // HTTPS only in production
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development, require HTTPS in production
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict, // More permissive in dev
                 Expires = DateTimeOffset.UtcNow.AddMinutes(15), // Short expiry for access token
                 Path = "/",
                 IsEssential = true
@@ -764,10 +768,10 @@ public class AuthController : BaseApiController
             CookieOptions refreshTokenOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true, // HTTPS only in production
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development, require HTTPS in production
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict, // More permissive in dev
                 Expires = DateTimeOffset.UtcNow.AddDays(7), // Longer expiry for refresh token
-                Path = "/api/auth", // Restrict to auth endpoints only
+                Path = "/", // Change from "/api/auth" to "/" for broader access in development
                 IsEssential = true
             };
             
@@ -792,7 +796,8 @@ public class AuthController : BaseApiController
             );
             
             // Return user info without tokens (tokens are in HTTP-only cookies)
-            return Ok(new { 
+            return Ok(new
+            {
                 user = response.User,
                 message = "Logged in successfully"
             });
@@ -875,11 +880,13 @@ public class AuthController : BaseApiController
             }
             
             // Clear HTTP-only cookies
+            bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
             CookieOptions clearOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(-1), // Expire immediately
                 Path = "/"
             };
@@ -888,10 +895,10 @@ public class AuthController : BaseApiController
             Response.Cookies.Append("refresh_token", "", new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(-1),
-                Path = "/api/auth"
+                Path = "/"
             });
             
             // Log successful logout to security audit
@@ -960,11 +967,14 @@ public class AuthController : BaseApiController
             TokensResponseDTO response = await _authService.RefreshTokenAsync(refreshRequest.RefreshToken, ipAddress);
             
             // Update HTTP-only cookies with new tokens
+            // Development-friendly settings that work with HTTP
+            bool isDevelopment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
             CookieOptions accessTokenOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development, require HTTPS in production
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddMinutes(15),
                 Path = "/",
                 IsEssential = true
@@ -973,17 +983,18 @@ public class AuthController : BaseApiController
             CookieOptions refreshTokenOptions = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
+                Secure = !isDevelopment, // Allow HTTP in development, require HTTPS in production
+                SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict,
                 Expires = DateTimeOffset.UtcNow.AddDays(7),
-                Path = "/api/auth",
+                Path = "/", // Broader access in development
                 IsEssential = true
             };
             
             Response.Cookies.Append("access_token", response.AccessToken, accessTokenOptions);
             Response.Cookies.Append("refresh_token", response.RefreshToken, refreshTokenOptions);
             
-            return Ok(new { 
+            return Ok(new
+            {
                 user = response.User,
                 message = "Token refreshed successfully"
             });
@@ -1014,12 +1025,24 @@ public class AuthController : BaseApiController
     {
         try
         {
+            // Debug logging for cookie authentication troubleshooting
+            _logger.LogInformation("GetCurrentUser called - User authenticated: {IsAuthenticated}", User.Identity?.IsAuthenticated);
+
+            // Log available claims
+            foreach (Claim claim in User.Claims)
+            {
+                _logger.LogDebug("User Claim: {Type} = {Value}", claim.Type, claim.Value);
+            }
+
             int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             UserDTO profile = await _authService.GetUserProfileAsync(userId);
+
+            _logger.LogInformation("Successfully retrieved user profile for userId: {UserId}", userId);
             return Ok(profile);
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("User not found: {Message}", ex.Message);
             return NotFound(ex.Message);
         }
         catch (Exception ex)
@@ -1027,6 +1050,37 @@ public class AuthController : BaseApiController
             _logger.LogError(ex, "Error retrieving current user profile");
             return StatusCode(500, "An error occurred while retrieving your profile.");
         }
+    }
+
+    /// <summary>
+    /// Test cookie authentication - Development only
+    /// </summary>
+    [HttpGet("cookie-test")]
+    [AllowAnonymous]
+    public IActionResult TestCookieAuth()
+    {
+        string? environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (environment != "Development")
+        {
+            return NotFound("This endpoint is only available in development");
+        }
+
+        Dictionary<string, string> cookies = Request.Cookies.ToDictionary(c => c.Key, c => c.Key == "access_token" ? "[REDACTED]" : c.Value);
+        bool hasAccessToken = Request.Cookies.ContainsKey("access_token");
+        bool hasRefreshToken = Request.Cookies.ContainsKey("refresh_token");
+        bool hasAuthHeader = Request.Headers.ContainsKey("Authorization");
+
+        return Ok(new
+        {
+            Message = "Cookie Authentication Test",
+            Environment = environment,
+            HasAccessTokenCookie = hasAccessToken,
+            HasRefreshTokenCookie = hasRefreshToken,
+            HasAuthorizationHeader = hasAuthHeader,
+            AllCookies = cookies,
+            IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
+            UserClaims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
+        });
     }
 
     #region MFA Endpoints

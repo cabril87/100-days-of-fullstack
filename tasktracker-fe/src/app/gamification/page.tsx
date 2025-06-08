@@ -1,17 +1,12 @@
-import React from 'react';
-import { redirect } from 'next/navigation';
-import { getServerAuth } from '@/lib/utils/serverAuth';
-import GamificationContent from './GamificationContent';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
+import Gamification from '@/components/gamification/Gamification';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function GamificationPage() {
-  const { user, isAuthenticated } = await getServerAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/gamification');
 
-  if (!isAuthenticated || !user) {
-    redirect('/auth/login');
-  }
-
-  return <GamificationContent user={user} />;
+  return <Gamification user={session} />;
 } 

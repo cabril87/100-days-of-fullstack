@@ -15,7 +15,7 @@ class AdminService {
     try {
       console.log('🔨 Creating user via admin:', userData.username);
       
-      const result = await apiClient.post<AdminUserCreateResponse>('/api/admin/users/create', userData);
+      const result = await apiClient.post<AdminUserCreateResponse>('/v1/admin/users/create', userData);
 
       console.log('✅ User created successfully:', result);
       return result;
@@ -32,7 +32,7 @@ class AdminService {
     try {
       console.log('📋 Getting accessible families for admin');
       
-      const families = await apiClient.get<AdminFamilySelection[]>('/api/admin/families/accessible');
+      const families = await apiClient.get<AdminFamilySelection[]>('/v1/admin/families/accessible');
 
       console.log('✅ Retrieved families:', families.length);
       return families;
@@ -49,7 +49,7 @@ class AdminService {
     try {
       console.log('🎭 Getting family roles');
       
-      const roles = await apiClient.get<FamilyRole[]>('/api/admin/families/roles');
+      const roles = await apiClient.get<FamilyRole[]>('/v1/admin/families/roles');
 
       console.log('✅ Retrieved family roles:', roles.length);
       return roles;

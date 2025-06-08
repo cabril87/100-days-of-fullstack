@@ -1,17 +1,18 @@
-import { requireAuth, serverApiCall } from '@/lib/utils/serverAuth';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
 import { FamilyDTO, DashboardStats } from '@/lib/types';
-import DashboardContent from './DashboardContent';
+import { Task, TaskStats } from '@/lib/types/task';
+import Dashboard from '@/components/dashboard/Dashboard';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  // Server-side authentication - redirect if not authenticated
-  const user = await requireAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/dashboard');
   
   // Server-side data fetching for better performance
-  let family: FamilyDTO | null = null;
-  let stats: DashboardStats = {
+  const family: FamilyDTO | null = null;
+  const stats: DashboardStats = {
     tasksCompleted: 0,
     activeGoals: 0,
     focusTime: 0,
@@ -22,29 +23,26 @@ export default async function DashboardPage() {
     streakDays: 0,
     totalFamilies: 0
   };
+  const recentTasks: Task[] = [];
+  const taskStats: TaskStats = {
+    totalTasks: 0,
+    completedTasks: 0,
+    activeTasks: 0,
+    overdueTasks: 0,
+    tasksCompleted: 0,
+    tasksCompletedThisWeek: 0,
+    activeGoals: 0,
+    focusTimeToday: 0,
+    streakDays: 0,
+    totalPoints: 0
+  };
 
-  try {
-    // Fetch family data (handle graceful failure for new users)
-    try {
-      family = await serverApiCall<FamilyDTO>('/api/v1/family/current-family');
-    } catch {
-      // Expected for users without families - not an error
-      console.debug('User has no family (expected for new users)');
-    }
+  // Temporarily disable server-side data fetching to prevent 404s without auth
+  // Client-side components will handle data loading with proper authentication
+  console.debug('Server-side data fetching disabled - client will handle data loading')
 
-    // Fetch dashboard stats
-    try {
-      stats = await serverApiCall<DashboardStats>('/api/v1/dashboard/stats');
-    } catch {
-      console.warn('Failed to load dashboard stats, using defaults');
-    }
-  } catch {
-    console.error('Dashboard data fetch error');
-    // Continue with default data - user will see empty state
-  }
-
-  const initialData = { family, stats };
+  const initialData = { family, stats, recentTasks, taskStats };
 
   // Pass server-fetched data to client component
-  return <DashboardContent user={user} initialData={initialData} />;
+  return <Dashboard user={session} initialData={initialData} />;
 } 

@@ -1,5 +1,14 @@
 import { PasswordResetForm } from '@/components/auth/PasswordResetForm';
- 
-export default function ForgotPasswordPage() {
-  return <PasswordResetForm />;
+
+// Force dynamic rendering for cookie-based authentication
+export const dynamic = 'force-dynamic';
+
+export default async function ForgotPasswordPage() {
+  // Middleware handles auth redirect - no need for AuthPagePattern here
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <PasswordResetForm />
+    </div>
+  );
 } 

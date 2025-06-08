@@ -1,13 +1,13 @@
-import { requireAuth } from '@/lib/utils/serverAuth';
-import FamilyManagementContent from './FamilyManagementContent';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
+import FamilyManagement from '@/components/settings/FamilyManagement';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function FamilySettingsPage() {
-  // Server-side authentication - redirect if not authenticated
-  const user = await requireAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/settings/family');
 
   // Pass user data to client component
-  return <FamilyManagementContent user={user} />;
+  return <FamilyManagement user={session} />;
 } 

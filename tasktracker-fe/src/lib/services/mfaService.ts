@@ -32,7 +32,7 @@ export class MFAServiceError extends Error {
  * - Complete API integration
  */
 export class MFAService {
-  private readonly baseUrl = '/api/v1/auth/mfa';
+  private readonly baseUrl = '/v1/auth/mfa';
 
   /**
    * Initialize MFA setup for the current user

@@ -1,9 +1,12 @@
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
 import { redirect } from 'next/navigation';
-import { requireAuth } from '@/lib/utils/serverAuth';
+
+// Force dynamic rendering for cookie-based authentication
+export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
-  // Server-side authentication - redirect if not authenticated
-  await requireAuth();
+  // Get auth session and redirect if not authenticated
+  await ProtectedPagePattern('/settings');
   
   // Server-side redirect to profile as the default settings page
   redirect('/settings/profile');

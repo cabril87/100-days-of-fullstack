@@ -38,7 +38,7 @@ export class NotificationService {
    */
   async getAllNotifications(): Promise<NotificationDTO[]> {
     try {
-      const result = await apiClient.get<{ data: NotificationDTO[] }>('/api/v1/notifications');
+      const result = await apiClient.get<{ data: NotificationDTO[] }>('/v1/notifications');
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -51,7 +51,7 @@ export class NotificationService {
    */
   async getNotificationById(id: number): Promise<NotificationDTO> {
     try {
-      const result = await apiClient.get<{ data: NotificationDTO }>(`/api/v1/notifications/${id}`);
+      const result = await apiClient.get<{ data: NotificationDTO }>(`/v1/notifications/${id}`);
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notification by ID:', error);
@@ -64,7 +64,7 @@ export class NotificationService {
    */
   async getUnreadCount(): Promise<number> {
     try {
-      const result = await apiClient.get<{ data: number }>('/api/v1/notifications/unread-count');
+      const result = await apiClient.get<{ data: number }>('/v1/notifications/unread-count');
       return result.data;
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -77,7 +77,7 @@ export class NotificationService {
    */
   async getNotificationCounts(): Promise<NotificationCountDTO> {
     try {
-      const result = await apiClient.get<{ data: NotificationCountDTO }>('/api/v1/notifications/counts');
+      const result = await apiClient.get<{ data: NotificationCountDTO }>('/v1/notifications/counts');
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notification counts:', error);
@@ -102,7 +102,7 @@ export class NotificationService {
         }
       });
       
-      const result = await apiClient.get<{ data: NotificationDTO[] }>(`/api/v1/notifications/filter?${queryParams.toString()}`);
+      const result = await apiClient.get<{ data: NotificationDTO[] }>(`/v1/notifications/filter?${queryParams.toString()}`);
       return result.data;
     } catch (error) {
       console.error('Failed to fetch filtered notifications:', error);
@@ -115,7 +115,7 @@ export class NotificationService {
    */
   async createNotification(notification: CreateNotificationDTO): Promise<NotificationDTO> {
     try {
-      const result = await apiClient.post<{ data: NotificationDTO }>('/api/v1/notifications', notification);
+      const result = await apiClient.post<{ data: NotificationDTO }>('/v1/notifications', notification);
       return result.data;
     } catch (error) {
       console.error('Failed to create notification:', error);
@@ -128,7 +128,7 @@ export class NotificationService {
    */
   async markAsRead(id: number): Promise<NotificationDTO> {
     try {
-      const result = await apiClient.post<{ data: NotificationDTO }>(`/api/v1/notifications/${id}/mark-read`);
+      const result = await apiClient.post<{ data: NotificationDTO }>(`/v1/notifications/${id}/mark-read`);
       return result.data;
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -141,7 +141,7 @@ export class NotificationService {
    */
   async markAllAsRead(): Promise<number> {
     try {
-      const result = await apiClient.post<{ data: { updatedCount: number } }>('/api/v1/notifications/mark-all-read');
+      const result = await apiClient.post<{ data: { updatedCount: number } }>('/v1/notifications/mark-all-read');
       return result.data.updatedCount;
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
@@ -154,7 +154,7 @@ export class NotificationService {
    */
   async deleteNotification(id: number): Promise<boolean> {
     try {
-      await apiClient.delete<void>(`/api/v1/notifications/${id}`);
+      await apiClient.delete<void>(`/v1/notifications/${id}`);
       return true;
     } catch (error) {
       console.error('Failed to delete notification:', error);
@@ -167,7 +167,7 @@ export class NotificationService {
    */
   async deleteAllNotifications(): Promise<boolean> {
     try {
-      await apiClient.delete<void>('/api/v1/notifications');
+      await apiClient.delete<void>('/v1/notifications');
       return true;
     } catch (error) {
       console.error('Failed to delete all notifications:', error);
@@ -182,7 +182,7 @@ export class NotificationService {
    */
   async getAllPreferences(): Promise<NotificationPreferenceDTO[]> {
     try {
-      const result = await apiClient.get<{ data: NotificationPreferenceDTO[] }>('/api/v1/notifications/preferences');
+      const result = await apiClient.get<{ data: NotificationPreferenceDTO[] }>('/v1/notifications/preferences');
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notification preferences:', error);
@@ -195,7 +195,7 @@ export class NotificationService {
    */
   async getFamilyPreferences(familyId: number): Promise<NotificationPreferenceDTO[]> {
     try {
-      const result = await apiClient.get<{ data: NotificationPreferenceDTO[] }>(`/api/v1/notifications/preferences/family/${familyId}`);
+      const result = await apiClient.get<{ data: NotificationPreferenceDTO[] }>(`/v1/notifications/preferences/family/${familyId}`);
       return result.data;
     } catch (error) {
       console.error('Failed to fetch family notification preferences:', error);
@@ -208,7 +208,7 @@ export class NotificationService {
    */
   async getPreferenceSummary(): Promise<NotificationPreferenceSummaryDTO> {
     try {
-      const result = await apiClient.get<{ data: NotificationPreferenceSummaryDTO }>('/api/v1/notifications/preferences/summary');
+      const result = await apiClient.get<{ data: NotificationPreferenceSummaryDTO }>('/v1/notifications/preferences/summary');
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notification preference summary:', error);
@@ -228,7 +228,7 @@ export class NotificationService {
    */
   async getPreferenceById(id: number): Promise<NotificationPreferenceDTO> {
     try {
-      const result = await apiClient.get<{ data: NotificationPreferenceDTO }>(`/api/v1/notifications/preferences/${id}`);
+      const result = await apiClient.get<{ data: NotificationPreferenceDTO }>(`/v1/notifications/preferences/${id}`);
       return result.data;
     } catch (error) {
       console.error('Failed to fetch notification preference by ID:', error);
@@ -241,7 +241,7 @@ export class NotificationService {
    */
   async createPreference(preference: UpdateNotificationPreferenceDTO): Promise<NotificationPreferenceDTO> {
     try {
-      const result = await apiClient.post<{ data: NotificationPreferenceDTO }>('/api/v1/notifications/preferences', preference);
+      const result = await apiClient.post<{ data: NotificationPreferenceDTO }>('/v1/notifications/preferences', preference);
       return result.data;
     } catch (error) {
       console.error('Failed to create notification preference:', error);
@@ -254,7 +254,7 @@ export class NotificationService {
    */
   async updatePreference(id: number, preference: UpdateNotificationPreferenceDTO): Promise<NotificationPreferenceDTO> {
     try {
-      const result = await apiClient.put<{ data: NotificationPreferenceDTO }>(`/api/v1/notifications/preferences/${id}`, preference);
+      const result = await apiClient.put<{ data: NotificationPreferenceDTO }>(`/v1/notifications/preferences/${id}`, preference);
       return result.data;
     } catch (error) {
       console.error('Failed to update notification preference:', error);
@@ -267,7 +267,7 @@ export class NotificationService {
    */
   async deletePreference(id: number): Promise<boolean> {
     try {
-      await apiClient.delete<void>(`/api/v1/notifications/preferences/${id}`);
+      await apiClient.delete<void>(`/v1/notifications/preferences/${id}`);
       return true;
     } catch (error) {
       console.error('Failed to delete notification preference:', error);
@@ -280,7 +280,7 @@ export class NotificationService {
    */
   async setEmailPreference(enabled: boolean): Promise<boolean> {
     try {
-      await apiClient.post<void>('/api/v1/notifications/preferences/email', { enabled });
+      await apiClient.post<void>('/v1/notifications/preferences/email', { enabled });
       return true;
     } catch (error) {
       console.error('Failed to set email preference:', error);
@@ -293,7 +293,7 @@ export class NotificationService {
    */
   async setPushPreference(enabled: boolean): Promise<boolean> {
     try {
-      await apiClient.post<void>('/api/v1/notifications/preferences/push', { enabled });
+      await apiClient.post<void>('/v1/notifications/preferences/push', { enabled });
       return true;
     } catch (error) {
       console.error('Failed to set push preference:', error);
@@ -306,7 +306,7 @@ export class NotificationService {
    */
   async initializePreferences(): Promise<boolean> {
     try {
-      await apiClient.post<void>('/api/v1/notifications/preferences/initialize');
+      await apiClient.post<void>('/v1/notifications/preferences/initialize');
       return true;
     } catch (error) {
       console.error('Failed to initialize notification preferences:', error);
@@ -321,7 +321,7 @@ export class NotificationService {
    */
   async getSettings(): Promise<NotificationSettingsDTO> {
     try {
-      const result = await apiClient.get<NotificationSettingsDTO>('/api/v1/notifications/settings');
+      const result = await apiClient.get<NotificationSettingsDTO>('/v1/notifications/settings');
       return result;
     } catch (error) {
       console.error('Failed to fetch notification settings:', error);
@@ -368,7 +368,7 @@ export class NotificationService {
    */
   async updateSettings(settings: NotificationSettingsDTO): Promise<void> {
     try {
-      await apiClient.put<void>('/api/v1/notifications/settings', settings);
+      await apiClient.put<void>('/v1/notifications/settings', settings);
     } catch (error) {
       console.error('Failed to update notification settings:', error);
       throw error;
@@ -382,7 +382,7 @@ export class NotificationService {
    */
   async getStats(): Promise<NotificationStats> {
     try {
-      const result = await apiClient.get<NotificationStats>('/api/v1/notifications/stats');
+      const result = await apiClient.get<NotificationStats>('/v1/notifications/stats');
       return result;
     } catch (error) {
       console.error('Failed to fetch notification stats:', error);

@@ -285,10 +285,11 @@ export default function UserCreationPageContent({}: UserCreationPageContentProps
                 <div className="space-y-2">
                   <Label htmlFor="familyId">Select Family</Label>
                   <Select 
-                    value={selectedFamilyId} 
+                    value={selectedFamilyId || "none"} 
                     onValueChange={(value) => {
-                      setSelectedFamilyId(value);
-                      form.setValue('familyId', parseInt(value) || undefined);
+                      const familyId = value === "none" ? "" : value;
+                      setSelectedFamilyId(familyId);
+                      form.setValue('familyId', familyId ? parseInt(familyId) : undefined);
                     }}
                     disabled={loading || loadingData || families.length === 0}
                   >
@@ -300,7 +301,7 @@ export default function UserCreationPageContent({}: UserCreationPageContentProps
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No family assignment</SelectItem>
+                      <SelectItem value="none">No family assignment</SelectItem>
                       {families.map((family) => (
                         <SelectItem key={family.id} value={family.id.toString()}>
                           <div className="flex items-center gap-2">

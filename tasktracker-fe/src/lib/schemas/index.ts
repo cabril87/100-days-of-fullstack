@@ -19,6 +19,9 @@ export * from './settings';
 // Notification schemas
 export * from './notifications';
 
+// Task schemas
+export * from './task';
+
 // Smart relationship schemas
 export * from './smart-relationship';
 

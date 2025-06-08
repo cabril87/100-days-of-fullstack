@@ -22,7 +22,7 @@ class CustomerSupportServiceError extends Error {
 }
 
 class CustomerSupportService {
-  private readonly baseEndpoint = '/api/v1/support';
+  private readonly baseEndpoint = '/v1/support';
 
   /**
    * Search for a user by email address

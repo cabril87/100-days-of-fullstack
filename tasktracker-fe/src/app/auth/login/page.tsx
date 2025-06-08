@@ -1,6 +1,8 @@
 import { LoginForm } from '@/components/auth/LoginForm';
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Middleware handles auth redirect - no need for AuthPagePattern here
+  
   return (
     <div className="min-h-screen flex items-center justify-center">
       <LoginForm />

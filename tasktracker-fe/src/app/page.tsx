@@ -1,19 +1,17 @@
+import { PublicPagePattern } from '@/lib/auth/auth-config';
 import { ArrowRight, CheckCircle, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getServerSession } from '@/lib/utils/serverAuth';
 
-export default async function HomePage() {
-  // Server-side authentication check - redirect authenticated users
-  const session = await getServerSession();
+// Force dynamic rendering for cookie-based authentication
+export const dynamic = 'force-dynamic';
   
-  if (session) {
-    redirect('/dashboard');
-  }
+export default async function HomePage() {
+  // Allow access regardless of auth state
+  await PublicPagePattern();
 
-  // Render public landing page for unauthenticated users
+  // Render public landing page
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}

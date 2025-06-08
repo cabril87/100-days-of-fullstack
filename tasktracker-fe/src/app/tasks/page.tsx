@@ -1,13 +1,13 @@
-import { requireAuth, serverApiCall } from '@/lib/utils/serverAuth';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 import { Task, TaskCategory, TaskStats } from '@/lib/types/task';
-import TasksPageContent from './TasksPageContent';
+import Tasks from '@/components/tasks/Tasks';
 
 export default async function TasksPage() {
-  // Server-side authentication - redirect if not authenticated
-  const user = await requireAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/tasks');
   
   // Server-side data fetching for better performance
   const initialData = {
@@ -21,35 +21,10 @@ export default async function TasksPage() {
     } as TaskStats
   };
   
-  try {
-    // Fetch user tasks (when backend is implemented)
-    try {
-      const tasksData = await serverApiCall<Task[]>('/api/v1/tasks/user');
-      initialData.tasks = tasksData;
-    } catch {
-      console.debug('Tasks API not yet implemented');
-    }
-    
-    // Fetch task categories (when backend is implemented)
-    try {
-      const categoriesData = await serverApiCall<TaskCategory[]>('/api/v1/tasks/categories');
-      initialData.categories = categoriesData;
-    } catch {
-      console.debug('Task categories API not yet implemented');
-    }
-    
-    // Fetch task statistics (when backend is implemented)
-    try {
-      const statsData = await serverApiCall<TaskStats>('/api/v1/tasks/stats');
-      initialData.stats = statsData;
-    } catch {
-      console.debug('Task stats API not yet implemented');
-    }
-  } catch {
-    console.debug('Task data fetch error, using defaults');
-    // Continue with empty data - component will show placeholder
-  }
+  // Temporarily disable server-side data fetching to prevent 404s without auth
+  // Client-side components will handle data loading with proper authentication
+  console.debug('Server-side data fetching disabled - client will handle data loading')
   
   // Pass server-fetched data to client component
-  return <TasksPageContent user={user} initialData={initialData} />;
+  return <Tasks user={session} initialData={initialData} />;
 } 

@@ -223,3 +223,26 @@ export interface MFAStatusResponse {
   setupDate: string | null;
   backupCodesRemaining: number;
 } 
+
+// Auth Page Component Props
+export interface ResetPasswordContentProps {
+  token: string | null;
+  isValidToken: boolean;
+  validationMessage: string;
+}
+
+export interface FamilyDetailPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export interface FamilyDetailContentProps {
+  user: User;
+  familyId: number;
+  initialFamily: import('@/lib/types/family-invitation').FamilyDTO | null;
+  initialMembers: import('@/lib/types/family-invitation').FamilyMemberDTO[];
+  initialError: string | null;
+}
+
+export interface CustomerSupportContentProps {
+  user: User;
+} 

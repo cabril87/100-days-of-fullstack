@@ -31,7 +31,7 @@ function isApiError(error: unknown): error is ApiErrorResponse {
 }
 
 export class FamilySeedingService {
-  private readonly baseUrl = '/api/v1/admin/family-seeding';
+  private readonly baseUrl = '/v1/admin/family-seeding';
 
   /**
    * Get available family scenarios for seeding
@@ -43,6 +43,10 @@ export class FamilySeedingService {
     } catch (error: unknown) {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can access family seeding functionality');
+      }
+      if (isApiError(error) && error.response?.status === 404) {
+        console.debug('Family seeding scenarios endpoint not available yet');
+        return []; // Return empty array for graceful degradation
       }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to get family scenarios' :
@@ -61,6 +65,9 @@ export class FamilySeedingService {
     } catch (error: unknown) {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can seed family data');
+      }
+      if (isApiError(error) && error.response?.status === 404) {
+        throw new Error('Family seeding feature is not yet available on this server');
       }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to seed family data' :
@@ -81,6 +88,9 @@ export class FamilySeedingService {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can seed family data');
       }
+      if (isApiError(error) && error.response?.status === 404) {
+        throw new Error('Family seeding feature is not yet available on this server');
+      }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to quick seed family data' :
         'Failed to quick seed family data';
@@ -98,6 +108,9 @@ export class FamilySeedingService {
     } catch (error: unknown) {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can clear test family data');
+      }
+      if (isApiError(error) && error.response?.status === 404) {
+        throw new Error('Family seeding feature is not yet available on this server');
       }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to clear test families' :
@@ -117,6 +130,10 @@ export class FamilySeedingService {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can view test families');
       }
+      if (isApiError(error) && error.response?.status === 404) {
+        console.debug('Family seeding test families endpoint not available yet');
+        return []; // Return empty array for graceful degradation
+      }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to get test families' :
         'Failed to get test families';
@@ -134,6 +151,16 @@ export class FamilySeedingService {
     } catch (error: unknown) {
       if (isApiError(error) && error.response?.status === 403) {
         throw new Error('Only global admins can check seeding service health');
+      }
+      if (isApiError(error) && error.response?.status === 404) {
+        // Return a default health check response for graceful degradation
+        console.debug('Family seeding health endpoint not available yet');
+        return {
+          status: 'service_unavailable',
+          scenariosAvailable: 0,
+          testFamiliesExists: 0,
+          timestamp: new Date().toISOString()
+        };
       }
       const message = isApiError(error) ? 
         error.response?.data?.message || error.message || 'Failed to check service health' :

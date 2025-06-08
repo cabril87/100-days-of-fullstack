@@ -126,8 +126,15 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       );
       setAllFamilies(uniqueFamilies);
 
-      // Load current family (or first family if multiple)
-      const currentFamily = await familyInvitationService.getUserFamily();
+      // Load current family (or first family if multiple) - handle 404 gracefully for new users
+      let currentFamily: FamilyDTO | null = null;
+      try {
+        currentFamily = await familyInvitationService.getUserFamily();
+      } catch (error) {
+        // Expected for new users who haven't created/joined a family yet
+        console.debug('User has no current family yet (normal for new users)');
+      }
+      
       const selectedFamily = currentFamily || (uniqueFamilies.length > 0 ? uniqueFamilies[0] : null);
       setFamilyData(selectedFamily);
 
@@ -405,6 +412,21 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       {message && (
         <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
           <AlertDescription>{message.text}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* New User Welcome Banner - Only show when user has no families and no specific message */}
+      {allFamilies.length === 0 && !message && (
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+          <Home className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 dark:text-blue-200">
+            <div className="space-y-2">
+              <div className="font-medium">Welcome to Family Management! 🏠</div>
+              <div className="text-sm">
+                You haven't created or joined any families yet. Start by creating your first family below to organize tasks, invite members, and manage your household together.
+              </div>
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -805,7 +827,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                                   </FormControl>
                                   <SelectContent>
                                     {!Array.isArray(familyRoles) || familyRoles.length === 0 ? (
-                                      <SelectItem value="" disabled>
+                                      <SelectItem value="loading" disabled>
                                         Loading roles...
                                       </SelectItem>
                                     ) : (

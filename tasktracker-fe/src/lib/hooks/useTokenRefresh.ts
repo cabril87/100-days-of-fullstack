@@ -14,7 +14,13 @@ export const useTokenRefresh = (): void => {
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return;
 
-    // Parse JWT token to get expiration time
+    // Skip JWT parsing for cookie-based authentication
+    if (accessToken === 'cookie-based') {
+      console.log('🍪 Cookie-based authentication detected - automatic token refresh handled by server');
+      return;
+    }
+
+    // Parse JWT token to get expiration time (legacy localStorage-based auth)
     const parseJwt = (token: string): ParsedToken | null => {
       try {
         const base64Url = token.split('.')[1];

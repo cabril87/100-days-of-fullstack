@@ -1,10 +1,13 @@
-import { requireAuth } from '@/lib/utils/serverAuth';
-import AppearanceSettingsContent from './AppearanceSettingsContent';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
+import AppearanceSettings from '@/components/settings/AppearanceSettings';
+
+// Force dynamic rendering for cookie-based authentication
+export const dynamic = 'force-dynamic';
 
 export default async function AppearanceSettingsPage() {
-  // Server-side authentication - redirect if not authenticated
-  const user = await requireAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/settings/appearance');
 
   // Pass user data to client component
-  return <AppearanceSettingsContent user={user} />;
+  return <AppearanceSettings user={session} />;
 } 

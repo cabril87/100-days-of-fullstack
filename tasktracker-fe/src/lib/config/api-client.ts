@@ -20,7 +20,7 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Authentication endpoints
   AUTH: {
-    BASE: `/api/${API_CONFIG.VERSION}/auth`,
+    BASE: `/${API_CONFIG.VERSION}/auth`,
     REGISTER: '/register',
     LOGIN: '/login',
     LOGOUT: '/logout',
@@ -41,7 +41,7 @@ export const API_ENDPOINTS = {
   
   // Task endpoints (future implementation)
   TASKS: {
-    BASE: `/api/${API_CONFIG.VERSION}/taskitems`,
+    BASE: `/${API_CONFIG.VERSION}/taskitems`,
     BY_ID: (id: number) => `/${id}`,
     BY_STATUS: (status: string) => `/status/${status}`,
     BY_CATEGORY: (categoryId: number) => `/category/${categoryId}`,
@@ -53,7 +53,7 @@ export const API_ENDPOINTS = {
   
   // Family endpoints
   FAMILY: {
-    BASE: `/api/${API_CONFIG.VERSION}/family`,
+    BASE: `/${API_CONFIG.VERSION}/family`,
     CURRENT: '/current',
     BY_ID: (id: number) => `/${id}`,
     MEMBERS: (id: number) => `/${id}/members`,
@@ -65,7 +65,7 @@ export const API_ENDPOINTS = {
   
   // Invitation endpoints
   INVITATIONS: {
-    BASE: `/api/${API_CONFIG.VERSION}/invitations`,
+    BASE: `/${API_CONFIG.VERSION}/invitations`,
     SENT: '/sent',
     PENDING: '/pending',
     ACCEPT: '/accept',
@@ -80,7 +80,7 @@ export const API_ENDPOINTS = {
   
   // Parental control endpoints
   PARENTAL_CONTROLS: {
-    BASE: `/api/${API_CONFIG.VERSION}/parental-controls`,
+    BASE: `/${API_CONFIG.VERSION}/parental-controls`,
     BY_CHILD: (childId: number) => `/child/${childId}`,
     BY_PARENT: '/parent',
     BY_ID: (childId: number) => `/${childId}`,
@@ -97,7 +97,7 @@ export const API_ENDPOINTS = {
   
   // Gamification endpoints (future implementation)
   GAMIFICATION: {
-    BASE: `/api/${API_CONFIG.VERSION}/gamification`,
+    BASE: `/${API_CONFIG.VERSION}/gamification`,
     PROGRESS: '/progress',
     POINTS: '/points',
     ACHIEVEMENTS: '/achievements',
@@ -110,7 +110,7 @@ export const API_ENDPOINTS = {
   
   // Health and system endpoints
   HEALTH: {
-    BASE: `/api/${API_CONFIG.VERSION}/health`,
+    BASE: `/${API_CONFIG.VERSION}/health`,
     DETAILS: '/details',
     DATABASE: '/database',
   },
@@ -137,12 +137,12 @@ export const getDefaultHeaders = (): HeadersInit => ({
   'Accept': 'application/json',
 });
 
-// Headers with authentication
+// Headers with authentication - Updated for cookie-based auth
 export const getAuthHeaders = (): HeadersInit => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+  // Cookies are automatically included with credentials: 'include'
+  // No need to manually add Authorization header since backend reads HTTP-only cookies
   return {
     ...getDefaultHeaders(),
-    ...(token && { 'Authorization': `Bearer ${token}` }),
   };
 };
 
@@ -237,6 +237,13 @@ export class ApiClient {
         }
       } catch {
         // Ignore JSON parsing errors
+      }
+      
+      // Log 404s as debug instead of error (common for new users)
+      if (response.status === 404) {
+        console.debug(`🔍 Resource not found [404]: ${response.url.split('?')[0]}`);
+      } else {
+        console.error(`❌ API Error [${response.status}]: ${response.url}`, errorData);
       }
       
       throw ApiClientError.fromResponse(response, errorData);

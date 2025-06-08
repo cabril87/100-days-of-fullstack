@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../lib/providers/AuthProvider';
@@ -18,18 +18,11 @@ import { registerSchema } from '../../lib/schemas';
 import { DecorativeLines } from '../ui/DecorativeLines';
 
 export const RegisterForm: React.FC = () => {
-  const { register: registerUser, isAuthenticated } = useAuth();
+  const { register: registerUser } = useAuth();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),

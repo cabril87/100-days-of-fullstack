@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { authService, AuthServiceError } from '../services/authService';
 import { familyInvitationService } from '../services/familyInvitationService';
 import { 
@@ -13,6 +13,7 @@ import {
   UserProfileUpdateDTO, 
   PasswordChangeDTO
 } from '../types/auth';
+import { shouldSkipInitialAuth } from '../utils/authUtils';
 
 // Auth Reducer Types
 type AuthAction =
@@ -74,43 +75,46 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const router = useRouter();
+  const pathname = usePathname();
+  const [hasInitialized, setHasInitialized] = React.useState(false);
 
-  // Token storage helpers
-  const storeTokens = (accessToken: string, refreshToken: string): void => {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  };
-
+  // Legacy token cleanup helper (for transitioning from localStorage to cookies)
   const clearTokens = (): void => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
   };
 
-  // Authentication methods
+  // Authentication methods - Using HTTP-only cookies for server component compatibility
   const login = async (credentials: UserLoginDTO): Promise<void> => {
+    console.log('🏗️ AuthProvider.login() - Starting login process');
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const response = await authService.login(credentials);
+      console.log('📡 AuthProvider.login() - Calling authService.loginWithCookie()');
+      // Use cookie-based login for server component compatibility
+      const response = await authService.loginWithCookie(credentials);
+      console.log('✅ AuthProvider.login() - Login API successful, response:', response);
       
-      // Store tokens FIRST so they're available for subsequent API calls
-      storeTokens(response.accessToken, response.refreshToken);
-      
-      // NOW check if user is family admin (with tokens available)
+      // Check if user is family admin
+      console.log('👨‍👩‍👧‍👦 AuthProvider.login() - Checking family admin status');
       const isFamilyAdmin = await familyInvitationService.isUserFamilyAdmin().catch(() => false);
       const userWithFamilyStatus = {
         ...response.user,
         isFamilyAdmin
       };
+      console.log('👤 AuthProvider.login() - User with family status:', userWithFamilyStatus);
       
+      console.log('🔄 AuthProvider.login() - Dispatching SET_USER action');
       dispatch({
         type: 'SET_USER',
         payload: {
           user: userWithFamilyStatus,
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken,
+          accessToken: 'cookie-based', // Placeholder since token is in HTTP-only cookie
+          refreshToken: 'cookie-based', // Placeholder since token is in HTTP-only cookie
         },
       });
+      console.log('✅ AuthProvider.login() - Login process completed successfully');
     } catch (error) {
+      console.error('❌ AuthProvider.login() - Error occurred:', error);
       dispatch({ type: 'SET_LOADING', payload: false });
       
       if (error instanceof AuthServiceError) {
@@ -137,14 +141,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     try {
-      if (state.refreshToken) {
-        await authService.logout(state.refreshToken);
-      }
+      // Use cookie-based logout for server component compatibility
+      await authService.logoutWithCookie();
     } catch (error) {
       console.error('Logout error:', error);
       // Continue with logout even if server call fails
     } finally {
-      clearTokens();
+      clearTokens(); // Clear any remaining localStorage tokens (legacy cleanup)
       dispatch({ type: 'CLEAR_AUTH' });
       
       // Redirect to homepage after logout (standard convention)
@@ -169,46 +172,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshAccessToken = useCallback(async (): Promise<boolean> => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) return false;
-
     try {
-      const response = await authService.refreshToken(refreshToken);
+      // Use cookie-based token refresh
+      const response = await authService.refreshTokenWithCookie();
       
-      storeTokens(response.accessToken, response.refreshToken);
+      // Update user state with refreshed data
+      const isFamilyAdmin = await familyInvitationService.isUserFamilyAdmin().catch(() => false);
+      const userWithFamilyStatus = {
+        ...response.user,
+        isFamilyAdmin
+      };
       
       dispatch({
-        type: 'UPDATE_TOKENS',
+        type: 'SET_USER',
         payload: {
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken,
+          user: userWithFamilyStatus,
+          accessToken: 'cookie-based', // Placeholder
+          refreshToken: 'cookie-based', // Placeholder
         },
       });
       
       return true;
     } catch (err) {
-      console.error('Token refresh failed:', err);
+      console.error('Cookie-based token refresh failed:', err);
       // Refresh failed, clear auth state
-      clearTokens();
+      clearTokens(); // Clean up any legacy localStorage tokens
       dispatch({ type: 'CLEAR_AUTH' });
       return false;
     }
   }, []);
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount - Using cookie-based authentication
   useEffect(() => {
-    const initializeAuth = async (): Promise<void> => {
-      const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
+    // Only initialize auth once globally, not per pathname change
+    if (hasInitialized) {
+      return; // Already initialized, don't run again
+    }
 
-      if (!accessToken || !refreshToken) {
+    // Skip auth initialization on first load of pure public pages
+    if (shouldSkipInitialAuth(pathname)) {
+      console.log(`🔓 Skipping initial auth for public page: ${pathname}`);
         dispatch({ type: 'SET_LOADING', payload: false });
+      setHasInitialized(true);
         return;
       }
 
+    const initializeAuth = async (): Promise<void> => {
       try {
-        // Try to get current user profile
-        const user = await authService.getProfile();
+        console.log(`🔐 Initializing auth for page: ${pathname}`);
+        // Try to get current user from HTTP-only cookie session
+        const user = await authService.getCurrentUser();
         
         // Check if user is family admin
         const isFamilyAdmin = await familyInvitationService.isUserFamilyAdmin().catch(() => false);
@@ -219,20 +232,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         dispatch({
           type: 'SET_USER',
-          payload: { user: userWithFamilyStatus, accessToken, refreshToken },
+          payload: { 
+            user: userWithFamilyStatus, 
+            accessToken: 'cookie-based', // Placeholder
+            refreshToken: 'cookie-based' // Placeholder
+          },
         });
+        setHasInitialized(true);
       } catch (err) {
-        console.error('Profile initialization failed:', err);
-        // Access token might be expired, try refresh
-        const refreshSuccess = await refreshAccessToken();
-        if (!refreshSuccess) {
-          dispatch({ type: 'SET_LOADING', payload: false });
+        // Check if it's a 401 error (no valid session) - this is expected when not logged in
+        if (err instanceof AuthServiceError && err.status === 401) {
+          console.log('🔐 No authentication session found - user not logged in');
+        } else {
+          console.error('❌ Cookie-based auth initialization failed:', err);
         }
+        
+        // No valid cookie session, user needs to login
+          dispatch({ type: 'SET_LOADING', payload: false });
+        
+        // Clean up any legacy localStorage tokens
+        clearTokens();
+        setHasInitialized(true);
       }
     };
 
     initializeAuth();
-  }, [refreshAccessToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasInitialized]); // Intentionally exclude pathname to prevent re-initialization on navigation
 
   return (
     <AuthContext.Provider

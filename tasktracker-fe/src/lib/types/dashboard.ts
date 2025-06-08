@@ -5,6 +5,7 @@
 
 import { User } from './auth';
 import { FamilyDTO } from './family-invitation';
+import { Task, TaskStats } from './task';
 
 export interface DashboardStats {
   tasksCompleted: number;
@@ -19,10 +20,12 @@ export interface DashboardStats {
 }
 
 export interface DashboardContentProps {
-  user: User;
+  user: User | null;
   initialData: {
     family: FamilyDTO | null;
     stats: DashboardStats;
+    recentTasks: Task[];
+    taskStats: TaskStats;
   };
 }
 

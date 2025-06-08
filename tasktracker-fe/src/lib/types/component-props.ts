@@ -10,7 +10,7 @@ import { User } from './auth';
 
 // Page Content Component Props
 export interface FamiliesContentProps {
-  user: User;
+  user: User | null;
 }
 
 export interface GamificationContentProps {

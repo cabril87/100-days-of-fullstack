@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -23,6 +24,17 @@ namespace TaskTrackerAPI.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
+            // Debug logging for cookie authentication troubleshooting
+            _logger.LogDebug("Cookie Auth Middleware - Path: {Path}, Method: {Method}", 
+                context.Request.Path, context.Request.Method);
+            
+            // Log all cookies received
+            foreach (KeyValuePair<string, string> cookie in context.Request.Cookies)
+            {
+                _logger.LogDebug("Cookie: {Name} = {Value}", cookie.Key, 
+                    cookie.Key == "access_token" ? "[REDACTED]" : cookie.Value);
+            }
+            
             // Check if Authorization header is already present (JWT auth)
             if (!context.Request.Headers.ContainsKey("Authorization"))
             {
@@ -32,8 +44,16 @@ namespace TaskTrackerAPI.Middleware
                     // Add the token to the Authorization header for JWT middleware
                     context.Request.Headers.Authorization = $"Bearer {accessToken}";
                     
-                    _logger.LogDebug("Added cookie-based access token to Authorization header for path: {Path}", context.Request.Path);
+                    _logger.LogInformation("Successfully added cookie-based access token to Authorization header for path: {Path}", context.Request.Path);
                 }
+                else
+                {
+                    _logger.LogDebug("No access_token cookie found for path: {Path}", context.Request.Path);
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Authorization header already present, skipping cookie authentication for path: {Path}", context.Request.Path);
             }
 
             await _next(context);

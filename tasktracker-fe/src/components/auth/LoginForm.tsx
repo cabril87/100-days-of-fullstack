@@ -11,24 +11,65 @@ import { Input } from '../ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Eye, EyeOff, LogIn, Star } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Star, Clock } from 'lucide-react';
 import { LoginFormData } from '../../lib/types/auth';
 import { loginSchema } from '../../lib/schemas';
 import { useState } from 'react';
 import { DecorativeLines } from '../ui/DecorativeLines';
 
 export const LoginForm: React.FC = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [lockoutInfo, setLockoutInfo] = useState<{ isLocked: boolean; minutesRemaining: number } | null>(null);
 
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
+  // No useEffect redirect to prevent infinite loops - redirect handled in onSubmit
+
+  // Parse lockout information from error messages
+  const parseLockoutInfo = (message: string): { isLocked: boolean; minutesRemaining: number } | null => {
+    // Check for generic lockout message (no specific time provided by backend)
+    if (message.toLowerCase().includes('temporarily locked') || message.toLowerCase().includes('multiple failed login attempts')) {
+      // Since backend doesn't provide specific time, estimate based on common lockout policies
+      // Most systems use 15-30 minutes, let's use 15 minutes as default
+      return {
+        isLocked: true,
+        minutesRemaining: 15 // Default lockout time
+      };
     }
-  }, [isAuthenticated, router]);
+    
+    // Also check for specific time if provided in future
+    const lockoutRegex = /temporarily locked.*?(\d+).*?minute/i;
+    const match = message.match(lockoutRegex);
+    if (match) {
+      return {
+        isLocked: true,
+        minutesRemaining: parseInt(match[1], 10)
+      };
+    }
+    
+    return null;
+  };
+
+  // Timer to update lockout countdown
+  useEffect(() => {
+    if (lockoutInfo?.isLocked && lockoutInfo.minutesRemaining > 0) {
+      const timer = setInterval(() => {
+        setLockoutInfo(prev => {
+          if (!prev || prev.minutesRemaining <= 1) {
+            setErrorMessage('');
+            return null;
+          }
+          return {
+            ...prev,
+            minutesRemaining: prev.minutesRemaining - 1
+          };
+        });
+      }, 60000); // Update every minute
+
+      return () => clearInterval(timer);
+    }
+  }, [lockoutInfo]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -40,13 +81,27 @@ export const LoginForm: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData): Promise<void> => {
     setErrorMessage('');
+    setLockoutInfo(null);
     
     try {
+      console.log('🔐 Starting login process...');
       await login(data);
+      console.log('✅ Login successful, waiting for cookies to settle...');
+      
+      // Small delay to ensure cookies are properly set before redirect
+      
       router.push('/dashboard');
+      console.log('✅ Redirect initiated');
     } catch (error) {
+      console.error('❌ Login failed:', error);
       const message = error instanceof Error ? error.message : 'Login failed';
       setErrorMessage(message);
+      
+      // Check if this is a lockout error and parse the time
+      const lockout = parseLockoutInfo(message);
+      if (lockout) {
+        setLockoutInfo(lockout);
+      }
     }
   };
 
@@ -84,6 +139,16 @@ export const LoginForm: React.FC = () => {
               {errorMessage && (
                 <Alert variant="destructive" className="border-red-200 dark:border-red-800">
                   <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              )}
+
+              {lockoutInfo?.isLocked && (
+                <Alert className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950">
+                  <Clock className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-800 dark:text-orange-200">
+                    Account temporarily locked. Try again in{' '}
+                    <span className="font-bold">{lockoutInfo.minutesRemaining} minute{lockoutInfo.minutesRemaining !== 1 ? 's' : ''}</span>.
+                  </AlertDescription>
                 </Alert>
               )}
 
@@ -152,13 +217,18 @@ export const LoginForm: React.FC = () => {
             <CardFooter className="flex flex-col space-y-4 pt-6">
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300" 
-                disabled={form.formState.isSubmitting}
+                className="w-full bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
+                disabled={form.formState.isSubmitting || lockoutInfo?.isLocked}
               >
                 {form.formState.isSubmitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Signing in...
+                  </div>
+                ) : lockoutInfo?.isLocked ? (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Account Locked ({lockoutInfo.minutesRemaining}m)
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">

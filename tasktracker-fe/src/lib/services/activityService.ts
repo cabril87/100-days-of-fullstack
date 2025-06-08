@@ -31,7 +31,7 @@ export class ActivityService {
 
     try {
       const result = await apiClient.get<{ success: boolean; data: BackendActivityItem[] }>(
-        `/api/v1/activity/family/${familyId}/recent?limit=${limit}`
+        `/v1/activity/family/${familyId}/recent?limit=${limit}`
       );
       
       if (result && result.data) {
@@ -72,7 +72,7 @@ export class ActivityService {
    */
   async getUserProgress(): Promise<UserProgress> {
     try {
-      const result = await apiClient.get<UserProgressApiResponse>('/api/v1/gamification/progress');
+      const result = await apiClient.get<UserProgressApiResponse>('/v1/gamification/progress');
       
       // Transform backend UserProgressDTO to our frontend UserProgress type
       if (result && result.data) {
@@ -126,7 +126,7 @@ export class ActivityService {
   async getUserActivity(limit: number = 10): Promise<FamilyActivityItem[]> {
     try {
       const result = await apiClient.get<{ success: boolean; data: BackendActivityItem[] }>(
-        `/api/v1/activity/recent?limit=${limit}`
+        `/v1/activity/recent?limit=${limit}`
       );
       
       if (result && result.data) {

@@ -85,7 +85,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
           </p>
           
           <div className="text-sm text-blue-600 dark:text-blue-400">
-            <p>Hello {user.firstName || user.username}! Your tasks will appear here once the backend integration is complete.</p>
+            <p>Hello {user?.firstName || user?.username || 'User'}! Your tasks will appear here once the backend integration is complete.</p>
           </div>
         </CardContent>
       </Card>

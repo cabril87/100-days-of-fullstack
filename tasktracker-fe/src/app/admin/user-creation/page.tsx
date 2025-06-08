@@ -1,23 +1,12 @@
-import React from 'react';
-import { redirect } from 'next/navigation';
-import { getServerAuth } from '@/lib/utils/serverAuth';
-import UserCreationPageContent from './UserCreationPageContent';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
+import UserCreation from '@/components/admin/UserCreation';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUserCreationPage() {
-  const { user, isAuthenticated } = await getServerAuth();
+  // Get auth session and redirect if not authenticated (admin check can be done client-side)
+  const { session } = await ProtectedPagePattern('/admin/user-creation');
 
-  if (!isAuthenticated) {
-    redirect('/auth/login');
-  }
-
-  // Check if user is global admin
-  const isGlobalAdmin = user?.email?.toLowerCase() === 'admin@tasktracker.com';
-  if (!isGlobalAdmin) {
-    redirect('/dashboard');
-  }
-
-  return <UserCreationPageContent user={user} />;
+  return <UserCreation user={session!} />;
 } 

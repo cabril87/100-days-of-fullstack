@@ -1,13 +1,13 @@
-import { requireRole, serverApiCall } from '@/lib/utils/serverAuth';
-import { AdminStats, AdminActivityItem, AdminSystemMetrics } from '@/lib/types/admin';
-import AdminDashboardContent from './AdminDashboardContent';
+import { ProtectedPagePattern, fetchAuthenticatedData } from '@/lib/auth/auth-config';
+  import { AdminStats, AdminActivityItem, AdminSystemMetrics } from '@/lib/types/admin';
+  import AdminDashboard from '@/components/admin/AdminDashboard';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  // Server-side authentication with role validation - redirect if not global admin
-  const user = await requireRole('GlobalAdmin');
+  // Get auth session and redirect if not authenticated (admin check can be done client-side)
+  const { session } = await ProtectedPagePattern('/admin');
   
   // Server-side data fetching for admin dashboard
   const initialData = {
@@ -28,24 +28,24 @@ export default async function AdminDashboardPage() {
   try {
     // Fetch admin statistics (when backend endpoints are available)
     try {
-      const adminStats = await serverApiCall<AdminStats>('/api/v1/admin/stats');
-      initialData.stats = adminStats;
+      const adminStats = await fetchAuthenticatedData<AdminStats>('/v1/admin/stats', initialData.stats);
+      if (adminStats) initialData.stats = adminStats;
     } catch {
       console.debug('Admin stats API not yet implemented');
     }
     
     // Fetch recent admin activity
     try {
-      const activity = await serverApiCall<AdminActivityItem[]>('/api/v1/admin/activity');
-      initialData.recentActivity = activity;
+      const activity = await fetchAuthenticatedData<AdminActivityItem[]>('/v1/admin/activity', []);
+      if (activity) initialData.recentActivity = activity;
     } catch {
       console.debug('Admin activity API not yet implemented');
     }
     
     // Fetch system metrics
     try {
-      const metrics = await serverApiCall<AdminSystemMetrics>('/api/v1/admin/system-metrics');
-      initialData.systemMetrics = metrics;
+      const metrics = await fetchAuthenticatedData<AdminSystemMetrics>('/v1/admin/system-metrics', initialData.systemMetrics);
+      if (metrics) initialData.systemMetrics = metrics;
     } catch {
       console.debug('System metrics API not yet implemented');
     }
@@ -55,5 +55,5 @@ export default async function AdminDashboardPage() {
   }
   
   // Pass server-fetched data to client component
-  return <AdminDashboardContent user={user} initialData={initialData} />;
+  return <AdminDashboard user={session} initialData={initialData} />;
 } 

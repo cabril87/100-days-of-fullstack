@@ -1,17 +1,12 @@
-import React from 'react';
-import { redirect } from 'next/navigation';
-import { getServerAuth } from '@/lib/utils/serverAuth';
-import FamiliesContent from './FamiliesContent';
+import { ProtectedPagePattern } from '@/lib/auth/auth-config';
+import Families from '@/components/family/Families';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 
 export default async function MyFamiliesPage() {
-  const { user, isAuthenticated } = await getServerAuth();
+  // Get auth session and redirect if not authenticated
+  const { session } = await ProtectedPagePattern('/families');
 
-  if (!isAuthenticated || !user) {
-    redirect('/auth/login');
-  }
-
-  return <FamiliesContent user={user} />;
+  return <Families user={session} />;
 } 

@@ -233,15 +233,15 @@ export interface SecuritySettingsContentProps {
 
 // Component props interfaces for consistent typing
 export interface NotificationSettingsContentProps {
-  user: User;
+  user: User | null;
 }
 
 export interface AppearanceSettingsContentProps {
-  user: User;
+  user: User | null;
 }
 
 export interface FamilyManagementContentProps {
-  user: User;
+  user: User | null;
 }
 
 // Component-specific form data types  

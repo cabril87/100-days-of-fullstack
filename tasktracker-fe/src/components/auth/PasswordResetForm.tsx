@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../lib/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -18,17 +17,9 @@ import { PasswordResetFormData } from '../../lib/types/forms';
 // PasswordResetFormData is imported from lib/types/forms
 
 export const PasswordResetForm: React.FC = () => {
-  const { requestPasswordReset, isAuthenticated } = useAuth();
-  const router = useRouter();
+  const { requestPasswordReset } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
-  }, [isAuthenticated, router]);
 
   const form = useForm<PasswordResetFormData>({
     resolver: zodResolver(passwordResetSchema),

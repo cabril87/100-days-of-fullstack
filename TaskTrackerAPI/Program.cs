@@ -126,8 +126,8 @@ public class Program
                 corsBuilder.SetIsOriginAllowed(_ => true) // Allow any origin including null (file://)
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials() // Enable credentials for testing
-                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
+                    .AllowCredentials() // Enable credentials for cookie authentication
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie", "X-CSRF-Status");
             });
 
             // Docker development CORS policy - for when testing with Docker
@@ -145,8 +145,8 @@ public class Program
                     )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials()
-                    .WithExposedHeaders("Content-Disposition", "Set-Cookie");
+                    .AllowCredentials() // Essential for cookie authentication
+                    .WithExposedHeaders("Content-Disposition", "Set-Cookie", "X-CSRF-Status");
             });
 
             // Staging CORS policy - more restricted but allows test domains

@@ -28,7 +28,7 @@ export class TaskService {
    */
   async getUserTaskStats(): Promise<TaskStats> {
     try {
-      const result = await apiClient.get<ApiResponse<BackendTaskStatsResponse>>('/api/v1/taskitems/statistics');
+      const result = await apiClient.get<ApiResponse<BackendTaskStatsResponse>>('/v1/taskitems/statistics');
       
       if (result && result.data) {
         const backendData = result.data;
@@ -84,7 +84,7 @@ export class TaskService {
    */
   async getRecentTasks(limit: number = 10): Promise<Task[]> {
     try {
-      const result = await apiClient.get<Task[]>(`/api/v1/taskitems?limit=${limit}`);
+      const result = await apiClient.get<Task[]>(`/v1/taskitems?limit=${limit}`);
       return result || [];
     } catch (error) {
       console.error('Failed to fetch recent tasks:', error);
@@ -107,7 +107,7 @@ export class TaskService {
         completedTasks: number;
         totalPoints: number;
         memberStats: { memberId: number; memberName: string; tasksCompleted: number; pointsEarned: number; }[];
-      }>(`/api/v1/taskitems/family/${familyId}/stats`);
+      }>(`/v1/taskitems/family/${familyId}/stats`);
 
       return result || {
         totalTasks: 0,
@@ -131,7 +131,7 @@ export class TaskService {
    */
   async createTask(taskData: CreateTaskDTO): Promise<Task> {
     try {
-      const result = await apiClient.post<Task>('/api/v1/taskitems', taskData);
+      const result = await apiClient.post<Task>('/v1/taskitems', taskData);
       if (!result) {
         throw new TaskApiError('Failed to create task', 500);
       }
@@ -147,7 +147,7 @@ export class TaskService {
    */
   async updateTask(taskId: number, taskData: UpdateTaskDTO): Promise<Task> {
     try {
-      const result = await apiClient.put<Task>(`/api/v1/taskitems/${taskId}`, taskData);
+      const result = await apiClient.put<Task>(`/v1/taskitems/${taskId}`, taskData);
       if (!result) {
         throw new TaskApiError('Failed to update task', 500);
       }
@@ -163,7 +163,7 @@ export class TaskService {
    */
   async completeTask(taskId: number): Promise<Task> {
     try {
-      const result = await apiClient.post<Task>(`/api/v1/taskitems/${taskId}/complete`);
+      const result = await apiClient.post<Task>(`/v1/taskitems/${taskId}/complete`);
       if (!result) {
         throw new TaskApiError('Failed to complete task', 500);
       }
@@ -179,7 +179,7 @@ export class TaskService {
    */
   async deleteTask(taskId: number): Promise<void> {
     try {
-      await apiClient.delete<void>(`/api/v1/taskitems/${taskId}`);
+      await apiClient.delete<void>(`/v1/taskitems/${taskId}`);
     } catch (error) {
       console.error('Failed to delete task:', error);
       throw error instanceof TaskApiError ? error : new TaskApiError('Failed to delete task', 500);

@@ -45,7 +45,7 @@ export class FamilyInvitationService {
    */
   async getAllFamilies(): Promise<FamilyDTO[]> {
     try {
-      return await apiClient.get<FamilyDTO[]>('/api/v1/family');
+      return await apiClient.get<FamilyDTO[]>('/v1/family');
     } catch (error) {
       console.error('Failed to fetch families:', error);
       return [];
@@ -57,7 +57,7 @@ export class FamilyInvitationService {
    */
   async getFamilyById(id: number): Promise<FamilyDTO> {
     try {
-      return await apiClient.get<FamilyDTO>(`/api/v1/family/${id}`);
+      return await apiClient.get<FamilyDTO>(`/v1/family/${id}`);
     } catch (error) {
       console.error('Failed to fetch family by ID:', error);
       throw error;
@@ -69,9 +69,10 @@ export class FamilyInvitationService {
    */
   async getUserFamily(): Promise<FamilyDTO | null> {
     try {
-      return await apiClient.get<FamilyDTO>('/api/v1/family/current-family');
+      return await apiClient.get<FamilyDTO>('/v1/family/current-family');
     } catch (error) {
-      console.debug('User has no family:', error);
+      // This is expected for new users who haven't joined a family yet
+      console.debug('User has no family yet (this is normal for new users)');
       return null;
     }
   }
@@ -88,7 +89,7 @@ export class FamilyInvitationService {
    */
   async createFamily(familyData: FamilyCreateDTO): Promise<FamilyDTO> {
     try {
-      return await apiClient.post<FamilyDTO>('/api/v1/family', familyData);
+      return await apiClient.post<FamilyDTO>('/v1/family', familyData);
     } catch (error) {
       console.error('Failed to create family:', error);
       throw error;
@@ -100,7 +101,7 @@ export class FamilyInvitationService {
    */
   async updateFamily(id: number, familyData: FamilyUpdateDTO): Promise<FamilyDTO> {
     try {
-      return await apiClient.put<FamilyDTO>(`/api/v1/family/${id}`, familyData);
+      return await apiClient.put<FamilyDTO>(`/v1/family/${id}`, familyData);
     } catch (error) {
       console.error('Failed to update family:', error);
       throw error;
@@ -112,7 +113,7 @@ export class FamilyInvitationService {
    */
   async deleteFamily(id: number): Promise<void> {
     try {
-      await apiClient.delete<void>(`/api/v1/family/${id}`);
+      await apiClient.delete<void>(`/v1/family/${id}`);
     } catch (error) {
       console.error('Failed to delete family:', error);
       throw error;
@@ -124,7 +125,7 @@ export class FamilyInvitationService {
    */
   async leaveFamily(familyId: number): Promise<void> {
     try {
-      await apiClient.post<void>(`/api/v1/family/${familyId}/leave`);
+      await apiClient.post<void>(`/v1/family/${familyId}/leave`);
     } catch (error) {
       console.error('Failed to leave family:', error);
       throw error;
@@ -138,7 +139,7 @@ export class FamilyInvitationService {
    */
   async getFamilyMembers(familyId: number): Promise<FamilyMemberDTO[]> {
     try {
-      return await apiClient.get<FamilyMemberDTO[]>(`/api/v1/family/${familyId}/members`);
+      return await apiClient.get<FamilyMemberDTO[]>(`/v1/family/${familyId}/members`);
     } catch (error) {
       console.error('Failed to fetch family members:', error);
       return [];
@@ -150,7 +151,7 @@ export class FamilyInvitationService {
    */
   async getFamilyMember(familyId: number, memberId: number): Promise<FamilyMemberDTO> {
     try {
-      return await apiClient.get<FamilyMemberDTO>(`/api/v1/family/${familyId}/members/${memberId}`);
+      return await apiClient.get<FamilyMemberDTO>(`/v1/family/${familyId}/members/${memberId}`);
     } catch (error) {
       console.error('Failed to fetch family member:', error);
       throw error;
@@ -162,7 +163,7 @@ export class FamilyInvitationService {
    */
   async updateMemberRole(familyId: number, memberId: number, roleId: number): Promise<FamilyMemberDTO> {
     try {
-      return await apiClient.put<FamilyMemberDTO>(`/api/v1/family/${familyId}/members/${memberId}/role`, { roleId });
+      return await apiClient.put<FamilyMemberDTO>(`/v1/family/${familyId}/members/${memberId}/role`, { roleId });
     } catch (error) {
       console.error('Failed to update member role:', error);
       throw error;
@@ -174,7 +175,7 @@ export class FamilyInvitationService {
    */
   async removeFamilyMember(familyId: number, memberId: number): Promise<void> {
     try {
-      await apiClient.delete<void>(`/api/v1/family/${familyId}/members/${memberId}`);
+      await apiClient.delete<void>(`/v1/family/${familyId}/members/${memberId}`);
     } catch (error) {
       console.error('Failed to remove family member:', error);
       throw error;
@@ -186,7 +187,7 @@ export class FamilyInvitationService {
    */
   async transferOwnership(familyId: number, transferData: TransferOwnershipDTO): Promise<FamilyDTO> {
     try {
-      return await apiClient.post<FamilyDTO>(`/api/v1/family/${familyId}/transfer-ownership`, transferData);
+      return await apiClient.post<FamilyDTO>(`/v1/family/${familyId}/transfer-ownership`, transferData);
     } catch (error) {
       console.error('Failed to transfer family ownership:', error);
       throw error;
@@ -200,7 +201,7 @@ export class FamilyInvitationService {
    */
   async getFamilyInvitations(familyId: number): Promise<InvitationDTO[]> {
     try {
-      return await apiClient.get<InvitationDTO[]>(`/api/v1/family/${familyId}/invitations`);
+      return await apiClient.get<InvitationDTO[]>(`/v1/family/${familyId}/invitations`);
     } catch (error) {
       console.error('Failed to fetch family invitations:', error);
       return [];
@@ -212,7 +213,7 @@ export class FamilyInvitationService {
    */
   async getPendingInvitations(): Promise<InvitationDTO[]> {
     try {
-      return await apiClient.get<InvitationDTO[]>('/api/v1/invitation/pending');
+      return await apiClient.get<InvitationDTO[]>('/v1/invitation/pending');
     } catch (error) {
       console.error('Failed to fetch pending invitations:', error);
       return [];
@@ -224,7 +225,7 @@ export class FamilyInvitationService {
    */
   async getInvitationById(id: number): Promise<InvitationDTO> {
     try {
-      return await apiClient.get<InvitationDTO>(`/api/v1/invitation/${id}`);
+      return await apiClient.get<InvitationDTO>(`/v1/invitation/${id}`);
     } catch (error) {
       console.error('Failed to fetch invitation by ID:', error);
       throw error;
@@ -236,7 +237,7 @@ export class FamilyInvitationService {
    */
   async getInvitationByToken(token: string): Promise<InvitationDTO> {
     try {
-      return await apiClient.get<InvitationDTO>(`/api/v1/invitation/token/${token}`);
+      return await apiClient.get<InvitationDTO>(`/v1/invitation/token/${token}`);
     } catch (error) {
       console.error('Failed to fetch invitation by token:', error);
       throw error;
@@ -248,7 +249,7 @@ export class FamilyInvitationService {
    */
   async createInvitation(invitationData: InvitationCreateDTO): Promise<InvitationDTO> {
     try {
-      return await apiClient.post<InvitationDTO>(`/api/v1/family/${invitationData.familyId}/invitations`, invitationData);
+      return await apiClient.post<InvitationDTO>(`/v1/family/${invitationData.familyId}/invitations`, invitationData);
     } catch (error) {
       console.error('Failed to create invitation:', error);
       throw error;
@@ -274,7 +275,7 @@ export class FamilyInvitationService {
    */
   async acceptInvitationByToken(token: string): Promise<{ success: boolean; message: string }> {
     try {
-      return await apiClient.post<{ success: boolean; message: string }>('/api/v1/invitation/accept', { token });
+      return await apiClient.post<{ success: boolean; message: string }>('/v1/invitation/accept', { token });
     } catch (error) {
       console.error('Failed to accept invitation by token:', error);
       throw error;
@@ -300,7 +301,7 @@ export class FamilyInvitationService {
    */
   async declineInvitationByToken(token: string): Promise<{ success: boolean; message: string }> {
     try {
-      return await apiClient.post<{ success: boolean; message: string }>('/api/v1/invitation/decline', { token });
+      return await apiClient.post<{ success: boolean; message: string }>('/v1/invitation/decline', { token });
     } catch (error) {
       console.error('Failed to decline invitation by token:', error);
       throw error;
@@ -312,7 +313,7 @@ export class FamilyInvitationService {
    */
   async cancelInvitation(invitationId: number): Promise<{ success: boolean; message: string }> {
     try {
-      return await apiClient.delete<{ success: boolean; message: string }>(`/api/v1/invitation/${invitationId}`);
+      return await apiClient.delete<{ success: boolean; message: string }>(`/v1/invitation/${invitationId}`);
     } catch (error) {
       console.error('Failed to cancel invitation:', error);
       throw error;
@@ -324,7 +325,7 @@ export class FamilyInvitationService {
    */
   async resendInvitation(invitationId: number): Promise<{ success: boolean; message: string }> {
     try {
-      return await apiClient.post<{ success: boolean; message: string }>(`/api/v1/invitation/${invitationId}/resend`);
+      return await apiClient.post<{ success: boolean; message: string }>(`/v1/invitation/${invitationId}/resend`);
     } catch (error) {
       console.error('Failed to resend invitation:', error);
       throw error;
@@ -338,7 +339,7 @@ export class FamilyInvitationService {
    */
   async getUserFamilyRelationships(): Promise<UserFamilyRelationships> {
     try {
-      return await apiClient.get<UserFamilyRelationships>('/api/v1/family/user-relationships');
+      return await apiClient.get<UserFamilyRelationships>('/v1/family/user-relationships');
     } catch (error) {
       console.error('Failed to fetch user family relationships:', error);
       throw error;
@@ -351,8 +352,8 @@ export class FamilyInvitationService {
   async getFamilyManagementPermissions(familyId?: number): Promise<FamilyManagementPermissions> {
     try {
       const endpoint = familyId 
-        ? `/api/v1/family/management-permissions?familyId=${familyId}`
-        : '/api/v1/family/management-permissions';
+        ? `/v1/family/management-permissions?familyId=${familyId}`
+        : '/v1/family/management-permissions';
       return await apiClient.get<FamilyManagementPermissions>(endpoint);
     } catch (error) {
       console.error('Failed to fetch family management permissions:', error);
@@ -556,7 +557,7 @@ export class FamilyInvitationService {
    */
   async getFamilyRoles(): Promise<FamilyRoleDTO[]> {
     try {
-      return await apiClient.get<FamilyRoleDTO[]>('/api/v1/family/roles');
+      return await apiClient.get<FamilyRoleDTO[]>('/v1/family/roles');
     } catch (error) {
       console.error('Failed to fetch family roles:', error);
       return [];
@@ -588,7 +589,7 @@ export class FamilyInvitationService {
    */
   async getSentInvitations(): Promise<InvitationDTO[]> {
     try {
-      return await apiClient.get<InvitationDTO[]>('/api/v1/invitation/sent');
+      return await apiClient.get<InvitationDTO[]>('/v1/invitation/sent');
     } catch (error) {
       console.error('Failed to fetch sent invitations:', error);
       return [];

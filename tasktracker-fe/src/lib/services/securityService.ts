@@ -33,8 +33,8 @@ export class SecurityServiceError extends Error {
 
 /**
  * Security Service with conditional endpoints based on user role
- * - Regular users: /api/v1/user-security/* endpoints
- * - Admin users: /api/v1/securitymonitoring/* endpoints
+ * - Regular users: /v1/user-security/* endpoints
+ * - Admin users: /v1/securitymonitoring/* endpoints
  */
 class SecurityService implements ConditionalSecurityService {
   public isAdminMode: boolean = false;
@@ -52,7 +52,7 @@ class SecurityService implements ConditionalSecurityService {
    * Get the appropriate endpoint prefix based on user role
    */
   private getEndpointPrefix(): string {
-    return this.isAdminMode ? '/api/v1/securitymonitoring' : '/api/v1/user-security';
+    return this.isAdminMode ? '/v1/securitymonitoring' : '/v1/user-security';
   }
 
   /**
@@ -78,10 +78,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode) {
         // Admin endpoint - full dashboard
-        return await apiClient.get<SecurityDashboardDTO>('/api/v1/securitymonitoring/dashboard');
+        return await apiClient.get<SecurityDashboardDTO>('/v1/securitymonitoring/dashboard');
       } else {
         // User endpoint - overview only
-        return await apiClient.get<UserSecurityOverviewDTO>('/api/v1/user-security/overview');
+        return await apiClient.get<UserSecurityOverviewDTO>('/v1/user-security/overview');
       }
     } catch (error) {
       // Silently handle 403 errors for admin-only endpoints - these are expected for regular users
@@ -103,7 +103,7 @@ class SecurityService implements ConditionalSecurityService {
       if (!this.isAdminMode) {
         throw new SecurityServiceError('Session management data is only available for admin users', 403);
       }
-      return await apiClient.get<SessionManagementDTO>('/api/v1/securitymonitoring/sessions');
+      return await apiClient.get<SessionManagementDTO>('/v1/securitymonitoring/sessions');
     } catch (error) {
       console.error('Failed to fetch session management data:', error);
       throw error;
@@ -120,12 +120,12 @@ class SecurityService implements ConditionalSecurityService {
       if (this.isAdminMode) {
         // Admin endpoint - can view any user's sessions
         const url = userId 
-          ? `/api/v1/securitymonitoring/sessions/user/${userId}?activeOnly=true`
-          : '/api/v1/securitymonitoring/sessions/active';
+          ? `/v1/securitymonitoring/sessions/user/${userId}?activeOnly=true`
+          : '/v1/securitymonitoring/sessions/active';
         sessions = await apiClient.get<UserSessionDTO[]>(url);
       } else {
         // User endpoint - can only view own sessions
-        sessions = await apiClient.get<UserSessionDTO[]>('/api/v1/user-security/sessions');
+        sessions = await apiClient.get<UserSessionDTO[]>('/v1/user-security/sessions');
       }
     
       // Add isCurrentDevice flag to sessions (you could enhance this by comparing device info)
@@ -153,11 +153,11 @@ class SecurityService implements ConditionalSecurityService {
       if (this.isAdminMode) {
         // Admin endpoint - can view any user's sessions
         sessions = await apiClient.get<UserSessionDTO[]>(
-          `/api/v1/securitymonitoring/sessions/user/${userId}?activeOnly=${activeOnly}`
+          `/v1/securitymonitoring/sessions/user/${userId}?activeOnly=${activeOnly}`
         );
       } else {
         // User endpoint - can only view own sessions (ignores userId parameter)
-        sessions = await apiClient.get<UserSessionDTO[]>('/api/v1/user-security/sessions');
+        sessions = await apiClient.get<UserSessionDTO[]>('/v1/user-security/sessions');
       }
     
       return sessions.map((session, index) => ({
@@ -177,19 +177,19 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode) {
         // Admin endpoint - can terminate any session
-        await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate', { 
+        await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { 
           sessionToken
         });
       } else {
         // Try user endpoint first, fallback to admin endpoint if not available
         try {
           const request: TerminateSessionRequestDTO = { sessionToken };
-          await apiClient.post<void>('/api/v1/user-security/sessions/terminate', request);
+          await apiClient.post<void>('/v1/user-security/sessions/terminate', request);
         } catch (userEndpointError) {
           if (userEndpointError instanceof ApiClientError && userEndpointError.statusCode === 404) {
             // Fallback to admin endpoint (user security endpoint not implemented yet)
             console.warn('User security endpoint not available, falling back to admin endpoint');
-            await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate', { 
+            await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { 
               sessionToken
             });
           } else {
@@ -212,7 +212,7 @@ class SecurityService implements ConditionalSecurityService {
         throw new SecurityServiceError('Terminating all user sessions is only available for admin users', 403);
       }
 
-      await apiClient.post<void>('/api/v1/securitymonitoring/sessions/terminate-all', { 
+      await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate-all', { 
         userId, 
         reason: reason || 'User terminated all sessions',
         excludeSessionToken
@@ -232,7 +232,7 @@ class SecurityService implements ConditionalSecurityService {
         throw new SecurityServiceError('Marking sessions as suspicious is only available for admin users', 403);
       }
 
-      await apiClient.post<void>('/api/v1/securitymonitoring/sessions/mark-suspicious', { 
+      await apiClient.post<void>('/v1/securitymonitoring/sessions/mark-suspicious', { 
         sessionToken, 
         reason 
       });
@@ -251,10 +251,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can view any user's devices
-        return await apiClient.get<UserDeviceDTO[]>(`/api/v1/securitymonitoring/devices/user/${userId}`);
+        return await apiClient.get<UserDeviceDTO[]>(`/v1/securitymonitoring/devices/user/${userId}`);
       } else {
         // User endpoint - can only view own devices
-        return await apiClient.get<UserDeviceDTO[]>('/api/v1/user-security/devices');
+        return await apiClient.get<UserDeviceDTO[]>('/v1/user-security/devices');
       }
     } catch (error) {
       // Silently handle 403 errors for admin-only endpoints - these are expected for regular users
@@ -279,11 +279,11 @@ class SecurityService implements ConditionalSecurityService {
           trusted,
           deviceName
         };
-        await apiClient.post<void>('/api/v1/securitymonitoring/devices/trust', deviceTrustData);
+        await apiClient.post<void>('/v1/securitymonitoring/devices/trust', deviceTrustData);
       } else {
         // User endpoint - can only modify own devices (backend verifies ownership)
         const request: UpdateDeviceTrustRequestDTO = { trusted, deviceName };
-        await apiClient.put<void>(`/api/v1/user-security/devices/${deviceId}/trust`, request);
+        await apiClient.put<void>(`/v1/user-security/devices/${deviceId}/trust`, request);
       }
     } catch (error) {
       console.error('Failed to update device trust:', error);
@@ -298,7 +298,7 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can remove any user's device
-        await apiClient.delete<void>(`/api/v1/securitymonitoring/devices/user/${userId}/device/${deviceId}`);
+        await apiClient.delete<void>(`/v1/securitymonitoring/devices/user/${userId}/device/${deviceId}`);
       } else {
         // User endpoint - can only remove own devices
         // Note: User security endpoint doesn't exist yet for device removal
@@ -320,10 +320,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can view any user's settings
-        return await apiClient.get<SecuritySettingsFormData>(`/api/v1/securitymonitoring/users/${userId}/security-settings`);
+        return await apiClient.get<SecuritySettingsFormData>(`/v1/securitymonitoring/users/${userId}/security-settings`);
       } else {
         // User endpoint - can only view own settings
-        return await apiClient.get<SecuritySettingsFormData>('/api/v1/user-security/settings');
+        return await apiClient.get<SecuritySettingsFormData>('/v1/user-security/settings');
       }
     } catch (error) {
       if (error instanceof ApiClientError && error.statusCode === 404) {
@@ -348,10 +348,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can create settings for any user
-        await apiClient.post<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`, settings);
+        await apiClient.post<void>(`/v1/securitymonitoring/users/${userId}/security-settings`, settings);
       } else {
         // User endpoint - can only create own settings
-        await apiClient.post<void>('/api/v1/user-security/settings', settings);
+        await apiClient.post<void>('/v1/user-security/settings', settings);
       }
     } catch (error) {
       console.error('Failed to create security settings:', error);
@@ -366,10 +366,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can update any user's settings
-        await apiClient.put<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`, settings);
+        await apiClient.put<void>(`/v1/securitymonitoring/users/${userId}/security-settings`, settings);
       } else {
         // User endpoint - can only update own settings
-        await apiClient.put<void>('/api/v1/user-security/settings', settings);
+        await apiClient.put<void>('/v1/user-security/settings', settings);
       }
     } catch (error) {
       console.error('Failed to update security settings:', error);
@@ -384,10 +384,10 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode && userId) {
         // Admin endpoint - can delete any user's settings
-        await apiClient.delete<void>(`/api/v1/securitymonitoring/users/${userId}/security-settings`);
+        await apiClient.delete<void>(`/v1/securitymonitoring/users/${userId}/security-settings`);
       } else {
         // User endpoint - can only delete own settings
-        await apiClient.delete<void>('/api/v1/user-security/settings');
+        await apiClient.delete<void>('/v1/user-security/settings');
       }
     } catch (error) {
       console.error('Failed to delete security settings:', error);
@@ -403,7 +403,7 @@ class SecurityService implements ConditionalSecurityService {
   async requestDataExport(exportType: 'complete' | 'profile_only' | 'activity_only' | 'family_only', format: 'json' | 'csv' | 'pdf' = 'json'): Promise<void> {
     try {
       // Data export is available for all users
-      await apiClient.post<void>('/api/v1/dataexport/simple', { 
+      await apiClient.post<void>('/v1/dataexport/simple', { 
         exportType, 
         format 
       });
@@ -422,7 +422,7 @@ class SecurityService implements ConditionalSecurityService {
       
       if (this.isAdminMode) {
         // Admin endpoint - can clear any user's activity log
-        await apiClient.delete<void>(`/api/v1/securitymonitoring/users/${targetUserId}/activity-log`);
+        await apiClient.delete<void>(`/v1/securitymonitoring/users/${targetUserId}/activity-log`);
       } else {
         // For regular users, this feature is not implemented yet
         throw new SecurityServiceError('Activity log clearing not yet implemented for regular users', 501);
@@ -442,7 +442,7 @@ class SecurityService implements ConditionalSecurityService {
       
       if (this.isAdminMode) {
         // Admin endpoint - can delete any user's account
-        await apiClient.post<void>('/api/v1/securitymonitoring/delete-account', { 
+        await apiClient.post<void>('/v1/securitymonitoring/delete-account', { 
           userId: targetUserId, 
           currentPassword, 
           reason, 
@@ -468,7 +468,7 @@ class SecurityService implements ConditionalSecurityService {
       }
 
       const targetUserId = userId || this.getCurrentUserId();
-      return await apiClient.get<SecurityEventDTO[]>(`/api/v1/securitymonitoring/users/${targetUserId}/security-events?limit=${limit}`);
+      return await apiClient.get<SecurityEventDTO[]>(`/v1/securitymonitoring/users/${targetUserId}/security-events?limit=${limit}`);
     } catch (error) {
       console.error('Failed to fetch security events:', error);
       throw error;
@@ -485,7 +485,7 @@ class SecurityService implements ConditionalSecurityService {
       }
 
       const targetUserId = userId || this.getCurrentUserId();
-      return await apiClient.get<SecurityRecommendationDTO[]>(`/api/v1/securitymonitoring/users/${targetUserId}/security-recommendations`);
+      return await apiClient.get<SecurityRecommendationDTO[]>(`/v1/securitymonitoring/users/${targetUserId}/security-recommendations`);
     } catch (error) {
       console.error('Failed to fetch security recommendations:', error);
       throw error;
@@ -501,7 +501,7 @@ class SecurityService implements ConditionalSecurityService {
         throw new SecurityServiceError('Dismissing recommendations is only available for admin users', 403);
       }
 
-      await apiClient.post<void>('/api/v1/securitymonitoring/recommendations/dismiss', { recommendationId });
+      await apiClient.post<void>('/v1/securitymonitoring/recommendations/dismiss', { recommendationId });
     } catch (error) {
       console.error('Failed to dismiss recommendation:', error);
       throw error;

@@ -2,18 +2,21 @@
 
 import { StatsCard } from '@/components/gamification/StatsCard';
 import { GamificationBadges } from '@/components/gamification/GamificationBadges';
+import TaskCreationModal from '@/components/tasks/TaskCreationModal';
 import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { taskService } from '@/lib/services/taskService';
 import { activityService } from '@/lib/services/activityService';
 import { FamilyDTO, DashboardStats, FamilyActivityItem, UserProgress, DashboardContentProps } from '@/lib/types';
+import { Task } from '@/lib/types/task';
 
-export default function DashboardContent({ user, initialData }: DashboardContentProps) {
+export default function Dashboard({ user, initialData }: DashboardContentProps) {
   const router = useRouter();
   
   // State management
@@ -24,6 +27,28 @@ export default function DashboardContent({ user, initialData }: DashboardContent
   const [hasFamily] = useState(!!initialData.family);
   const [familyActivity, setFamilyActivity] = useState<FamilyActivityItem[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [recentTasks, setRecentTasks] = useState<Task[]>(initialData.recentTasks || []);
+
+  // Handle task creation success
+  const handleTaskCreated = useCallback(async (newTask: Task) => {
+    // Add the new task to recent tasks
+    setRecentTasks(prev => [newTask, ...prev.slice(0, 4)]);
+    
+    // Refresh dashboard stats
+    try {
+      const updatedStats = await taskService.getUserTaskStats();
+      setDashboardStats(prev => ({
+        ...prev,
+        tasksCompleted: updatedStats.tasksCompleted,
+        activeGoals: updatedStats.activeGoals,
+        focusTime: updatedStats.focusTimeToday,
+        totalPoints: updatedStats.totalPoints,
+        streakDays: updatedStats.streakDays
+      }));
+    } catch (error) {
+      console.error('Failed to refresh stats after task creation:', error);
+    }
+  }, []);
 
   // Load additional dashboard data (client-side for interactivity)
   const loadAdditionalData = useCallback(async () => {
@@ -105,7 +130,10 @@ export default function DashboardContent({ user, initialData }: DashboardContent
 
     } catch (error) {
       console.error('Failed to load additional dashboard data:', error);
-      setError('Failed to load some dashboard data. Please try refreshing the page.');
+      // Don't show error for new users - 404s are expected
+      if (error instanceof Error && !error.message.includes('404')) {
+        setError('Failed to load some dashboard data. Please try refreshing the page.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -156,11 +184,13 @@ export default function DashboardContent({ user, initialData }: DashboardContent
           </div>
         </div>
 
-        <GamificationBadges 
-          user={user} 
-          streakDays={dashboardStats.streakDays} 
-          achievements={userProgress?.achievements.length || 0}
-        />
+        {user && (
+          <GamificationBadges 
+            user={user} 
+            streakDays={dashboardStats.streakDays} 
+            achievements={userProgress?.achievements.length || 0}
+          />
+        )}
       </div>
 
       {/* Error Alert */}
@@ -169,26 +199,64 @@ export default function DashboardContent({ user, initialData }: DashboardContent
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      {/* New User Welcome */}
+      {!hasFamily && !isLoading && dashboardStats.totalPoints === 0 && dashboardStats.tasksCompleted === 0 && (
+        <Card className="border-2 border-dashed border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="text-4xl">🎉</div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2 text-blue-900 dark:text-blue-100">
+                  Welcome to TaskTracker!
+                </h3>
+                <p className="text-blue-700 dark:text-blue-300 mb-4">
+                  You're all set up! Let's get you started on your productivity journey.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                  {user && (
+                    <TaskCreationModal 
+                      user={user}
+                      family={currentFamily}
+                      onTaskCreated={handleTaskCreated}
+                      trigger={
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Your First Task
+                        </Button>
+                      }
+                    />
+                  )}
+                  <Button variant="outline" onClick={() => router.push('/settings/family')} className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/20">
+                    <Users className="h-4 w-4 mr-2" />
+                    Set Up Family
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* Stats Grid - Using correct DashboardStats properties */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatsCard
           title="Tasks Completed"
-          value={dashboardStats.tasksCompleted.toString()}
+          value={(dashboardStats.tasksCompleted || 0).toString()}
           subtitle="this week"
           icon={Trophy}
           variant="blue"
         />
         <StatsCard
           title="Active Goals"
-          value={dashboardStats.activeGoals.toString()}
+          value={(dashboardStats.activeGoals || 0).toString()}
           subtitle="in progress"
           icon={Target}
           variant="emerald"
         />
         <StatsCard
           title="Focus Time"
-          value={`${dashboardStats.focusTime}h`}
+          value={`${dashboardStats.focusTime || 0}h`}
           subtitle="today"
           icon={Clock}
           variant="amber"
@@ -288,7 +356,7 @@ export default function DashboardContent({ user, initialData }: DashboardContent
       )}
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Quick Actions */}
         <Card>
           <CardHeader>
@@ -302,20 +370,33 @@ export default function DashboardContent({ user, initialData }: DashboardContent
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-3">
-              <Button className="flex items-center justify-between w-full" variant="outline">
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span>Create New Task</span>
-                </div>
-                <span className="text-sm text-gray-500">+10 pts</span>
-              </Button>
+              {user && (
+                <TaskCreationModal 
+                  user={user}
+                  family={currentFamily}
+                  onTaskCreated={handleTaskCreated}
+                  trigger={
+                    <Button className="flex items-center justify-between w-full" variant="outline">
+                      <div className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        <span>Create New Task</span>
+                      </div>
+                      <span className="text-sm text-gray-500">+10 pts</span>
+                    </Button>
+                  }
+                />
+              )}
               
-              <Button className="flex items-center justify-between w-full" variant="outline">
+              <Button 
+                className="flex items-center justify-between w-full" 
+                variant="outline"
+                onClick={() => router.push('/tasks')}
+              >
                 <div className="flex items-center gap-2">
                   <Target className="h-4 w-4" />
-                  <span>Set Weekly Goal</span>
+                  <span>View All Tasks</span>
                 </div>
-                <span className="text-sm text-gray-500">+25 pts</span>
+                <span className="text-sm text-gray-500">→</span>
               </Button>
               
               {hasFamily ? (
@@ -344,6 +425,100 @@ export default function DashboardContent({ user, initialData }: DashboardContent
                 </Button>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Tasks */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              Recent Tasks
+            </CardTitle>
+            <CardDescription>
+              Your latest tasks and progress
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentTasks.length > 0 ? (
+              <div className="space-y-3">
+                {recentTasks.slice(0, 5).map((task) => (
+                  <div key={task.id} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-sm">{task.title}</h4>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${
+                            task.priority === 'Urgent' ? 'bg-red-100 text-red-800' :
+                            task.priority === 'High' ? 'bg-orange-100 text-orange-800' :
+                            task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}
+                        >
+                          {task.priority}
+                        </Badge>
+                      </div>
+                      {task.description && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                          {task.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        {task.dueDate && (
+                          <span className="text-xs text-gray-500">
+                            Due: {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                        <span className="text-xs font-medium text-purple-600">
+                          {task.pointsValue} pts
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {task.isCompleted ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <div className="w-4 h-4 border-2 border-gray-300 rounded-full"></div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => router.push('/tasks')}
+                  >
+                    View All Tasks
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-4 py-8">
+                <div className="text-4xl">📝</div>
+                <div>
+                  <h3 className="font-semibold mb-2">No tasks yet</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Create your first task to start tracking your productivity!
+                  </p>
+                  {user && (
+                    <TaskCreationModal 
+                      user={user}
+                      family={currentFamily}
+                      onTaskCreated={handleTaskCreated}
+                      trigger={
+                        <Button className="flex items-center gap-2">
+                          <Plus className="h-4 w-4" />
+                          Create First Task
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -394,7 +569,7 @@ export default function DashboardContent({ user, initialData }: DashboardContent
                 ))}
               </div>
             ) : (
-              <div className="text-center space-y-4 py-8">
+                              <div className="text-center space-y-4 py-8">
                 <div className="text-4xl">🚀</div>
                 <div>
                   <h3 className="font-semibold mb-2">Ready to get started?</h3>
@@ -404,11 +579,26 @@ export default function DashboardContent({ user, initialData }: DashboardContent
                       : 'Create your first task or set up a family to begin your productivity journey!'
                     }
                   </p>
+                  {!hasFamily && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4 text-sm text-blue-700 dark:text-blue-300">
+                      💡 <strong>New user tip:</strong> The TaskTracker works great both solo and with family. 
+                      Start with creating tasks to track your personal productivity, then invite family members later!
+                    </div>
+                  )}
                   <div className="flex justify-center gap-3">
-                    <Button className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      Create First Task
-                    </Button>
+                    {user && (
+                      <TaskCreationModal 
+                        user={user}
+                        family={currentFamily}
+                        onTaskCreated={handleTaskCreated}
+                        trigger={
+                          <Button className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            Create First Task
+                          </Button>
+                        }
+                      />
+                    )}
                     {!hasFamily && (
                       <Button variant="outline" onClick={() => router.push('/settings/family')}>
                         <Users className="h-4 w-4 mr-2" />

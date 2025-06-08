@@ -11,6 +11,7 @@ import { LogOut, Settings, User, Crown, Star } from 'lucide-react';
 import { DecorativeLines } from '@/components/ui/DecorativeLines';
 import { useTheme } from '@/lib/providers/ThemeProvider';
 import { usePathname } from 'next/navigation';
+import { getNavigationMode } from '@/lib/utils/authUtils';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -25,14 +26,17 @@ const FocusModeIndicator = () => {
 };
 
 export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownToggle, isSidebarOpen }: NavbarProps) {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { customTheme, isAuthenticated: isThemeAuthenticated } = useTheme();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Enable automatic token refresh
+  // Get navigation mode for current page
+  const navigationMode = getNavigationMode(pathname);
+
+  // Enable automatic token refresh (hook handles internal conditional logic)
   useTokenRefresh();
 
   // Define public routes where sidebar shouldn't show
@@ -142,7 +146,70 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
 
             {/* Desktop Navigation */}
             <div className="hidden md:ml-6 md:flex md:items-center">
+              {/* Public Page Navigation */}
+              {navigationMode === 'public' && (
+                <div className="flex items-center space-x-4">
+                  <ThemeToggle />
+                  {isAuthenticated && user && !isLoading ? (
+                    /* Authenticated user on public page - show minimal auth info */
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-white">Welcome back, {user.displayName || user.firstName}</span>
+                      <Link href="/dashboard">
+                        <Button variant="ghost" className="text-white hover:text-blue-400">
+                          Dashboard
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    /* Unauthenticated user on public page */
+                    <>
+                      <Link href="/auth/login">
+                        <Button variant="ghost" className="text-white hover:text-blue-400">
+                          Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/auth/register">
+                        <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white">
+                          Get Started
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Hybrid Page Navigation (Support, etc.) */}
+              {navigationMode === 'hybrid' && (
+                <div className="flex items-center space-x-4">
+                  <ThemeToggle />
               {isAuthenticated && user ? (
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-white">Welcome, {user.displayName || user.firstName}</span>
+                      <Link href="/dashboard">
+                        <Button variant="ghost" className="text-white hover:text-blue-400">
+                          Dashboard
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : !isLoading && (
+                    <div className="flex items-center space-x-2">
+                      <Link href="/auth/login">
+                        <Button variant="ghost" className="text-white hover:text-blue-400">
+                          Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/auth/register">
+                        <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white">
+                          Get Started
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Authenticated Navigation */}
+              {navigationMode === 'authenticated' && isAuthenticated && user && (
                 <div className="flex items-center space-x-3 lg:space-x-4">
                   {/* Future components - commented out */}
                   {/* <GlobalSearch /> */}
@@ -254,16 +321,6 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                       </div>
                     )}
                   </div>
-                </div>
-              ) : (
-                // Basic navigation for non-authenticated users
-                <div className="flex items-center space-x-3">
-                  <ThemeToggle />
-                  {/* Sidebar button removed for non-authenticated users */}
-                  
-                  {/* Auth links for non-authenticated users */}
-                  <Link href="/auth/register" className="text-white hover:text-purple-400 inline-flex items-center px-4 py-2 rounded-lg border-2 border-transparent hover:border-purple-500/20 hover:bg-purple-900/20 transition-all duration-300 font-bold text-sm">🚀 Get Started</Link>
-                  <Link href="/auth/login" className="text-white hover:text-blue-400 inline-flex items-center px-4 py-2 rounded-lg border-2 border-transparent hover:border-blue-500/20 hover:bg-blue-900/20 transition-all duration-300 font-bold text-sm">🔑 Sign In</Link>
                 </div>
               )}
             </div>

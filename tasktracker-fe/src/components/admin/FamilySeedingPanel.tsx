@@ -67,6 +67,13 @@ export default function FamilySeedingPanel({ className = '' }: FamilySeedingPane
     try {
       const scenarioList = await familySeedingService.getScenarios();
       setScenarios(scenarioList);
+      
+      // If no scenarios are available (likely due to 404), show a helpful message
+      if (scenarioList.length === 0) {
+        setError('Family seeding service is not yet available on this server. The backend endpoints may not be implemented yet.');
+        return;
+      }
+      
       // Set initial scenario to first non-clear scenario after loading
       if (scenarioList.length > 1) {
         setSelectedScenario(scenarioList[1].scenario); // Skip ClearAll which is first
@@ -218,6 +225,31 @@ export default function FamilySeedingPanel({ className = '' }: FamilySeedingPane
       </div>
 
       <div className="p-6">
+        {/* Service Not Available Banner - Only show when scenarios are empty and no error */}
+        {scenarios.length === 0 && !error && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">Service Information</span>
+            </div>
+            <div className="text-blue-700 mt-2">
+              <p className="font-medium">Family Seeding Service Not Available</p>
+              <p className="text-sm mt-1">
+                The family seeding endpoints are not yet implemented on the backend server. 
+                This feature allows administrators to create test families with various scenarios for testing purposes.
+              </p>
+              <div className="mt-3 text-xs text-blue-600">
+                <p>Expected endpoints that would be available:</p>
+                <ul className="ml-4 mt-1 list-disc">
+                  <li>GET /api/v1/admin/family-seeding/scenarios</li>
+                  <li>GET /api/v1/admin/family-seeding/test-families</li>
+                  <li>POST /api/v1/admin/family-seeding/seed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error Display */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">

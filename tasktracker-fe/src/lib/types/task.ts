@@ -4,6 +4,7 @@
  */
 
 import { User } from './auth';
+import { FamilyDTO } from './family-invitation';
 
 export interface Task {
   id: number;
@@ -150,10 +151,67 @@ export interface BackendUserProgressResponse {
 }
 
 export interface TasksPageContentProps {
-  user: User;
+  user: User | null;
   initialData: {
     tasks: Task[];
     categories: TaskCategory[];
     stats: TaskStats;
   };
+}
+
+// Form data types (inferred from Zod schemas)
+export interface CreateTaskFormData {
+  title: string;
+  description?: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  dueDate?: string;
+  categoryId?: number;
+  estimatedTimeMinutes?: number;
+  pointsValue?: number;
+  familyId?: number;
+  assignedToUserId?: number;
+  tags?: string[];
+}
+
+export interface UpdateTaskFormData {
+  title?: string;
+  description?: string;
+  priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+  dueDate?: string;
+  categoryId?: number;
+  estimatedTimeMinutes?: number;
+  pointsValue?: number;
+  assignedToUserId?: number;
+  tags?: string[];
+}
+
+export interface CompleteTaskFormData {
+  taskId: number;
+  actualTimeMinutes?: number;
+  completionNotes?: string;
+}
+
+export interface CreateTaskCategoryFormData {
+  name: string;
+  color: string;
+  icon?: string;
+  description?: string;
+}
+
+export interface TaskFilterFormData {
+  priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+  isCompleted?: boolean;
+  categoryId?: number;
+  assignedToUserId?: number;
+  dueBefore?: string;
+  dueAfter?: string;
+  tags?: string[];
+  search?: string;
+}
+
+export interface TaskCreationModalProps {
+  user: User;
+  family?: FamilyDTO | null;
+  onTaskCreated?: (task: Task) => void;
+  trigger?: React.ReactNode;
 } 

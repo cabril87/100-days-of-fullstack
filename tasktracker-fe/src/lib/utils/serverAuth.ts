@@ -80,7 +80,7 @@ export async function getServerSession(): Promise<User | null> {
     }
     
     // Validate token and get user info
-    const user = await serverApiCall<{ user: User }>('/api/v1/auth/me');
+    const user = await serverApiCall<{ user: User }>('/v1/auth/me');
     return user.user;
   } catch (error) {
     console.error('Failed to get server session:', error);
@@ -94,7 +94,7 @@ export async function getServerSession(): Promise<User | null> {
 async function refreshServerToken(): Promise<{ accessToken: string } | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    const response = await fetch(`${baseUrl}/api/v1/auth/refresh-token/cookie`, {
+    const response = await fetch(`${baseUrl}/v1/auth/refresh-token/cookie`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -168,7 +168,7 @@ export async function requireRole(
  */
 export async function serverLogout(): Promise<void> {
   try {
-    await serverApiCall('/api/v1/auth/logout/cookie', {
+    await serverApiCall('/v1/auth/logout/cookie', {
       method: 'POST',
     });
   } catch (error) {
