@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
+import TaskCreationModal from '@/components/tasks/TaskCreationModal';
+import { SmartInvitationWizard } from '@/components/family/SmartInvitationWizard';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,6 +29,9 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
     templates: true,
     settings: true,
   });
+  
+  const [showTaskCreationModal, setShowTaskCreationModal] = useState(false);
+  const [showSmartInvitationWizard, setShowSmartInvitationWizard] = useState(false);
 
   const displayName = user?.displayName || user?.firstName || user?.username || 'User';
   const isAdmin = user?.role.toLowerCase() === 'admin';
@@ -563,10 +568,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">⚡ Quick Actions</h3>
               <div className="space-y-2">
                 <button 
-                  onClick={() => {
-                    router.push('/tasks');
-                    handleClose();
-                  }}
+                  onClick={() => setShowTaskCreationModal(true)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
                 >
                   ➕ New Task
@@ -574,7 +576,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 <button 
                   onClick={() => {
                     router.push('/families');
-                    handleClose();
+                    // Don't close sidebar for navigation - let user navigate while keeping sidebar open
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
                 >
@@ -585,10 +587,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 </button>
                 {isFamilyAdmin && (
                   <button 
-                    onClick={() => {
-                      router.push('/settings/family');
-                      handleClose();
-                    }}
+                    onClick={() => setShowSmartInvitationWizard(true)}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-purple-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
                   >
                     ✨ Smart Invite
@@ -600,7 +599,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 <button 
                   onClick={() => {
                     router.push('/dashboard');
-                    handleClose();
+                    // Don't close sidebar for navigation - let user navigate while keeping sidebar open
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
                 >
@@ -628,6 +627,31 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
           </div>
         </div>
       </motion.div>
+      
+      {/* Task Creation Modal */}
+      <TaskCreationModal
+        user={user}
+        family={null} // We'll pass the user's family if they have one
+        onTaskCreated={(task) => {
+          setShowTaskCreationModal(false);
+          // You can add success feedback here
+          console.log('Task created:', task);
+        }}
+        trigger={null}
+        isOpen={showTaskCreationModal}
+        onOpenChange={setShowTaskCreationModal}
+      />
+      
+      {/* Smart Invitation Wizard */}
+      <SmartInvitationWizard
+        isOpen={showSmartInvitationWizard}
+        onClose={() => setShowSmartInvitationWizard(false)}
+        onSuccess={() => {
+          setShowSmartInvitationWizard(false);
+          // You can add success feedback here
+          console.log('Smart invitation sent successfully');
+        }}
+      />
     </>
   );
 }); 

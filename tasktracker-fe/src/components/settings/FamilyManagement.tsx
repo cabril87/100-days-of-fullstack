@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -55,11 +55,21 @@ import { FamilyManagementContentProps } from '@/lib/types/settings';
 
 export default function FamilyManagementContent({ user }: FamilyManagementContentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
   const [showSmartInvitationWizard, setShowSmartInvitationWizard] = useState(false);
+  
+  // Get active tab from URL or default to 'overview'
+  const activeTab = searchParams.get('tab') || 'overview';
+  
+  // Function to handle tab changes with URL parameters
+  const handleTabChange = (tab: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    router.push(url.pathname + url.search);
+  };
 
   // Check if user has family admin access
   const isAdmin = user?.role?.toLowerCase() === 'admin';
@@ -130,7 +140,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       let currentFamily: FamilyDTO | null = null;
       try {
         currentFamily = await familyInvitationService.getUserFamily();
-      } catch (error) {
+      } catch {
         // Expected for new users who haven't created/joined a family yet
         console.debug('User has no current family yet (normal for new users)');
       }
@@ -423,7 +433,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
             <div className="space-y-2">
               <div className="font-medium">Welcome to Family Management! 🏠</div>
               <div className="text-sm">
-                You haven't created or joined any families yet. Start by creating your first family below to organize tasks, invite members, and manage your household together.
+                You haven&apos;t created or joined any families yet. Start by creating your first family below to organize tasks, invite members, and manage your household together.
               </div>
             </div>
           </AlertDescription>
@@ -643,7 +653,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
           </CardHeader>
           
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="members">Members</TabsTrigger>

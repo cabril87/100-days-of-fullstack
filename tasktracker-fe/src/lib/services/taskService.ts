@@ -84,13 +84,40 @@ export class TaskService {
    */
   async getRecentTasks(limit: number = 10): Promise<Task[]> {
     try {
-      const result = await apiClient.get<Task[]>(`/v1/taskitems?limit=${limit}`);
-      return result || [];
+      const result = await apiClient.get<ApiResponse<Task[]>>(`/v1/taskitems?pageSize=${limit}`);
+      return result?.data || [];
     } catch (error) {
       console.error('Failed to fetch recent tasks:', error);
       return [];
     }
   }
+
+  /**
+   * Get tasks due today
+   */
+  async getDueTodayTasks(): Promise<Task[]> {
+    try {
+      const result = await apiClient.get<ApiResponse<Task[]>>('/v1/taskitems/due-today');
+      return result?.data || [];
+    } catch (error) {
+      console.error('Failed to fetch due today tasks:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get overdue tasks
+   */
+  async getOverdueTasks(): Promise<Task[]> {
+    try {
+      const result = await apiClient.get<ApiResponse<Task[]>>('/v1/taskitems/overdue');
+      return result?.data || [];
+    } catch (error) {
+      console.error('Failed to fetch overdue tasks:', error);
+      return [];
+    }
+  }
+
 
   /**
    * Get family task statistics

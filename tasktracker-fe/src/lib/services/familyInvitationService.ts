@@ -70,7 +70,7 @@ export class FamilyInvitationService {
   async getUserFamily(): Promise<FamilyDTO | null> {
     try {
       return await apiClient.get<FamilyDTO>('/v1/family/current-family');
-    } catch (error) {
+    } catch {
       // This is expected for new users who haven't joined a family yet
       console.debug('User has no family yet (this is normal for new users)');
       return null;

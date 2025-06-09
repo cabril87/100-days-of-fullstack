@@ -48,7 +48,7 @@ import {
     SmartRelationshipFormData
 } from '@/lib/types/family-invitation';
 import { smartRelationshipFormSchema } from '@/lib/schemas/smart-relationship';
-import { 
+import {
     getRelationshipContext,
     getSmartRelationshipMapping,
     createSmartInvitationWithContext
@@ -182,10 +182,10 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
     const getRelationshipIcon = (relationship: FamilyRelationshipType) => {
         switch (relationship) {
             case FamilyRelationshipType.Parent:
-                            case FamilyRelationshipType.Stepparent:
+            case FamilyRelationshipType.Stepparent:
                 return <Shield className="h-4 w-4" />;
             case FamilyRelationshipType.Child:
-                            case FamilyRelationshipType.Stepchild:
+            case FamilyRelationshipType.Stepchild:
                 return <Heart className="h-4 w-4" />;
             case FamilyRelationshipType.Spouse:
                 return <Heart className="h-4 w-4" />;
@@ -208,7 +208,7 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-purple-500" />
@@ -225,8 +225,8 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                         <div key={step} className="flex items-center">
                             <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step <= currentStep
-                                        ? 'bg-purple-500 text-white'
-                                        : 'bg-gray-200 text-gray-500'
+                                    ? 'bg-purple-500 text-white'
+                                    : 'bg-gray-200 text-gray-500'
                                     }`}
                             >
                                 {step}
@@ -246,7 +246,7 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                     ))}
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                     {/* Step 1: Basic Information */}
                     {currentStep === 1 && (
                         <div className="space-y-6">
@@ -257,8 +257,8 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                                         Who are you inviting?
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div>
+                                <CardContent className="space-y-6">
+                                    <div className="space-y-3">
                                         <Label htmlFor="email">Email Address</Label>
                                         <Input
                                             id="email"
@@ -272,41 +272,59 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                                         )}
                                     </div>
 
-                                    <div>
+                                    <div className="space-y-3">
                                         <Label htmlFor="relationship">{relationshipMapping.relationshipLabel}</Label>
-                                        <p className="text-sm text-gray-500 mb-2">{relationshipMapping.relationshipDescription}</p>
-                                        <div className="text-xs text-purple-600 mb-3 p-2 bg-purple-50 rounded-md">
+                                        <p className="text-sm text-gray-500">{relationshipMapping.relationshipDescription}</p>
+                                        <div className="text-xs text-purple-600 p-2 bg-purple-50 dark:bg-purple-900/20 rounded-md">
                                             💡 {relationshipMapping.contextualPrompt}
                                         </div>
                                         <Select
-                                            value={watchedFields.relationship !== undefined ? watchedFields.relationship.toString() : undefined}
-                                            onValueChange={(value) => setValue('relationship', parseInt(value) as FamilyRelationshipType)}
+                                            value={watchedFields.relationship !== undefined ? watchedFields.relationship.toString() : ""}
+                                            onValueChange={(value) => {
+                                                if (value) {
+                                                    setValue('relationship', parseInt(value) as FamilyRelationshipType);
+                                                }
+                                            }}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select relationship..." />
                                             </SelectTrigger>
-                                            <SelectContent>
-                                                {Object.entries(
-                                                    relationshipOptions.reduce((groups: { [key: string]: typeof relationshipOptions }, option) => {
-                                                        if (!groups[option.category]) {
-                                                            groups[option.category] = [];
-                                                        }
-                                                        groups[option.category].push(option);
-                                                        return groups;
-                                                    }, {})
-                                                ).map(([category, options]) => (
-                                                    <SelectGroup key={category}>
-                                                        <SelectLabel>{category}</SelectLabel>
-                                                        {options.map((option) => (
-                                                            <SelectItem
-                                                                key={option.value}
-                                                                value={option.value.toString()}
-                                                            >
-                                                                {option.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectGroup>
-                                                ))}
+                                            <SelectContent
+                                                position="popper"
+                                                side="bottom"
+                                                align="start"
+                                                sideOffset={4}
+                                                className="p-0"
+                                            >
+                                                <div
+                                                    className="h-[300px] rounded-md border bg-gray-50 dark:bg-gray-900 overflow-y-scroll p-4"
+                                                    style={{
+                                                        scrollbarWidth: 'thin',
+                                                        scrollbarColor: '#ffffff #4b5563', // white thumb on gray-600 track
+                                                    }}
+                                                >
+                                                    {Object.entries(
+                                                        relationshipOptions.reduce((groups: { [key: string]: typeof relationshipOptions }, option) => {
+                                                            if (!groups[option.category]) {
+                                                                groups[option.category] = [];
+                                                            }
+                                                            groups[option.category].push(option);
+                                                            return groups;
+                                                        }, {})
+                                                    ).map(([category, options]) => (
+                                                        <SelectGroup key={category}>
+                                                            <SelectLabel>{category}</SelectLabel>
+                                                            {options.map((option) => (
+                                                                <SelectItem
+                                                                    key={option.value}
+                                                                    value={option.value.toString()}
+                                                                >
+                                                                    {option.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    ))}
+                                                </div>
                                             </SelectContent>
                                         </Select>
                                         {errors.relationship && (
@@ -396,32 +414,32 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                                         Help us personalize the invitation (optional)
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div>
+                                <CardContent className="space-y-6">
+                                    <div className="space-y-3">
                                         <Label htmlFor="name">Preferred Name</Label>
                                         <Input
                                             id="name"
                                             placeholder="What should we call them?"
                                             {...register('name')}
                                         />
-                                        <p className="text-sm text-gray-500 mt-1">
+                                        <p className="text-sm text-gray-500">
                                             This helps personalize the invitation message
                                         </p>
                                     </div>
 
-                                    <div>
+                                    <div className="space-y-3">
                                         <Label htmlFor="dateOfBirth">Date of Birth (Optional)</Label>
                                         <Input
                                             id="dateOfBirth"
                                             type="date"
                                             {...register('dateOfBirth')}
                                         />
-                                        <p className="text-sm text-gray-500 mt-1">
+                                        <p className="text-sm text-gray-500">
                                             Helps us recommend the right role and permissions
                                         </p>
                                     </div>
 
-                                    <div>
+                                    <div className="space-y-3">
                                         <Label htmlFor="personalMessage">Personal Message</Label>
                                         <Textarea
                                             id="personalMessage"
@@ -429,7 +447,7 @@ export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvit
                                             {...register('personalMessage')}
                                             className="min-h-[100px]"
                                         />
-                                        <p className="text-sm text-gray-500 mt-1">
+                                        <p className="text-sm text-gray-500">
                                             This will be included in the invitation email
                                         </p>
                                     </div>

@@ -3,7 +3,7 @@
 import { StatsCard } from '@/components/gamification/StatsCard';
 import { GamificationBadges } from '@/components/gamification/GamificationBadges';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
-import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp } from 'lucide-react';
+import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +28,8 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
   const [familyActivity, setFamilyActivity] = useState<FamilyActivityItem[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [recentTasks, setRecentTasks] = useState<Task[]>(initialData.recentTasks || []);
+  const [dueTodayTasks, setDueTodayTasks] = useState<Task[]>([]);
+  const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
 
   // Handle task creation success
   const handleTaskCreated = useCallback(async (newTask: Task) => {
@@ -50,6 +52,34 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
     }
   }, []);
 
+  // Handle task completion
+  const handleTaskCompletion = useCallback(async (taskId: number) => {
+    try {
+      await taskService.completeTask(taskId);
+      
+      // Update task states
+      setRecentTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, isCompleted: true } : task
+      ));
+      setDueTodayTasks(prev => prev.filter(task => task.id !== taskId));
+      setOverdueTasks(prev => prev.filter(task => task.id !== taskId));
+      
+      // Refresh dashboard stats
+      const updatedStats = await taskService.getUserTaskStats();
+      setDashboardStats(prev => ({
+        ...prev,
+        tasksCompleted: updatedStats.tasksCompleted,
+        activeGoals: updatedStats.activeGoals,
+        focusTime: updatedStats.focusTimeToday,
+        totalPoints: updatedStats.totalPoints,
+        streakDays: updatedStats.streakDays
+      }));
+    } catch (error) {
+      console.error('Failed to complete task:', error);
+      setError('Failed to complete task. Please try again.');
+    }
+  }, []);
+
   // Load additional dashboard data (client-side for interactivity)
   const loadAdditionalData = useCallback(async () => {
     if (!user) return;
@@ -59,13 +89,19 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
       setError('');
 
       // Load all dashboard data in parallel
-      const [allFamilies, userTaskStats, userProgressData] = await Promise.all([
+      const [allFamilies, userTaskStats, userProgressData, recentTasksData, dueTodayData, overdueData] = await Promise.all([
         familyInvitationService.getAllFamilies(),
         taskService.getUserTaskStats(),
-        activityService.getUserProgress()
+        activityService.getUserProgress(),
+        taskService.getRecentTasks(5),
+        taskService.getDueTodayTasks(),
+        taskService.getOverdueTasks()
       ]);
 
       setUserProgress(userProgressData);
+      setRecentTasks(recentTasksData);
+      setDueTodayTasks(dueTodayData);
+      setOverdueTasks(overdueData);
 
       let familyStats = {
         memberCount: 0,
@@ -211,7 +247,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                   Welcome to TaskTracker!
                 </h3>
                 <p className="text-blue-700 dark:text-blue-300 mb-4">
-                  You're all set up! Let's get you started on your productivity journey.
+                  You&apos;re all set up! Let&apos;s get you started on your productivity journey.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                   {user && (
@@ -269,6 +305,90 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
           variant="purple"
         />
       </div>
+
+      {/* Priority Tasks Section */}
+      {(dueTodayTasks.length > 0 || overdueTasks.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Due Today Tasks */}
+          {dueTodayTasks.length > 0 && (
+            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                  <Clock className="h-5 w-5" />
+                  Due Today ({dueTodayTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dueTodayTasks.slice(0, 3).map((task) => (
+                  <div key={task.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-md border">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{task.title}</h4>
+                      <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        +{task.pointsValue} pts
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleTaskCompletion(task.id)}
+                      className="h-7 px-2 bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Complete
+                    </Button>
+                  </div>
+                ))}
+                {dueTodayTasks.length > 3 && (
+                  <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+                    +{dueTodayTasks.length - 3} more tasks
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Overdue Tasks */}
+          {overdueTasks.length > 0 && (
+            <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                  <AlertTriangle className="h-5 w-5" />
+                  Overdue ({overdueTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {overdueTasks.slice(0, 3).map((task) => (
+                  <div key={task.id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-800 rounded-md border">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{task.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}
+                        </span>
+                        <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                          +{task.pointsValue} pts
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleTaskCompletion(task.id)}
+                      className="h-7 px-2 bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Complete
+                    </Button>
+                  </div>
+                ))}
+                {overdueTasks.length > 3 && (
+                  <p className="text-xs text-center text-red-600 dark:text-red-400">
+                    +{overdueTasks.length - 3} more overdue tasks
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Family Stats (if user has family) */}
       {hasFamily && currentFamily && (
@@ -479,7 +599,14 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                       {task.isCompleted ? (
                         <CheckCircle className="h-4 w-4 text-green-500" />
                       ) : (
-                        <div className="w-4 h-4 border-2 border-gray-300 rounded-full"></div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTaskCompletion(task.id)}
+                          className="h-6 w-6 p-0 border-green-300 hover:bg-green-50 hover:border-green-400"
+                        >
+                          <CheckCircle className="h-3 w-3 text-green-600" />
+                        </Button>
                       )}
                     </div>
                   </div>
