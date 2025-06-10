@@ -124,4 +124,7 @@ public class TaskItem
 
     // Collection of checklist items (sub-tasks)
     public virtual ICollection<ChecklistItem>? ChecklistItems { get; set; }
+
+    // Collection of task tags (many-to-many relationship)
+    public virtual ICollection<TaskTag>? TaskTags { get; set; }
 }

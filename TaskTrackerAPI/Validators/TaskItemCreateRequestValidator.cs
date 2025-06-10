@@ -9,6 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
+using System.Linq;
 using FluentValidation;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Services.Interfaces;
@@ -52,15 +53,16 @@ namespace TaskTrackerAPI.Validators
             RuleFor(x => x.Status)
                 .IsInEnum().WithMessage("Invalid task status value");
 
-            // Priority validation
+            // Priority validation - now expects string instead of int
             RuleFor(x => x.Priority)
-                .InclusiveBetween(0, 5).WithMessage("Priority must be between 0 and 5");
+                .NotEmpty().WithMessage("Priority is required")
+                .Must(BeValidPriority).WithMessage("Priority must be Low, Medium, High, or Urgent");
 
             // Due date validation
-            When(x => x.DueDate.HasValue, () =>
+            When(x => !string.IsNullOrEmpty(x.DueDate), () =>
             {
                 RuleFor(x => x.DueDate)
-                    .Must(BeAFutureDate).WithMessage("Due date must be in the future");
+                    .Must(BeValidDateString).WithMessage("Due date must be a valid ISO date string");
             });
 
             // Category validation
@@ -71,33 +73,26 @@ namespace TaskTrackerAPI.Validators
                     .WithMessage("Specified category does not exist");
             });
 
-            // Tags validation
-            When(x => x.TagIds != null && x.TagIds.Count > 0, () =>
+            // Tags validation - validate string tag names
+            When(x => x.Tags != null && x.Tags.Count > 0, () =>
             {
-                RuleForEach(x => x.TagIds)
-                    .MustAsync(async (id, cancellation) => await _tagRepository.ExistsAsync(id))
-                    .WithMessage("One or more specified tags do not exist");
-                
-                RuleFor(x => x.TagIds.Count)
-                    .LessThanOrEqualTo(10).WithMessage("A maximum of 10 tags can be applied to a task");
+                RuleFor(x => x.Tags)
+                    .Must(tags => tags != null && tags.Count <= 10).WithMessage("Cannot have more than 10 tags per task")
+                    .Must(tags => tags != null && tags.All(tag => !string.IsNullOrWhiteSpace(tag))).WithMessage("Tag names cannot be empty")
+                    .Must(tags => tags != null && tags.All(tag => tag.Length <= 50)).WithMessage("Tag names cannot exceed 50 characters")
+                    .Must(tags => tags != null && tags.All(BeValidText)).WithMessage("One or more tag names contain potentially malicious content")
+                    .Must(tags => tags != null && tags.Distinct(StringComparer.OrdinalIgnoreCase).Count() == tags.Count).WithMessage("Duplicate tag names are not allowed");
             });
 
-            // EstimatedMinutes validation
-            When(x => x.EstimatedMinutes.HasValue, () =>
+            // EstimatedTimeMinutes validation (renamed from EstimatedMinutes)
+            When(x => x.EstimatedTimeMinutes.HasValue, () =>
             {
-                RuleFor(x => x.EstimatedMinutes!.Value)
-                    .GreaterThanOrEqualTo(0).WithMessage("Estimated minutes must be positive")
-                    .LessThanOrEqualTo(10080).WithMessage("Estimated minutes cannot exceed one week (10,080 minutes)");
+                RuleFor(x => x.EstimatedTimeMinutes!.Value)
+                    .GreaterThanOrEqualTo(0).WithMessage("Estimated time must be positive")
+                    .LessThanOrEqualTo(10080).WithMessage("Estimated time cannot exceed one week (10,080 minutes)");
             });
 
-            // RecurrencePattern validation
-            When(x => x.IsRecurring, () =>
-            {
-                RuleFor(x => x.RecurrencePattern)
-                    .NotEmpty().WithMessage("Recurrence pattern is required for recurring tasks")
-                    .MaximumLength(100).WithMessage("Recurrence pattern cannot exceed 100 characters")
-                    .Must(BeValidText).WithMessage("Recurrence pattern contains potentially malicious content");
-            });
+            // Skip recurring task validation for now - will implement later
         }
 
         private bool BeValidText(string text)
@@ -120,13 +115,16 @@ namespace TaskTrackerAPI.Validators
             return true;
         }
 
-        private bool BeAFutureDate(DateTime? date)
+        private bool BeValidPriority(string priority)
         {
-            if (!date.HasValue)
-                return true;
+            return priority == "Low" || priority == "Medium" || priority == "High" || priority == "Urgent";
+        }
 
-            // Allow same-day due dates, but not past dates
-            return date.Value.Date >= DateTime.UtcNow.Date;
+        private bool BeValidDateString(string? dateString)
+        {
+            if (string.IsNullOrEmpty(dateString))
+                return false;
+            return DateTime.TryParse(dateString, out _);
         }
     }
 } 

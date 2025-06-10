@@ -15,69 +15,79 @@ using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
-    
-    /// Request DTO for creating a new task item
-    
+    /// <summary>
+    /// Request DTO for creating a new task item - matches frontend CreateTaskDTO
+    /// </summary>
     public class TaskItemCreateRequestDTO
     {
-        
+        /// <summary>
         /// Title of the task
-        
+        /// </summary>
         [Required]
         [StringLength(100, ErrorMessage = "Title cannot exceed 100 characters")]
         public string Title { get; set; } = string.Empty;
 
-        
+        /// <summary>
         /// Description of the task
-        
+        /// </summary>
         [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
         public string? Description { get; set; }
 
-        
-        /// Current status of the task
-        
-        public TaskItemStatus Status { get; set; } = TaskItemStatus.NotStarted;
+        /// <summary>
+        /// Priority level of the task as string to match frontend
+        /// </summary>
+        public string Priority { get; set; } = "Medium";
 
-        
-        /// Priority level of the task
-        
-        public int Priority { get; set; } = 0;
+        /// <summary>
+        /// Due date for the task as ISO string
+        /// </summary>
+        public string? DueDate { get; set; }
 
-        
-        /// Due date for the task
-        
-        public DateTime? DueDate { get; set; }
-
-        
+        /// <summary>
         /// The associated category ID
-        
+        /// </summary>
         public int? CategoryId { get; set; }
 
-        
-        /// The associated tag IDs
-        
-        public List<int> TagIds { get; set; } = new List<int>();
-
-        
+        /// <summary>
         /// Estimated time to complete in minutes
-        
+        /// </summary>
         [Range(0, int.MaxValue, ErrorMessage = "Estimated minutes must be positive")]
-        public int? EstimatedMinutes { get; set; }
+        public int? EstimatedTimeMinutes { get; set; }
 
-        
+        /// <summary>
+        /// Points value for gamification
+        /// </summary>
+        [Range(0, int.MaxValue, ErrorMessage = "Points value must be positive")]
+        public int? PointsValue { get; set; }
+
+        /// <summary>
+        /// Family ID for family tasks
+        /// </summary>
+        public int? FamilyId { get; set; }
+
+        /// <summary>
+        /// User ID to assign task to
+        /// </summary>
+        public int? AssignedToUserId { get; set; }
+
+        /// <summary>
+        /// Tags as string array to match frontend
+        /// </summary>
+        public List<string>? Tags { get; set; }
+
+        /// <summary>
+        /// Current status of the task
+        /// </summary>
+        public TaskItemStatus Status { get; set; } = TaskItemStatus.NotStarted;
+
+        /// <summary>
         /// Whether the task is important/starred
-        
+        /// </summary>
         public bool IsStarred { get; set; } = false;
 
-        
-        /// Whether the task is recurring
-        
-        public bool IsRecurring { get; set; } = false;
-
-        
-        /// Recurrence pattern (if recurring)
-        
-        [StringLength(100, ErrorMessage = "Recurrence pattern cannot exceed 100 characters")]
+        /// <summary>
+        /// Recurrence pattern for recurring tasks
+        /// </summary>
         public string? RecurrencePattern { get; set; }
     }
 } 

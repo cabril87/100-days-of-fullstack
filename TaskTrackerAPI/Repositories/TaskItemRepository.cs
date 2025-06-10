@@ -15,19 +15,23 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage;
 using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace TaskTrackerAPI.Repositories;
 
 public class TaskItemRepository : ITaskItemRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<TaskItemRepository> _logger;
 
-    public TaskItemRepository(ApplicationDbContext context)
+    public TaskItemRepository(ApplicationDbContext context, ILogger<TaskItemRepository> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<TaskItem>> GetAllTasksAsync(int userId)
@@ -112,6 +116,25 @@ public class TaskItemRepository : ITaskItemRepository
         );
     }
 
+    /// <summary>
+    /// Verifies task exists and is owned by user
+    /// </summary>
+    /// <param name="id">Task ID</param>
+    /// <param name="userId">User ID</param>
+    /// <returns>Task if found and owned by user, null otherwise</returns>
+    public async Task<TaskItem?> GetTaskByIdAndUserIdAsync(int id, int userId)
+    {
+        return await _context.Tasks
+            .Where(t => t.Id == id && t.UserId == userId)
+            .FirstOrDefaultAsync();
+    }
+
+    /// <summary>
+    /// Gets a task by ID and user ID (interface implementation)
+    /// </summary>
+    /// <param name="id">Task ID</param>
+    /// <param name="userId">User ID</param>
+    /// <returns>Task with all properties mapped</returns>
     public async Task<TaskItem?> GetTaskByIdAsync(int id, int userId)
     {
         return await _context.Tasks
@@ -145,6 +168,11 @@ public class TaskItemRepository : ITaskItemRepository
             .FirstOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Creates a new task
+    /// </summary>
+    /// <param name="task">Task to create</param>
+    /// <returns>Created task</returns>
     public async Task<TaskItem> CreateTaskAsync(TaskItem task)
     {
         await _context.Tasks.AddAsync(task);
@@ -152,6 +180,11 @@ public class TaskItemRepository : ITaskItemRepository
         return task;
     }
 
+    /// <summary>
+    /// Updates an existing task
+    /// </summary>
+    /// <param name="task">Task to update</param>
+    /// <returns>Task completion</returns>
     public async Task UpdateTaskAsync(TaskItem task)
     {
         // For in-memory database during tests, we need this modified approach
@@ -178,21 +211,75 @@ public class TaskItemRepository : ITaskItemRepository
         await _context.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Deletes a task item
+    /// </summary>
+    /// <param name="id">Task ID</param>
+    /// <param name="userId">User ID</param>
+    /// <returns>Task completion</returns>
+    /// <exception cref="InvalidOperationException">Thrown when task is not found or not owned by user</exception>
     public async Task DeleteTaskAsync(int id, int userId)
     {
-        // First approach - try to locate the task ID without including problematic properties
-        var taskQuery = _context.Tasks
-            .Where(t => t.Id == id && t.UserId == userId)
-            .Select(t => new { t.Id });
-            
-        var taskToDelete = await taskQuery.FirstOrDefaultAsync();
-
-        if (taskToDelete != null)
+        try
         {
-            // Use ExecuteDeleteAsync to directly delete the entity without loading it
-            await _context.Tasks
-                .Where(t => t.Id == id)
-                .ExecuteDeleteAsync();
+            _logger.LogInformation("🗑️ Starting task deletion for Task ID: {TaskId}, User ID: {UserId}", id, userId);
+
+            // First verify task exists and is owned by user (simple query for existence check)
+            TaskItem? taskExists = await GetTaskByIdAndUserIdAsync(id, userId);
+            
+            if (taskExists == null)
+            {
+                _logger.LogWarning("❌ Task deletion failed: Task {TaskId} not found or not owned by user {UserId}", id, userId);
+                throw new InvalidOperationException($"Task with ID {id} not found or not owned by user {userId}");
+            }
+
+            _logger.LogInformation("✅ Task verification passed: {TaskTitle} (ID: {TaskId}) owned by user {UserId}", taskExists.Title, id, userId);
+
+            // Load task with all related entities for deletion
+            TaskItem? taskToDelete = await _context.Tasks
+                .Include(t => t.ChecklistItems)
+                .Include(t => t.TaskTags)
+                .Where(t => t.Id == id && t.UserId == userId)
+                .FirstOrDefaultAsync();
+
+            if (taskToDelete == null)
+            {
+                _logger.LogError("⚠️ Task disappeared between verification and deletion: Task {TaskId}", id);
+                throw new InvalidOperationException($"Task {id} was deleted by another process");
+            }
+
+            _logger.LogInformation("🔄 Deleting task and related entities: ChecklistItems({ChecklistCount}), TaskTags({TagCount})", 
+                taskToDelete.ChecklistItems?.Count ?? 0, 
+                taskToDelete.TaskTags?.Count ?? 0);
+
+            // Enterprise deletion - Entity Framework handles cascade deletes based on configuration
+            _context.Tasks.Remove(taskToDelete);
+            
+            // Save changes with proper error handling
+            int changesCount = await _context.SaveChangesAsync();
+            
+            if (changesCount == 0)
+            {
+                _logger.LogWarning("⚠️ No changes were saved during task deletion for Task {TaskId}", id);
+                throw new InvalidOperationException($"Task {id} deletion failed - no database changes occurred");
+            }
+            
+            _logger.LogInformation("🎉 Task deletion completed successfully! Task ID: {TaskId}, Database changes: {ChangesCount}", id, changesCount);
+        }
+        catch (InvalidOperationException)
+        {
+            // Re-throw business logic exceptions (these are expected)
+            throw;
+        }
+        catch (DbUpdateException dbEx)
+        {
+            _logger.LogError(dbEx, "💥 Database error occurred while deleting task {TaskId} for user {UserId}", id, userId);
+            throw new InvalidOperationException($"Database error deleting task {id}. This may be due to foreign key constraints.", dbEx);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Unexpected error occurred while deleting task {TaskId} for user {UserId}", id, userId);
+            throw new InvalidOperationException($"Failed to delete task {id}. Please try again later.", ex);
         }
     }
 

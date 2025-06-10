@@ -41,17 +41,20 @@ namespace TaskTrackerAPI.Controllers.V1;
 public class TaskItemsController : BaseApiController
 {
     private readonly ITaskService _taskService;
+    private readonly ITagService _tagService;
     private readonly ILogger<TaskItemsController> _logger;
     private readonly IFamilyMemberService _familyMemberService;
     private readonly IMapper _mapper;
 
     public TaskItemsController(
         ITaskService taskService, 
+        ITagService tagService,
         ILogger<TaskItemsController> logger, 
         IFamilyMemberService familyMemberService,
         IMapper mapper)
     {
         _taskService = taskService;
+        _tagService = tagService;
         _logger = logger;
         _familyMemberService = familyMemberService;
         _mapper = mapper;
@@ -225,12 +228,26 @@ public class TaskItemsController : BaseApiController
                         
                         createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
                         
-                        // Add tags if provided
-                        if (createRequest.TagIds?.Count > 0)
+                        // Handle tags if provided (convert string tags to tag IDs)
+                        if (createRequest.Tags?.Count > 0)
                         {
-                            await _taskService.UpdateTaskTagsAsync(userId, createdTask?.Id ?? 0, createRequest.TagIds);
-                            // Refresh to include tags
-                            createdTask = await _taskService.GetTaskByIdAsync(userId, createdTask?.Id ?? 0);
+                            try
+                            {
+                                // Convert tag names to tag IDs (create tags if they don't exist)
+                                List<int> tagIds = await ConvertTagNamesToIds(userId, createRequest.Tags);
+                                if (tagIds.Count > 0)
+                                {
+                                    await _taskService.UpdateTaskTagsAsync(userId, createdTask?.Id ?? 0, tagIds);
+                                    // Refresh to include tags
+                                    createdTask = await _taskService.GetTaskByIdAsync(userId, createdTask?.Id ?? 0);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to process tags for task creation: {Tags}", 
+                                    string.Join(", ", createRequest.Tags));
+                                // Continue without tags rather than failing the entire task creation
+                            }
                         }
                     }
                     else
@@ -1134,6 +1151,42 @@ public class TaskItemsController : BaseApiController
         {
             _logger.LogError(ex, "Error retrieving time tracking for task {TaskId}", id);
             return StatusCode(500, ApiResponse<TaskTimeTrackingDto>.ServerErrorResponse());
+        }
+    }
+
+    /// <summary>
+    /// Convert tag names to tag IDs, creating new tags if they don't exist
+    /// </summary>
+    /// <param name="userId">User ID for tag ownership</param>
+    /// <param name="tagNames">List of tag names</param>
+    /// <returns>List of tag IDs</returns>
+    private async Task<List<int>> ConvertTagNamesToIds(int userId, List<string> tagNames)
+    {
+        if (tagNames == null || !tagNames.Any())
+        {
+            return new List<int>();
+        }
+        
+        _logger.LogInformation("Processing {TagCount} tags for user {UserId}: {TagNames}", 
+            tagNames.Count, userId, string.Join(", ", tagNames));
+            
+        try
+        {
+            // Use TagService to find or create tags by names
+            List<int> tagIds = await _tagService.FindOrCreateTagsByNamesAsync(userId, tagNames);
+            
+            _logger.LogInformation("Successfully processed tags for user {UserId}. Found/Created {TagIdCount} tag IDs: {TagIds}", 
+                userId, tagIds.Count, string.Join(", ", tagIds));
+                
+            return tagIds;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process tags for user {UserId}: {TagNames}", 
+                userId, string.Join(", ", tagNames));
+            
+            // Return empty list on error to prevent task creation from failing completely
+            return new List<int>();
         }
     }
 } 

@@ -21,6 +21,7 @@ public interface ITaskItemRepository
     Task<IEnumerable<TaskItem>> GetAllTasksAsync(int userId);
     Task<PagedResult<TaskItem>> GetPagedTasksAsync(int userId, PaginationParams paginationParams);
     Task<TaskItem?> GetTaskByIdAsync(int id, int userId);
+    Task<TaskItem?> GetTaskByIdAndUserIdAsync(int id, int userId);
     Task<TaskItem> CreateTaskAsync(TaskItem task);
     Task UpdateTaskAsync(TaskItem task);
     Task DeleteTaskAsync(int id, int userId);

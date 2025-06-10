@@ -100,6 +100,9 @@ namespace TaskTrackerAPI.Services
                 DueDate = taskDto.DueDate,
                 CategoryId = taskDto.CategoryId,
                 UserId = userId,
+                FamilyId = taskDto.FamilyId,
+                AssignedToId = taskDto.AssignedToUserId,
+                EstimatedTimeMinutes = taskDto.EstimatedTimeMinutes,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Version = 1
@@ -124,10 +127,11 @@ namespace TaskTrackerAPI.Services
                 // Handle gamification for task creation
                 try
                 {
-                    // Award points for creating a task
+                    // Award points for creating a task - use task's points value or default
+                    int pointsToAward = taskDto.PointsValue ?? 5; // Use task points or default 5
                     await _gamificationService.AddPointsAsync(
                         userId, 
-                        5, // Base points for task creation
+                        pointsToAward, 
                         "task_creation", 
                         $"Created task: {result.Title}", 
                         result.Id
@@ -150,9 +154,8 @@ namespace TaskTrackerAPI.Services
         
         public async Task<TaskItemDTO?> UpdateTaskAsync(int userId, int taskId, TaskItemDTO taskDto)
         {
-            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
-            if (!isOwner)
-                return null;
+            // Enhanced validation with proper error handling
+            _logger.LogInformation("Attempting to update task {TaskId} for user {UserId}", taskId, userId);
                 
             // Validate category ownership if a category is provided
             if (taskDto.CategoryId.HasValue)
@@ -166,7 +169,10 @@ namespace TaskTrackerAPI.Services
                 
             TaskItem? existingTask = await _taskRepository.GetTaskByIdAsync(taskId, userId);
             if (existingTask == null)
-                return null;
+            {
+                _logger.LogWarning("Update failed: Task {TaskId} not found or not owned by user {UserId}", taskId, userId);
+                throw new InvalidOperationException($"Task with ID {taskId} not found or not owned by user {userId}");
+            }
                 
             // Store previous state for SignalR notification
             TaskItemDTO previousState = _mapper.Map<TaskItemDTO>(existingTask);
@@ -233,18 +239,38 @@ namespace TaskTrackerAPI.Services
         
         public async Task DeleteTaskAsync(int userId, int taskId)
         {
-            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
-            if (!isOwner)
-                return;
+            // Enhanced deletion with proper error handling and validation
+            _logger.LogInformation("Attempting to delete task {TaskId} for user {UserId}", taskId, userId);
+            
+            // Check if task exists and user owns it using comprehensive verification
+            TaskItem? task = await _taskRepository.GetTaskByIdAndUserIdAsync(taskId, userId);
+            if (task == null)
+            {
+                _logger.LogWarning("Delete failed: Task {TaskId} not found or not owned by user {UserId}", taskId, userId);
+                throw new InvalidOperationException($"Task with ID {taskId} not found or not owned by user {userId}");
+            }
+            
+            // Store board ID for notification before deleting
+            int? boardId = task.BoardId;
+            
+            try
+            {
+                // Delete the task - this will handle cascade deletes properly
+                await _taskRepository.DeleteTaskAsync(taskId, userId);
                 
-            // Get board ID for notification before deleting
-            TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
-            int? boardId = task?.BoardId;
-            
-            await _taskRepository.DeleteTaskAsync(taskId, userId);
-            
-            // Notify via SignalR
-            await _taskSyncService.NotifyTaskDeletedAsync(userId, taskId, boardId);
+                _logger.LogInformation("Successfully deleted task {TaskId} for user {UserId}", taskId, userId);
+                
+                // Notify via SignalR
+                await _taskSyncService.NotifyTaskDeletedAsync(userId, taskId, boardId);
+                
+                // Award points for task deletion (cleanup action)
+                await _gamificationService.AddPointsAsync(userId, 1, "task_deletion", $"Deleted task: {task.Title}", taskId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete task {TaskId} for user {UserId}: {Error}", taskId, userId, ex.Message);
+                throw new InvalidOperationException($"Failed to delete task {taskId}: {ex.Message}", ex);
+            }
         }
         
         public async Task<bool> IsTaskOwnedByUserAsync(int taskId, int userId)
@@ -401,15 +427,16 @@ namespace TaskTrackerAPI.Services
         
         public async Task UpdateTaskStatusAsync(int userId, int taskId, TaskItemStatus newStatus)
         {
-            // First verify the user owns the task
-            bool isOwner = await _taskRepository.IsTaskOwnedByUserAsync(taskId, userId);
-            if (!isOwner)
-                return; // Don't throw an exception, just return silently
+            // Enhanced validation with proper error handling
+            _logger.LogInformation("Attempting to update status for task {TaskId} to {NewStatus} for user {UserId}", taskId, newStatus, userId);
             
-            // Then get the task to update it
+            // Get the task and verify ownership in one call
             TaskItem? task = await _taskRepository.GetTaskByIdAsync(taskId, userId);
             if (task == null)
-                return; // Don't throw an exception, just return silently
+            {
+                _logger.LogWarning("Status update failed: Task {TaskId} not found or not owned by user {UserId}", taskId, userId);
+                throw new InvalidOperationException($"Task with ID {taskId} not found or not owned by user {userId}");
+            }
             
             // Store the previous status to check if this is a new completion
             TaskItemStatus previousStatus = task.Status;

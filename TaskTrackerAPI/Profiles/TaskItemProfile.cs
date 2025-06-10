@@ -8,6 +8,7 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
+using System;
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
@@ -49,12 +50,18 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
                 .ForMember(dest => dest.BoardId, opt => opt.Ignore())
                 .ForMember(dest => dest.Tags, opt => opt.Ignore())
-                .ForMember(dest => dest.EstimatedTimeMinutes, opt => opt.MapFrom(src => src.EstimatedMinutes))
-                .ForMember(dest => dest.ActualTimeSpentMinutes, opt => opt.Ignore())
-                .ForMember(dest => dest.ProgressPercentage, opt => opt.MapFrom(src => 0))
-                .ForMember(dest => dest.RecurringPattern, opt => opt.MapFrom(src => src.RecurrencePattern))
-                .ForMember(dest => dest.Version, opt => opt.MapFrom(src => 1))
-                .ForMember(dest => dest.AssignedToName, opt => opt.Ignore());
+                .ForMember(dest => dest.AssignedToName, opt => opt.Ignore())
+                .ForMember(dest => dest.Version, opt => opt.Ignore())
+                // Convert string priority to int for backward compatibility
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityStringToInt(src.Priority)))
+                // Handle date string to DateTime conversion
+                .ForMember(dest => dest.DueDate, opt => opt.MapFrom(src => ConvertDateString(src.DueDate ?? "")))
+                // Map EstimatedTimeMinutes correctly
+                .ForMember(dest => dest.EstimatedTimeMinutes, opt => opt.MapFrom(src => src.EstimatedTimeMinutes))
+                // Map new fields from frontend
+                .ForMember(dest => dest.FamilyId, opt => opt.MapFrom(src => src.FamilyId))
+                .ForMember(dest => dest.AssignedToUserId, opt => opt.MapFrom(src => src.AssignedToUserId))
+                .ForMember(dest => dest.PointsValue, opt => opt.MapFrom(src => src.PointsValue));
 
             // QuickTaskDTO -> TaskItemDTO  
             CreateMap<QuickTaskDTO, TaskItemDTO>()
@@ -96,9 +103,9 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.AssignedByUser, opt => opt.Ignore())
                 .ForMember(dest => dest.AssignedToFamilyMember, opt => opt.Ignore())
                 .ForMember(dest => dest.ApprovedByUser, opt => opt.Ignore())
-                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertIntToStringPriority(src.Priority)))
+                .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority))
                 .ForMember(dest => dest.Family, opt => opt.Ignore())
-                .ForMember(dest => dest.EstimatedTimeMinutes, opt => opt.MapFrom(src => src.EstimatedMinutes))
+                .ForMember(dest => dest.EstimatedTimeMinutes, opt => opt.MapFrom(src => src.EstimatedTimeMinutes))
                 .ForMember(dest => dest.ActualTimeSpentMinutes, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.ProgressPercentage, opt => opt.MapFrom(src => 0))
                 .ForMember(dest => dest.RecurringPattern, opt => opt.MapFrom(src => src.RecurrencePattern))
@@ -166,6 +173,30 @@ namespace TaskTrackerAPI.Profiles
                 default:
                     return "Medium";
             }
+        }
+
+        private int ConvertPriorityStringToInt(string priority)
+        {
+            switch (priority?.ToLower())
+            {
+                case "critical":
+                    return 4;
+                case "high":
+                    return 3;
+                case "medium":
+                    return 2;
+                case "low":
+                    return 1;
+                default:
+                    return 0;
+            }
+        }
+
+        private DateTime? ConvertDateString(string dateString)
+        {
+            if (string.IsNullOrEmpty(dateString))
+                return null;
+            return DateTime.Parse(dateString);
         }
     }
 } 

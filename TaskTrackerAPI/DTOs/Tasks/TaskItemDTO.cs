@@ -160,6 +160,22 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Name of the user or family member assigned to this task
 
         public string? AssignedToName { get; set; }
+
+        /// <summary>
+        /// Points value for gamification system
+        /// </summary>
+        [Range(0, int.MaxValue, ErrorMessage = "Points value must be positive")]
+        public int? PointsValue { get; set; }
+
+        /// <summary>
+        /// Family ID for family tasks
+        /// </summary>
+        public int? FamilyId { get; set; }
+
+        /// <summary>
+        /// User ID to assign task to
+        /// </summary>
+        public int? AssignedToUserId { get; set; }
     }
 
     

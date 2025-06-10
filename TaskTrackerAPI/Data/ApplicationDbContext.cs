@@ -352,7 +352,7 @@ public class ApplicationDbContext : DbContext
         // Configure TaskTag relationships
         modelBuilder.Entity<TaskTag>()
             .HasOne(tt => tt.Task)
-            .WithMany()
+            .WithMany(t => t.TaskTags)
             .HasForeignKey(tt => tt.TaskId)
             .OnDelete(DeleteBehavior.Cascade);
 

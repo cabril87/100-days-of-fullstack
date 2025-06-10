@@ -177,6 +177,75 @@ public class TagService : ITagService
         return statistics;
     }
     
+    /// <summary>
+    /// Find existing tags by name or create new ones if they don't exist
+    /// </summary>
+    /// <param name="userId">User ID for tag ownership</param>
+    /// <param name="tagNames">List of tag names to find or create</param>
+    /// <returns>List of tag IDs</returns>
+    public async Task<List<int>> FindOrCreateTagsByNamesAsync(int userId, List<string> tagNames)
+    {
+        if (tagNames == null || !tagNames.Any())
+        {
+            return new List<int>();
+        }
+        
+        List<int> tagIds = new List<int>();
+        
+        // Get all existing tags for the user
+        IEnumerable<Tag> existingTags = await _tagRepository.GetTagsForUserAsync(userId);
+        Dictionary<string, Tag> existingTagsDict = existingTags.ToDictionary(t => t.Name.ToLowerInvariant(), t => t);
+        
+        foreach (string tagName in tagNames)
+        {
+            if (string.IsNullOrWhiteSpace(tagName))
+            {
+                continue; // Skip empty tag names
+            }
+            
+            string normalizedTagName = tagName.Trim();
+            string lowerTagName = normalizedTagName.ToLowerInvariant();
+            
+            // Check if tag already exists (case-insensitive)
+            if (existingTagsDict.TryGetValue(lowerTagName, out Tag? existingTag))
+            {
+                _logger.LogDebug("Found existing tag '{TagName}' with ID {TagId} for user {UserId}", 
+                    existingTag.Name, existingTag.Id, userId);
+                tagIds.Add(existingTag.Id);
+            }
+            else
+            {
+                // Create new tag
+                try
+                {
+                    _logger.LogInformation("Creating new tag '{TagName}' for user {UserId}", normalizedTagName, userId);
+                    
+                    var newTag = new Tag
+                    {
+                        Name = normalizedTagName,
+                        UserId = userId
+                    };
+                    
+                    await _tagRepository.CreateTagAsync(newTag);
+                    
+                    // Add to our tracking dictionary to avoid duplicates in the same request
+                    existingTagsDict[lowerTagName] = newTag;
+                    tagIds.Add(newTag.Id);
+                    
+                    _logger.LogInformation("Successfully created tag '{TagName}' with ID {TagId} for user {UserId}", 
+                        newTag.Name, newTag.Id, userId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create tag '{TagName}' for user {UserId}", normalizedTagName, userId);
+                    // Continue processing other tags instead of failing the entire operation
+                }
+            }
+        }
+        
+        return tagIds;
+    }
+    
     // Helper method to map Tag to TagDTO
     private static TagDTO MapToTagDto(Tag tag)
     {

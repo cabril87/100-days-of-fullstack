@@ -33,4 +33,7 @@ public interface ITagService
     // Task relationship operations
     Task<IEnumerable<TaskItemDTO>> GetTasksByTagAsync(int tagId, int userId);
     Task<Dictionary<string, int>> GetTagStatisticsAsync(int userId);
+    
+    // String tag handling for task creation
+    Task<List<int>> FindOrCreateTagsByNamesAsync(int userId, List<string> tagNames);
 }
