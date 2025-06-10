@@ -141,9 +141,33 @@ export const getDefaultHeaders = (): HeadersInit => ({
 export const getAuthHeaders = (): HeadersInit => {
   // Cookies are automatically included with credentials: 'include'
   // No need to manually add Authorization header since backend reads HTTP-only cookies
-  return {
+  
+  const headers = {
     ...getDefaultHeaders(),
-  };
+  } as Record<string, string>;
+  
+  // Add CSRF header for state-changing operations (DELETE, POST, PUT)
+  // This helps with CSRF protection even in development
+  const csrfToken = getCsrfTokenFromCookie();
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+  
+  return headers;
+};
+
+// Helper function to extract CSRF token from cookies
+const getCsrfTokenFromCookie = (): string | null => {
+  if (typeof document === 'undefined') return null;
+  
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'XSRF-TOKEN' || name === 'csrf_token') {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
 };
 
 // Request timeout wrapper

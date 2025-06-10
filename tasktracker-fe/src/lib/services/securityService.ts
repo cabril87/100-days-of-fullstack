@@ -177,9 +177,7 @@ class SecurityService implements ConditionalSecurityService {
     try {
       if (this.isAdminMode) {
         // Admin endpoint - can terminate any session
-        await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { 
-          sessionToken
-        });
+        await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { sessionToken });
       } else {
         // Try user endpoint first, fallback to admin endpoint if not available
         try {
@@ -189,9 +187,7 @@ class SecurityService implements ConditionalSecurityService {
           if (userEndpointError instanceof ApiClientError && userEndpointError.statusCode === 404) {
             // Fallback to admin endpoint (user security endpoint not implemented yet)
             console.warn('User security endpoint not available, falling back to admin endpoint');
-            await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { 
-              sessionToken
-            });
+            await apiClient.post<void>('/v1/securitymonitoring/sessions/terminate', { sessionToken });
           } else {
             throw userEndpointError;
           }
@@ -269,12 +265,12 @@ class SecurityService implements ConditionalSecurityService {
   /**
    * Update device trust status (conditional based on user role)
    */
-  async updateDeviceTrust(deviceId: string, trusted: boolean, deviceName?: string): Promise<void> {
+  async updateDeviceTrust(deviceId: string, trusted: boolean, deviceName?: string, userId?: number): Promise<void> {
     try {
       if (this.isAdminMode) {
         // Admin endpoint - can modify any device
         const deviceTrustData = {
-          userId: this.getCurrentUserId(),
+          userId: userId || this.getCurrentUserId(),
           deviceId,
           trusted,
           deviceName

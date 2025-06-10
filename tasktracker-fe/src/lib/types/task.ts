@@ -4,7 +4,7 @@
  */
 
 import { User } from './auth';
-import { FamilyDTO } from './family-invitation';
+import { FamilyDTO, FamilyMemberDTO } from './family-invitation';
 
 export interface Task {
   id: number;
@@ -28,6 +28,89 @@ export interface Task {
   completedAt?: Date;
   tags?: string[];
 }
+
+// === FAMILY TASK TYPES (Matching Backend DTOs Exactly) ===
+
+/**
+ * Family Task Item DTO - matches backend FamilyTaskItemDTO
+ */
+export interface FamilyTaskItemDTO {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+  dueDate?: string; // ISO date string from backend
+  isCompleted: boolean;
+  pointsValue: number;
+  pointsEarned: number;
+  estimatedTimeMinutes?: number;
+  actualTimeMinutes?: number;
+  userId: number;
+  familyId: number;
+  assignedToFamilyMemberId?: number;
+  assignedByUserId?: number;
+  requiresApproval: boolean;
+  approvedByUserId?: number;
+  approvedAt?: string; // ISO date string
+  createdAt: string; // ISO date string
+  updatedAt?: string; // ISO date string
+  completedAt?: string; // ISO date string
+  // Navigation properties
+  assignedToFamilyMember?: FamilyMemberDTO;
+  assignedByUser?: User;
+  approvedByUser?: User;
+  family?: FamilyDTO;
+}
+
+/**
+ * Task Assignment DTO - matches backend TaskAssignmentDTO
+ */
+export interface TaskAssignmentDTO {
+  taskId: number;
+  assignToUserId: number;
+  requiresApproval: boolean;
+}
+
+/**
+ * Flexible Task Assignment DTO - matches backend FlexibleTaskAssignmentDTO
+ */
+export interface FlexibleTaskAssignmentDTO {
+  taskId: number;
+  assignToUserId: number | string;
+  requiresApproval: boolean;
+  memberId: number | string;
+  userId: number | string;
+}
+
+/**
+ * Task Approval DTO - matches backend TaskApprovalDTO
+ */
+export interface TaskApprovalDTO {
+  taskId: number;
+  approvalComment?: string;
+}
+
+/**
+ * Family Task Statistics
+ */
+export interface FamilyTaskStats {
+  totalTasks: number;
+  completedTasks: number;
+  totalPoints: number;
+  memberStats: FamilyMemberTaskStats[];
+}
+
+export interface FamilyMemberTaskStats {
+  memberId: number;
+  memberName: string;
+  tasksCompleted: number;
+  pointsEarned: number;
+  tasksAssigned: number;
+  completionRate: number;
+}
+
+// === EXISTING TYPES (UNCHANGED) ===
 
 export interface CreateTaskDTO {
   title: string;
@@ -170,6 +253,7 @@ export interface CreateTaskFormData {
   pointsValue?: number;
   familyId?: number;
   assignedToUserId?: number;
+  requiresApproval?: boolean;
   tags?: string[];
 }
 
@@ -216,4 +300,29 @@ export interface TaskCreationModalProps {
   trigger?: React.ReactNode;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-} 
+}
+
+// === CACHE & API TYPES ===
+
+/**
+ * Cache entry structure for TaskService
+ */
+export interface TaskServiceCacheEntry {
+  data: Task[] | TaskStats | FamilyTaskItemDTO[] | FamilyTaskStats | unknown;
+  timestamp: number;
+}
+
+/**
+ * Generic API response that can contain tasks in various formats
+ */
+export interface FlexibleApiResponse {
+  data?: Task[];
+  items?: Task[];
+  tasks?: Task[];
+  [key: string]: unknown;
+}
+
+/**
+ * Type-safe response handler for task API responses
+ */
+export type TaskApiResponseType = ApiResponse<Task[]> | Task[] | FlexibleApiResponse; 

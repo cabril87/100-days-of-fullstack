@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Calendar, Clock, Star, Users, Tag, Zap, Trophy, Target, Sparkles } from 'lucide-react';
+import { Plus, Calendar, Clock, Star, Users, Tag, Zap, Trophy, Target, Sparkles, Shield, UserCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { taskService } from '@/lib/services/taskService';
+import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { CreateTaskDTO, CreateTaskFormData, TaskCreationModalProps } from '@/lib/types/task';
+import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { createTaskSchema } from '@/lib/schemas/task';
 
 export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange }: TaskCreationModalProps) {
@@ -23,6 +26,8 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   const setIsOpen = onOpenChange || setInternalIsOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -56,9 +61,20 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   };
 
   const onSubmit = async (data: CreateTaskFormData) => {
-    try {
-      setIsSubmitting(true);
+    console.log('🎯 TaskCreationModal onSubmit called');
+    console.log('📝 Form data received:', data);
+    console.log('🏷️ Tags data:', { tags: data.tags, tagInput, watchedTags });
 
+    // Auto-add any remaining tag input before submitting
+    let finalTags = data.tags || [];
+    if (tagInput.trim() && !finalTags.includes(tagInput.trim())) {
+      finalTags = [...finalTags, tagInput.trim()];
+      console.log('🏷️ Auto-added tag from input:', tagInput.trim());
+      console.log('🏷️ Final tags:', finalTags);
+    }
+
+    setIsSubmitting(true);
+    try {
       const taskData: CreateTaskDTO = {
         title: data.title,
         description: data.description || undefined,
@@ -69,13 +85,23 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         pointsValue: data.pointsValue || 10,
         familyId: data.familyId || undefined,
         assignedToUserId: data.assignedToUserId || undefined,
-        tags: data.tags && data.tags.length > 0 ? data.tags : undefined
+        tags: finalTags.length > 0 ? finalTags : undefined
       };
 
+      console.log('🚀 About to call taskService.createTask with:', taskData);
       const createdTask = await taskService.createTask(taskData);
+      console.log('✅ Task created successfully:', createdTask);
+      console.log('🔍 Created task details:', {
+        id: createdTask.id,
+        title: createdTask.title,
+        tags: createdTask.tags,
+        priority: createdTask.priority,
+        pointsValue: createdTask.pointsValue
+      });
       
       // Call success callback
       if (onTaskCreated) {
+        console.log('📤 Calling onTaskCreated with task:', createdTask);
         onTaskCreated(createdTask);
       }
 
@@ -85,7 +111,7 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
       setTagInput('');
 
     } catch (error) {
-      console.error('Failed to create task:', error);
+      console.error('❌ Failed to create task:', error);
       // Error handling could be enhanced with toast notifications
     } finally {
       setIsSubmitting(false);
@@ -122,6 +148,24 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   };
 
   const pointsTier = getPointsTier(watchedPoints);
+
+  useEffect(() => {
+    const fetchFamilyMembers = async () => {
+      if (family) {
+        setLoadingMembers(true);
+        try {
+          const members = await familyInvitationService.getFamilyMembers(family.id);
+          setFamilyMembers(members);
+        } catch (error) {
+          console.error('Failed to fetch family members:', error);
+        } finally {
+          setLoadingMembers(false);
+        }
+      }
+    };
+
+    fetchFamilyMembers();
+  }, [family]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -374,40 +418,101 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
 
             {/* Family Assignment with Game Styling */}
             {family && (
-              <FormField
-                control={form.control}
-                name="assignedToUserId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-lg font-semibold flex items-center gap-2">
-                      <Users className="h-4 w-4 text-cyan-500" />
-                      Quest Assignee
-                    </FormLabel>
-                                         <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}>
-                       <FormControl>
-                         <SelectTrigger className="h-12 text-base border-2 border-cyan-200 dark:border-cyan-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-gradient-to-r from-white to-cyan-50 dark:from-gray-800 dark:to-cyan-900/20 transition-all duration-200 hover:border-cyan-400 dark:hover:border-cyan-600">
-                           <SelectValue placeholder="👥 Assign this epic quest to..." />
-                         </SelectTrigger>
-                       </FormControl>
-                       <SelectContent className="bg-white dark:bg-gray-800 border-2 border-cyan-200 dark:border-cyan-700 shadow-2xl rounded-lg">
-                         <SelectItem value={user.id.toString()} className="py-3 px-4 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 cursor-pointer transition-colors duration-200">
-                           <div className="flex items-center gap-3">
-                             <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
-                               <span className="text-white text-xs font-bold">YOU</span>
-                             </div>
-                             <span className="font-medium text-gray-900 dark:text-gray-100">{user.displayName || user.firstName || user.username}</span>
-                           </div>
-                         </SelectItem>
-                         {/* Family members would be loaded here */}
-                       </SelectContent>
-                     </Select>
-                    <FormDescription className="text-sm text-gray-600 dark:text-gray-400">
-                      🎭 Choose your hero for this quest!
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="assignedToUserId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-lg font-semibold flex items-center gap-2">
+                        <Users className="h-4 w-4 text-cyan-500" />
+                        Quest Assignee
+                      </FormLabel>
+                      <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}>
+                        <FormControl>
+                          <SelectTrigger className="h-12 text-base border-2 border-cyan-200 dark:border-cyan-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-gradient-to-r from-white to-cyan-50 dark:from-gray-800 dark:to-cyan-900/20 transition-all duration-200 hover:border-cyan-400 dark:hover:border-cyan-600">
+                            <SelectValue placeholder="👥 Assign this epic quest to..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white dark:bg-gray-800 border-2 border-cyan-200 dark:border-cyan-700 shadow-2xl rounded-lg">
+                          <SelectItem value={user.id.toString()} className="py-3 px-4 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 cursor-pointer transition-colors duration-200">
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
+                                <span className="text-white text-xs font-bold">ME</span>
+                              </div>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{user.displayName || user.firstName || user.username}</span>
+                              <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs">You</Badge>
+                            </div>
+                          </SelectItem>
+                          {loadingMembers ? (
+                            <SelectItem value="loading" disabled className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-gray-500">Loading family members...</span>
+                              </div>
+                            </SelectItem>
+                          ) : (
+                            familyMembers
+                              .filter(member => member.userId !== user.id)
+                              .map((member) => (
+                                <SelectItem 
+                                  key={member.id} 
+                                  value={member.userId.toString()} 
+                                  className="py-3 px-4 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 cursor-pointer transition-colors duration-200"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
+                                      <span className="text-white text-xs font-bold">
+                                        {(member.user?.firstName?.[0] || member.user?.username?.[0] || '?').toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                                      {member.user?.displayName || member.user?.firstName || member.user?.username || 'Family Member'}
+                                    </span>
+                                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs">
+                                      {member.role?.name || 'Member'}
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription className="text-sm text-gray-600 dark:text-gray-400">
+                        🎭 Choose your hero for this quest!
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Approval Requirement Checkbox */}
+                <FormField
+                  control={form.control}
+                  name="requiresApproval"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border-2 border-orange-200 dark:border-orange-700 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="border-2 border-orange-400 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-base font-semibold flex items-center gap-2 cursor-pointer">
+                          <Shield className="h-4 w-4 text-orange-500" />
+                          Requires Parent Approval
+                          <UserCheck className="h-4 w-4 text-green-500" />
+                        </FormLabel>
+                        <FormDescription className="text-sm text-gray-600 dark:text-gray-400">
+                          🛡️ Quest completion needs parent/guardian approval before earning rewards
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
             )}
 
             {/* Tags with Enhanced Gamification */}
@@ -485,6 +590,13 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
                 type="submit" 
                 disabled={isSubmitting}
                 className="w-full sm:w-auto relative overflow-hidden group bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 hover:from-purple-700 hover:via-blue-700 hover:to-cyan-700 text-white font-bold px-8 py-3 h-12 rounded-lg shadow-xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                onClick={() => {
+                  console.log('🔵 Submit button clicked');
+                  console.log('📋 Form state:', form.formState);
+                  console.log('❌ Form errors:', form.formState.errors);
+                  console.log('✅ Form values:', form.getValues());
+                  console.log('🏷️ Current tags:', { tagInput, watchedTags });
+                }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>
                 <div className="relative flex items-center justify-center gap-2">

@@ -314,9 +314,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
               >
                 <span className="flex items-center gap-2">
                   ⚙️ Settings & Account
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    ✓ 4/5
-                  </span>
+                 
                 </span>
                 <svg
                   className={`w-4 h-4 transform transition-transform ${expandedSections.settings ? 'rotate-180' : ''}`}
@@ -338,9 +336,6 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     👤 Profile
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      ✓
-                    </span>
                   </Link>
 
                   {isFamilyAdmin && (
@@ -353,13 +348,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                       }`}
                     >
                       👨‍👩‍👧‍👦 Family Management
-                      {isAdmin && <span className="text-xs">👑</span>}
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                        ✨ Smart
-                      </span>
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        ✓
-                      </span>
+                      {isAdmin && <span className="text-xs">👑</span>}                               
                     </Link>
                   )}
 
@@ -372,9 +361,6 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     🔔 Notifications
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      ✓
-                    </span>
                   </Link>
 
                   <Link
@@ -386,9 +372,6 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     🎨 Appearance & Themes
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      ✓
-                    </span>
                   </Link>
 
                   <Link
@@ -400,9 +383,6 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     🛡️ Privacy & Security
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      ✓
-                    </span>
                   </Link>
                 </div>
               )}

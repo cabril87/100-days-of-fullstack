@@ -256,4 +256,232 @@ export interface SecurityServiceMethods {
   getUserDevices(): Promise<UserDeviceDTO[]>;
   terminateSession(sessionToken: string): Promise<void>;
   updateDeviceTrust(deviceId: string, trusted: boolean, deviceName?: string): Promise<void>;
+}
+
+// Add admin dashboard response types to the end of the file
+export interface AdminDashboardResponseDTO {
+  overview: AdminSecurityOverviewDTO;
+  sessionManagement: AdminSessionManagementDTO;
+  systemHealth: SystemHealthDTO;
+  rateLimitStatus: RateLimitStatusDTO;
+  performanceMetrics: PerformanceMetricsDTO;
+  securityMetrics: SecurityMetricDTO[];
+  recentAuditLogs: AuditLogDTO[];
+  activeAlerts: SecurityAlertDTO[];
+  failedLoginSummary: FailedLoginSummaryDTO;
+  geolocationSummary: GeolocationSummaryDTO;
+  lastUpdated: string;
+}
+
+export interface AdminSecurityOverviewDTO {
+  securityScore: number;
+  securityStatus: string;
+  activeUsers24h: number;
+  blockedRequests24h: number;
+  suspiciousActivities24h: number;
+  totalRequests24h: number;
+  csrfProtectionEnabled: boolean;
+  rateLimitingEnabled: boolean;
+  securityAuditingEnabled: boolean;
+  recentActivity: RecentActivityDTO[];
+  securityFeatures: SecurityFeatureDTO[];
+}
+
+export interface AdminSessionManagementDTO {
+  activeSessions: UserSessionDTO[];
+  recentSessions: UserSessionDTO[];
+  totalActiveSessions: number;
+  defaultSessionTimeout: string;
+  maxConcurrentSessions: number;
+  securitySummary: SessionSecuritySummaryDTO;
+}
+
+export interface SessionSecuritySummaryDTO {
+  expiredSessions: number;
+  suspiciousSessions: number;
+  uniqueLocations: number;
+  newDevices: string[];
+  unusualLocations: string[];
+}
+
+export interface SystemHealthDTO {
+  overallStatus: string;
+  uptime: number;
+  cpuUsage: number;
+  memoryUsage: number;
+  diskUsage: number;
+  activeConnections: number;
+  responseTime: number;
+  healthChecks: HealthCheckDTO[];
+  metrics: SystemMetricDTO[];
+}
+
+export interface RateLimitStatusDTO {
+  isEnabled: boolean;
+  totalRequestsBlocked24h: number;
+  averageRequestsPerMinute: number;
+  configurations: RateLimitConfigDTO[];
+  circuitBreakers: CircuitBreakerDTO[];
+  topUsers: TopUserDTO[];
+}
+
+export interface PerformanceMetricsDTO {
+  totalRequests24h: number;
+  totalErrors24h: number;
+  requestsPerSecond: number;
+  averageResponseTime: number;
+  errorRate: number;
+  responseTimeDistribution: ResponseTimeDistributionDTO[];
+  statusCodeDistribution: StatusCodeDistributionDTO[];
+  topEndpoints: TopEndpointDTO[];
+  topUsers: TopUserDTO[];
+  databaseMetrics: DatabaseMetricsDTO;
+}
+
+export interface SecurityMetricDTO {
+  timestamp: string;
+  metric: string;
+  value: number;
+  category: string;
+}
+
+export interface AuditLogDTO {
+  id: number;
+  timestamp: string;
+  eventType: string;
+  action: string;
+  ipAddress: string;
+  userAgent: string;
+  userId?: number;
+  username?: string;
+  details?: string;
+}
+
+export interface SecurityAlertDTO {
+  id: string;
+  type: string;
+  severity: string;
+  message: string;
+  timestamp: string;
+  isResolved: boolean;
+}
+
+export interface FailedLoginSummaryDTO {
+  totalAttempts: number;
+  uniqueIPs: number;
+  suspiciousAttempts: number;
+  topTargetedAccounts: string[];
+  topAttackingIPs: string[];
+  recentFailures: FailedLoginAttemptDTO[];
+}
+
+export interface GeolocationSummaryDTO {
+  totalUniqueIPs: number;
+  suspiciousIPs: number;
+  blockedCountriesCount: number;
+  allowedCountries: string[];
+  blockedCountries: string[];
+  recentLocations: LocationDTO[];
+}
+
+export interface RecentActivityDTO {
+  timestamp: string;
+  action: string;
+  userId: number;
+  username: string;
+  ipAddress: string;
+  location?: string;
+}
+
+export interface SecurityFeatureDTO {
+  name: string;
+  enabled: boolean;
+  description: string;
+  lastUpdated: string;
+}
+
+export interface HealthCheckDTO {
+  name: string;
+  status: string;
+  responseTime: number;
+  lastChecked: string;
+}
+
+export interface SystemMetricDTO {
+  name: string;
+  value: number;
+  unit: string;
+  threshold?: number;
+}
+
+export interface RateLimitConfigDTO {
+  endpoint: string;
+  limit: number;
+  window: string;
+  enabled: boolean;
+}
+
+export interface CircuitBreakerDTO {
+  name: string;
+  state: string;
+  failureCount: number;
+  successCount: number;
+  lastFailure?: string;
+}
+
+export interface TopUserDTO {
+  userId: number;
+  username: string;
+  requestCount: number;
+  lastActivity: string;
+}
+
+export interface ResponseTimeDistributionDTO {
+  range: string;
+  count: number;
+  percentage: number;
+}
+
+export interface StatusCodeDistributionDTO {
+  statusCode: number;
+  count: number;
+  percentage: number;
+}
+
+export interface TopEndpointDTO {
+  endpoint: string;
+  requestCount: number;
+  averageResponseTime: number;
+  errorRate: number;
+}
+
+export interface DatabaseMetricsDTO {
+  connectionCount: number;
+  averageQueryTime: number;
+  slowQueries: number;
+  cacheHitRate: number;
+  activeTransactions: number;
+}
+
+export interface FailedLoginAttemptDTO {
+  timestamp: string;
+  username: string;
+  ipAddress: string;
+  userAgent: string;
+  reason: string;
+}
+
+export interface LocationDTO {
+  ipAddress: string;
+  city?: string;
+  country?: string;
+  timestamp: string;
+  isSuspicious: boolean;
+}
+
+// Type for potential nested device response
+export interface DeviceResponseDTO {
+  devices?: UserDeviceDTO[];
+  data?: UserDeviceDTO[];
+  userDevices?: UserDeviceDTO[];
 } 

@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CookieConsentBanner } from '@/components/ui/CookieConsentBanner';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
@@ -100,6 +101,9 @@ export default async function HomePage() {
           </Link>
         </div>
       </div>
+      
+      {/* Cookie Consent Banner */}
+      <CookieConsentBanner position="bottom" companyName="TaskTracker" />
     </div>
   );
 }

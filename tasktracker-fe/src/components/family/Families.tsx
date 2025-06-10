@@ -177,87 +177,90 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <Home className="h-8 w-8 text-blue-600" />
-            My Families
-            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Home className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              <span>My Families</span>
+            </div>
+            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 w-fit">
               {families.length} {families.length === 1 ? 'Family' : 'Families'}
             </Badge>
           </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
+          <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm sm:text-base">
             View and manage all families you&apos;re a member of
           </p>
         </div>
         
-        <Button onClick={() => router.push('/settings/family')} variant="outline">
+        <Button onClick={() => router.push('/settings/family')} variant="outline" className="w-full sm:w-auto">
           <Settings className="h-4 w-4 mr-2" />
-          Family Settings
+          <span className="sm:hidden">Manage Families</span>
+          <span className="hidden sm:inline">Family Settings</span>
         </Button>
       </div>
 
-      {/* Family Stats Overview */}
+      {/* Family Stats Overview - Mobile Optimized */}
       {families.length > 0 && (
         <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{families.length}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600">{families.length}</div>
+                <div className="text-xs sm:text-sm text-gray-600">
                   {families.length === 1 ? 'Family' : 'Families'} Joined
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-2xl sm:text-3xl font-bold text-green-600">
                   {families.reduce((total, family) => total + family.memberCount, 0)}
                 </div>
-                <div className="text-sm text-gray-600">Total Members</div>
+                <div className="text-xs sm:text-sm text-gray-600">Total Members</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-600">
                   {families.filter(f => f.myRole.toLowerCase().includes('admin') || f.myRole.toLowerCase().includes('parent')).length}
                 </div>
-                <div className="text-sm text-gray-600">Admin/Parent Roles</div>
+                <div className="text-xs sm:text-sm text-gray-600">Admin/Parent Roles</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-600">
+                <div className="text-2xl sm:text-3xl font-bold text-amber-600">
                   {Math.round(families.reduce((total, family) => total + family.memberCount, 0) / families.length) || 0}
                 </div>
-                <div className="text-sm text-gray-600">Avg Family Size</div>
+                <div className="text-xs sm:text-sm text-gray-600">Avg Family Size</div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Families Grid */}
+      {/* Families Grid - Mobile Optimized */}
       {families.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
+        <Card className="text-center py-8 sm:py-12">
+          <CardContent className="px-4 sm:px-6">
             <div className="flex flex-col items-center gap-4">
-              <div className="p-4 bg-gray-100 rounded-full">
-                <Users className="h-12 w-12 text-gray-400" />
+              <div className="p-3 sm:p-4 bg-gray-100 rounded-full">
+                <Users className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
                   No Families Found
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-2">
+                <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-2 text-sm sm:text-base">
                   You&apos;re not currently a member of any families. Create a new family or ask to be invited to an existing one.
                 </p>
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
                   👨‍👩‍👧‍👦 0 Families • 0 Members
                 </div>
               </div>
-              <div className="flex gap-3 mt-4">
-                <Button onClick={() => router.push('/settings/family')}>
+              <div className="flex flex-col sm:flex-row gap-3 mt-4 w-full sm:w-auto">
+                <Button onClick={() => router.push('/settings/family')} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Family
                 </Button>
-                <Button onClick={() => router.push('/dashboard')} variant="outline">
+                <Button onClick={() => router.push('/dashboard')} variant="outline" className="w-full sm:w-auto">
                   <Home className="h-4 w-4 mr-2" />
                   Go to Dashboard
                 </Button>
@@ -266,48 +269,49 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {families.map((family) => (
             <Card key={family.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-full">
-                      <Home className="h-5 w-5 text-blue-600" />
+              <CardHeader className="pb-3 px-4 sm:px-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
+                      <Home className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                     </div>
-                    <div>
-                      <CardTitle className="text-lg group-hover:text-blue-600 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-base sm:text-lg group-hover:text-blue-600 transition-colors truncate">
                         {family.name}
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-sm truncate">
                         {family.description || 'No description'}
                       </CardDescription>
                     </div>
                   </div>
-                  <Badge variant="outline" className={getRoleBadgeColor(family.myRole)}>
+                  <Badge variant="outline" className={`${getRoleBadgeColor(family.myRole)} flex-shrink-0`}>
                     <div className="flex items-center gap-1">
                       {getRoleIcon(family.myRole)}
-                      {family.myRole}
+                      <span className="hidden sm:inline">{family.myRole}</span>
+                      <span className="sm:hidden">{family.myRole.slice(0, 3)}</span>
                     </div>
                   </Badge>
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-4">
-                {/* Family Stats */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-xl font-bold text-gray-900">{family.memberCount}</div>
+              <CardContent className="space-y-4 px-4 sm:px-6">
+                {/* Family Stats - Mobile Optimized */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg sm:text-xl font-bold text-gray-900">{family.memberCount}</div>
                     <div className="text-xs text-gray-600">Members</div>
                   </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-xl font-bold text-gray-900">
+                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg sm:text-xl font-bold text-gray-900">
                       {new Date(family.createdAt).getFullYear()}
                     </div>
                     <div className="text-xs text-gray-600">Created</div>
                   </div>
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-xl font-bold text-purple-600">
+                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="text-lg sm:text-xl font-bold text-purple-600">
                       {family.members.filter(m => 
                         m.role?.name.toLowerCase().includes('admin') || 
                         m.role?.name.toLowerCase().includes('parent')
@@ -317,53 +321,53 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
                   </div>
                 </div>
 
-                {/* Recent Members */}
+                {/* Recent Members - Mobile Optimized */}
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2 text-sm sm:text-base">
                     <Users className="h-4 w-4" />
                     Family Members
                   </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {family.members.slice(0, 5).map((member, index) => (
-                      <div key={member.id} className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">
-                            {member.user?.firstName?.[0] || member.user?.username?.[0] || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-gray-600">
-                          {member.user?.firstName || member.user?.username || 'Unknown'}
-                        </span>
-                        {index < family.members.slice(0, 5).length - 1 && (
-                          <span className="text-gray-300">•</span>
-                        )}
-                      </div>
-                    ))}
-                    {family.members.length > 5 && (
-                      <span className="text-xs text-gray-500">
-                        +{family.members.length - 5} more
+                                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-2">
+                     {family.members.slice(0, 4).map((member) => (
+                       <div key={member.id} className="flex items-center gap-2 min-w-0">
+                         <Avatar className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0">
+                           <AvatarFallback className="text-xs">
+                             {member.user?.firstName?.[0] || member.user?.username?.[0] || '?'}
+                           </AvatarFallback>
+                         </Avatar>
+                         <span className="text-xs text-gray-600 truncate">
+                           {member.user?.firstName || member.user?.username || 'Unknown'}
+                         </span>
+                       </div>
+                     ))}
+                    {family.members.length > 4 && (
+                      <span className="text-xs text-gray-500 sm:ml-2">
+                        +{family.members.length - 4} more
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
+                {/* Action Buttons - Mobile Optimized */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button 
                     onClick={() => router.push(`/family/${family.id}`)}
                     size="sm" 
-                    className="flex-1"
+                    className="flex-1 h-9 sm:h-8"
                   >
                     <Eye className="h-4 w-4 mr-2" />
-                    View Details
+                    <span className="sm:hidden">View</span>
+                    <span className="hidden sm:inline">View Details</span>
                   </Button>
                   {(family.myRole.toLowerCase() === 'admin' || family.myRole.toLowerCase() === 'parent') && (
                     <Button 
                       onClick={() => router.push('/settings/family')}
                       size="sm" 
                       variant="outline"
+                      className="sm:w-auto h-9 sm:h-8"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-4 w-4 sm:mr-0" />
+                      <span className="sm:hidden ml-2">Settings</span>
                     </Button>
                   )}
                 </div>
@@ -373,28 +377,28 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
         </div>
       )}
 
-      {/* Quick Actions */}
+      {/* Quick Actions - Mobile Optimized */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5 text-yellow-500" />
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
             Quick Actions
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Common family management tasks
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <CardContent className="px-4 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             <Button 
               onClick={() => router.push('/settings/family')}
               variant="outline" 
-              className="h-auto p-4"
+              className="h-auto p-3 sm:p-4"
             >
-              <div className="flex flex-col items-center gap-2">
-                <Plus className="h-6 w-6" />
-                <div className="text-center">
-                  <div className="font-medium">Create Family</div>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+                <div>
+                  <div className="font-medium text-sm sm:text-base">Create Family</div>
                   <div className="text-xs text-gray-500">Start a new family</div>
                 </div>
               </div>
@@ -403,12 +407,12 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
             <Button 
               onClick={() => router.push('/settings/family')}
               variant="outline" 
-              className="h-auto p-4"
+              className="h-auto p-3 sm:p-4"
             >
-              <div className="flex flex-col items-center gap-2">
-                <UserPlus className="h-6 w-6" />
-                <div className="text-center">
-                  <div className="font-medium">Invite Members</div>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
+                <div>
+                  <div className="font-medium text-sm sm:text-base">Invite Members</div>
                   <div className="text-xs text-gray-500">Add family members</div>
                 </div>
               </div>
@@ -417,12 +421,12 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
             <Button 
               onClick={() => router.push('/dashboard')}
               variant="outline" 
-              className="h-auto p-4"
+              className="h-auto p-3 sm:p-4"
             >
-              <div className="flex flex-col items-center gap-2">
-                <TrendingUp className="h-6 w-6" />
-                <div className="text-center">
-                  <div className="font-medium">View Dashboard</div>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
+                <div>
+                  <div className="font-medium text-sm sm:text-base">View Dashboard</div>
                   <div className="text-xs text-gray-500">See family activity</div>
                 </div>
               </div>

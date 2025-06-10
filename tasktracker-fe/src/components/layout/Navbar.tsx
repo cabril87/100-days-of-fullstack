@@ -7,7 +7,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings, User, Crown, Star } from 'lucide-react';
+import { 
+  LogOut, Settings, User, Crown, Star, 
+  Home, CheckSquare, Users, Trophy, 
+  UserCog, Headphones, FileText, 
+  Palette, Bell, Shield, UserPlus,
+  BarChart3, Calendar,
+  Sparkles, Plus
+} from 'lucide-react';
 import { DecorativeLines } from '@/components/ui/DecorativeLines';
 import { useTheme } from '@/lib/providers/ThemeProvider';
 import { usePathname } from 'next/navigation';
@@ -328,23 +335,6 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
             {/* Mobile menu button */}
             <div className="md:hidden flex items-center space-x-2">
               <ThemeToggle />
-              {shouldShowSidebar && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onToggleSidebar}
-                  className={`navbar-theme theme-transition hover:scale-105 text-white shadow-md ${getSidebarButtonClasses()}`}
-                  title={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
-                >
-                  <svg className="h-[1.2rem] w-[1.2rem] text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {isSidebarOpen ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                    )}
-                  </svg>
-                </Button>
-              )}
               <button
                 onClick={toggleMenu}
                 className="p-2 rounded-xl backdrop-blur-sm border border-gray-600 bg-gray-800/80 transition-all duration-300 shadow-sm hover:shadow-md text-gray-300"
@@ -361,53 +351,255 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Comprehensive Mobile Navigation Menu */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-600 pt-4 pb-3 space-y-1 bg-gray-900">
+          <div className="md:hidden border-t border-gray-600 bg-gray-900 max-h-[80vh] overflow-y-auto">
             {isAuthenticated && user ? (
               <>
-                <div className="flex items-center px-4 py-3 border-b border-gray-600">
+                {/* User Profile Section */}
+                <div className="flex items-center px-4 py-4 border-b border-gray-600 bg-gradient-to-r from-blue-50/5 to-purple-50/5">
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
                       {(user.displayName || user.firstName || user.username || 'U').charAt(0).toUpperCase()}
                     </div>
+                    {user.role === 'admin' && (
+                      <div className="absolute mt-[-48px] ml-8 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                        <Crown className="w-3 h-3 text-white" />
+                      </div>
+                    )}
                   </div>
-                  <div className="ml-3">
-                    <div className="text-base font-medium text-white">
+                  <div className="ml-3 flex-1">
+                    <div className="text-base font-semibold text-white">
                       {user.displayName || user.firstName || user.username}
                     </div>
                     <div className="text-sm text-gray-300">{user.email}</div>
-                    <div className="flex items-center mt-1 space-x-2">
+                    <div className="flex items-center mt-2 space-x-3">
                       {user.role === 'admin' && (
                         <Badge variant="secondary" className="text-xs bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-none">
                           ADMIN
                         </Badge>
                       )}
-                      <span className="text-xs text-gray-300 flex items-center">
+                      <span className="text-xs text-gray-300 flex items-center bg-gray-800 px-2 py-1 rounded-full">
                         <Star className="w-3 h-3 mr-1" />
-                        {user.points || 0}
+                        {user.points || 0} pts
                       </span>
                     </div>
                   </div>
                 </div>
-                
-                <Link href="/dashboard" className="block px-4 py-2 text-base font-medium text-white hover:text-blue-400 hover:bg-gray-800">Dashboard</Link>
-                <Link href="/profile" className="block px-4 py-2 text-base font-medium text-white hover:text-blue-400 hover:bg-gray-800">Profile</Link>
-                <Link href="/settings" className="block px-4 py-2 text-base font-medium text-white hover:text-blue-400 hover:bg-gray-800">Settings</Link>
-                
-                <div className="border-t border-gray-600 pt-4">
-                  <button
-                    onClick={logout}
-                    className="block w-full text-left px-4 py-2 text-base font-medium text-red-400 hover:bg-red-900/20"
-                  >
-                    Sign Out
-                  </button>
+
+                {/* Quick Actions */}
+                <div className="px-4 py-3 border-b border-gray-600 bg-gray-800/50">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-9"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      New Task
+                    </Button>
+                    {user.isFamilyAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white h-9"
+                      >
+                        <Sparkles className="w-4 h-4 mr-1" />
+                        Invite
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Main Navigation Sections */}
+                <div className="py-2">
+                  {/* Core Features */}
+                  <div className="px-4 py-2">
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Core Features</div>
+                    <div className="space-y-1">
+                      <Link 
+                        href="/dashboard" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Home className="w-5 h-5 mr-3 text-blue-400" />
+                        <span className="font-medium">Dashboard</span>
+                      </Link>
+                      <Link 
+                        href="/tasks" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-green-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <CheckSquare className="w-5 h-5 mr-3 text-green-400" />
+                        <span className="font-medium">My Tasks</span>
+                      </Link>
+                      <Link 
+                        href="/families" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-purple-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Users className="w-5 h-5 mr-3 text-purple-400" />
+                        <span className="font-medium">Families</span>
+                      </Link>
+                      <Link 
+                        href="/gamification" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Trophy className="w-5 h-5 mr-3 text-yellow-400" />
+                        <span className="font-medium">Achievements</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Productivity Tools */}
+                  <div className="px-4 py-2 border-t border-gray-700/50">
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Productivity</div>
+                    <div className="space-y-1">
+                      <Link 
+                        href="/calendar" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Calendar className="w-5 h-5 mr-3 text-blue-400" />
+                        <span className="font-medium">Calendar</span>
+                      </Link>
+                      <Link 
+                        href="/analytics" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-cyan-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <BarChart3 className="w-5 h-5 mr-3 text-cyan-400" />
+                        <span className="font-medium">Analytics</span>
+                      </Link>
+                      <Link 
+                        href="/templates" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-orange-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <FileText className="w-5 h-5 mr-3 text-orange-400" />
+                        <span className="font-medium">Templates</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Settings & Account */}
+                  <div className="px-4 py-2 border-t border-gray-700/50">
+                    <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Account</div>
+                    <div className="space-y-1">
+                      <Link 
+                        href="/settings/profile" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-gray-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <User className="w-5 h-5 mr-3 text-gray-400" />
+                        <span className="font-medium">Profile</span>
+                      </Link>
+                      <Link 
+                        href="/settings/family" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-purple-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <UserPlus className="w-5 h-5 mr-3 text-purple-400" />
+                        <span className="font-medium">Family Management</span>
+                      </Link>
+                      <Link 
+                        href="/settings/notifications" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Bell className="w-5 h-5 mr-3 text-blue-400" />
+                        <span className="font-medium">Notifications</span>
+                      </Link>
+                      <Link 
+                        href="/settings/security" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-red-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Shield className="w-5 h-5 mr-3 text-red-400" />
+                        <span className="font-medium">Security</span>
+                      </Link>
+                      <Link 
+                        href="/settings/appearance" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-pink-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Palette className="w-5 h-5 mr-3 text-pink-400" />
+                        <span className="font-medium">Appearance</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Admin Section (if applicable) */}
+                  {(user.role === 'admin' || user.role === 'globaladmin') && (
+                    <div className="px-4 py-2 border-t border-gray-700/50">
+                      <div className="text-xs font-semibold text-yellow-400 uppercase tracking-wider mb-3 flex items-center">
+                        <Crown className="w-3 h-3 mr-1" />
+                        Admin Tools
+                      </div>
+                      <div className="space-y-1">
+                        <Link 
+                          href="/admin" 
+                          className="flex items-center px-3 py-2.5 text-white hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <UserCog className="w-5 h-5 mr-3 text-yellow-400" />
+                          <span className="font-medium">Admin Dashboard</span>
+                        </Link>
+                        <Link 
+                          href="/admin/user-creation" 
+                          className="flex items-center px-3 py-2.5 text-white hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <UserPlus className="w-5 h-5 mr-3 text-yellow-400" />
+                          <span className="font-medium">Create Users</span>
+                        </Link>
+                        <Link 
+                          href="/admin/support" 
+                          className="flex items-center px-3 py-2.5 text-white hover:text-yellow-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Headphones className="w-5 h-5 mr-3 text-yellow-400" />
+                          <span className="font-medium">Customer Support</span>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Logout Section */}
+                  <div className="px-4 py-3 border-t border-gray-700/50 mt-2">
+                    <button
+                      onClick={() => {
+                        logout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex items-center w-full px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-all duration-200"
+                    >
+                      <LogOut className="w-5 h-5 mr-3" />
+                      <span className="font-medium">Sign Out</span>
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (
-              <div className="space-y-1">
-                <Link href="/auth/login" className="block px-4 py-2 text-base font-medium text-white hover:text-blue-400 hover:bg-gray-800">Sign In</Link>
-                <Link href="/auth/register" className="block px-4 py-2 text-base font-medium text-white hover:text-purple-400 hover:bg-gray-800">Get Started</Link>
+              /* Unauthenticated Mobile Menu */
+              <div className="py-4">
+                <div className="px-4 space-y-3">
+                  <Link 
+                    href="/auth/login" 
+                    className="flex items-center justify-center w-full py-3 text-white bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition-all duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link 
+                    href="/auth/register" 
+                    className="flex items-center justify-center w-full py-3 text-white bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg font-medium transition-all duration-200"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Get Started
+                  </Link>
+                </div>
               </div>
             )}
           </div>
