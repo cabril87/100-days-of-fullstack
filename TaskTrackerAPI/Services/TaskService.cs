@@ -212,6 +212,8 @@ namespace TaskTrackerAPI.Services
             existingTask.Priority = taskDto.Priority.ToString();
             existingTask.DueDate = taskDto.DueDate;
             existingTask.CategoryId = taskDto.CategoryId;
+            existingTask.EstimatedTimeMinutes = taskDto.EstimatedTimeMinutes;
+            existingTask.PointsValue = taskDto.PointsValue;
             existingTask.UpdatedAt = DateTime.UtcNow;
             existingTask.Version++; // Increment version for optimistic concurrency
             
@@ -250,26 +252,52 @@ namespace TaskTrackerAPI.Services
                 throw new InvalidOperationException($"Task with ID {taskId} not found or not owned by user {userId}");
             }
             
-            // Store board ID for notification before deleting
+            // Store necessary data before deletion for notifications and gamification
             int? boardId = task.BoardId;
+            string taskTitle = task.Title;
+            DateTime deletionTime = DateTime.UtcNow;
             
             try
             {
+                // ENTERPRISE SOLUTION: Award points BEFORE deleting the task
+                // This ensures the foreign key constraint is satisfied since TaskId still exists
+                await _gamificationService.AddPointsAsync(
+                    userId, 
+                    1, 
+                    "task_deletion", 
+                    $"Deleted task: {taskTitle}", 
+                    taskId // TaskId is still valid at this point
+                );
+                
+                _logger.LogInformation("Successfully awarded deletion points for task {TaskId}", taskId);
+                
                 // Delete the task - this will handle cascade deletes properly
+                // The ON DELETE SET NULL constraint will automatically set TaskId to NULL 
+                // in the PointTransaction we just created above
                 await _taskRepository.DeleteTaskAsync(taskId, userId);
                 
                 _logger.LogInformation("Successfully deleted task {TaskId} for user {UserId}", taskId, userId);
                 
-                // Notify via SignalR
+                // Send notifications AFTER successful deletion
                 await _taskSyncService.NotifyTaskDeletedAsync(userId, taskId, boardId);
                 
-                // Award points for task deletion (cleanup action)
-                await _gamificationService.AddPointsAsync(userId, 1, "task_deletion", $"Deleted task: {task.Title}", taskId);
+                _logger.LogInformation("Task deletion completed successfully for task {TaskId}", taskId);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to delete task {TaskId} for user {UserId}: {Error}", taskId, userId, ex.Message);
-                throw new InvalidOperationException($"Failed to delete task {taskId}: {ex.Message}", ex);
+                
+                // Provide specific error messages based on exception type for better UX
+                string userFriendlyMessage = ex switch
+                {
+                    InvalidOperationException => ex.Message,
+                    UnauthorizedAccessException => "You don't have permission to delete this task",
+                    TimeoutException => "The deletion operation timed out. Please try again",
+                    Microsoft.EntityFrameworkCore.DbUpdateException => "Database constraint error. This task may be referenced by other records",
+                    _ => "An unexpected error occurred while deleting the task. Please try again later"
+                };
+                
+                throw new InvalidOperationException($"Failed to delete task {taskId}: {userFriendlyMessage}", ex);
             }
         }
         

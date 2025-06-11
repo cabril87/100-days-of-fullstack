@@ -40,6 +40,20 @@ namespace TaskTrackerAPI.Models
         }
 
         
+        /// Creates a partial success response for operations with mixed results
+        
+        public static ApiResponse<T> PartialSuccessResponse(T data, string? message = null)
+        {
+            return new ApiResponse<T>
+            {
+                Success = true, // Still successful overall, but with warnings
+                Data = data,
+                Message = message,
+                StatusCode = (int)HttpStatusCode.OK
+            };
+        }
+
+        
         /// Creates a failed response with specific status code and error message
         
         public static ApiResponse<T> FailureResponse(string message, int statusCode, List<string>? errors = null)

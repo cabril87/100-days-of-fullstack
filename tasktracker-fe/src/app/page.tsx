@@ -103,7 +103,7 @@ export default async function HomePage() {
       </div>
       
       {/* Cookie Consent Banner */}
-      <CookieConsentBanner position="bottom" companyName="TaskTracker" />
+      <CookieConsentBanner />
     </div>
   );
 }

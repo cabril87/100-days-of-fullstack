@@ -16,9 +16,16 @@ import {
   FamilyTaskStats,
   TaskServiceCacheEntry,
   FlexibleApiResponse,
-  TaskApiResponseType
+  TaskApiResponseType,
+  ChecklistItem,
+  TaskTimeTracking,
+  TaskProgressUpdate,
+  BatchTaskResult,
+  CreateChecklistItem
 } from '../types/task';
 import { apiClient } from '../config/api-client';
+import { convertTaskDataForBackend } from '../utils/priorityMapping';
+import { tagService } from './tagService';
 
 // Custom error class for API errors
 export class TaskApiError extends Error {
@@ -34,15 +41,21 @@ export class TaskApiError extends Error {
 }
 
 export class TaskService {
+  // Simplified: Only cache static/expensive data, not dynamic task lists
   private cache = new Map<string, TaskServiceCacheEntry>();
-  private CACHE_TTL = 30000; // 30 seconds
+  private CACHE_TTL = 120000; // 2 minutes for static data only
 
   /**
-   * Invalidate all cached data
+   * Invalidate specific cache entries (selective invalidation)
    */
-  private invalidateCache(): void {
-    console.log('🧹 Cache invalidated - fresh data on next requests');
-    this.cache.clear();
+  private invalidateCache(keys?: string[]): void {
+    if (keys) {
+      keys.forEach(key => this.cache.delete(key));
+      console.log(`🧹 Invalidated cache keys: ${keys.join(', ')}`);
+    } else {
+      this.cache.clear();
+      console.log('🧹 Invalidated all cache');
+    }
   }
 
   /**
@@ -209,18 +222,25 @@ export class TaskService {
     memberStats: { memberId: number; memberName: string; tasksCompleted: number; pointsEarned: number; }[];
   }> {
     try {
+      // Note: The backend endpoint /v1/family/{familyId}/stats returns basic family stats
+      // but doesn't include detailed task statistics yet
       const result = await apiClient.get<{
-        totalTasks: number;
-        completedTasks: number;
-        totalPoints: number;
-        memberStats: { memberId: number; memberName: string; tasksCompleted: number; pointsEarned: number; }[];
-      }>(`/v1/taskitems/family/${familyId}/stats`);
+        MemberCount?: number;
+        AdminCount?: number;
+        AdultCount?: number;
+        ChildCount?: number;
+        TotalTasks?: number;
+        CompletedTasks?: number;
+        PendingTasks?: number;
+        LastActivity?: string;
+      }>(`/v1/family/${familyId}/stats`);
 
-      return result || {
-        totalTasks: 0,
-        completedTasks: 0,
-        totalPoints: 0,
-        memberStats: []
+      // Transform backend PascalCase to frontend camelCase and provide defaults
+      return {
+        totalTasks: result?.TotalTasks || 0,
+        completedTasks: result?.CompletedTasks || 0,
+        totalPoints: 0, // Not provided by this endpoint
+        memberStats: [] // Not provided by this endpoint - will be populated from members data
       };
     } catch (error) {
       console.error('Failed to fetch family task stats:', error);
@@ -239,20 +259,43 @@ export class TaskService {
   async createTask(taskData: CreateTaskDTO): Promise<Task> {
     try {
       console.log('📝 Creating new task:', taskData);
-      const result = await apiClient.post<Task>('/v1/taskitems', taskData);
+      
+      // Convert tag names to IDs (enterprise solution)
+      let tagIds: number[] = [];
+      if (taskData.tags && taskData.tags.length > 0) {
+        tagIds = await tagService.convertTagNamesToIds(taskData.tags);
+      }
+      
+      // Convert priority from string to integer for backend compatibility
+      const backendData = await convertTaskDataForBackend(taskData, tagIds);
+      console.log('🔧 Converted data for backend:', backendData);
+      
+      const result = await apiClient.post<Task>('/v1/taskitems', backendData);
       if (!result) {
         throw new TaskApiError('Failed to create task', 500);
       }
       console.log('✅ Task created successfully:', result);
       
-      // Invalidate cache to ensure fresh data on next load
-      this.invalidateCache();
+      // Associate tags after creation if provided (enterprise solution)
+      if (tagIds.length > 0 && result.id) {
+        console.log(`🏷️ Associating tags with new task ${result.id}:`, tagIds);
+        const tagUpdateSuccess = await tagService.associateTagsWithTask(result.id, tagIds);
+        if (tagUpdateSuccess) {
+          console.log(`✅ Tags associated successfully with task ${result.id}`);
+          // Fetch the updated task to get the tags included
+          const updatedTask = await this.getTaskById(result.id);
+          return updatedTask || result;
+        } else {
+          console.warn(`⚠️ Failed to associate tags with task ${result.id}`);
+        }
+      }
       
       return result;
     } catch (error) {
       console.error('Failed to create task:', error);
       throw error instanceof TaskApiError ? error : new TaskApiError('Failed to create task', 500);
     }
+    // No cache invalidation needed - API client handles freshness
   }
 
   /**
@@ -260,15 +303,55 @@ export class TaskService {
    */
   async updateTask(taskId: number, taskData: UpdateTaskDTO): Promise<Task> {
     try {
-      const result = await apiClient.put<Task>(`/v1/taskitems/${taskId}`, taskData);
-      if (!result) {
-        throw new TaskApiError('Failed to update task', 500);
+      console.log(`🔄 Updating task ${taskId}:`, taskData);
+      
+      // Convert tag names to IDs (enterprise solution)
+      let tagIds: number[] = [];
+      if (taskData.tags && taskData.tags.length > 0) {
+        tagIds = await tagService.convertTagNamesToIds(taskData.tags);
       }
-      return result;
+      
+      // Convert priority from string to integer for backend compatibility
+      const backendData = await convertTaskDataForBackend(taskData, tagIds);
+      console.log('🔧 Converted data for backend:', backendData);
+      console.log('🔍 Original taskData:', taskData);
+      console.log('🔍 backendData keys:', Object.keys(backendData));
+      console.log('🔍 backendData.Title:', backendData.Title);
+      console.log('🔍 backendData.EstimatedTimeMinutes:', backendData.EstimatedTimeMinutes);
+      console.log('🔍 backendData.PointsValue:', backendData.PointsValue);
+      console.log('🔍 Original tags:', taskData.tags);
+      
+      // Call the backend update endpoint directly (no wrapper)
+      await apiClient.put(`/v1/taskitems/${taskId}`, backendData);
+      
+      // Update tags separately if provided (enterprise solution)
+      if (tagIds.length > 0) {
+        console.log(`🏷️ Updating tags for task ${taskId}:`, tagIds);
+        const tagUpdateSuccess = await tagService.associateTagsWithTask(taskId, tagIds);
+        if (tagUpdateSuccess) {
+          console.log(`✅ Tags updated successfully for task ${taskId}`);
+        } else {
+          console.warn(`⚠️ Failed to update tags for task ${taskId}`);
+        }
+      }
+      
+      // Backend returns NoContent (204), so fetch the updated task
+      const updatedTask = await this.getTaskById(taskId);
+      
+      if (!updatedTask) {
+        throw new Error('Task update succeeded but failed to retrieve updated task');
+      }
+      
+      console.log(`✅ Task ${taskId} updated successfully`);
+      return updatedTask;
     } catch (error) {
-      console.error('Failed to update task:', error);
-      throw error instanceof TaskApiError ? error : new TaskApiError('Failed to update task', 500);
+      console.error(`❌ Failed to update task ${taskId}:`, error);
+      throw new TaskApiError(
+        error instanceof Error ? error.message : 'Unknown error occurred',
+        500
+      );
     }
+    // No cache invalidation needed - API client handles freshness
   }
 
   /**
@@ -281,14 +364,12 @@ export class TaskService {
         throw new TaskApiError('Failed to complete task', 500);
       }
       
-      // Invalidate cache for fresh data
-      this.invalidateCache();
-      
       return result;
     } catch (error) {
       console.error('Failed to complete task:', error);
       throw error instanceof TaskApiError ? error : new TaskApiError('Failed to complete task', 500);
     }
+    // No cache invalidation needed - API client handles freshness
   }
 
   /**
@@ -305,9 +386,6 @@ export class TaskService {
       
       // Note: For DELETE operations, response is typically empty (204 No Content)
       // The absence of an error means the operation should have succeeded
-      
-      // Invalidate cache for fresh data on next load
-      this.invalidateCache();
       
     } catch (error) {
       console.error(`❌ TaskService: Failed to delete task ${taskId}:`, error);
@@ -328,6 +406,7 @@ export class TaskService {
       
       throw error instanceof TaskApiError ? error : new TaskApiError('Failed to delete task', 500);
     }
+    // No cache invalidation needed - API client handles freshness
   }
 
   // === FAMILY TASK METHODS (Extending Existing Service) ===
@@ -443,6 +522,244 @@ export class TaskService {
     } catch (error) {
       console.error('Failed to unassign all tasks from member:', error);
       return 0;
+    }
+  }
+
+  /**
+   * BATCH OPERATIONS
+   */
+
+  /**
+   * Create multiple tasks in one operation
+   */
+  async batchCreateTasks(tasks: CreateTaskDTO[]): Promise<BatchTaskResult> {
+    try {
+      console.log(`🚀 Batch creating ${tasks.length} tasks`);
+      const result = await apiClient.post<ApiResponse<Task[]>>('/v1/batchoperations/tasks', tasks);
+      
+      this.invalidateCache();
+      
+      return {
+        success: true,
+        created: result.data || [],
+        failed: [],
+        message: `Successfully created ${result.data?.length || 0} tasks`
+      };
+    } catch (error) {
+      console.error('❌ Batch create failed:', error);
+      return {
+        success: false,
+        created: [],
+        failed: tasks.map((task, index) => ({ 
+          index, 
+          task, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })),
+        message: 'Batch creation failed'
+      };
+    }
+  }
+
+  /**
+   * Update multiple tasks in one operation
+   */
+  async batchUpdateTasks(tasks: Task[]): Promise<BatchTaskResult> {
+    try {
+      console.log(`🔄 Batch updating ${tasks.length} tasks`);
+      const result = await apiClient.put<ApiResponse<Task[]>>('/v1/batchoperations/tasks', tasks);
+      
+      this.invalidateCache();
+      
+      return {
+        success: true,
+        updated: result.data || [],
+        failed: [],
+        message: `Successfully updated ${result.data?.length || 0} tasks`
+      };
+    } catch (error) {
+      console.error('❌ Batch update failed:', error);
+      return {
+        success: false,
+        updated: [],
+        failed: tasks.map((task, index) => ({ 
+          index, 
+          task, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })),
+        message: 'Batch update failed'
+      };
+    }
+  }
+
+  /**
+   * Delete multiple tasks in one operation
+   */
+  async batchDeleteTasks(taskIds: number[]): Promise<BatchTaskResult> {
+    try {
+      console.log(`🗑️ Batch deleting ${taskIds.length} tasks:`, taskIds);
+      const idsString = taskIds.join(',');
+      await apiClient.delete(`/v1/batchoperations/tasks?ids=${idsString}`);
+      
+      this.invalidateCache();
+      
+      return {
+        success: true,
+        deleted: taskIds,
+        failed: [],
+        message: `Successfully deleted ${taskIds.length} tasks`
+      };
+    } catch (error) {
+      console.error('❌ Batch delete failed:', error);
+      return {
+        success: false,
+        deleted: [],
+        failed: taskIds.map((id, index) => ({ 
+          index, 
+          task: { id } as Task, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })),
+        message: 'Batch deletion failed'
+      };
+    }
+  }
+
+  /**
+   * Complete multiple tasks in one operation
+   */
+  async batchCompleteTasks(taskIds: number[]): Promise<BatchTaskResult> {
+    try {
+      console.log(`✅ Batch completing ${taskIds.length} tasks:`, taskIds);
+      await apiClient.post('/v1/taskitems/complete-batch', taskIds);
+      
+      this.invalidateCache();
+      
+      return {
+        success: true,
+        completed: taskIds,
+        failed: [],
+        message: `Successfully completed ${taskIds.length} tasks`
+      };
+    } catch (error) {
+      console.error('❌ Batch complete failed:', error);
+      return {
+        success: false,
+        completed: [],
+        failed: taskIds.map((id, index) => ({ 
+          index, 
+          task: { id } as Task, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })),
+        message: 'Batch completion failed'
+      };
+    }
+  }
+
+  /**
+   * TASK DETAIL FEATURES
+   */
+
+  /**
+   * Get task checklist items
+   */
+  async getTaskChecklist(taskId: number): Promise<ChecklistItem[]> {
+    try {
+      const result = await apiClient.get<ApiResponse<ChecklistItem[]>>(`/v1/taskitems/${taskId}/checklist`);
+      return result.data || [];
+    } catch (error) {
+      console.error(`Failed to fetch checklist for task ${taskId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Add checklist item to task
+   */
+  async addChecklistItem(taskId: number, item: CreateChecklistItem): Promise<ChecklistItem | null> {
+    try {
+      const result = await apiClient.post<ApiResponse<ChecklistItem>>(`/v1/taskitems/${taskId}/checklist`, item);
+      return result.data || null;
+    } catch (error) {
+      console.error(`Failed to add checklist item to task ${taskId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update checklist item
+   */
+  async updateChecklistItem(taskId: number, itemId: number, item: Partial<ChecklistItem>): Promise<boolean> {
+    try {
+      await apiClient.put(`/v1/taskitems/${taskId}/checklist/${itemId}`, item);
+      return true;
+    } catch (error) {
+      console.error(`Failed to update checklist item ${itemId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete checklist item
+   */
+  async deleteChecklistItem(taskId: number, itemId: number): Promise<boolean> {
+    try {
+      await apiClient.delete(`/v1/taskitems/${taskId}/checklist/${itemId}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete checklist item ${itemId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get task time tracking data
+   */
+  async getTaskTimeTracking(taskId: number): Promise<TaskTimeTracking | null> {
+    try {
+      const result = await apiClient.get<ApiResponse<TaskTimeTracking>>(`/v1/taskitems/${taskId}/time-tracking`);
+      return result.data || null;
+    } catch (error) {
+      console.error(`Failed to fetch time tracking for task ${taskId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update task progress
+   */
+  async updateTaskProgress(taskId: number, progress: TaskProgressUpdate): Promise<boolean> {
+    try {
+      await apiClient.put(`/v1/taskitems/${taskId}/progress`, progress);
+      this.invalidateCache();
+      return true;
+    } catch (error) {
+      console.error(`Failed to update progress for task ${taskId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Get task tags
+   */
+  async getTaskTags(taskId: number): Promise<string[]> {
+    try {
+      const result = await apiClient.get<ApiResponse<{ name: string }[]>>(`/v1/taskitems/${taskId}/tags`);
+      return result.data?.map(tag => tag.name) || [];
+    } catch (error) {
+      console.error(`Failed to fetch tags for task ${taskId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Update task tags
+   */
+  async updateTaskTags(taskId: number, tagIds: number[]): Promise<boolean> {
+    try {
+      await apiClient.put(`/v1/taskitems/${taskId}/tags`, tagIds);
+      return true;
+    } catch (error) {
+      console.error(`Failed to update tags for task ${taskId}:`, error);
+      return false;
     }
   }
 }

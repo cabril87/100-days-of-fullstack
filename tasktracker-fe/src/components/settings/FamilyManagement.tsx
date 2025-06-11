@@ -28,7 +28,8 @@ import {
   Clock,
   Home,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  ArrowRightLeft
 } from 'lucide-react';
 import { 
   FamilyMemberListSkeleton,
@@ -41,11 +42,14 @@ import {
   FamilyRoleDTO,
   FamilyFormData,
   InvitationFormData,
-  UserFamilyRelationships
+  UserFamilyRelationships,
+  TransferOwnershipDTO
 } from '@/lib/types/family-invitation';
 import { 
   familyCreateSchema,
-  invitationSchema
+  invitationSchema,
+  transferOwnershipSchema,
+  TransferOwnershipFormData
 } from '@/lib/schemas/family-invitation';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { SmartInvitationWizard } from '@/components/family/SmartInvitationWizard';
@@ -64,10 +68,16 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
   // Get active tab from URL or default to 'overview'
   const activeTab = searchParams.get('tab') || 'overview';
   
+  // Get action parameter (for create family flow)
+  const actionParam = searchParams.get('action');
+  const isCreateFamilyMode = actionParam === 'create';
+  
   // Function to handle tab changes with URL parameters
   const handleTabChange = (tab: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
+    // Clear action parameter when switching tabs
+    url.searchParams.delete('action');
     router.push(url.pathname + url.search);
   };
 
@@ -109,6 +119,15 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       email: '',
       roleId: 0,
       message: ''
+    }
+  });
+
+  const transferOwnershipForm = useForm<TransferOwnershipFormData>({
+    resolver: zodResolver(transferOwnershipSchema),
+    defaultValues: {
+      newOwnerId: 0,
+      reason: '',
+      confirmTransfer: false
     }
   });
 
@@ -226,6 +245,11 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       familyCreateForm.reset();
       setMessage({ type: 'success', text: 'Family created successfully! You can now invite members.' });
       
+      // Clear the create action parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('action');
+      router.push(url.pathname + url.search);
+      
       setTimeout(async () => {
         await loadFamilyData();
       }, 500);
@@ -263,6 +287,43 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Failed to send invitation' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Transfer ownership handler (Pass the Baton)
+  const onTransferOwnership = async (data: TransferOwnershipFormData) => {
+    if (!familyData) return;
+
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      const transferData: TransferOwnershipDTO = {
+        familyId: familyData.id,
+        newOwnerId: data.newOwnerId,
+        reason: data.reason
+      };
+
+      await familyInvitationService.transferOwnership(familyData.id, transferData);
+
+      transferOwnershipForm.reset();
+      setMessage({ 
+        type: 'success', 
+        text: 'Family ownership transferred successfully! The new owner now has full control of the family.' 
+      });
+      
+      // Reload family data to reflect ownership change
+      setTimeout(async () => {
+        await loadFamilyData();
+      }, 500);
+    } catch (error) {
+      console.error('Failed to transfer ownership:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to transfer ownership' 
       });
     } finally {
       setIsSubmitting(false);
@@ -440,16 +501,19 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
         </Alert>
       )}
 
-      {/* Create Your First Family - Only show when user has no families */}
-      {allFamilies.length === 0 && (
+      {/* Create Family - Show when user has no families OR when in create mode */}
+      {(allFamilies.length === 0 || isCreateFamilyMode) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Home className="h-5 w-5" />
-              Create Your First Family
+              {allFamilies.length === 0 ? 'Create Your First Family' : 'Create New Family'}
             </CardTitle>
             <CardDescription>
-              Start by creating a family to manage members, tasks, and invite others
+              {allFamilies.length === 0 
+                ? 'Start by creating a family to manage members, tasks, and invite others'
+                : 'Create an additional family to organize different groups or households'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -494,23 +558,40 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                   )}
                 />
 
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Creating Family...
-                    </>
-                  ) : (
-                    <>
-                      <Home className="h-4 w-4" />
-                      Create Family
-                    </>
+                <div className="flex gap-3">
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Creating Family...
+                      </>
+                    ) : (
+                      <>
+                        <Home className="h-4 w-4" />
+                        Create Family
+                      </>
+                    )}
+                  </Button>
+                  
+                  {isCreateFamilyMode && allFamilies.length > 0 && (
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('action');
+                        router.push(url.pathname + url.search);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      Cancel
+                    </Button>
                   )}
-                </Button>
+                </div>
               </form>
             </Form>
           </CardContent>
@@ -654,10 +735,11 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
           
           <CardContent>
             <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="members">Members</TabsTrigger>
                 <TabsTrigger value="invitations">Invitations</TabsTrigger>
+                <TabsTrigger value="ownership">Pass the Baton</TabsTrigger>
               </TabsList>
 
               {/* Overview Tab */}
@@ -941,6 +1023,143 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                         ))}
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Pass the Baton (Ownership Transfer) Tab */}
+              <TabsContent value="ownership" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ArrowRightLeft className="h-5 w-5" />
+                      Pass the Baton
+                    </CardTitle>
+                    <CardDescription>
+                      Transfer family ownership to another member. This action cannot be undone.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...transferOwnershipForm}>
+                      <form onSubmit={transferOwnershipForm.handleSubmit(onTransferOwnership)} className="space-y-6">
+                        <FormField
+                          control={transferOwnershipForm.control}
+                          name="newOwnerId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="new-owner">New Family Owner</FormLabel>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                <FormControl>
+                                  <SelectTrigger id="new-owner">
+                                    <SelectValue placeholder="Select new owner" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {familyMembers
+                                    .filter(member => member.user.id !== user?.id) // Exclude current user
+                                    .filter(member => user?.ageGroup !== 0) // Exclude children from being new owners
+                                    .map((member) => (
+                                      <SelectItem key={member.id} value={member.user.id.toString()}>
+                                        <div className="flex items-center gap-2">
+                                          <Crown className="h-4 w-4" />
+                                          {member.user.displayName || `${member.user.firstName} ${member.user.lastName}` || member.user.username}
+                                          <span className="text-sm text-gray-500">({member.role.name})</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>
+                                Choose a family member to become the new owner. Only teens and adults can own families.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={transferOwnershipForm.control}
+                          name="reason"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel htmlFor="transfer-reason">Reason for Transfer (Optional)</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  {...field} 
+                                  id="transfer-reason"
+                                  placeholder="Explain why you're transferring ownership..."
+                                  rows={3}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Provide context for why you're passing family ownership to someone else.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={transferOwnershipForm.control}
+                          name="confirmTransfer"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                              <FormControl>
+                                <input
+                                  type="checkbox"
+                                  checked={field.value}
+                                  onChange={field.onChange}
+                                  className="mt-1"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel className="text-sm font-medium">
+                                  I understand this action cannot be undone
+                                </FormLabel>
+                                <FormDescription>
+                                  By checking this box, you confirm that you want to transfer family ownership permanently. 
+                                  You will lose all admin privileges and the new owner will have full control.
+                                </FormDescription>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+                            <div>
+                              <h4 className="font-medium text-amber-800">Important Notice</h4>
+                              <p className="text-sm text-amber-700 mt-1">
+                                Once you transfer ownership, you cannot undo this action. The new owner will have complete 
+                                control over the family, including the ability to remove you as a member. Make sure you trust 
+                                the person you're transferring ownership to.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button 
+                          type="submit" 
+                          disabled={isSubmitting}
+                          variant="destructive"
+                          className="flex items-center gap-2"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Transferring Ownership...
+                            </>
+                          ) : (
+                            <>
+                              <ArrowRightLeft className="h-4 w-4" />
+                              Transfer Ownership
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    </Form>
                   </CardContent>
                 </Card>
               </TabsContent>

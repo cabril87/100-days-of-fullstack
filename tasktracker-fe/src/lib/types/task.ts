@@ -6,6 +6,12 @@
 import { User } from './auth';
 import { FamilyDTO, FamilyMemberDTO } from './family-invitation';
 
+export interface TagDto {
+  id: number;
+  name: string;
+  color: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -26,7 +32,8 @@ export interface Task {
   createdAt: Date;
   updatedAt?: Date;
   completedAt?: Date;
-  tags?: string[];
+  tags?: TagDto[];
+  version?: number; // For optimistic concurrency control
 }
 
 // === FAMILY TASK TYPES (Matching Backend DTOs Exactly) ===
@@ -135,6 +142,7 @@ export interface UpdateTaskDTO {
   pointsValue?: number;
   assignedToUserId?: number;
   tags?: string[];
+  version?: number; // For optimistic concurrency control
 }
 
 export interface TaskStats {
@@ -300,6 +308,7 @@ export interface TaskCreationModalProps {
   trigger?: React.ReactNode;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  editingTask?: Task | null;
 }
 
 // === CACHE & API TYPES ===
@@ -322,7 +331,122 @@ export interface FlexibleApiResponse {
   [key: string]: unknown;
 }
 
+// === TASK DETAIL TYPES ===
+
 /**
- * Type-safe response handler for task API responses
+ * Checklist Item - for task sub-tasks and progress tracking
  */
+export interface ChecklistItem {
+  id: number;
+  taskId: number;
+  title: string;
+  description?: string;
+  isCompleted: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt?: Date;
+  completedAt?: Date;
+}
+
+/**
+ * Create Checklist Item - for creating new checklist items
+ */
+export interface CreateChecklistItem {
+  title: string;
+  description?: string;
+  isCompleted: boolean;
+  order: number;
+}
+
+/**
+ * Task Time Tracking - for detailed time management
+ */
+export interface TaskTimeTracking {
+  taskId: number;
+  estimatedTimeMinutes: number;
+  actualTimeMinutes: number;
+  timeSpent: number;
+  timeRemaining: number;
+  sessions: TimeTrackingSession[];
+  startedAt?: Date;
+  pausedAt?: Date;
+  isPaused: boolean;
+  totalBreakTime: number;
+}
+
+export interface TimeTrackingSession {
+  id: number;
+  taskId: number;
+  startTime: Date;
+  endTime?: Date;
+  duration: number; // in minutes
+  description?: string;
+  createdAt: Date;
+}
+
+/**
+ * Task Progress Update - for progress tracking
+ */
+export interface TaskProgressUpdate {
+  progressPercentage: number;
+  notes?: string;
+  milestones?: string[];
+  blockers?: string[];
+}
+
+// === BATCH OPERATION TYPES ===
+
+/**
+ * Batch Task Operation - for bulk operations
+ */
+export interface BatchTaskOperation {
+  operation: 'create' | 'update' | 'delete' | 'complete' | 'assign';
+  tasks?: Task[];
+  taskIds?: number[];
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Batch Task Result - response from batch operations
+ */
+export interface BatchTaskResult {
+  success: boolean;
+  message: string;
+  created?: Task[];
+  updated?: Task[];
+  deleted?: number[];
+  completed?: number[];
+  failed?: BatchTaskError[];
+}
+
+export interface BatchTaskError {
+  index: number;
+  task: Partial<Task> | CreateTaskDTO;
+  error: string;
+}
+
+// === TASK DETAIL PAGE TYPES ===
+
+/**
+ * Task Detail Props - for task detail page
+ */
+export interface TaskDetailProps {
+  taskId: number;
+  user: User;
+  onTaskUpdated?: (task: Task) => void;
+  onTaskDeleted?: (taskId: number) => void;
+}
+
+/**
+ * Task Detail Data - complete task information for detail view
+ */
+export interface TaskDetailData {
+  task: Task;
+  checklist: ChecklistItem[];
+  timeTracking: TaskTimeTracking | null;
+  tags: TagDto[];
+  isLoading: boolean;
+  error?: string;
+}
+
 export type TaskApiResponseType = ApiResponse<Task[]> | Task[] | FlexibleApiResponse; 

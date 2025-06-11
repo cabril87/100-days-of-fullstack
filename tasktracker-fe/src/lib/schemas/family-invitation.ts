@@ -195,6 +195,36 @@ export const resendInvitationSchema = z.object({
     .optional()
 });
 
+// Transfer ownership schema (Pass the Baton)
+export const transferOwnershipSchema = z.object({
+  newOwnerId: z
+    .number({
+      required_error: 'New owner must be selected',
+      invalid_type_error: 'New owner ID must be a number'
+    })
+    .positive('Please select a valid family member'),
+  
+  reason: z
+    .string()
+    .max(500, 'Reason cannot exceed 500 characters')
+    .optional()
+    .transform((reason) => reason?.trim() || undefined)
+    .refine((reason) => {
+      if (!reason) return true;
+      return reason.length >= 10;
+    }, {
+      message: 'Reason must be at least 10 characters if provided'
+    }),
+  
+  confirmTransfer: z
+    .boolean({
+      required_error: 'You must confirm the ownership transfer'
+    })
+    .refine((val) => val === true, {
+      message: 'You must confirm the ownership transfer by checking this box'
+    })
+});
+
 // Family privacy settings schema
 export const familyPrivacySchema = z.object({
   allowPublicDiscovery: z.boolean().default(false),
@@ -214,4 +244,5 @@ export type MemberRoleUpdateFormData = z.infer<typeof memberRoleUpdateSchema>;
 export type BulkInvitationFormData = z.infer<typeof bulkInvitationSchema>;
 export type FamilySearchFormData = z.infer<typeof familySearchSchema>;
 export type ResendInvitationFormData = z.infer<typeof resendInvitationSchema>;
+export type TransferOwnershipFormData = z.infer<typeof transferOwnershipSchema>;
 export type FamilyPrivacyFormData = z.infer<typeof familyPrivacySchema>; 

@@ -256,7 +256,7 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 mt-4 w-full sm:w-auto">
-                <Button onClick={() => router.push('/settings/family')} className="w-full sm:w-auto">
+                <Button onClick={() => router.push('/settings/family?action=create')} className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
                   Create Family
                 </Button>
@@ -391,7 +391,7 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
         <CardContent className="px-4 sm:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             <Button 
-              onClick={() => router.push('/settings/family')}
+              onClick={() => router.push('/settings/family?action=create')}
               variant="outline" 
               className="h-auto p-3 sm:p-4"
             >

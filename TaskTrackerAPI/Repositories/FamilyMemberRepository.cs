@@ -132,6 +132,8 @@ public class FamilyMemberRepository : IFamilyMemberRepository
     {
         return await _context.Tasks
             .Where(t => t.AssignedToFamilyMemberId == familyMemberId)
+            .Include(t => t.Category)
+            .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
             .OrderBy(t => t.DueDate)
             .ToListAsync();
     }

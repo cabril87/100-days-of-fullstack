@@ -9,6 +9,8 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using AutoMapper;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Models.Security;
@@ -29,14 +31,26 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
-                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+                .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
+                    src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
+                    {
+                        Id = tt.Tag!.Id,
+                        Name = tt.Tag!.Name,
+                        Color = "#6366f1" // Default color since Tag model doesn't have Color
+                    }).ToList() : new List<TagDto>()));
             
             // Map from TaskItem to TaskItemResponseDTO (new)
             CreateMap<TaskItem, TaskItemResponseDTO>()
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
-                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+                .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
+                    src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
+                    {
+                        Id = tt.Tag!.Id,
+                        Name = tt.Tag!.Name,
+                        Color = "#6366f1" // Default color since Tag model doesn't have Color
+                    }).ToList() : new List<TagDto>()));
                 
             // Map from TaskItemDTO to TaskItemResponseDTO
             CreateMap<TaskItemDTO, TaskItemResponseDTO>();

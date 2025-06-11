@@ -39,7 +39,9 @@ public static class DatabaseSeeder
             await SeedDefaultUserAsync(context);
             await SeedFamilyRolesAsync(context);
             await SeedDefaultCategoriesAsync(context);
+            await SeedDefaultTagsAsync(context);
             await SeedDefaultTasksAsync(context);
+            await SeedTaskTagsAsync(context);
             await SeedDefaultPriorityMultipliersAsync(context);
 
             logger.LogInformation("Seed data operation completed successfully");
@@ -250,5 +252,77 @@ public static class DatabaseSeeder
 
         await context.PriorityMultipliers.AddRangeAsync(multipliers);
         await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedDefaultTagsAsync(ApplicationDbContext context)
+    {
+        if (await context.Tags.AnyAsync())
+        {
+            return; // Tags already seeded
+        }
+
+        User? adminUser = await context.Users.FirstOrDefaultAsync(u => u.Role == "Admin");
+        if (adminUser == null) return;
+
+        List<Tag> tags = new List<Tag>
+        {
+            new Tag { Name = "Important", UserId = adminUser.Id },
+            new Tag { Name = "Urgent", UserId = adminUser.Id },
+            new Tag { Name = "Quick", UserId = adminUser.Id },
+            new Tag { Name = "Review", UserId = adminUser.Id },
+            new Tag { Name = "Meeting", UserId = adminUser.Id },
+            new Tag { Name = "Bug", UserId = adminUser.Id },
+            new Tag { Name = "Feature", UserId = adminUser.Id },
+            new Tag { Name = "Learning", UserId = adminUser.Id }
+        };
+
+        await context.Tags.AddRangeAsync(tags);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedTaskTagsAsync(ApplicationDbContext context)
+    {
+        if (await context.TaskTags.AnyAsync())
+        {
+            return; // Task tags already seeded
+        }
+
+        // Get the first few tasks and tags to associate them
+        List<TaskItem> tasks = await context.Tasks.Take(2).ToListAsync();
+        List<Tag> tags = await context.Tags.Take(4).ToListAsync();
+
+        if (!tasks.Any() || !tags.Any()) return;
+
+        List<TaskTag> taskTags = new List<TaskTag>();
+
+        // Associate first task with "Important" and "Urgent" tags
+        if (tasks.Count > 0)
+        {
+            Tag? importantTag = tags.FirstOrDefault(t => t.Name == "Important");
+            Tag? urgentTag = tags.FirstOrDefault(t => t.Name == "Urgent");
+
+            if (importantTag != null)
+                taskTags.Add(new TaskTag { TaskId = tasks[0].Id, TagId = importantTag.Id });
+            if (urgentTag != null)
+                taskTags.Add(new TaskTag { TaskId = tasks[0].Id, TagId = urgentTag.Id });
+        }
+
+        // Associate second task with "Quick" and "Review" tags  
+        if (tasks.Count > 1)
+        {
+            Tag? quickTag = tags.FirstOrDefault(t => t.Name == "Quick");
+            Tag? reviewTag = tags.FirstOrDefault(t => t.Name == "Review");
+
+            if (quickTag != null)
+                taskTags.Add(new TaskTag { TaskId = tasks[1].Id, TagId = quickTag.Id });
+            if (reviewTag != null)
+                taskTags.Add(new TaskTag { TaskId = tasks[1].Id, TagId = reviewTag.Id });
+        }
+
+        if (taskTags.Any())
+        {
+            await context.TaskTags.AddRangeAsync(taskTags);
+            await context.SaveChangesAsync();
+        }
     }
 } 

@@ -292,13 +292,22 @@ export class ApiClient {
   }
   
   async get<T>(endpoint: string, headers?: HeadersInit): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
+    // Add cache-busting timestamp to prevent stale data issues
+    const separator = endpoint.includes('?') ? '&' : '?';
+    const cacheBuster = `_t=${Date.now()}`;
+    const url = `${this.baseUrl}${endpoint}${separator}${cacheBuster}`;
     
     return withTimeout(
       withRetry(async () => {
         const response = await fetch(url, {
           method: 'GET',
-          headers: { ...getAuthHeaders(), ...headers },
+          headers: { 
+            ...getAuthHeaders(), 
+            ...headers,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
           credentials: 'include', // Include cookies for HTTP-only cookie support
         });
         

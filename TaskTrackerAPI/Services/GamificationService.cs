@@ -123,6 +123,26 @@ namespace TaskTrackerAPI.Services
 
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             
+         
+            // This prevents foreign key constraint violations during concurrent operations
+            if (taskId.HasValue && transactionType != "task_deletion")
+            {
+                try
+                {
+                    TaskItem? taskExists = await _gamificationRepository.GetTaskAsync(taskId ?? 0);
+                    if (taskExists == null)
+                    {
+                        _logger.LogWarning("Task {TaskId} no longer exists, creating transaction without TaskId reference", taskId ?? 0);
+                        taskId = null; // Set to null to avoid FK constraint violation
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Unable to verify task {TaskId} existence, proceeding without TaskId reference", taskId ?? 0);
+                    taskId = null; // Set to null to avoid FK constraint violation
+                }
+            }
+            
             // Create a point transaction record
             PointTransaction transaction = new PointTransaction
             {
@@ -130,33 +150,52 @@ namespace TaskTrackerAPI.Services
                 Points = finalPoints,
                 TransactionType = transactionType,
                 Description = $"{description} (Earned: {finalPoints} points)",
-                TaskId = taskId,
+                TaskId = taskId, // Will be NULL if task doesn't exist or was deleted
                 CreatedAt = DateTime.UtcNow
             };
 
-            _gamificationRepository.AddPointTransaction(transaction);
-            
-            // Update user progress
-            userProgress.CurrentPoints += finalPoints;
-            userProgress.TotalPointsEarned += finalPoints;
-            userProgress.UpdatedAt = DateTime.UtcNow;
-            
-            // Check for level up
-            int oldLevel = userProgress.Level;
-            while (userProgress.CurrentPoints >= userProgress.NextLevelThreshold)
+            try
             {
-                userProgress.Level++;
-                userProgress.CurrentPoints -= userProgress.NextLevelThreshold;
-                userProgress.NextLevelThreshold = CalculateNextLevelThreshold(userProgress.Level);
+                _gamificationRepository.AddPointTransaction(transaction);
                 
-                // Create level up notification or achievement
-                await UnlockLevelBasedAchievements(userId, userProgress.Level);
-            }
+                // Update user progress
+                userProgress.CurrentPoints += finalPoints;
+                userProgress.TotalPointsEarned += finalPoints;
+                userProgress.UpdatedAt = DateTime.UtcNow;
+                
+                // Check for level up
+                int oldLevel = userProgress.Level;
+                while (userProgress.CurrentPoints >= userProgress.NextLevelThreshold)
+                {
+                    userProgress.Level++;
+                    userProgress.CurrentPoints -= userProgress.NextLevelThreshold;
+                    userProgress.NextLevelThreshold = CalculateNextLevelThreshold(userProgress.Level);
+                    
+                    // Create level up notification or achievement
+                    await UnlockLevelBasedAchievements(userId, userProgress.Level);
+                }
 
-            // Check for tier advancement
-            await UpdateUserTierAsync(userId);
-            
-            await _gamificationRepository.SaveChangesAsync();
+                // Check for tier advancement
+                await UpdateUserTierAsync(userId);
+                
+                await _gamificationRepository.SaveChangesAsync();
+                
+                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType}", 
+                    finalPoints, userId, transactionType);
+            }
+            catch (DbUpdateException dbEx) when (dbEx.Message.Contains("FK_PointTransactions_Tasks_TaskId"))
+            {
+                // Handle foreign key constraint violation gracefully
+                _logger.LogWarning(dbEx, "Foreign key constraint violation for TaskId {TaskId}, retrying without TaskId reference", taskId ?? 0);
+                
+                // Retry without TaskId reference
+                transaction.TaskId = null;
+                _gamificationRepository.AddPointTransaction(transaction);
+                await _gamificationRepository.SaveChangesAsync();
+                
+                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType} (without TaskId reference)", 
+                    finalPoints, userId, transactionType);
+            }
             
             // Send real-time notifications
             try
@@ -165,9 +204,10 @@ namespace TaskTrackerAPI.Services
                 await _realTimeService.SendPointsEarnedAsync(userId, finalPoints, description, taskId);
                 
                 // Send level up notification if level changed
-                if (userProgress.Level > oldLevel)
+                UserProgress updatedProgress = await GetInternalUserProgressAsync(userId);
+                if (updatedProgress.Level > userProgress.Level)
                 {
-                    await _realTimeService.SendLevelUpAsync(userId, userProgress.Level, oldLevel);
+                    await _realTimeService.SendLevelUpAsync(userId, updatedProgress.Level, userProgress.Level);
                 }
             }
             catch (Exception ex)

@@ -19,11 +19,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using TaskTrackerAPI.Attributes;
 using TaskTrackerAPI.Controllers.V2;
+using TaskTrackerAPI.DTOs.Batch;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
-using TaskTrackerAPI.Utils;
 
 namespace TaskTrackerAPI.Controllers.V1
 {
@@ -241,55 +241,135 @@ namespace TaskTrackerAPI.Controllers.V1
         /// Delete multiple tasks in a single operation
         /// </summary>
         /// <param name="ids">Comma-separated list of task IDs</param>
-        /// <returns>Success status</returns>
+        /// <returns>Success status with deletion summary</returns>
         [HttpDelete("tasks")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult> DeleteTasksBatch([FromQuery] string ids)
+        public async Task<ActionResult<ApiResponse<BatchDeletionResultDTO>>> DeleteTasksBatch([FromQuery] string ids)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(ids))
                 {
-                    return BadRequest(ApiResponse<object>.BadRequestResponse("No task IDs provided"));
+                    return BadRequest(ApiResponse<BatchDeletionResultDTO>.BadRequestResponse("No task IDs provided"));
                 }
 
                 // Parse and validate IDs
                 List<int> taskIds = ids.Split(',')
                     .Where(id => int.TryParse(id.Trim(), out _))
                     .Select(id => int.Parse(id.Trim()))
+                    .Distinct() // Remove duplicates
                     .ToList();
 
                 if (taskIds.Count == 0)
                 {
-                    return BadRequest(ApiResponse<object>.BadRequestResponse("Invalid task IDs"));
+                    return BadRequest(ApiResponse<BatchDeletionResultDTO>.BadRequestResponse("Invalid task IDs"));
                 }
 
                 if (taskIds.Count > _maxBatchSize)
                 {
-                    return BadRequest(ApiResponse<object>.BadRequestResponse(
+                    return BadRequest(ApiResponse<BatchDeletionResultDTO>.BadRequestResponse(
                         $"Batch size exceeds maximum allowed ({_maxBatchSize})"));
                 }
 
                 int userId = User.GetUserIdAsInt();
+                
+                // ENTERPRISE SOLUTION: Process deletions with comprehensive tracking
+                var deletionResult = new BatchDeletionResultDTO
+                {
+                    RequestedCount = taskIds.Count,
+                    SuccessfulDeletions = new List<int>(),
+                    FailedDeletions = new List<FailedDeletionDTO>(),
+                    SkippedDeletions = new List<int>()
+                };
 
-                // Delete tasks that user owns
+                _logger.LogInformation("Starting batch deletion of {Count} tasks for user {UserId}", taskIds.Count, userId);
+
+                // Process each task deletion individually for better error isolation
                 foreach (int taskId in taskIds)
                 {
-                    bool isOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
-                    if (isOwned)
+                    try
                     {
+                        // Check ownership first
+                        bool isOwned = await _taskService.IsTaskOwnedByUserAsync(taskId, userId);
+                        if (!isOwned)
+                        {
+                            deletionResult.SkippedDeletions.Add(taskId);
+                            _logger.LogDebug("Skipped task {TaskId} - not owned by user {UserId}", taskId, userId);
+                            continue;
+                        }
+
+                        // Attempt deletion with enhanced error handling
                         await _taskService.DeleteTaskAsync(userId, taskId);
+                        deletionResult.SuccessfulDeletions.Add(taskId);
+                        
+                        _logger.LogDebug("Successfully deleted task {TaskId} for user {UserId}", taskId, userId);
+                    }
+                    catch (InvalidOperationException ex) when (ex.Message.Contains("not found") || ex.Message.Contains("not owned"))
+                    {
+                        // Task doesn't exist or isn't owned - treat as skipped
+                        deletionResult.SkippedDeletions.Add(taskId);
+                        _logger.LogDebug("Skipped task {TaskId} - {Reason}", taskId, ex.Message);
+                    }
+                    catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx) when (dbEx.Message.Contains("FK_PointTransactions_Tasks_TaskId"))
+                    {
+                        // Handle foreign key constraint specifically
+                        deletionResult.FailedDeletions.Add(new FailedDeletionDTO 
+                        { 
+                            TaskId = taskId, 
+                            Reason = "Database constraint error - task may be referenced by other records",
+                            ErrorCode = "FK_CONSTRAINT_VIOLATION"
+                        });
+                        _logger.LogWarning("Foreign key constraint prevented deletion of task {TaskId}", taskId);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Handle any other errors
+                        deletionResult.FailedDeletions.Add(new FailedDeletionDTO 
+                        { 
+                            TaskId = taskId, 
+                            Reason = ex.Message,
+                            ErrorCode = "DELETION_ERROR"
+                        });
+                        _logger.LogError(ex, "Failed to delete task {TaskId} for user {UserId}", taskId, userId);
                     }
                 }
 
-                return NoContent();
+                // Calculate summary statistics
+                deletionResult.SuccessCount = deletionResult.SuccessfulDeletions.Count;
+                deletionResult.FailureCount = deletionResult.FailedDeletions.Count;
+                deletionResult.SkippedCount = deletionResult.SkippedDeletions.Count;
+                deletionResult.ProcessedCount = deletionResult.SuccessCount + deletionResult.FailureCount + deletionResult.SkippedCount;
+
+                _logger.LogInformation("Batch deletion completed for user {UserId}: {SuccessCount} successful, {FailureCount} failed, {SkippedCount} skipped", 
+                    userId, deletionResult.SuccessCount, deletionResult.FailureCount, deletionResult.SkippedCount);
+
+                // Return appropriate status based on results
+                if (deletionResult.FailureCount > 0)
+                {
+                    return Ok(ApiResponse<BatchDeletionResultDTO>.PartialSuccessResponse(
+                        deletionResult, 
+                        $"Batch deletion completed with {deletionResult.FailureCount} failures"));
+                }
+                else if (deletionResult.SuccessCount == 0)
+                {
+                    return Ok(ApiResponse<BatchDeletionResultDTO>.SuccessResponse(
+                        deletionResult, 
+                        "No tasks were deleted (all were skipped or invalid)"));
+                }
+                else
+                {
+                    return Ok(ApiResponse<BatchDeletionResultDTO>.SuccessResponse(
+                        deletionResult, 
+                        $"Successfully deleted {deletionResult.SuccessCount} tasks"));
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting task batch");
-                return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+                _logger.LogError(ex, "Error during batch task deletion");
+                return StatusCode(500, ApiResponse<BatchDeletionResultDTO>.ServerErrorResponse(
+                    "An unexpected error occurred during batch deletion"));
             }
         }
 

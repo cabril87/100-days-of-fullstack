@@ -14,11 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { CreateTaskDTO, CreateTaskFormData, TaskCreationModalProps } from '@/lib/types/task';
+import { CreateTaskDTO, CreateTaskFormData, TaskCreationModalProps, Task, UpdateTaskDTO } from '@/lib/types/task';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { createTaskSchema } from '@/lib/schemas/task';
 
-export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange }: TaskCreationModalProps) {
+export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange, editingTask }: TaskCreationModalProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
   // Use external control if provided, otherwise internal state
@@ -29,12 +29,14 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
+  const isEditing = !!editingTask;
+
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
     defaultValues: {
       title: '',
       description: '',
-      priority: 'Medium',
+      priority: 'Low',
       dueDate: '',
       estimatedTimeMinutes: 30,
       pointsValue: 10,
@@ -43,15 +45,53 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
     }
   });
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editingTask) {
+      // Convert date to datetime-local format (yyyy-MM-ddThh:mm)
+      let formattedDate = '';
+      if (editingTask.dueDate) {
+        const date = new Date(editingTask.dueDate);
+        // Format to datetime-local (yyyy-MM-ddTHH:mm)
+        formattedDate = date.toISOString().slice(0, 16);
+      }
+      
+      form.reset({
+        title: editingTask.title,
+        description: editingTask.description || '',
+        priority: editingTask.priority || 'Low',
+        dueDate: formattedDate,
+        estimatedTimeMinutes: editingTask.estimatedTimeMinutes || 30,
+        pointsValue: editingTask.pointsValue || 10,
+        familyId: editingTask.familyId || family?.id,
+        assignedToUserId: editingTask.assignedToUserId || undefined,
+        tags: editingTask.tags?.map(tag => tag.name) || []
+      });
+    } else {
+      form.reset({
+        title: '',
+        description: '',
+        priority: 'Low',
+        dueDate: '',
+        estimatedTimeMinutes: 30,
+        pointsValue: 10,
+        familyId: family?.id,
+        assignedToUserId: undefined,
+        tags: []
+      });
+    }
+  }, [editingTask, family?.id, form]);
+
   const watchedTags = form.watch('tags') || [];
   const watchedPoints = form.watch('pointsValue') || 10;
-  const watchedPriority = form.watch('priority') || 'Medium';
+  const watchedPriority = form.watch('priority') || 'Low';
 
   const handleAddTag = () => {
     if (tagInput.trim() && !watchedTags.includes(tagInput.trim())) {
       const newTags = [...watchedTags, tagInput.trim()];
       form.setValue('tags', newTags);
       setTagInput('');
+      console.log('🏷️ Added tag:', tagInput.trim(), 'New tags:', newTags);
     }
   };
 
@@ -61,57 +101,79 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   };
 
   const onSubmit = async (data: CreateTaskFormData) => {
-    console.log('🎯 TaskCreationModal onSubmit called');
+    console.log(`🎯 TaskCreationModal onSubmit called (${isEditing ? 'editing' : 'creating'})`);
     console.log('📝 Form data received:', data);
-    console.log('🏷️ Tags data:', { tags: data.tags, tagInput, watchedTags });
+    console.log('🔍 Form validation errors:', form.formState.errors);
+    
+    // Don't proceed if there are validation errors
+    const hasErrors = Object.keys(form.formState.errors).length > 0;
+    if (hasErrors) {
+      console.log('❌ Form has validation errors, not submitting:', form.formState.errors);
+      return;
+    }
 
     // Auto-add any remaining tag input before submitting
     let finalTags = data.tags || [];
     if (tagInput.trim() && !finalTags.includes(tagInput.trim())) {
       finalTags = [...finalTags, tagInput.trim()];
       console.log('🏷️ Auto-added tag from input:', tagInput.trim());
-      console.log('🏷️ Final tags:', finalTags);
     }
 
     setIsSubmitting(true);
     try {
-      const taskData: CreateTaskDTO = {
-        title: data.title,
-        description: data.description || undefined,
-        priority: data.priority,
-        dueDate: data.dueDate || undefined,
-        categoryId: data.categoryId || undefined,
-        estimatedTimeMinutes: data.estimatedTimeMinutes || undefined,
-        pointsValue: data.pointsValue || 10,
-        familyId: data.familyId || undefined,
-        assignedToUserId: data.assignedToUserId || undefined,
-        tags: finalTags.length > 0 ? finalTags : undefined
-      };
+      let resultTask: Task;
 
-      console.log('🚀 About to call taskService.createTask with:', taskData);
-      const createdTask = await taskService.createTask(taskData);
-      console.log('✅ Task created successfully:', createdTask);
-      console.log('🔍 Created task details:', {
-        id: createdTask.id,
-        title: createdTask.title,
-        tags: createdTask.tags,
-        priority: createdTask.priority,
-        pointsValue: createdTask.pointsValue
-      });
+      if (isEditing && editingTask) {
+        // Update existing task
+        const updateData: UpdateTaskDTO = {
+          title: data.title,
+          description: data.description || undefined,
+          priority: data.priority,
+          dueDate: data.dueDate || undefined,
+          categoryId: data.categoryId || undefined,
+          estimatedTimeMinutes: data.estimatedTimeMinutes || undefined,
+          pointsValue: data.pointsValue || 10,
+          assignedToUserId: data.assignedToUserId || undefined,
+          tags: finalTags.length > 0 ? finalTags : undefined,
+          version: editingTask.version || 1  // Include current version for optimistic concurrency
+        };
+
+        console.log('🔄 About to call taskService.updateTask with:', updateData);
+        resultTask = await taskService.updateTask(editingTask.id, updateData);
+        console.log('✅ Task updated successfully:', resultTask);
+      } else {
+        // Create new task
+        const taskData: CreateTaskDTO = {
+          title: data.title,
+          description: data.description || undefined,
+          priority: data.priority,
+          dueDate: data.dueDate || undefined,
+          categoryId: data.categoryId || undefined,
+          estimatedTimeMinutes: data.estimatedTimeMinutes || undefined,
+          pointsValue: data.pointsValue || 10,
+          familyId: data.familyId || undefined,
+          assignedToUserId: data.assignedToUserId || undefined,
+          tags: finalTags.length > 0 ? finalTags : undefined
+        };
+
+        console.log('🚀 About to call taskService.createTask with:', taskData);
+        resultTask = await taskService.createTask(taskData);
+        console.log('✅ Task created successfully:', resultTask);
+      }
       
       // Call success callback
       if (onTaskCreated) {
-        console.log('📤 Calling onTaskCreated with task:', createdTask);
-        onTaskCreated(createdTask);
+        console.log(`📤 Calling onTaskCreated with ${isEditing ? 'updated' : 'created'} task:`, resultTask);
+        onTaskCreated(resultTask);
       }
 
       // Reset form and close modal
       form.reset();
-      setIsOpen(false);
       setTagInput('');
+      setIsOpen(false);
 
     } catch (error) {
-      console.error('❌ Failed to create task:', error);
+      console.error(`❌ Failed to ${isEditing ? 'update' : 'create'} task:`, error);
       // Error handling could be enhanced with toast notifications
     } finally {
       setIsSubmitting(false);
@@ -167,6 +229,11 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
     fetchFamilyMembers();
   }, [family]);
 
+  // Update dialog header
+  const dialogTitle = isEditing ? 'Edit Task' : 'Create New Task';
+  const submitButtonText = isEditing ? 'Update Task' : 'Create Task';
+  const iconComponent = isEditing ? <Target className="h-4 w-4 sm:h-5 sm:w-5 text-white" /> : <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-pulse" />;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       {trigger && (
@@ -195,11 +262,11 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
           
           <DialogTitle className="relative flex items-center gap-2 sm:gap-3 text-xl sm:text-2xl font-bold">
             <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full shadow-lg">
-              <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-white animate-pulse" />
+              {iconComponent}
             </div>
             <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
-              <span className="hidden sm:inline">Create Epic Task</span>
-              <span className="sm:hidden">Create Task</span>
+              <span className="hidden sm:inline">{dialogTitle}</span>
+              <span className="sm:hidden">{dialogTitle}</span>
             </span>
             <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 animate-bounce" />
           </DialogTitle>
@@ -428,13 +495,21 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
                         <Users className="h-4 w-4 text-cyan-500" />
                         Quest Assignee
                       </FormLabel>
-                      <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}>
+                      <Select value={field.value?.toString() || ""} onValueChange={(value) => field.onChange(value && value !== "none" ? parseInt(value) : undefined)}>
                         <FormControl>
                           <SelectTrigger className="h-12 text-base border-2 border-cyan-200 dark:border-cyan-700 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 bg-gradient-to-r from-white to-cyan-50 dark:from-gray-800 dark:to-cyan-900/20 transition-all duration-200 hover:border-cyan-400 dark:hover:border-cyan-600">
                             <SelectValue placeholder="👥 Assign this epic quest to..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white dark:bg-gray-800 border-2 border-cyan-200 dark:border-cyan-700 shadow-2xl rounded-lg">
+                          <SelectItem value="none" className="py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200">
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full flex items-center justify-center shadow-md">
+                                <span className="text-white text-xs font-bold">--</span>
+                              </div>
+                              <span className="font-medium text-gray-600 dark:text-gray-400">No assignment</span>
+                            </div>
+                          </SelectItem>
                           <SelectItem value={user.id.toString()} className="py-3 px-4 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 cursor-pointer transition-colors duration-200">
                             <div className="flex items-center gap-3">
                               <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
@@ -603,14 +678,14 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="hidden sm:inline">Creating Epic Quest...</span>
-                      <span className="sm:hidden">Creating...</span>
+                      <span className="hidden sm:inline">{submitButtonText}</span>
+                      <span className="sm:hidden">{submitButtonText}</span>
                     </>
                   ) : (
                     <>
                       <Trophy className="h-4 w-4 animate-bounce" />
-                      <span className="hidden sm:inline">Create Epic Task</span>
-                      <span className="sm:hidden">Create Task</span>
+                      <span className="hidden sm:inline">{submitButtonText}</span>
+                      <span className="sm:hidden">{submitButtonText}</span>
                       <Sparkles className="h-4 w-4 animate-pulse" />
                     </>
                   )}

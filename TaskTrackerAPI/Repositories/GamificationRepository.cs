@@ -372,6 +372,7 @@ namespace TaskTrackerAPI.Repositories
             return await _context.Tasks
                 .Where(t => t.UserId == userId)
                 .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 
@@ -381,6 +382,7 @@ namespace TaskTrackerAPI.Repositories
                 .Where(t => t.UserId == userId && t.CompletedAt != null && 
                            t.CompletedAt >= startDate && t.CompletedAt <= endDate)
                 .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 
@@ -435,6 +437,7 @@ namespace TaskTrackerAPI.Repositories
         {
             return await _context.Tasks
                 .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .FirstOrDefaultAsync(t => t.Id == taskId);
         }
 
@@ -635,6 +638,8 @@ namespace TaskTrackerAPI.Repositories
         {
             return await _context.Tasks
                 .Where(t => t.AssignedToId == userId && !t.IsCompleted)
+                .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 
@@ -911,6 +916,8 @@ namespace TaskTrackerAPI.Repositories
                            t.CompletedAt.Value >= startOfDay && 
                            t.CompletedAt.Value < endOfDay &&
                            t.CategoryId.HasValue && categoryIds.Contains(t.CategoryId.Value))
+                .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 
@@ -919,6 +926,8 @@ namespace TaskTrackerAPI.Repositories
             return await _context.Tasks
                 .Where(t => t.UserId == userId && t.IsCompleted && 
                            !string.IsNullOrEmpty(t.Priority) && priorities.Contains(t.Priority))
+                .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 

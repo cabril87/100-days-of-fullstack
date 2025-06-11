@@ -65,6 +65,7 @@ namespace TaskTrackerAPI.Repositories
             return await _context.Tasks
                 .Where(t => t.UserId == userId)
                 .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 
@@ -73,6 +74,7 @@ namespace TaskTrackerAPI.Repositories
             return await _context.Tasks
                 .Where(t => t.UserId == userId && t.CompletedAt != null && t.CompletedAt.Value.Date == date.Date)
                 .Include(t => t.Category)
+                .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .ToListAsync();
         }
 

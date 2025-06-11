@@ -53,6 +53,12 @@ public class TaskItem
     public int? EstimatedTimeMinutes { get; set; }
 
     /// <summary>
+    /// Points value for gamification system
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Points value must be positive")]
+    public int? PointsValue { get; set; }
+
+    /// <summary>
     /// Progress percentage of task completion (0-100)
     /// </summary>
     [Range(0, 100)]

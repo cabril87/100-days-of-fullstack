@@ -46,6 +46,8 @@ public class BoardRepository : IBoardRepository
     {
         return await _context.Tasks
             .Where(t => t.BoardId == boardId)
+            .Include(t => t.Category)
+            .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
             .OrderBy(t => t.BoardOrder)
             .ToListAsync();
     }

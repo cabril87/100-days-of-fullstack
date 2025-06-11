@@ -7,16 +7,8 @@ import { X, Cookie, Settings, Shield, Eye, TrendingUp } from 'lucide-react';
 import { cookieConsentService } from '@/lib/services/cookieConsentService';
 import type { CookieConsentPreferences } from '@/lib/types/cookie-consent';
 
-interface CookieConsentBannerProps {
-  position?: 'bottom' | 'top';
-  companyName?: string;
-}
-
-export function CookieConsentBanner({ 
-  position = 'bottom', 
-  companyName = 'TaskTracker'
-}: CookieConsentBannerProps) {
-  const [isVisible, setIsVisible] = useState(false);
+export function CookieConsentBanner() {
+  const [showBanner, setShowBanner] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [preferences, setPreferences] = useState<CookieConsentPreferences>({
     necessary: true, // Always required
@@ -26,12 +18,16 @@ export function CookieConsentBanner({
   });
   const [isLoading, setIsLoading] = useState(false);
 
+  // Cookie consent configuration
+  const privacyPolicyUrl = "/privacy-policy";
+  const cookiePolicyUrl = "/cookie-policy";
+
   useEffect(() => {
     // Check if user has already made consent choices
     const checkConsentStatus = async () => {
       try {
         const needsConsent = cookieConsentService.needsConsent();
-        setIsVisible(needsConsent);
+        setShowBanner(needsConsent);
         
         if (!needsConsent) {
           const currentConsent = cookieConsentService.getConsent();
@@ -41,7 +37,7 @@ export function CookieConsentBanner({
         }
       } catch (error) {
         console.error('Error checking consent status:', error);
-        setIsVisible(true); // Show banner on error to be safe
+        setShowBanner(true); // Show banner on error to be safe
       }
     };
 
@@ -60,7 +56,7 @@ export function CookieConsentBanner({
       
       cookieConsentService.setConsent(allAcceptedPreferences);
       setPreferences(allAcceptedPreferences);
-      setIsVisible(false);
+      setShowBanner(false);
     } catch (error) {
       console.error('Error recording consent:', error);
     } finally {
@@ -80,7 +76,7 @@ export function CookieConsentBanner({
       
       cookieConsentService.setConsent(necessaryOnlyPreferences);
       setPreferences(necessaryOnlyPreferences);
-      setIsVisible(false);
+      setShowBanner(false);
     } catch (error) {
       console.error('Error recording consent:', error);
     } finally {
@@ -92,7 +88,7 @@ export function CookieConsentBanner({
     setIsLoading(true);
     try {
       cookieConsentService.setConsent(preferences);
-      setIsVisible(false);
+      setShowBanner(false);
     } catch (error) {
       console.error('Error saving preferences:', error);
     } finally {
@@ -136,14 +132,10 @@ export function CookieConsentBanner({
     }
   };
 
-  if (!isVisible) return null;
-
-  const positionClasses = position === 'bottom' 
-    ? 'bottom-0 left-0 right-0' 
-    : 'top-0 left-0 right-0';
+  if (!showBanner) return null;
 
   return (
-    <div className={`fixed ${positionClasses} z-50 inset-x-0`}>
+    <div className="fixed bottom-0 left-0 right-0 z-50 inset-x-0">
       {/* Sleek Thin Banner */}
       <div className="w-full bg-gradient-to-r from-purple-700 via-purple-600 to-blue-700 border-t border-yellow-400/50 shadow-lg backdrop-blur-sm">
         <div className="relative">
@@ -195,7 +187,7 @@ export function CookieConsentBanner({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsVisible(false)}
+                      onClick={() => setShowBanner(false)}
                       className="h-8 w-8 p-0 text-white hover:bg-white/10 rounded-full flex-shrink-0"
                     >
                       <X className="h-4 w-4" />
@@ -213,7 +205,7 @@ export function CookieConsentBanner({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setIsVisible(false)}
+                      onClick={() => setShowBanner(false)}
                       className="h-6 w-6 p-0 text-white hover:bg-white/10 rounded-full"
                     >
                       <X className="h-3 w-3" />
@@ -282,9 +274,9 @@ export function CookieConsentBanner({
               {!showDetails && (
                 <div className="mt-2 pt-2 border-t border-white/10 text-center">
                   <p className="text-purple-200 text-xs">
-                    <a href="/privacy" className="text-yellow-400 hover:text-yellow-300 underline">Privacy</a>
+                    <a href={privacyPolicyUrl} className="text-yellow-400 hover:text-yellow-300 underline">Privacy</a>
                     {' • '}
-                    <a href="/cookies" className="text-yellow-400 hover:text-yellow-300 underline">Cookies</a>
+                    <a href={cookiePolicyUrl} className="text-yellow-400 hover:text-yellow-300 underline">Cookies</a>
                   </p>
                 </div>
               )}
@@ -294,4 +286,7 @@ export function CookieConsentBanner({
       </div>
     </div>
   );
-} 
+}
+
+// Default export
+export default CookieConsentBanner; 

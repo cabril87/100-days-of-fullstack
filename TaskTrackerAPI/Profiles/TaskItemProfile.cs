@@ -12,6 +12,8 @@ using System;
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Profiles
 {
@@ -24,14 +26,28 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
-                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+                .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
+                    src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
+                    {
+                        Id = tt.Tag!.Id,
+                        Name = tt.Tag!.Name,
+                        Color = "#6366f1" // Default color since Tag model doesn't have Color
+                    }).ToList() : new List<TagDto>()))
+                .ForMember(dest => dest.TagIds, opt => opt.MapFrom(src => 
+                    src.TaskTags != null ? src.TaskTags.Select(tt => tt.TagId).ToList() : new List<int>()));
             
             // TaskItem -> TaskItemResponseDTO (for API responses)
             CreateMap<TaskItem, TaskItemResponseDTO>()
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
-                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+                .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
+                    src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
+                    {
+                        Id = tt.Tag!.Id,
+                        Name = tt.Tag!.Name,
+                        Color = "#6366f1" // Default color since Tag model doesn't have Color
+                    }).ToList() : new List<TagDto>()));
             
             // TaskItemDTO -> TaskItemResponseDTO
             CreateMap<TaskItemDTO, TaskItemResponseDTO>();
