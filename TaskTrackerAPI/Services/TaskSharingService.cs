@@ -48,68 +48,78 @@ namespace TaskTrackerAPI.Services
             _logger = logger;
         }
 
-        public async Task<FamilyTaskItemDTO?> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int userId, bool requiresApproval)
+        public async Task<FamilyTaskItemDTO?> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int assignedByUserId, bool requiresApproval)
         {
             try
             {
-                // First check if the user has permission to assign tasks
+                _logger.LogInformation("🎯 Starting task assignment: TaskId={TaskId}, FamilyMemberId={FamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
+                    taskId, familyMemberId, assignedByUserId);
+
+                // Get the family member to determine family ID
                 FamilyMember? familyMember = await _familyMemberRepository.GetByIdAsync(familyMemberId);
                 if (familyMember == null)
                 {
-                    _logger.LogWarning("Family member with ID {FamilyMemberId} not found", familyMemberId);
+                    _logger.LogWarning("❌ Family member with ID {FamilyMemberId} not found", familyMemberId);
                     return null;
                 }
 
-                int familyId = familyMember.FamilyId;
+                _logger.LogInformation("👥 Found family member: Id={Id}, FamilyId={FamilyId}, UserId={UserId}", 
+                    familyMember.Id, familyMember.FamilyId, familyMember.UserId);
 
-                // Check if the user is a member of the family and has assign_tasks permission
-                bool canAssign = await _familyRepository.HasPermissionAsync(familyId, userId, "assign_tasks");
-                if (!canAssign)
+                // Check if the assigning user has permission
+                bool hasPermission = await _familyRepository.HasPermissionAsync(familyMember.FamilyId, assignedByUserId, "assign_tasks");
+                if (!hasPermission)
                 {
-                    _logger.LogWarning("User {UserId} doesn't have permission to assign tasks in family {FamilyId}", userId, familyId);
+                    _logger.LogWarning("❌ User {UserId} doesn't have permission to assign tasks in family {FamilyId}", assignedByUserId, familyMember.FamilyId);
                     throw new UnauthorizedAccessException("You don't have permission to assign tasks in this family");
                 }
 
-                // Check if the assigned user is a minor
-                User? memberUser = await _userRepository.GetByIdAsync(familyMember.UserId);
-                if (memberUser == null)
+                _logger.LogInformation("✅ Permission check passed for user {UserId} in family {FamilyId}", assignedByUserId, familyMember.FamilyId);
+
+                // Get the task before assignment to log its current state
+                TaskItem? taskBefore = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                if (taskBefore == null)
                 {
-                    _logger.LogWarning("User associated with family member {FamilyMemberId} not found", familyMemberId);
+                    _logger.LogWarning("❌ Task with ID {TaskId} not found", taskId);
                     return null;
                 }
 
-                // Get assignee name for display
-                string assignedToName = !string.IsNullOrEmpty(memberUser.Username) ? memberUser.Username : 
-                                        !string.IsNullOrEmpty(familyMember.Name) ? familyMember.Name : 
-                                        memberUser.Email ?? "Family Member";
-
-                _logger.LogInformation("Assigning task to {AssignedToName}", assignedToName);
-
-                // Check if the task exists and if the user has permission to assign it - USE SHARED TASK METHOD INSTEAD
-                    TaskItem? sharedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
-                if (sharedTask == null)
-                    {
-                        _logger.LogWarning("Task {TaskId} not found or not part of family {FamilyId}", taskId, familyId);
-                        return null;
-                }
+                _logger.LogInformation("📋 Task before assignment: Id={Id}, FamilyId={FamilyId}, AssignedToFamilyMemberId={AssignedToFamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
+                    taskBefore.Id, taskBefore.FamilyId, taskBefore.AssignedToFamilyMemberId, taskBefore.AssignedByUserId);
 
                 // Perform the assignment
-                bool success = await _taskRepository.AssignTaskToFamilyMemberAsync(
-                    taskId, familyMemberId, userId, requiresApproval);
-
+                bool success = await _taskRepository.AssignTaskToFamilyMemberAsync(taskId, familyMemberId, assignedByUserId, requiresApproval);
                 if (!success)
                 {
-                    _logger.LogWarning("Failed to assign task {TaskId} to family member {FamilyMemberId}", taskId, familyMemberId);
+                    _logger.LogError("❌ Failed to assign task {TaskId} to family member {FamilyMemberId}", taskId, familyMemberId);
                     return null;
                 }
 
-                // Get the updated task
-                TaskItem? updatedTask = await _taskRepository.GetSharedTaskByIdAsync(taskId);
-                return _mapper.Map<FamilyTaskItemDTO>(updatedTask);
+                _logger.LogInformation("✅ Task assignment completed successfully in database");
+
+                // Get the task after assignment to verify the changes
+                TaskItem? taskAfter = await _taskRepository.GetSharedTaskByIdAsync(taskId);
+                if (taskAfter == null)
+                {
+                    _logger.LogError("❌ Task {TaskId} not found after assignment", taskId);
+                    return null;
+                }
+
+                _logger.LogInformation("📋 Task after assignment: Id={Id}, FamilyId={FamilyId}, AssignedToFamilyMemberId={AssignedToFamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
+                    taskAfter.Id, taskAfter.FamilyId, taskAfter.AssignedToFamilyMemberId, taskAfter.AssignedByUserId);
+
+                // Map to DTO
+                FamilyTaskItemDTO result = _mapper.Map<FamilyTaskItemDTO>(taskAfter);
+                
+                _logger.LogInformation("🎯 Mapped DTO: Id={Id}, FamilyId={FamilyId}, AssignedToFamilyMemberId={AssignedToFamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
+                    result.Id, result.FamilyId, result.AssignedToFamilyMemberId, result.AssignedByUserId);
+
+                _logger.LogInformation("✅ Successfully assigned task {TaskId} to family member {FamilyMemberId}", taskId, familyMemberId);
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning task {TaskId} to family member {FamilyMemberId}", taskId, familyMemberId);
+                _logger.LogError(ex, "❌ Error assigning task {TaskId} to family member {FamilyMemberId}", taskId, familyMemberId);
                 throw;
             }
         }
@@ -196,22 +206,48 @@ namespace TaskTrackerAPI.Services
 
         public async Task<IEnumerable<FamilyTaskItemDTO>> GetFamilyTasksAsync(int familyId, int userId)
         {
+            Console.WriteLine("🚨 GetFamilyTasksAsync METHOD CALLED!");
             try
             {
-                // Check if the user is a member of the family
-                bool isMember = await _familyRepository.IsMemberAsync(familyId, userId);
-                if (!isMember)
+                Console.WriteLine($"🔍 GetFamilyTasksAsync called with familyId={familyId}, userId={userId}");
+                _logger.LogInformation("🔍 Getting family tasks for FamilyId={FamilyId}, UserId={UserId}", familyId, userId);
+
+                // Check if user is a member of the family
+                bool isFamilyMember = await _familyRepository.IsMemberAsync(familyId, userId);
+                if (!isFamilyMember)
                 {
-                    _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", userId, familyId);
-                    throw new UnauthorizedAccessException("You are not a member of this family");
+                    _logger.LogWarning("❌ User {UserId} is not a member of family {FamilyId}", userId, familyId);
+                    throw new UnauthorizedAccessException("You must be a member of this family to view tasks");
                 }
 
+                _logger.LogInformation("✅ User {UserId} is a member of family {FamilyId}", userId, familyId);
+
+                // Get tasks from repository
                 IEnumerable<TaskItem> tasks = await _taskRepository.GetFamilyTasksAsync(familyId);
-                return _mapper.Map<IEnumerable<FamilyTaskItemDTO>>(tasks);
+                
+                Console.WriteLine($"📊 Repository returned {tasks.Count()} tasks for family {familyId}");
+                _logger.LogInformation("📊 Found {TaskCount} tasks for family {FamilyId}", tasks.Count(), familyId);
+
+                // Log details of each task found
+                foreach (var task in tasks)
+                {
+                    Console.WriteLine($"📋 Task: Id={task.Id}, Title={task.Title}, FamilyId={task.FamilyId}, AssignedToFamilyMemberId={task.AssignedToFamilyMemberId}");
+                    _logger.LogInformation("📋 Task found: Id={Id}, Title={Title}, FamilyId={FamilyId}, AssignedToFamilyMemberId={AssignedToFamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
+                        task.Id, task.Title, task.FamilyId, task.AssignedToFamilyMemberId, task.AssignedByUserId);
+                }
+
+                // Map to DTOs
+                IEnumerable<FamilyTaskItemDTO> result = _mapper.Map<IEnumerable<FamilyTaskItemDTO>>(tasks);
+                
+                Console.WriteLine($"🎯 Mapped {result.Count()} DTOs for family {familyId}");
+                _logger.LogInformation("🎯 Mapped {DtoCount} DTOs for family {FamilyId}", result.Count(), familyId);
+
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting tasks for family {FamilyId}", familyId);
+                Console.WriteLine($"❌ Exception in GetFamilyTasksAsync: {ex.Message}");
+                _logger.LogError(ex, "❌ Error getting family tasks for family {FamilyId}", familyId);
                 throw;
             }
         }

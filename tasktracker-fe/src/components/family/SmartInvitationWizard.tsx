@@ -54,11 +54,7 @@ import {
     createSmartInvitationWithContext
 } from '@/lib/services/smartRelationshipService';
 
-interface SmartInvitationWizardProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: () => void;
-}
+import { SmartInvitationWizardProps } from '@/lib/types/component-props';
 
 export function SmartInvitationWizard({ isOpen, onClose, onSuccess }: SmartInvitationWizardProps) {
     const [currentStep, setCurrentStep] = useState(1);

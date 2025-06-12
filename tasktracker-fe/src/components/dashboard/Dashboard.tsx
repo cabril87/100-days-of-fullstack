@@ -1,7 +1,8 @@
 'use client';
 
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
-import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp, AlertTriangle, Crown, Sparkles, Flame, Timer } from 'lucide-react';
+import FamilyTaskDashboard from '@/components/family/FamilyTaskDashboard';
+import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp, AlertTriangle, Crown, Sparkles, Flame, Timer, UserPlus, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,28 +10,37 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { taskService } from '@/lib/services/taskService';
 import { activityService } from '@/lib/services/activityService';
 import { priorityIntToString } from '@/lib/utils/priorityMapping';
 import { FamilyDTO, DashboardStats, FamilyActivityItem, UserProgress, DashboardContentProps } from '@/lib/types';
-import { Task } from '@/lib/types/task';
+import { Task, FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyTaskStats } from '@/lib/types/family-task';
 
 export default function Dashboard({ user, initialData }: DashboardContentProps) {
   const router = useRouter();
   
   // State management
-  const [isLoading, setIsLoading] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [error, setError] = useState<string>('');
   const [dashboardStats, setDashboardStats] = useState<DashboardStats>(initialData.stats);
   const [currentFamily] = useState<FamilyDTO | null>(initialData.family);
-  const [hasFamily] = useState(!!initialData.family);
+  const [hasFamily, setHasFamily] = useState(!!initialData.family);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [familyActivity, setFamilyActivity] = useState<FamilyActivityItem[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [recentTasks, setRecentTasks] = useState<Task[]>(initialData.recentTasks || []);
   const [dueTodayTasks, setDueTodayTasks] = useState<Task[]>([]);
   const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  
+  // ✨ NEW: Family Task Collaboration State
+  const [familyTasks, setFamilyTasks] = useState<FamilyTaskItemDTO[]>([]);
+  const [familyTaskStats, setFamilyTaskStats] = useState<FamilyTaskStats | null>(null);
+  const [activeTab, setActiveTab] = useState<'individual' | 'family'>('individual');
 
   // Utility function to safely get priority display
   const getPriorityDisplay = (priority: string | number | undefined | null): string => {
@@ -66,6 +76,18 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
     if ((dashboardStats.totalPoints || 0) >= 500) badges.push({ icon: '👑', title: 'Points King' });
     if ((dashboardStats.tasksCompleted || 0) >= 100) badges.push({ icon: '🏆', title: 'Centurion' });
     if ((dashboardStats.familyMembers || 0) >= 5) badges.push({ icon: '👑', title: 'Family Leader' });
+    
+    // ✨ NEW: Family collaboration achievements
+    if (familyTaskStats?.memberStats.some(m => m.tasksCompleted >= 10)) {
+      badges.push({ icon: '🤝', title: 'Team Player' });
+    }
+    if ((familyTaskStats?.completedTasks || 0) >= 20) {
+      badges.push({ icon: '👨‍👩‍👧‍👦', title: 'Family Achiever' });
+    }
+    if ((familyTaskStats?.familyScore || 0) >= 1000) {
+      badges.push({ icon: '⭐', title: 'Star Family' });
+    }
+    
     return badges;
   };
 
@@ -73,17 +95,28 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
   const levelProgress = calculateProgress(dashboardStats.totalPoints);
   const achievementBadges = getAchievementBadges();
 
-  // Family task counts for dashboard widget  
+  // ✨ ENHANCED: Family task counts with collaboration data
   const familyTaskCounts = {
-    family: recentTasks.filter(task => task.assignedToUserId || task.familyId).length,
-    assignedToMe: recentTasks.filter(task => task.assignedToUserId && task.assignedToUserId !== user?.id).length,
-    iAssigned: recentTasks.filter(task => task.assignedToUserId && task.assignedToUserId === user?.id && task.familyId).length
+    family: familyTasks.length,
+    assignedToMe: familyTasks.filter(task => task.assignedToFamilyMemberId && 
+      familyMembers.find(m => m.id === task.assignedToFamilyMemberId)?.userId === user?.id).length,
+    iAssigned: familyTasks.filter(task => task.assignedByUserId === user?.id).length,
+    pendingApproval: familyTasks.filter(task => task.requiresApproval && 
+      task.status === 'completed' && !task.approvedByUserId).length
+  };
+
+  // Helper function to get member avatar
+  const getMemberById = (memberId: number | string) => {
+    const id = typeof memberId === 'string' ? parseInt(memberId) : memberId;
+    return familyMembers.find(m => m.id === id);
   };
 
   // Handle task creation success
   const handleTaskCreated = useCallback(async (newTask: Task) => {
     // Add the new task to recent tasks
     setRecentTasks(prev => [newTask, ...prev.slice(0, 4)]);
+    
+    // ✨ NOTE: Family tasks refresh is handled separately to avoid circular dependencies
     
     // Refresh dashboard stats
     try {
@@ -101,6 +134,23 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
     }
   }, []);
 
+  // ✨ NEW: Load family tasks and stats
+  const loadFamilyTasks = useCallback(async () => {
+    if (!currentFamily?.id) return;
+
+    try {
+      const [tasks, stats] = await Promise.all([
+        taskService.getFamilyTasks(currentFamily.id),
+        taskService.getEnhancedFamilyTaskStats(currentFamily.id)
+      ]);
+
+      setFamilyTasks(tasks);
+      setFamilyTaskStats(stats);
+    } catch (error) {
+      console.error('Failed to load family tasks:', error);
+    }
+  }, [currentFamily?.id]);
+
   // Handle task completion
   const handleTaskCompletion = useCallback(async (taskId: number) => {
     try {
@@ -113,6 +163,11 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
       setDueTodayTasks(prev => prev.filter(task => task.id !== taskId));
       setOverdueTasks(prev => prev.filter(task => task.id !== taskId));
       
+      // ✨ NEW: Update family tasks if applicable
+      setFamilyTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, isCompleted: true, status: 'completed' } : task
+      ));
+      
       // Refresh dashboard stats
       const updatedStats = await taskService.getUserTaskStats();
       setDashboardStats(prev => ({
@@ -123,34 +178,73 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
         totalPoints: updatedStats.totalPoints,
         streakDays: updatedStats.streakDays
       }));
+
+      // ✨ NEW: Refresh family stats
+      if (currentFamily?.id) {
+        await loadFamilyTasks();
+      }
     } catch (error) {
       console.error('Failed to complete task:', error);
       setError('Failed to complete task. Please try again.');
     }
-  }, []);
+  }, [currentFamily?.id]);
+
+  // ✨ NEW: Handle family task approval - temporarily disabled
+  // const handleTaskApproval = useCallback(async (taskId: number, approved: boolean) => {
+  //   if (!currentFamily?.id) return;
+
+  //   try {
+  //     if (approved) {
+  //       await taskService.approveTask(currentFamily.id, taskId, { taskId, approvalComment: 'Approved from dashboard' });
+  //     }
+      
+  //     // Refresh family tasks
+  //     await loadFamilyTasks();
+  //   } catch (error) {
+  //     console.error('Failed to approve task:', error);
+  //     setError('Failed to approve task. Please try again.');
+  //   }
+  // }, [currentFamily?.id, loadFamilyTasks]);
 
   // Load additional dashboard data (client-side for interactivity)
   const loadAdditionalData = useCallback(async () => {
     if (!user) return;
 
     try {
-      setIsLoading(true);
       setError('');
 
-      // Load all dashboard data in parallel
-      const [allFamilies, userTaskStats, userProgressData, recentTasksData, dueTodayData, overdueData] = await Promise.all([
-        familyInvitationService.getAllFamilies(),
-        taskService.getUserTaskStats(),
-        activityService.getUserProgress(),
-        taskService.getRecentTasks(5),
-        taskService.getDueTodayTasks(),
-        taskService.getOverdueTasks()
-      ]);
+              // Load all dashboard data in parallel
+        const [allFamilies, userTaskStats, userProgressData, recentTasksData, dueTodayData, overdueData] = await Promise.all([
+          familyInvitationService.getAllFamilies(),
+          taskService.getUserTaskStats(),
+          activityService.getUserProgress(),
+          taskService.getRecentTasks(5),
+          taskService.getDueTodayTasks(),
+          taskService.getOverdueTasks()
+        ]);
 
-      setUserProgress(userProgressData);
-      setRecentTasks(recentTasksData);
-      setDueTodayTasks(dueTodayData);
-      setOverdueTasks(overdueData);
+        setUserProgress(userProgressData);
+        setRecentTasks(recentTasksData);
+        setDueTodayTasks(dueTodayData);
+        setOverdueTasks(overdueData);
+
+        // ✨ CRITICAL FIX: Update hasFamily state based on real data
+        const userHasFamily = allFamilies && allFamilies.length > 0;
+        setHasFamily(userHasFamily);
+        console.log('🏠 Family status check:', { 
+          userHasFamily, 
+          familiesCount: allFamilies?.length || 0, 
+          currentFamily: currentFamily?.id || 'none' 
+        });
+
+        // ✨ NEW: Enhanced family data debugging and robust testing support
+        if (!userHasFamily) {
+          console.log('🔧 DEBUG: User has no family. Family features will be hidden.');
+          console.log('🔧 To test family features: User needs to create/join a family first.');
+          console.log('🔧 Family endpoints available: /families, /family/create');
+        } else {
+          console.log('✅ User has family! Family collaboration features will be visible.');
+        }
 
       let familyStats = {
         memberCount: 0,
@@ -169,6 +263,12 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
             activityService.getFamilyActivity(currentFamily.id, 5)
           ]);
           
+          setFamilyMembers(members);
+          console.log('👥 Family members loaded:', { 
+            membersCount: members.length, 
+            members: members.map(m => ({ id: m.id, name: m.user?.firstName, userId: m.userId }))
+          });
+          
           // Calculate basic family stats from members
           familyStats = {
             memberCount: members.length,
@@ -178,6 +278,9 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
           };
           
           activityData = activityDataResult;
+
+          // ✨ NEW: Load family tasks and collaboration data
+          await loadFamilyTasks();
         } catch (error) {
           console.warn('Failed to load some family data:', error);
           // If family activity fails with 401, it means user doesn't have permission
@@ -220,7 +323,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
         setError('Failed to load some dashboard data. Please try refreshing the page.');
       }
     } finally {
-      setIsLoading(false);
+      // Loading complete
     }
   }, [user, currentFamily]);
 
@@ -311,6 +414,329 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
             </div>
           </CardContent>
         </Card>
+
+        {/* ✨ NEW: Family Creation Prompt for Users Without Family */}
+        {!hasFamily && (
+          <Card className="border-2 border-dashed border-purple-300 dark:border-purple-600 bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-cyan-900/20">
+            <CardContent className="p-8 text-center">
+              <div className="space-y-6">
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto shadow-2xl">
+                  <Users className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+                    🏠 Ready for Family Collaboration?
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    Create or join a family to unlock collaborative task management, assign tasks to family members, and track shared goals together!
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Button 
+                      onClick={() => router.push('/families')}
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Users className="w-5 h-5 mr-2" />
+                      Explore Family Features
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        console.log('🔧 DEBUG: Family collaboration features are ready but hidden until user has family data');
+                        console.log('🔧 Backend API endpoints: /v1/family, /v1/family/{id}/members');
+                        console.log('🔧 Current implementation: Dashboard tabs, task assignment, member avatars all working');
+                      }}
+                      className="border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                    >
+                      Debug Family Status
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ✨ NEW: Dashboard Tab Navigation */}
+        {hasFamily && (
+          <Card className="border-2 border-purple-200 dark:border-purple-700">
+            <CardContent className="p-6">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'individual' | 'family')} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="individual" className="flex items-center gap-2 py-3 px-6">
+                    <Target className="h-4 w-4" />
+                    My Tasks
+                  </TabsTrigger>
+                  <TabsTrigger value="family" className="flex items-center gap-2 py-3 px-6">
+                    <Users className="h-4 w-4" />
+                    Family Collaboration
+                    {familyTaskCounts.pendingApproval > 0 && (
+                      <Badge className="bg-orange-500 text-white text-xs ml-2">
+                        {familyTaskCounts.pendingApproval} pending
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="individual" className="space-y-6">
+                  {/* Individual Tasks Dashboard */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Individual Task Stats */}
+                    <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed Today</p>
+                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{dashboardStats.tasksCompleted || 0}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                            <CheckCircle className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Goals</p>
+                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{dashboardStats.activeGoals || 0}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                            <Target className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Focus Time</p>
+                            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{dashboardStats.focusTime || 0}m</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                            <Clock className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Points</p>
+                            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{dashboardStats.totalPoints || 0}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center">
+                            <Trophy className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="family" className="space-y-6">
+                  {/* ✨ NEW: Family Task Collaboration Dashboard */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Family Task Stats */}
+                    <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Family Tasks</p>
+                            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{familyTaskCounts.family}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center">
+                            <Users className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border-cyan-200 dark:border-cyan-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned to Me</p>
+                            <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{familyTaskCounts.assignedToMe}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center">
+                            <UserPlus className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-emerald-200 dark:border-emerald-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">I Assigned</p>
+                            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{familyTaskCounts.iAssigned}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center">
+                            <Zap className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-700">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Approval</p>
+                            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{familyTaskCounts.pendingApproval}</p>
+                          </div>
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                            <AlertTriangle className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* ✨ NEW: Family Task Summary */}
+                  {familyTaskStats && (
+                    <Card className="bg-gradient-to-r from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 border-2 border-purple-200 dark:border-purple-700">
+                      <CardHeader>
+                        <CardTitle className="text-xl bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-purple-500" />
+                          Family Collaboration Summary
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{familyTaskStats.completedTasks}/{familyTaskStats.totalTasks}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Tasks Completed</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{Math.round(familyTaskStats.weeklyProgress)}%</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Weekly Progress</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{familyTaskStats.familyScore}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Family Score</p>
+                          </div>
+                        </div>
+                        
+                        {/* Family Member Leaderboard */}
+                        {familyTaskStats.memberStats.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-gray-900 dark:text-white">Family Leaderboard</h4>
+                            <div className="space-y-2">
+                              {familyTaskStats.memberStats.slice(0, 3).map((member, index) => (
+                                <div key={member.memberId} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg backdrop-blur-sm">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                      {index === 0 && <Trophy className="h-4 w-4 text-yellow-500" />}
+                                      {index === 1 && <Star className="h-4 w-4 text-gray-400" />}
+                                      {index === 2 && <Star className="h-4 w-4 text-orange-500" />}
+                                      <span className="font-medium text-sm">#{index + 1}</span>
+                                    </div>
+                                                                         <Avatar className="h-8 w-8">
+                                       <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-xs">
+                                         {(getMemberById(member.memberId)?.user?.firstName?.[0] || '?').toUpperCase()}
+                                       </AvatarFallback>
+                                     </Avatar>
+                                    <span className="font-medium text-gray-900 dark:text-white">
+                                      {getMemberById(member.memberId)?.user?.displayName || 
+                                       getMemberById(member.memberId)?.user?.firstName || 
+                                       'Family Member'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                                    <span>{member.tasksCompleted} tasks</span>
+                                    <span className="font-semibold text-purple-600 dark:text-purple-400">{member.points} pts</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* ✨ NEW: Use Existing FamilyTaskDashboard Component */}
+                  {currentFamily && familyMembers.length > 0 && user && (
+                    <FamilyTaskDashboard 
+                      user={user}
+                      family={currentFamily} 
+                      familyMembers={familyMembers}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Original Statistics Grid for users without families */}
+        {!hasFamily && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed Today</p>
+                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{dashboardStats.tasksCompleted || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Goals</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{dashboardStats.activeGoals || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+                    <Target className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Focus Time</p>
+                    <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{dashboardStats.focusTime || 0}m</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center">
+                    <Clock className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-700">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Points</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{dashboardStats.totalPoints || 0}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-full flex items-center justify-center">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Enhanced Statistics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -434,20 +860,48 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                 recentTasks.slice(0, 5).map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors cursor-pointer"
+                    className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors cursor-pointer group"
                     onClick={() => router.push(`/tasks/${task.id}`)}
                   >
                     <div className="flex items-center gap-3">
                       <CheckCircle 
                         className={`h-4 w-4 ${task.isCompleted ? 'text-green-500' : 'text-gray-400'}`}
                       />
-                      <div>
-                        <p className="font-medium text-sm">{task.title}</p>
-                        <p className="text-xs text-gray-500">
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{task.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</span>
+                          {/* ✨ NEW: Family member assignment display */}
+                          {task.assignedToUserId && task.assignedToUserId !== user?.id && (
+                            <span className="text-purple-600 dark:text-purple-400 font-medium">
+                              • Assigned by you
+                            </span>
+                          )}
+                          {task.familyId && !task.assignedToUserId && (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              • Family task
+                            </span>
+                          )}
                       </div>
                     </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* ✨ NEW: Family member avatar for assigned tasks */}
+                      {task.assignedToUserId && task.assignedToUserId !== user?.id && familyMembers.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const assignedMember = familyMembers.find(m => m.userId === task.assignedToUserId);
+                            return assignedMember && (
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-xs">
+                                  {(assignedMember.user?.firstName?.[0] || '?').toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
                     {/* Priority Badge - only show if we get a valid priority string */}
                     {(() => {
                       const priorityDisplay = getPriorityDisplay(task.priority);
@@ -457,6 +911,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                         </Badge>
                       );
                     })()}
+                    </div>
                   </div>
                 ))
               ) : (

@@ -98,24 +98,7 @@ export interface TaskApprovalDTO {
   approvalComment?: string;
 }
 
-/**
- * Family Task Statistics
- */
-export interface FamilyTaskStats {
-  totalTasks: number;
-  completedTasks: number;
-  totalPoints: number;
-  memberStats: FamilyMemberTaskStats[];
-}
-
-export interface FamilyMemberTaskStats {
-  memberId: number;
-  memberName: string;
-  tasksCompleted: number;
-  pointsEarned: number;
-  tasksAssigned: number;
-  completionRate: number;
-}
+// FamilyTaskStats moved to lib/types/family-task.ts following checklist rules
 
 // === EXISTING TYPES (UNCHANGED) ===
 
@@ -263,6 +246,12 @@ export interface CreateTaskFormData {
   assignedToUserId?: number;
   requiresApproval?: boolean;
   tags?: string[];
+  // Enhanced fields for TaskCreationModal
+  taskContext?: 'individual' | 'family' | 'template';
+  saveAsTemplate?: boolean;
+  templateName?: string;
+  templateCategory?: string;
+  isPublicTemplate?: boolean;
 }
 
 export interface UpdateTaskFormData {
@@ -301,15 +290,7 @@ export interface TaskFilterFormData {
   search?: string;
 }
 
-export interface TaskCreationModalProps {
-  user: User;
-  family?: FamilyDTO | null;
-  onTaskCreated?: (task: Task) => void;
-  trigger?: React.ReactNode;
-  isOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  editingTask?: Task | null;
-}
+// TaskCreationModalProps moved to lib/types/component-props.ts following Family Auth Implementation Checklist rules
 
 // === CACHE & API TYPES ===
 
@@ -317,7 +298,7 @@ export interface TaskCreationModalProps {
  * Cache entry structure for TaskService
  */
 export interface TaskServiceCacheEntry {
-  data: Task[] | TaskStats | FamilyTaskItemDTO[] | FamilyTaskStats | unknown;
+  data: Task[] | TaskStats | FamilyTaskItemDTO[] | unknown;
   timestamp: number;
 }
 

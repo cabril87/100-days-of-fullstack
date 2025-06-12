@@ -13,7 +13,6 @@ import {
   FamilyTaskItemDTO, 
   FlexibleTaskAssignmentDTO, 
   TaskApprovalDTO, 
-  FamilyTaskStats,
   TaskServiceCacheEntry,
   FlexibleApiResponse,
   TaskApiResponseType,
@@ -23,6 +22,7 @@ import {
   BatchTaskResult,
   CreateChecklistItem
 } from '../types/task';
+import { FamilyTaskStats } from '../types/family-task';
 import { apiClient } from '../config/api-client';
 import { convertTaskDataForBackend } from '../utils/priorityMapping';
 import { tagService } from './tagService';
@@ -442,11 +442,50 @@ export class TaskService {
    */
   async assignTaskToFamilyMember(familyId: number, assignmentData: FlexibleTaskAssignmentDTO): Promise<FamilyTaskItemDTO | null> {
     try {
+      console.log('🔗 TaskService: Making family task assignment API call:', {
+        url: `/v1/family/${familyId}/tasks/assign`,
+        familyId,
+        assignmentData,
+        fullUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/v1/family/${familyId}/tasks/assign`
+      });
+      
       const result = await apiClient.post<ApiResponse<FamilyTaskItemDTO>>(`/v1/family/${familyId}/tasks/assign`, assignmentData);
-      return result?.data || null;
+      
+      console.log('📡 TaskService: Family task assignment API response:', {
+        result,
+        hasData: !!result?.data,
+        dataType: typeof result?.data,
+        resultKeys: result ? Object.keys(result) : 'no result',
+        resultType: typeof result,
+        isResultArray: Array.isArray(result),
+        resultStringified: JSON.stringify(result, null, 2).substring(0, 500)
+      });
+      
+      // Handle both wrapped and direct responses
+      if (result?.data) {
+        return result.data;
+      } else if (result && typeof result === 'object' && 'id' in result && 'title' in result) {
+        // Direct response (not wrapped in data property)
+        console.log('✅ TaskService: Using direct response as FamilyTaskItemDTO');
+        return result as unknown as FamilyTaskItemDTO;
+      }
+      console.log('⚠️ TaskService: No valid response data found');
+      return null;
     } catch (error) {
-      console.error('Failed to assign task to family member:', error);
-      throw error instanceof TaskApiError ? error : new TaskApiError('Failed to assign task', 500);
+      console.error('❌ TaskService: Family task assignment API error:', error);
+      console.error('🔍 TaskService: Error details:', {
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack',
+        assignmentData,
+        familyId,
+        isApiClientError: error instanceof Error && error.name === 'ApiClientError',
+        statusCode: (error as any)?.statusCode,
+        networkError: error instanceof TypeError && error.message.includes('fetch')
+      });
+      
+      // Don't throw error, return null to allow graceful handling
+      return null;
     }
   }
 
@@ -498,16 +537,24 @@ export class TaskService {
       return result?.data || {
         totalTasks: 0,
         completedTasks: 0,
-        totalPoints: 0,
-        memberStats: []
+        overdueTasks: 0,
+        weeklyProgress: 0,
+        familyScore: 0,
+        memberStats: [],
+        recentAchievements: [],
+        sharedGoals: []
       };
     } catch (error) {
       console.error('Failed to fetch enhanced family task stats:', error);
       return {
         totalTasks: 0,
         completedTasks: 0,
-        totalPoints: 0,
-        memberStats: []
+        overdueTasks: 0,
+        weeklyProgress: 0,
+        familyScore: 0,
+        memberStats: [],
+        recentAchievements: [],
+        sharedGoals: []
       };
     }
   }

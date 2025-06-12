@@ -29,7 +29,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 /// Used for development and demonstration purposes.
 /// </summary>
 [ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/v{version:apiVersion}/admin/family-seeding")]
 [ApiController]
 [Authorize]
 [RequireGlobalAdmin]
@@ -261,7 +261,8 @@ public class FamilySeedingController : BaseApiController
         string? userRole = HttpContext.User.FindFirst(ClaimTypes.Role)?.Value;
 
         return userEmail?.ToLower() == "admin@tasktracker.com" || 
-               userRole?.ToLower() == "globaladmin";
+               userRole?.ToLower() == "globaladmin" ||
+               userRole?.ToLower() == "admin";
     }
 
     /// <summary>

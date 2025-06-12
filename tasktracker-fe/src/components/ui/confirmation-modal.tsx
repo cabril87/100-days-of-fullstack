@@ -4,18 +4,7 @@ import React from 'react';
 import { AlertTriangle, Trash2, CheckCircle, Info, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-
-interface ConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description: string;
-  confirmText?: string;
-  cancelText?: string;
-  variant?: 'danger' | 'warning' | 'info' | 'success';
-  isLoading?: boolean;
-}
+import { ConfirmationModalProps } from '@/lib/types/component-props';
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,

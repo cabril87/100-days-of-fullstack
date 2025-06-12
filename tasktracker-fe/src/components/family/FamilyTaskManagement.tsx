@@ -4,14 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
-  Users, 
-  Trophy, 
   Target, 
   Clock, 
   Calendar,
@@ -27,22 +25,12 @@ import {
   Edit,
   Trash2,
   Archive,
-  Download,
-  Upload,
   RefreshCw
 } from 'lucide-react';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyTaskItemDTO, Task } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
-import { formatDistance } from 'date-fns';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
-import { Task } from '@/lib/types/task';
-
-interface FamilyTaskManagementProps {
-  user: any;
-  family: FamilyDTO;
-  familyMembers: FamilyMemberDTO[];
-}
+import { FamilyTaskManagementProps } from '@/lib/types/component-props';
 
 export default function FamilyTaskManagement({ user, family, familyMembers }: FamilyTaskManagementProps) {
   const [familyTasks, setFamilyTasks] = useState<FamilyTaskItemDTO[]>([]);
@@ -62,16 +50,29 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
 
   useEffect(() => {
     loadFamilyTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family.id]);
 
   const loadFamilyTasks = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔍 FamilyTaskManagement: Loading family tasks for family ID:', family.id);
       const tasks = await taskService.getFamilyTasks(family.id);
+      console.log('📋 FamilyTaskManagement: Family tasks loaded:', {
+        familyId: family.id,
+        taskCount: tasks.length,
+        tasks: tasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          assignedToFamilyMemberId: t.assignedToFamilyMemberId,
+          isCompleted: t.isCompleted,
+          familyId: t.familyId
+        }))
+      });
       setFamilyTasks(tasks);
     } catch (error) {
-      console.error('Failed to load family tasks:', error);
+      console.error('❌ FamilyTaskManagement: Failed to load family tasks:', error);
       setError('Failed to load family tasks');
     } finally {
       setIsLoading(false);
@@ -79,7 +80,8 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
   };
 
   // Handle task creation success
-  const handleTaskCreated = async (newTask: Task) => {
+  const handleTaskCreated = async (createdTask?: Task) => {
+    console.log('🎯 FamilyTaskManagement: Task created, refreshing family tasks...', createdTask);
     await loadFamilyTasks(); // Refresh the task list
     setIsTaskModalOpen(false);
   };
@@ -306,7 +308,7 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
             </div>
             
             {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+            <Select value={statusFilter} onValueChange={(value: 'all' | 'assigned' | 'completed' | 'overdue' | 'pending') => setStatusFilter(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>

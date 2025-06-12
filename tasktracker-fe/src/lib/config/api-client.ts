@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     PROFILE: '/profile',
     CHANGE_PASSWORD: '/change-password',
     FORGOT_PASSWORD: '/forgot-password',
+    RESET_PASSWORD: '/reset-password',
     USERS: '/users',
     // MFA endpoints
     MFA_SETUP: '/mfa/setup',
@@ -319,6 +320,16 @@ export class ApiClient {
   async post<T>(endpoint: string, body?: unknown, headers?: HeadersInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
+    // Debug logging for POST requests
+    console.log('🌐 ApiClient POST:', {
+      endpoint,
+      url,
+      baseUrl: this.baseUrl,
+      method: 'POST',
+      hasBody: !!body,
+      bodyPreview: body ? JSON.stringify(body).substring(0, 200) : 'no body'
+    });
+    
     return withTimeout(
       withRetry(async () => {
         const response = await fetch(url, {
@@ -326,6 +337,14 @@ export class ApiClient {
           headers: { ...getAuthHeaders(), ...headers },
           body: body ? JSON.stringify(body) : undefined,
           credentials: 'include', // Include cookies for HTTP-only cookie support
+        });
+        
+        console.log('📡 ApiClient POST response:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
         });
         
         return this.handleResponse<T>(response);

@@ -1057,7 +1057,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                                 <SelectContent>
                                   {familyMembers
                                     .filter(member => member.user.id !== user?.id) // Exclude current user
-                                    .filter(member => user?.ageGroup !== 0) // Exclude children from being new owners
+                                    .filter(() => user?.ageGroup !== 0) // Exclude children from being new owners
                                     .map((member) => (
                                       <SelectItem key={member.id} value={member.user.id.toString()}>
                                         <div className="flex items-center gap-2">
@@ -1087,12 +1087,12 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                                 <Textarea 
                                   {...field} 
                                   id="transfer-reason"
-                                  placeholder="Explain why you're transferring ownership..."
+                                  placeholder="Explain why you&apos;re transferring ownership..."
                                   rows={3}
                                 />
                               </FormControl>
                               <FormDescription>
-                                Provide context for why you're passing family ownership to someone else.
+                                Provide context for why you&apos;re passing family ownership to someone else.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -1134,7 +1134,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                               <p className="text-sm text-amber-700 mt-1">
                                 Once you transfer ownership, you cannot undo this action. The new owner will have complete 
                                 control over the family, including the ability to remove you as a member. Make sure you trust 
-                                the person you're transferring ownership to.
+                                the person you&apos;re transferring ownership to.
                               </p>
                             </div>
                           </div>

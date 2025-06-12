@@ -87,6 +87,17 @@ export const passwordResetSchema = z.object({
     .max(100, 'Email cannot exceed 100 characters'),
 });
 
+export const resetPasswordSchema = z.object({
+  password: z
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password cannot exceed 100 characters'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 // === MFA SCHEMAS ===
 
 export const mfaSetupCompleteSchema = z.object({

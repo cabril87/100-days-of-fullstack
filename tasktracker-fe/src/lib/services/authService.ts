@@ -99,6 +99,20 @@ class AuthService {
     }
   }
 
+  async resetPassword(data: { token: string; password: string; confirmPassword: string }): Promise<void> {
+    try {
+      await apiClient.post<void>(
+        `${API_ENDPOINTS.AUTH.BASE}${API_ENDPOINTS.AUTH.RESET_PASSWORD}`,
+        data
+      );
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw new AuthServiceError(error.message, error.statusCode, error.errors);
+      }
+      throw new AuthServiceError('Network error occurred');
+    }
+  }
+
   // Profile Methods
   async getProfile(): Promise<User> {
     try {

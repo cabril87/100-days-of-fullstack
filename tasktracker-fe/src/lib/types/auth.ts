@@ -105,6 +105,11 @@ export interface PasswordChangeFormData {
   confirmNewPassword: string;
 }
 
+export interface ResetPasswordFormData {
+  password: string;
+  confirmPassword: string;
+}
+
 // Auth Context Types
 export interface AuthState {
   user: User | null;

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Search, CheckCircle, Circle, Clock, Calendar, Trash2, Edit, Plus,
   Sparkles, RefreshCw, Eye, Trophy, Target, Zap, Star,
@@ -25,7 +26,9 @@ import ErrorModal from '@/components/ui/ErrorModal';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
 import CompletionModal from '@/components/ui/completion-modal';
 import { TasksPageContentProps, Task, TaskStats } from '@/lib/types/task';
+import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { taskService } from '@/lib/services/taskService';
+import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { formatDistance } from 'date-fns';
 import { priorityIntToString } from '@/lib/utils/priorityMapping';
 
@@ -43,6 +46,9 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'queue' | 'progress' | 'completed'>('overview');
+  // ✨ NEW: Family Task Collaboration State
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+  const [hasFamily, setHasFamily] = useState(false);
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -118,6 +124,30 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
       ]);
       setTasks(recentTasks);
       setStats(taskStats);
+
+      // ✨ NEW: Load family data if user has family access
+      try {
+        const families = await familyInvitationService.getAllFamilies();
+        console.log('📋 Tasks: Loading family data...', { familiesCount: families?.length || 0 });
+        
+        if (families && families.length > 0) {
+          setHasFamily(true);
+          // Load family members for the first family (user's family)
+          const members = await familyInvitationService.getFamilyMembers(families[0].id);
+          setFamilyMembers(members);
+          console.log('📋 Tasks: Family data loaded successfully', { 
+            hasFamily: true, 
+            membersCount: members.length,
+            familyId: families[0].id 
+          });
+        } else {
+          console.log('📋 Tasks: User has no family');
+          setHasFamily(false);
+        }
+      } catch (familyError) {
+        console.warn('📋 Tasks: Failed to load family data:', familyError);
+        setHasFamily(false);
+      }
 
       console.log('✅ Tasks loaded successfully:', recentTasks.length, 'tasks');
     } catch (error: unknown) {
@@ -500,6 +530,12 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
     return '';
   };
 
+  // ✨ NEW: Helper function to get family member by user ID
+  const getFamilyMemberByUserId = (userId: number | undefined) => {
+    if (!userId) return null;
+    return familyMembers.find(member => member.userId === userId);
+  };
+
   // Filter tasks based on active tab and other filters
   const filteredTasks = tasks.filter(task => {
     // Enhanced search filter - search in title, description, and tags
@@ -561,7 +597,12 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
   // Tab-specific task counts with better logic
   const tabCounts = {
     overview: tasks.length,
-    family: tasks.filter(task => task.assignedToUserId || task.familyId).length, // Family collaboration tasks
+    family: tasks.filter(task => 
+      // Tasks assigned to family members or tasks within family context
+      task.assignedToUserId || task.familyId || 
+      // Tasks assigned to me by family members
+      (task.assignedToUserId === user?.id && familyMembers.some(m => m.userId === task.assignedToUserId))
+    ).length,
     queue: tasks.filter(task => !task.isCompleted && (task.priority === 'Low' || task.priority === 'Medium')).length, // Lower priority tasks waiting
     progress: tasks.filter(task => !task.isCompleted && (task.priority === 'High' || task.priority === 'Urgent')).length, // High priority active tasks
     completed: tasks.filter(task => task.isCompleted).length
@@ -973,15 +1014,17 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                       </div>
                     </div>
                   </SelectItem>
-                  <SelectItem value="family">
-                    <div className="flex items-center gap-3 p-2">
-                      <span className="text-xl">👨‍👩‍👧‍👦</span>
-                      <div>
-                        <div className="font-semibold">Family</div>
-                        <div className="text-xs text-gray-500">{tabCounts.family} family quests</div>
+                  {hasFamily && (
+                    <SelectItem value="family">
+                      <div className="flex items-center gap-3 p-2">
+                        <span className="text-xl">👨‍👩‍👧‍👦</span>
+                        <div>
+                          <div className="font-semibold">Family</div>
+                          <div className="text-xs text-gray-500">{tabCounts.family} family quests</div>
+                        </div>
                       </div>
-                    </div>
-                  </SelectItem>
+                    </SelectItem>
+                  )}
                   <SelectItem value="queue">
                     <div className="flex items-center gap-3 p-2">
                       <span className="text-xl">⏳</span>
@@ -1018,7 +1061,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
               <div className="flex border-b border-gray-200 dark:border-gray-700">
                 {[
                   { id: 'overview', label: 'All Tasks', icon: '📋', count: tabCounts.overview },
-                  { id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', count: tabCounts.family },
+                  ...(hasFamily ? [{ id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', count: tabCounts.family }] : []),
                   { id: 'queue', label: 'In Queue', icon: '⏳', count: tabCounts.queue },
                   { id: 'progress', label: 'In Progress', icon: '⚡', count: tabCounts.progress },
                   { id: 'completed', label: 'Completed', icon: '✅', count: tabCounts.completed }
@@ -1055,7 +1098,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
               <div className="px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50">
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
                   {activeTab === 'overview' && '📋 All your tasks in one comprehensive view'}
-                  {activeTab === 'family' && '👨‍👩‍👧‍👦 Tasks shared with your family members • Collaboration hub'}
+                  {activeTab === 'family' && hasFamily && `👨‍👩‍👧‍👦 Tasks shared with your family members • ${familyMembers.length} members • Collaboration hub`}
                   {activeTab === 'queue' && '⏳ Lower priority quests waiting to be started'}
                   {activeTab === 'progress' && '⚡ High priority quests currently in progress'}
                   {activeTab === 'completed' && '✅ Your victory history of completed quests'}
@@ -1182,11 +1225,45 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                                   </Badge>
                                 )}
                                 
+                                {/* ✨ ENHANCED: Family task assignment badge with avatar */}
                                 {task.assignedToUserId && task.assignedToUserName && (
-                                  <Badge className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    {(() => {
+                                      const assignedMember = getFamilyMemberByUserId(task.assignedToUserId);
+                                      return (
+                                        <>
+                                          {/* Family member avatar */}
+                                          {assignedMember && hasFamily && (
+                                            <Avatar className="h-6 w-6">
+                                              <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white text-xs">
+                                                {(assignedMember.user?.firstName?.[0] || task.assignedToUserName[0] || '?').toUpperCase()}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                          )}
+                                          {/* Assignment badge */}
+                                          <Badge className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                                            {!assignedMember && <Users className="h-3 w-3" />}
+                                            {task.assignedToUserId === user?.id ? (
+                                              <span className="text-yellow-200">👤 You</span>
+                                            ) : (
+                                              <>
+                                                <span className="hidden sm:inline">{task.assignedToUserName}</span>
+                                                <span className="sm:hidden">{task.assignedToUserName.split(' ')[0]}</span>
+                                              </>
+                                            )}
+                                          </Badge>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+
+                                {/* ✨ NEW: Family task indicator for unassigned family tasks */}
+                                {task.familyId && !task.assignedToUserId && hasFamily && (
+                                  <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
                                     <Users className="h-3 w-3" />
-                                    <span className="hidden sm:inline">{task.assignedToUserName}</span>
-                                    <span className="sm:hidden">{task.assignedToUserName.split(' ')[0]}</span>
+                                    <span className="hidden sm:inline">Family Task</span>
+                                    <span className="sm:hidden">Family</span>
                                   </Badge>
                                 )}
                                 
@@ -1345,7 +1422,14 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
           {user && (
             <TaskCreationModal
               user={user}
-              family={null}
+              family={hasFamily && familyMembers.length > 0 ? { 
+                id: familyMembers[0]?.familyId || 0,
+                name: 'My Family',
+                description: '',
+                createdAt: new Date().toISOString(),
+                createdById: user?.id || 0,
+                memberCount: familyMembers.length
+              } : null}
               onTaskCreated={handleTaskCreated}
               isOpen={showTaskModal}
               onOpenChange={handleCloseTaskModal}

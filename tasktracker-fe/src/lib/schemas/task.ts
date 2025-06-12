@@ -25,6 +25,32 @@ export const createTaskSchema = z.object({
 });
 
 /**
+ * Enhanced Task Creation Schema with Template and Context Support
+ * Used by TaskCreationModal component
+ */
+export const taskCreationSchema = z.object({
+  title: z.string().min(1, 'Task title is required').max(200, 'Title must be less than 200 characters'),
+  description: z.string().optional(),
+  priority: z.enum(['Low', 'Medium', 'High', 'Urgent'], {
+    required_error: 'Please select a priority level'
+  }),
+  dueDate: z.string().optional(),
+  categoryId: z.number().optional(),
+  estimatedTimeMinutes: z.number().min(1, 'Estimated time must be at least 1 minute').max(1440, 'Estimated time cannot exceed 24 hours').optional(),
+  pointsValue: z.number().min(1, 'Points must be at least 1').max(1000, 'Points cannot exceed 1000').optional(),
+  familyId: z.number().optional(),
+  assignedToUserId: z.number().optional(),
+  requiresApproval: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+  // Enhanced fields for TaskCreationModal
+  taskContext: z.enum(['individual', 'family', 'template']).optional(),
+  saveAsTemplate: z.boolean().optional(),
+  templateName: z.string().max(100, 'Template name must be less than 100 characters').optional(),
+  templateCategory: z.string().max(50, 'Template category must be less than 50 characters').optional(),
+  isPublicTemplate: z.boolean().optional()
+});
+
+/**
  * Schema for updating an existing task
  */
 export const updateTaskSchema = z.object({

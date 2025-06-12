@@ -1,24 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Calendar, Clock, Star, Users, Tag, Zap, Trophy, Target, Sparkles, Shield, UserCheck } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Plus, Target, Trophy, Zap, Sparkles, Calendar, Clock, 
+  Tag, Shield, UserCheck, Users, Star
+} from 'lucide-react';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { CreateTaskDTO, CreateTaskFormData, TaskCreationModalProps, Task, UpdateTaskDTO } from '@/lib/types/task';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-import { createTaskSchema } from '@/lib/schemas/task';
+import { CreateTaskFormData, Task, CreateTaskDTO, UpdateTaskDTO, FlexibleTaskAssignmentDTO } from '@/lib/types/task';
+import { TaskCreationModalProps } from '@/lib/types/component-props';
+import { taskCreationSchema } from '@/lib/schemas/task';
 
-export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange, editingTask }: TaskCreationModalProps) {
+export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange, editingTask, defaultContext, defaultFamilyId }: TaskCreationModalProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
   // Use external control if provided, otherwise internal state
@@ -32,7 +57,7 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   const isEditing = !!editingTask;
 
   const form = useForm<CreateTaskFormData>({
-    resolver: zodResolver(createTaskSchema),
+    resolver: zodResolver(taskCreationSchema),
     defaultValues: {
       title: '',
       description: '',
@@ -40,8 +65,15 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
       dueDate: '',
       estimatedTimeMinutes: 30,
       pointsValue: 10,
-      familyId: family?.id,
-      tags: []
+      familyId: defaultFamilyId || family?.id,
+      tags: [],
+      taskContext: defaultContext || 'individual',
+      assignedToUserId: undefined,
+      requiresApproval: false,
+      saveAsTemplate: false,
+      templateName: '',
+      templateCategory: '',
+      isPublicTemplate: false
     }
   });
 
@@ -65,7 +97,13 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         pointsValue: editingTask.pointsValue || 10,
         familyId: editingTask.familyId || family?.id,
         assignedToUserId: editingTask.assignedToUserId || undefined,
-        tags: editingTask.tags?.map(tag => tag.name) || []
+        tags: editingTask.tags?.map(tag => tag.name) || [],
+        taskContext: 'individual', // Default for editing
+        requiresApproval: false, // Default for editing
+        saveAsTemplate: false, // Default for editing
+        templateName: '', // Default for editing
+        templateCategory: '', // Default for editing
+        isPublicTemplate: false // Default for editing
       });
     } else {
       form.reset({
@@ -77,10 +115,16 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         pointsValue: 10,
         familyId: family?.id,
         assignedToUserId: undefined,
-        tags: []
+        tags: [],
+        taskContext: defaultContext || 'individual',
+        requiresApproval: false,
+        saveAsTemplate: false,
+        templateName: '',
+        templateCategory: '',
+        isPublicTemplate: false
       });
     }
-  }, [editingTask, family?.id, form]);
+  }, [editingTask, family?.id, form, defaultContext, defaultFamilyId]);
 
   const watchedTags = form.watch('tags') || [];
   const watchedPoints = form.watch('pointsValue') || 10;
@@ -143,6 +187,9 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         console.log('✅ Task updated successfully:', resultTask);
       } else {
         // Create new task
+        // If assigning to family member, create task without assignment first
+        const isAssigningToFamilyMember = data.assignedToUserId && data.familyId && family;
+        
         const taskData: CreateTaskDTO = {
           title: data.title,
           description: data.description || undefined,
@@ -151,14 +198,80 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
           categoryId: data.categoryId || undefined,
           estimatedTimeMinutes: data.estimatedTimeMinutes || undefined,
           pointsValue: data.pointsValue || 10,
-          familyId: data.familyId || undefined,
-          assignedToUserId: data.assignedToUserId || undefined,
+          // Only set familyId and assignedToUserId if NOT using family assignment system
+          familyId: isAssigningToFamilyMember ? undefined : (data.familyId || undefined),
+          assignedToUserId: isAssigningToFamilyMember ? undefined : (data.assignedToUserId || undefined),
           tags: finalTags.length > 0 ? finalTags : undefined
         };
 
         console.log('🚀 About to call taskService.createTask with:', taskData);
         resultTask = await taskService.createTask(taskData);
         console.log('✅ Task created successfully:', resultTask);
+
+        // If task is assigned to a family member, assign it through the family task system
+        if (isAssigningToFamilyMember) {
+          console.log('👥 Task assigned to family member, creating family task assignment...');
+          console.log('🔍 Assignment context:', {
+            assignedToUserId: data.assignedToUserId,
+            familyMembersCount: familyMembers.length,
+            familyMembers: familyMembers.map(m => ({
+              id: m.id,
+              userId: m.user?.id,
+              name: m.user?.firstName || m.user?.username
+            })),
+            family: family
+          });
+          try {
+            // Find the family member by user ID
+            const assignedMember = familyMembers.find(member => member.user?.id === data.assignedToUserId);
+            console.log('🔍 Member lookup result:', {
+              assignedMember,
+              searchingForUserId: data.assignedToUserId,
+              found: !!assignedMember
+            });
+            if (assignedMember) {
+              console.log('🎯 Found assigned family member:', {
+                memberId: assignedMember.id,
+                memberName: assignedMember.user?.firstName || assignedMember.user?.username,
+                userId: assignedMember.user?.id
+              });
+
+              // Create family task assignment
+              const assignmentData: FlexibleTaskAssignmentDTO = {
+                taskId: resultTask.id,
+                assignToUserId: assignedMember.user!.id,
+                requiresApproval: false, // Default to false, can be made configurable later
+                memberId: assignedMember.id,
+                userId: user.id
+              };
+
+              console.log('📋 Creating family task assignment:', assignmentData);
+              try {
+                const familyTask = await taskService.assignTaskToFamilyMember(family.id, assignmentData);
+                
+                if (familyTask) {
+                  console.log('✅ Family task assignment created successfully:', familyTask);
+                } else {
+                  console.warn('⚠️ Family task assignment returned null');
+                }
+              } catch (assignmentError) {
+                console.error('❌ Family task assignment failed with error:', assignmentError);
+                console.error('🔍 Assignment data that failed:', assignmentData);
+                console.error('🔍 Family ID:', family.id);
+              }
+            } else {
+              console.warn('⚠️ Could not find family member with user ID:', data.assignedToUserId);
+              console.log('🔍 Available family members:', familyMembers.map(m => ({
+                id: m.id,
+                userId: m.user?.id,
+                name: m.user?.firstName || m.user?.username
+              })));
+            }
+          } catch (familyAssignError) {
+            console.error('❌ Failed to create family task assignment:', familyAssignError);
+            // Don't fail the entire task creation if family assignment fails
+          }
+        }
       }
       
       // Call success callback
@@ -214,15 +327,34 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
   useEffect(() => {
     const fetchFamilyMembers = async () => {
       if (family) {
+        console.log('🔍 TaskCreationModal: Starting to fetch family members for family:', {
+          familyId: family.id,
+          familyName: family.name,
+          familyObject: family
+        });
         setLoadingMembers(true);
         try {
           const members = await familyInvitationService.getFamilyMembers(family.id);
           setFamilyMembers(members);
+          console.log('✅ TaskCreationModal: Family members loaded for assignment:', {
+            count: members.length,
+            members: members.map(m => ({
+              id: m.id,
+              userId: m.user?.id,
+              hasUser: !!m.user,
+              userName: m.user?.firstName || m.user?.username || 'Unknown',
+              fullMember: m
+            }))
+          });
         } catch (error) {
-          console.error('Failed to fetch family members:', error);
+          console.error('❌ TaskCreationModal: Failed to fetch family members:', error);
+          setFamilyMembers([]);
         } finally {
           setLoadingMembers(false);
         }
+      } else {
+        console.log('⚠️ TaskCreationModal: No family provided, cannot fetch members');
+        setFamilyMembers([]);
       }
     };
 
@@ -528,11 +660,29 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
                             </SelectItem>
                           ) : (
                             familyMembers
-                              .filter(member => member.userId !== user.id)
-                              .map((member) => (
+                              .filter(member => {
+                                console.log('🎭 TaskCreationModal: Filtering member:', {
+                                  memberId: member.id,
+                                  memberUserId: member.user?.id,
+                                  currentUserId: user.id,
+                                  hasUser: !!member.user,
+                                  userName: member.user?.firstName || member.user?.username || 'Unknown',
+                                  willInclude: member.user?.id !== user.id && member.user?.id != null && member.user != null
+                                });
+                                return member.user?.id !== user.id && 
+                                       member.user?.id != null && 
+                                       member.user != null;
+                              })
+                                                              .map((member) => {
+                                 console.log('🎭 TaskCreationModal: Rendering member:', {
+                                   memberId: member.id,
+                                   memberUserId: member.user?.id,
+                                   userName: member.user?.firstName || member.user?.username || 'Unknown'
+                                 });
+                                 return (
                                 <SelectItem 
                                   key={member.id} 
-                                  value={member.userId.toString()} 
+                                  value={member.user?.id?.toString() || `member-${member.id}`} 
                                   className="py-3 px-4 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 cursor-pointer transition-colors duration-200"
                                 >
                                   <div className="flex items-center gap-3">
@@ -549,7 +699,8 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
                                     </Badge>
                                   </div>
                                 </SelectItem>
-                              ))
+                                );
+                              })
                           )}
                         </SelectContent>
                       </Select>
