@@ -5,10 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TimeProgressBar } from '@/components/ui/TimeProgressBar';
+import { AssigneeList } from '@/components/ui/AssigneeList';
 import { 
   Target, 
   Clock, 
@@ -22,10 +25,10 @@ import {
   Zap,
   Activity,
   UserPlus,
-  Edit,
   Trash2,
-  Archive,
-  RefreshCw
+  RefreshCw,
+  Trophy,
+  Circle
 } from 'lucide-react';
 import { FamilyTaskItemDTO, Task } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
@@ -44,9 +47,10 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   
-  // Selection State for Bulk Operations
+  // ✨ ENHANCED: Batch Operations State
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
+  const [isBatchMode, setIsBatchMode] = useState(false);
 
   useEffect(() => {
     loadFamilyTasks();
@@ -114,7 +118,7 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
     return true;
   });
 
-  // Selection handlers
+  // ✨ ENHANCED: Selection handlers
   const handleSelectTask = (taskId: number, checked: boolean) => {
     const newSelected = new Set(selectedTasks);
     if (checked) {
@@ -133,6 +137,49 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
       setSelectedTasks(new Set());
     }
     setIsSelectAllChecked(checked);
+  };
+
+  // ✨ NEW: Batch operation handlers
+  const handleBatchComplete = async () => {
+    try {
+      const selectedTaskIds = Array.from(selectedTasks);
+      const batchResult = await taskService.batchCompleteTasks(selectedTaskIds);
+
+      if (batchResult.success) {
+        // Refresh the family tasks to get updated data
+        await loadFamilyTasks();
+        setSelectedTasks(new Set());
+        setIsSelectAllChecked(false);
+        console.log(`✅ Successfully completed ${selectedTaskIds.length} family tasks`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to complete family tasks:', error);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    const selectedTaskIds = Array.from(selectedTasks);
+    
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedTaskIds.length} selected task${selectedTaskIds.length === 1 ? '' : 's'}?\n\nThis action cannot be undone and all task data will be permanently lost.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      const batchResult = await taskService.batchDeleteTasks(selectedTaskIds);
+
+      if (batchResult.success) {
+        // Refresh the family tasks to get updated data
+        await loadFamilyTasks();
+        setSelectedTasks(new Set());
+        setIsSelectAllChecked(false);
+        console.log(`✅ Successfully deleted ${selectedTaskIds.length} family tasks`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to delete family tasks:', error);
+    }
   };
 
   // Utility functions
@@ -157,8 +204,18 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
   };
 
   const getMemberAvatar = (memberId: number) => {
-    const member = familyMembers.find(m => m.id === memberId);
-    return member;
+    return familyMembers.find(member => member.id === memberId);
+  };
+
+  // ✅ NEW: Helper function to format task titles (Title Case)
+  const formatTaskTitle = (title: string): string => {
+    if (!title) return '';
+    
+    return title
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   if (isLoading) {
@@ -221,19 +278,92 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
                 <Plus className="h-4 w-4 mr-2" />
                 Create Task
               </Button>
+
+              {/* ✨ ENHANCED: Refresh Button with Comprehensive Tooltip */}
+              <Tooltip>
+                <TooltipTrigger asChild>
               <Button 
                 onClick={loadFamilyTasks}
                 variant="outline"
                 size="sm"
+                    className={`transition-all duration-200 ${isLoading ? 'bg-blue-50 border-blue-200' : ''}`}
               >
-                <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin text-blue-600' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-900 text-white p-3 max-w-xs">
+                  <div className="space-y-1">
+                    <p className="font-semibold">🔄 Refresh Family Tasks</p>
+                    <p className="text-sm text-gray-300">
+                      Click to reload all family tasks and get the latest updates
+                    </p>
+                    {isLoading && (
+                      <p className="text-xs text-blue-300">Refreshing...</p>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* ✨ ENHANCED: Batch Mode Button with Comprehensive Tooltip */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsBatchMode(!isBatchMode)}
+                    className={`transition-all duration-200 ${isBatchMode 
+                      ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 shadow-md' 
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      {isBatchMode ? (
+                        <Circle className="h-4 w-4" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                      {/* Visual indicator for mobile users */}
+                      <span className="hidden sm:inline text-xs font-medium">
+                        {isBatchMode ? 'Exit' : 'Select'}
+                      </span>
+                    </div>
               </Button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-gray-900 text-white p-3 max-w-xs">
+                  <div className="space-y-1">
+                    {isBatchMode ? (
+                      <>
+                        <p className="font-semibold">✓ Exit Selection Mode</p>
+                        <p className="text-sm text-gray-300">
+                          Click to exit batch selection mode and return to normal view
+                        </p>
+                        <p className="text-xs text-blue-300">
+                          Currently in selection mode - you can select multiple family tasks
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold">☐ Enter Selection Mode</p>
+                        <p className="text-sm text-gray-300">
+                          Click to select multiple family tasks for batch operations like:
+                        </p>
+                        <ul className="text-xs text-gray-300 ml-2 space-y-0.5">
+                          <li>• Complete multiple tasks at once</li>
+                          <li>• Delete multiple tasks together</li>
+                          <li>• Bulk manage family task list</li>
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      {/* Task Summary Stats */}
+      {/* ✨ ENHANCED: Task Summary Stats - Hidden in Batch Mode for Cleaner UX */}
+      {!isBatchMode && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
           <CardContent className="p-4">
@@ -285,21 +415,35 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
           </CardContent>
         </Card>
       </div>
+      )}
 
-      {/* Filters and Search */}
+      {/* ✨ CONTEXTUAL: Filters & Search - Simplified in Batch Mode */}
       <Card className="bg-white/70 backdrop-blur-sm dark:bg-gray-800/70 border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Filter className="h-5 w-5 text-blue-600" />
-            Filters & Search
+            {isBatchMode ? 'Quick Search' : 'Filters & Search'}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Search */}
+          {isBatchMode ? (
+            /* Batch Mode: Simplified Search Only */
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
+                placeholder="Search tasks for selection..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          ) : (
+            /* Normal Mode: Full Filter Grid */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
                 placeholder="Search tasks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -350,34 +494,129 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
               </SelectContent>
             </Select>
           </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Bulk Actions Bar */}
-      {selectedTasks.size > 0 && (
-        <Card className="bg-gradient-to-r from-purple-500 to-blue-500 text-white border-0 shadow-xl">
+      {/* ✨ ENHANCED: Batch Actions Bar with Comprehensive Tooltips */}
+      {isBatchMode && selectedTasks.size > 0 && (
+        <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-2 border-blue-200 dark:border-blue-700">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="font-semibold">{selectedTasks.size} task(s) selected</span>
+                  {/* ✨ ENHANCED: Select All Button with Comprehensive Tooltip */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSelectAll(!isSelectAllChecked)}
+                        className="flex items-center gap-2 bg-white/80 hover:bg-white transition-all duration-200"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="hidden sm:inline">
+                          {isSelectAllChecked ? 'Deselect All' : 'Select All'}
+                        </span>
+                        <span className="sm:hidden">
+                          {isSelectAllChecked ? '☐' : '☑️'}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-gray-900 text-white p-3 max-w-xs">
+                      <div className="space-y-1">
+                        {isSelectAllChecked ? (
+                          <>
+                            <p className="font-semibold">☐ Deselect All Family Tasks</p>
+                            <p className="text-sm text-gray-300">
+                              Click to deselect all {filteredTasks.length} currently visible family tasks
+                            </p>
+                            <p className="text-xs text-blue-300">
+                              This will clear your current selection
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold">☑️ Select All Family Tasks</p>
+                            <p className="text-sm text-gray-300">
+                              Click to select all {filteredTasks.length} currently visible family tasks at once
+                            </p>
+                            <div className="text-xs text-blue-300 space-y-0.5">
+                              <p>• After selecting, you can:</p>
+                              <p>• Complete all tasks together</p>
+                              <p>• Delete multiple tasks at once</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    {selectedTasks.size} of {filteredTasks.length} selected
+                  </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm">
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Bulk Assign
+                {selectedTasks.size > 0 && (
+                  <div className="flex gap-2">
+                    {/* ✨ ENHANCED: Batch Complete Button with Comprehensive Tooltip */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleBatchComplete}
+                          className="flex items-center gap-2 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 border-green-200 transition-all duration-200"
+                        >
+                          <Trophy className="h-4 w-4" />
+                          <span className="hidden sm:inline">Complete ({selectedTasks.size})</span>
+                          <span className="sm:hidden">✓ {selectedTasks.size}</span>
                 </Button>
-                <Button variant="secondary" size="sm">
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-gray-900 text-white p-3 max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">🏆 Complete Selected Family Tasks</p>
+                          <p className="text-sm text-gray-300">
+                            Mark all {selectedTasks.size} selected family task{selectedTasks.size === 1 ? '' : 's'} as completed and earn XP rewards
+                          </p>
+                          <div className="text-xs text-green-300 space-y-0.5">
+                            <p>• Tasks will be moved to completed section</p>
+                            <p>• Family members will earn XP and points</p>
+                            <p>• Family achievement progress will be updated</p>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* ✨ ENHANCED: Batch Delete Button with Comprehensive Tooltip */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleBatchDelete}
+                          className="flex items-center gap-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border-red-200 transition-all duration-200"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Delete ({selectedTasks.size})</span>
+                          <span className="sm:hidden">🗑️ {selectedTasks.size}</span>
                 </Button>
-                <Button variant="secondary" size="sm">
-                  <Archive className="h-4 w-4 mr-1" />
-                  Archive
-                </Button>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-gray-900 text-white p-3 max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-semibold">🗑️ Delete Selected Family Tasks</p>
+                          <p className="text-sm text-gray-300">
+                            Permanently delete all {selectedTasks.size} selected family task{selectedTasks.size === 1 ? '' : 's'}
+                          </p>
+                          <div className="text-xs text-red-300 space-y-0.5">
+                            <p>⚠️ This action cannot be undone</p>
+                            <p>• All family task data will be permanently lost</p>
+                            <p>• Progress and assignments will be deleted</p>
+                            <p>• You&apos;ll see a confirmation dialog first</p>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -392,13 +631,17 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
               <Activity className="h-5 w-5 text-blue-600" />
               Family Tasks ({filteredTasks.length})
             </CardTitle>
+            {/* ✨ ENHANCED: Show select all only in batch mode */}
+            {isBatchMode && (
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={isSelectAllChecked}
                 onCheckedChange={handleSelectAll}
               />
-              <span className="text-sm text-gray-600">Select All</span>
+                <span className="text-sm text-gray-600 hidden sm:inline">Select All</span>
+                <span className="text-xs text-gray-600 sm:hidden">All</span>
             </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -410,26 +653,53 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
               return (
                 <div
                   key={task.id}
-                  className={`flex items-center gap-4 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors cursor-pointer ${
+                  className={`flex items-center gap-4 p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50 hover:bg-white/80 dark:hover:bg-gray-700/80 transition-colors ${
+                    !isBatchMode ? 'cursor-pointer' : ''
+                  } ${
                     selectedTasks.has(task.id) ? 'ring-2 ring-purple-500 bg-purple-50/50' : ''
                   } ${isOverdue ? 'border-l-4 border-l-red-500' : ''}`}
-                  onClick={() => window.location.href = `/tasks/${task.id}`}
+                  onClick={() => !isBatchMode && (window.location.href = `/tasks/${task.id}`)}
                 >
+                  {/* ✨ ENHANCED: Show checkbox only in batch mode */}
+                  {isBatchMode && (
                   <Checkbox
                     checked={selectedTasks.has(task.id)}
                     onCheckedChange={(checked) => handleSelectTask(task.id, checked as boolean)}
                     onClick={(e) => e.stopPropagation()}
                   />
+                  )}
                   
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                  <div className="flex-1 min-w-0 space-y-3">
+                    {/* Task Header */}
+                    <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
                       <h3 className={`font-medium text-sm truncate ${task.isCompleted ? 'line-through text-gray-500' : ''}`}>
-                        {task.title}
+                        {formatTaskTitle(task.title)}
                       </h3>
                       {isOverdue && <Badge variant="destructive" className="text-xs">Overdue</Badge>}
                     </div>
                     
+                    {/* ✨ CONTEXTUAL: Time Progress Bar - Hidden in Batch Mode for Cleaner UX */}
+                    {!isBatchMode && task.dueDate && !task.isCompleted && (
+                      <div className="w-full">
+                        <TimeProgressBar
+                          dueDate={task.dueDate}
+                          isCompleted={task.isCompleted}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* ✨ CONTEXTUAL: Simplified metadata in batch mode */}
+                    {isBatchMode ? (
+                      /* Batch Mode: Minimal Info */
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</span>
+                        {task.pointsValue && (
+                          <span className="text-purple-600 font-medium">⭐ {task.pointsValue}</span>
+                        )}
+                      </div>
+                    ) : (
+                      /* Normal Mode: Full metadata */
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -442,34 +712,33 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
                         </Badge>
                       )}
                       
-                      <Badge className={`${getPriorityColor(task.priority)} text-white text-xs`}>
+                        <Badge className={`${getPriorityColor(task.priority)} text-white text-xs flex items-center gap-1`}>
                         {getPriorityIcon(task.priority)} {task.priority}
                       </Badge>
                     </div>
+                    )}
                   </div>
                   
+                  {/* ✨ ENHANCED: Assignee Display with AssigneeList Component */}
                   <div className="flex items-center gap-3">
                     {assignedMember ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={assignedMember.user.avatarUrl || undefined} />
-                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">
-                            {assignedMember.user.firstName?.charAt(0) || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
-                          {assignedMember.user.firstName || assignedMember.user.username}
-                        </span>
-                      </div>
+                      <AssigneeList
+                        assignees={[{
+                          id: assignedMember.id,
+                          name: assignedMember.user?.firstName || assignedMember.user?.username || 'Member'
+                        }]}
+                      />
                     ) : (
                       <Badge variant="outline" className="text-xs">
                         Unassigned
                       </Badge>
                     )}
                     
+                    {!isBatchMode && (
                     <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -512,6 +781,8 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
         isOpen={isTaskModalOpen}
         onOpenChange={setIsTaskModalOpen}
         onTaskCreated={handleTaskCreated}
+        defaultContext="family"
+        defaultFamilyId={family.id}
       />
     </div>
   );

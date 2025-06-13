@@ -97,6 +97,9 @@ namespace TaskTrackerAPI.Services
 
                 _logger.LogInformation("✅ Task assignment completed successfully in database");
 
+                // ✅ FIXED: Wait a moment for DB to be fully consistent after ExecuteUpdateAsync
+                await Task.Delay(10);
+
                 // Get the task after assignment to verify the changes
                 TaskItem? taskAfter = await _taskRepository.GetSharedTaskByIdAsync(taskId);
                 if (taskAfter == null)
@@ -107,6 +110,20 @@ namespace TaskTrackerAPI.Services
 
                 _logger.LogInformation("📋 Task after assignment: Id={Id}, FamilyId={FamilyId}, AssignedToFamilyMemberId={AssignedToFamilyMemberId}, AssignedByUserId={AssignedByUserId}", 
                     taskAfter.Id, taskAfter.FamilyId, taskAfter.AssignedToFamilyMemberId, taskAfter.AssignedByUserId);
+
+                // ✅ FIXED: Additional logging for navigation properties
+                _logger.LogInformation("🔗 Navigation properties: HasAssignedToFamilyMember={HasAssignedMember}, HasAssignedByUser={HasAssignedBy}, HasFamily={HasFamily}", 
+                    taskAfter.AssignedToFamilyMember != null, 
+                    taskAfter.AssignedByUser != null, 
+                    taskAfter.Family != null);
+
+                if (taskAfter.AssignedToFamilyMember != null)
+                {
+                    _logger.LogInformation("👤 AssignedToFamilyMember: Id={Id}, UserId={UserId}, HasUser={HasUser}", 
+                        taskAfter.AssignedToFamilyMember.Id, 
+                        taskAfter.AssignedToFamilyMember.UserId, 
+                        taskAfter.AssignedToFamilyMember.User != null);
+                }
 
                 // Map to DTO
                 FamilyTaskItemDTO result = _mapper.Map<FamilyTaskItemDTO>(taskAfter);

@@ -6,6 +6,72 @@
 import { User } from './auth';
 import { FamilyDTO, FamilyMemberDTO } from './family-invitation';
 
+// Export enum types for board components
+export enum TaskPriority {
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
+  Urgent = 'Urgent'
+}
+
+export enum TaskItemStatus {
+  NotStarted = 0,
+  InProgress = 1,
+  OnHold = 2,
+  Pending = 3,
+  Completed = 4,
+  Cancelled = 5
+}
+
+/**
+ * Task Item Response DTO - matches backend TaskItemResponseDTO
+ */
+export interface TaskItemResponseDTO {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  priority: TaskPriority;
+  dueDate?: string; // ISO date string
+  createdAt: string; // ISO date string
+  updatedAt?: string; // ISO date string
+  completedAt?: string; // ISO date string
+  categoryId?: number;
+  categoryName?: string;
+  userId: number;
+  tags?: TagDto[];
+  estimatedMinutes?: number;
+  actualMinutes?: number;
+  isStarred?: boolean;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  boardPosition?: number;
+  boardColumn?: string;
+  boardId?: number;
+  assignedToUserId?: number;
+  assignedToUserName?: string;
+  // Board-specific properties
+  points?: number;
+  pointsValue?: number;
+  pointsEarned?: number;
+}
+
+/**
+ * Create Task Item DTO - for creating new tasks in boards
+ */
+export interface CreateTaskItemDTO {
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  status: TaskItemStatus;
+  dueDate?: string; // ISO date string
+  points?: number;
+  tags?: string[];
+  boardId?: number;
+  categoryId?: number;
+  estimatedTimeMinutes?: number;
+}
+
 export interface TagDto {
   id: number;
   name: string;

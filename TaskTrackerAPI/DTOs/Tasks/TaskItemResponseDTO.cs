@@ -127,5 +127,15 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// Board ID
         
         public int? BoardId { get; set; }
+
+        /// <summary>
+        /// User ID assigned to this task (for family tasks)
+        /// </summary>
+        public int? AssignedToUserId { get; set; }
+
+        /// <summary>
+        /// Name of the user assigned to this task (for family tasks)
+        /// </summary>
+        public string? AssignedToUserName { get; set; }
     }
 } 

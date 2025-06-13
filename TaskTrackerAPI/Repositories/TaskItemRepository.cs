@@ -40,6 +40,10 @@ public class TaskItemRepository : ITaskItemRepository
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
+            .Include(t => t.AssignedToFamilyMember!)
+                .ThenInclude(fm => fm!.User)
+            .Include(t => t.AssignedByUser)
+            .Include(t => t.Family)
             .Where(t => t.UserId == userId);
         
         return await query.ToListAsync();
@@ -51,6 +55,10 @@ public class TaskItemRepository : ITaskItemRepository
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
+            .Include(t => t.AssignedToFamilyMember!)
+                .ThenInclude(fm => fm!.User)
+            .Include(t => t.AssignedByUser)
+            .Include(t => t.Family)
             .Where(t => t.UserId == userId);
 
         int count = await query.CountAsync();
@@ -93,6 +101,10 @@ public class TaskItemRepository : ITaskItemRepository
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
+            .Include(t => t.AssignedToFamilyMember!)
+                .ThenInclude(fm => fm!.User)
+            .Include(t => t.AssignedByUser)
+            .Include(t => t.Family)
             .Where(t => t.Id == id && t.UserId == userId)
             .FirstOrDefaultAsync();
     }

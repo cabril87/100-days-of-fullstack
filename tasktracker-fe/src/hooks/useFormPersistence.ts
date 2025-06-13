@@ -33,19 +33,19 @@ export const useFormPersistence = <T extends Record<string, unknown>>(
   const storageKey = `form_${key}`;
 
   // Simple encryption/decryption (in production, use proper encryption)
-  const encrypt = (text: string): string => {
+  const encrypt = useCallback((text: string): string => {
     if (!encryption) return text;
     return btoa(text); // Basic base64 encoding
-  };
+  }, [encryption]);
 
-  const decrypt = (text: string): string => {
+  const decrypt = useCallback((text: string): string => {
     if (!encryption) return text;
     try {
       return atob(text); // Basic base64 decoding
     } catch {
       return text; // Fallback if decryption fails
     }
-  };
+  }, [encryption]);
 
   // Load persisted data on mount
   useEffect(() => {

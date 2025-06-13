@@ -416,10 +416,36 @@ export class TaskService {
    */
   async getFamilyTasks(familyId: number): Promise<FamilyTaskItemDTO[]> {
     try {
+      console.log('🔍 TaskService: Calling getFamilyTasks for familyId:', familyId);
+      
       const result = await apiClient.get<ApiResponse<FamilyTaskItemDTO[]>>(`/v1/family/${familyId}/tasks`);
-      return result?.data || [];
+      
+      console.log('📡 TaskService: getFamilyTasks raw API response:', {
+        result,
+        hasResult: !!result,
+        resultType: typeof result,
+        resultKeys: result ? Object.keys(result) : 'no result',
+        hasData: result && 'data' in result,
+        dataType: result && 'data' in result ? typeof result.data : 'no data',
+        dataLength: result && 'data' in result && Array.isArray(result.data) ? result.data.length : 'not array',
+        isResultArray: Array.isArray(result),
+        resultLength: Array.isArray(result) ? result.length : 'not array',
+        firstFewKeys: result ? JSON.stringify(result).substring(0, 200) : 'no result'
+      });
+      
+      // Handle both wrapped and direct array responses
+      if (result && 'data' in result && Array.isArray(result.data)) {
+        console.log('✅ TaskService: Using wrapped response (result.data)');
+        return result.data;
+      } else if (Array.isArray(result)) {
+        console.log('✅ TaskService: Using direct array response');
+        return result;
+      } else {
+        console.log('⚠️ TaskService: Unexpected response format, returning empty array');
+        return [];
+      }
     } catch (error) {
-      console.error('Failed to fetch family tasks:', error);
+      console.error('❌ TaskService: Failed to fetch family tasks:', error);
       return [];
     }
   }
@@ -472,15 +498,12 @@ export class TaskService {
       console.log('⚠️ TaskService: No valid response data found');
       return null;
     } catch (error) {
-      console.error('❌ TaskService: Family task assignment API error:', error);
-      console.error('🔍 TaskService: Error details:', {
-        errorType: typeof error,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : 'No stack',
+      console.error('🚨 TaskService: Family task assignment failed:', {
+        error: error instanceof Error ? error.message : String(error),
         assignmentData,
         familyId,
         isApiClientError: error instanceof Error && error.name === 'ApiClientError',
-        statusCode: (error as any)?.statusCode,
+        statusCode: error instanceof Error && 'statusCode' in error ? (error as Error & {statusCode?: number}).statusCode : undefined,
         networkError: error instanceof TypeError && error.message.includes('fetch')
       });
       
@@ -806,6 +829,20 @@ export class TaskService {
       return true;
     } catch (error) {
       console.error(`Failed to update tags for task ${taskId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Update task status (for board drag-and-drop)
+   */
+  async updateTaskStatus(taskId: number, status: string): Promise<boolean> {
+    try {
+      await apiClient.put(`/v1/taskitems/${taskId}/status`, { status });
+      this.invalidateCache([`task-${taskId}`]);
+      return true;
+    } catch (error) {
+      console.error('Failed to update task status:', error);
       return false;
     }
   }

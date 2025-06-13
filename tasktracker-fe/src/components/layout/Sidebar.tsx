@@ -264,6 +264,19 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                   >
                     📝 All Tasks
                   </Link>
+                  <Link
+                    href="/boards"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/boards')
+                        ? 'bg-purple-500/20 border-l-4 border-purple-400 text-purple-700 dark:text-purple-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    🎯 Quest Boards
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                      NEW
+                    </span>
+                  </Link>
                 </div>
               )}
             </div>

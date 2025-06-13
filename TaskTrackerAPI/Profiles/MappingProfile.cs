@@ -31,6 +31,11 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
+                .ForMember(dest => dest.AssignedToUserId, opt => opt.MapFrom(src => 
+                    src.AssignedToFamilyMember != null ? src.AssignedToFamilyMember.UserId : (int?)null))
+                .ForMember(dest => dest.AssignedToUserName, opt => opt.MapFrom(src => 
+                    src.AssignedToFamilyMember != null && src.AssignedToFamilyMember.User != null ? 
+                    src.AssignedToFamilyMember.User.FirstName ?? src.AssignedToFamilyMember.User.Username : null))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
                     src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
                     {
@@ -44,6 +49,11 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.CategoryName, opt => 
                     opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty))
                 .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => ConvertPriorityToInt(src.Priority)))
+                .ForMember(dest => dest.AssignedToUserId, opt => opt.MapFrom(src => 
+                    src.AssignedToFamilyMember != null ? src.AssignedToFamilyMember.UserId : (int?)null))
+                .ForMember(dest => dest.AssignedToUserName, opt => opt.MapFrom(src => 
+                    src.AssignedToFamilyMember != null && src.AssignedToFamilyMember.User != null ? 
+                    src.AssignedToFamilyMember.User.FirstName ?? src.AssignedToFamilyMember.User.Username : null))
                 .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => 
                     src.TaskTags != null ? src.TaskTags.Where(tt => tt.Tag != null).Select(tt => new TagDto
                     {

@@ -22,6 +22,9 @@ export * from './notifications';
 // Task schemas
 export * from './task';
 
+// Board schemas
+export * from './board';
+
 // Smart relationship schemas
 export * from './smart-relationship';
 

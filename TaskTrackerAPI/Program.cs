@@ -9,6 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -54,6 +55,7 @@ using System.Net.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.ResponseCompression;
+using System.Text.Json.Serialization.Metadata;
 
 namespace TaskTrackerAPI;
 
@@ -76,6 +78,7 @@ public class Program
             {
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             });
 
         // Add security headers service

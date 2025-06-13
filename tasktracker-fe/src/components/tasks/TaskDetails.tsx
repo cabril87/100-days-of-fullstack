@@ -8,9 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { TimeProgressBar } from '@/components/ui/TimeProgressBar';
+import { AssigneeList } from '@/components/ui/AssigneeList';
 import {
   Calendar, Clock, Edit, Trash2, CheckCircle, Circle, Plus, X, Save, 
-  User, Target, Tag, Timer, TrendingUp, ArrowLeft, Trophy, 
+  Target, Tag, Timer, TrendingUp, ArrowLeft, Trophy, 
   Sparkles, Brain
 } from 'lucide-react';
 import TaskCreationModal from './TaskCreationModal';
@@ -197,17 +199,28 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
     const totalItems = taskDetail.checklist.length;
     const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-    try {
-      await taskService.updateTaskProgress(taskId, {
-        progressPercentage,
-        notes: progressNotes,
-        milestones: []
-      });
+    // TODO: Implement progress tracking API
+    console.log('Progress update:', { progressPercentage, notes: progressNotes });
       setProgressNotes('');
-      loadTaskDetails(); // Refresh to get updated progress
-    } catch (error) {
-      console.error('Failed to update progress:', error);
-    }
+  };
+
+  // ✅ NEW: Helper function to format task titles (Title Case)
+  const formatTaskTitle = (title: string): string => {
+    if (!title) return '';
+    
+    return title
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // ✅ NEW: Helper function to format descriptions (Sentence case)
+  const formatDescription = (description: string): string => {
+    if (!description) return '';
+    
+    // Capitalize first letter, keep rest as-is (preserve intentional capitalization)
+    return description.charAt(0).toUpperCase() + description.slice(1);
   };
 
   // Utility functions
@@ -420,12 +433,12 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
                             ? 'text-green-600 dark:text-green-400 line-through'
                             : 'bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent'
                         }`}>
-                          {task.title}
+                          {formatTaskTitle(task.title)}
                         </h1>
                         
                         {task.description && (
                           <p className="text-gray-600 dark:text-gray-400 text-lg leading-relaxed">
-                            {task.description}
+                            {formatDescription(task.description)}
                           </p>
                         )}
                       </div>
@@ -521,17 +534,33 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
                               </div>
                             </div>
                           )}
-                          
-                          {task.assignedToUserName && (
-                            <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700 col-span-2">
-                              <User className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                              <div className="font-medium text-green-800 dark:text-green-300">Assigned To</div>
-                              <div className="text-green-600 dark:text-green-400 text-xs">
-                                {task.assignedToUserName}
-                              </div>
-                            </div>
-                          )}
                         </div>
+
+                        {/* ✨ ENHANCED: Time Progress Bar */}
+                        {task.dueDate && (
+                          <TimeProgressBar 
+                            dueDate={task.dueDate} 
+                            isCompleted={task.isCompleted}
+                            className="mt-4"
+                          />
+                        )}
+
+                        {/* ✨ ENHANCED: Assignment Display */}
+                        {task.assignedToUserName && (
+                          <div className="mt-4">
+                            <AssigneeList 
+                              assignees={[
+                                {
+                                  id: task.assignedToUserId || 1,
+                                  name: task.assignedToUserName,
+                                  isCreator: false
+                                }
+                              ]} 
+                              size="md"
+                              className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700"
+                            />
+                          </div>
+                        )}
 
                         {/* Checklist Summary */}
                         {taskDetail.checklist.length > 0 && (
@@ -665,7 +694,7 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
                         ? 'line-through text-gray-500 dark:text-gray-400' 
                         : 'text-gray-900 dark:text-white'
                     }`}>
-                      {item.title}
+                      {formatDescription(item.title)} {/* ✅ FIXED: Apply sentence case formatting */}
                     </span>
                     
                     {/* Delete Button */}

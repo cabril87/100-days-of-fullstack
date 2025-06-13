@@ -6,12 +6,37 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  Search, CheckCircle, Circle, Clock, Calendar, Trash2, Edit, Plus,
-  Sparkles, RefreshCw, Eye, Trophy, Target, Zap, Star,
-  Flame, Timer, Crown, Rocket, Users, MoreVertical
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@/components/ui/command';
+import {
+  Calendar, Clock, Edit, Trash2, Plus, Eye,
+  CheckCircle, Circle, Trophy, Crown,
+  RefreshCw, Users, Sparkles, Rocket, X, ListChecks, CheckSquare,
+  Search, MoreHorizontal, ArrowUpDown
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -31,6 +56,8 @@ import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { formatDistance } from 'date-fns';
 import { priorityIntToString } from '@/lib/utils/priorityMapping';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { FamilyDTO } from '@/lib/types/family-invitation'; // ✅ NEW: Import FamilyDTO
 
 export default function TasksPageContent({ user, initialData }: TasksPageContentProps) {
   const router = useRouter();
@@ -44,11 +71,15 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
   const [isBatchMode, setIsBatchMode] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'queue' | 'progress' | 'completed'>('overview');
+  const [, setAuthError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'family' | 'pending' | 'completed' | 'drafts'>('overview');
+  const [showCommandDialog, setShowCommandDialog] = useState(false);
+  const [sortColumn, setSortColumn] = useState<'title' | 'priority' | 'dueDate' | 'assignee'>('dueDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   // ✨ NEW: Family Task Collaboration State
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [hasFamily, setHasFamily] = useState(false);
+  const [family, setFamily] = useState<FamilyDTO | null>(null); // ✅ NEW: Store family data
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -108,10 +139,26 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
     // Check for tab parameter in URL for deep linking
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam && ['overview', 'family', 'queue', 'progress', 'completed'].includes(tabParam)) {
+    if (tabParam && ['overview', 'family', 'pending', 'completed', 'drafts'].includes(tabParam)) {
       setActiveTab(tabParam as typeof activeTab);
     }
   }, [isFallbackUser]);
+
+  // Keyboard shortcuts for command palette
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setShowCommandDialog(true);
+      }
+      if (e.key === 'Escape') {
+        setShowCommandDialog(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const loadTasks = async () => {
     try {
@@ -122,6 +169,18 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         taskService.getRecentTasks(50), // Load more tasks for full view
         taskService.getUserTaskStats()
       ]);
+      
+      // ✨ DEBUG: Log task data to understand familyId assignment
+      console.log('🔍 Loaded tasks debug:', recentTasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        familyId: task.familyId,
+        assignedToUserId: task.assignedToUserId,
+        pointsValue: task.pointsValue,
+        priority: task.priority, // ✅ NEW: Debug priority values
+        priorityType: typeof task.priority // ✅ NEW: Debug priority type
+      })));
+      
       setTasks(recentTasks);
       setStats(taskStats);
 
@@ -131,22 +190,27 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         console.log('📋 Tasks: Loading family data...', { familiesCount: families?.length || 0 });
         
         if (families && families.length > 0) {
+          const userFamily = families[0]; // User's primary family
           setHasFamily(true);
+          setFamily(userFamily); // ✅ NEW: Store family data
           // Load family members for the first family (user's family)
-          const members = await familyInvitationService.getFamilyMembers(families[0].id);
+          const members = await familyInvitationService.getFamilyMembers(userFamily.id);
           setFamilyMembers(members);
           console.log('📋 Tasks: Family data loaded successfully', { 
             hasFamily: true, 
+            familyName: userFamily.name, // ✅ NEW: Log family name
             membersCount: members.length,
-            familyId: families[0].id 
+            familyId: userFamily.id 
           });
         } else {
           console.log('📋 Tasks: User has no family');
           setHasFamily(false);
+          setFamily(null); // ✅ NEW: Clear family data
         }
       } catch (familyError) {
         console.warn('📋 Tasks: Failed to load family data:', familyError);
         setHasFamily(false);
+        setFamily(null); // ✅ NEW: Clear family data on error
       }
 
       console.log('✅ Tasks loaded successfully:', recentTasks.length, 'tasks');
@@ -489,15 +553,6 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
 
   // Gamification calculations
   const calculateLevel = (points: number) => Math.floor((points || 0) / 100) + 1;
-  const calculateProgress = (points: number) => ((points || 0) % 100);
-  const getAchievementBadges = () => {
-    const badges = [];
-    if ((stats.streakDays || 0) >= 7) badges.push({ icon: '🔥', title: 'Week Warrior' });
-    if ((stats.completedTasks || 0) >= 50) badges.push({ icon: '💎', title: 'Task Master' });
-    if ((stats.totalPoints || 0) >= 500) badges.push({ icon: '👑', title: 'Points King' });
-    if ((stats.completedTasks || 0) >= 100) badges.push({ icon: '🏆', title: 'Centurion' });
-    return badges;
-  };
 
   // Utility function to truncate text to specified word count
   const truncateToWords = (text: string, wordLimit: number): string => {
@@ -511,33 +566,138 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
     // Handle null, undefined, empty string - but allow 0 since it's valid (Low priority)
     if (priority === null || priority === undefined || priority === '') return '';
 
+    // ✨ DEBUG: Log priority values to debug the issue
+    console.log(`🔍 getPriorityDisplay: received "${priority}" (type: ${typeof priority})`);
+
     // Convert to string first, then try to parse as number
     const priorityStr = String(priority).trim();
 
     // Try to parse as number first (handles "0", "1", "2", "3", 0, 1, 2, 3)
     const numPriority = parseInt(priorityStr, 10);
     if (!isNaN(numPriority) && numPriority >= 0 && numPriority <= 3) {
-      return priorityIntToString(numPriority);
+      const result = priorityIntToString(numPriority);
+      console.log(`🔍 Priority conversion: ${numPriority} -> "${result}"`);
+      return result;
     }
 
     // If it's already a valid priority string, return it
     const validPriorities = ['Low', 'Medium', 'High', 'Urgent'];
     if (validPriorities.includes(priorityStr)) {
+      console.log(`🔍 Priority string: "${priorityStr}"`);
       return priorityStr;
     }
 
     // If we still don't have a valid priority, don't show it
+    console.log(`🔍 Invalid priority: "${priority}"`);
     return '';
   };
 
   // ✨ NEW: Helper function to get family member by user ID
   const getFamilyMemberByUserId = (userId: number | undefined) => {
-    if (!userId) return null;
     return familyMembers.find(member => member.userId === userId);
   };
 
+  // ✅ NEW: Helper function to format family name for display
+  const formatFamilyName = (familyName: string): string => {
+    if (!familyName) return 'Family';
+    
+    // Check if the name already ends with 'Family' (case-insensitive)
+    const lowerName = familyName.toLowerCase();
+    if (lowerName.endsWith(' family') || lowerName === 'family') {
+      return familyName; // Return as-is if already contains 'Family'
+    }
+    
+    // Add 'Family' suffix for names that don't have it
+    return `${familyName} Family`;
+  };
+
+  // ✅ NEW: Helper function to format task titles (Title Case)
+  const formatTaskTitle = (title: string): string => {
+    if (!title) return '';
+    
+    return title
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // ✅ NEW: Helper function to format descriptions (Sentence case)
+  const formatDescription = (description: string): string => {
+    if (!description) return '';
+    
+    // Capitalize first letter, keep rest as-is (preserve intentional capitalization)
+    return description.charAt(0).toUpperCase() + description.slice(1);
+  };
+
+  // Sort tasks function
+  const sortTasks = (tasks: Task[]) => {
+    return [...tasks].sort((a, b) => {
+      let aValue: string | number, bValue: string | number;
+      
+      switch (sortColumn) {
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'priority':
+          // ✨ FIXED: Priority sorting with proper number handling
+          const getPriorityOrder = (priority: string | number) => {
+            if (typeof priority === 'number') {
+              return priority; // Backend sends 0=Low, 1=Medium, 2=High, 3=Urgent
+            }
+            const priorityOrder = { 'Low': 0, 'Medium': 1, 'High': 2, 'Urgent': 3 };
+            return priorityOrder[priority as keyof typeof priorityOrder] ?? 0;
+          };
+          aValue = getPriorityOrder(a.priority);
+          bValue = getPriorityOrder(b.priority);
+          break;
+        case 'dueDate':
+          aValue = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+          bValue = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+          break;
+        case 'assignee':
+          aValue = a.assignedToUserName || '';
+          bValue = b.assignedToUserName || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Handle column sorting
+  const handleSort = (column: typeof sortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // ✨ NEW: Handle tab changes with URL updates
+  const handleTabChange = (newTab: typeof activeTab) => {
+    setActiveTab(newTab);
+    
+    // Update URL with tab parameter
+    const url = new URL(window.location.href);
+    if (newTab === 'overview') {
+      url.searchParams.delete('tab'); // Remove tab param for default
+    } else {
+      url.searchParams.set('tab', newTab);
+    }
+    
+    // Update URL without causing a page reload
+    window.history.pushState({}, '', url.toString());
+  };
+
   // Filter tasks based on active tab and other filters
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = sortTasks(tasks.filter(task => {
     // Enhanced search filter - search in title, description, and tags
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
@@ -559,20 +719,17 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         // Show tasks assigned to/from family members (family collaboration)
         if (!task.assignedToUserId && !task.familyId) return false;
         break;
-      case 'queue':
-        // Show lower priority tasks (in queue waiting for attention)
+      case 'pending':
+        // Show pending tasks (not completed)
         if (task.isCompleted) return false;
-        if (task.priority !== 'Low' && task.priority !== 'Medium') return false;
-        break;
-      case 'progress':
-        // Show high priority tasks (actively being worked on)
-        if (task.isCompleted) return false;
-        if (task.priority !== 'High' && task.priority !== 'Urgent') return false;
         break;
       case 'completed':
         // Show only completed tasks
         if (!task.isCompleted) return false;
         break;
+      case 'drafts':
+        // Show draft tasks (TODO: implement draft functionality)
+        return false; // For now, no drafts
     }
 
     // Legacy status filter (keep for compatibility)
@@ -586,535 +743,475 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
       return false;
     }
 
+    // ✨ FIXED: Family tab filtering - show all family-related tasks
+    if (activeTab === 'family') {
+      const isAssignedToFamilyMember = task.assignedToUserId && task.assignedToUserId !== user?.id;
+      const isAssignedToMe = task.assignedToUserId === user?.id;
+      const isUnassignedFamilyTask = task.familyId && !task.assignedToUserId; // ✅ NEW: Include unassigned family tasks
+      const isFamilyTask = task.familyId && hasFamily && (isAssignedToFamilyMember || isAssignedToMe || isUnassignedFamilyTask);
+      
+      console.log(`🔍 Family filter check for task ${task.id}:`, {
+        taskId: task.id,
+        title: task.title,
+        familyId: task.familyId,
+        assignedToUserId: task.assignedToUserId,
+        userId: user?.id,
+        hasFamily,
+        isAssignedToFamilyMember,
+        isAssignedToMe,
+        isUnassignedFamilyTask, // ✅ NEW: Log unassigned family tasks
+        shouldShow: isFamilyTask
+      });
+      
+      // Show tasks that belong to the family (assigned or unassigned)
+      return isFamilyTask;
+    }
+
     return true;
-  });
+  }));
 
   // Gamification data
   const currentLevel = calculateLevel(stats.totalPoints);
-  const levelProgress = calculateProgress(stats.totalPoints);
-  const achievementBadges = getAchievementBadges();
 
-  // Tab-specific task counts with better logic
-  const tabCounts = {
-    overview: tasks.length,
-    family: tasks.filter(task => 
-      // Tasks assigned to family members or tasks within family context
-      task.assignedToUserId || task.familyId || 
-      // Tasks assigned to me by family members
-      (task.assignedToUserId === user?.id && familyMembers.some(m => m.userId === task.assignedToUserId))
-    ).length,
-    queue: tasks.filter(task => !task.isCompleted && (task.priority === 'Low' || task.priority === 'Medium')).length, // Lower priority tasks waiting
-    progress: tasks.filter(task => !task.isCompleted && (task.priority === 'High' || task.priority === 'Urgent')).length, // High priority active tasks
-    completed: tasks.filter(task => task.isCompleted).length
-  };
+
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="space-y-6 w-full">
-
-          {/* Authentication Error Alert */}
-          {authError && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="text-red-600 text-xl">🔐</div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h3 className="font-medium text-red-800 dark:text-red-200">Authentication Required</h3>
-                  <p className="text-red-600 dark:text-red-400 text-sm">{authError}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Gamified Header */}
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-cyan-500/20 rounded-3xl"></div>
-            <Card className="border-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg shadow-2xl">
-              <CardContent className="p-2 sm:p-8">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-
-                  {/* Title & Level Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                          <Crown className="w-8 h-8 text-white" />
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-yellow-900 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                          {currentLevel || 1}
-                        </div>
-                      </div>
-                      <div>
-                        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                          Quest Dashboard
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <CheckSquare className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+                All Tasks
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                          Level {currentLevel || 1} Task Master • {stats.streakDays || 0} day streak 🔥
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
+                Track and manage all your tasks in one place
                         </p>
-                      </div>
-                    </div>
-
-                    {/* Level Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Level Progress</span>
-                        <span className="font-medium">{levelProgress || 0}/100 XP</span>
-                      </div>
-                      <Progress value={levelProgress} className="h-2 bg-gray-200 dark:bg-gray-700">
-                        <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300"
-                          style={{ width: `${levelProgress || 0}%` }} />
-                      </Progress>
-                      <p className="text-xs text-gray-500">
-                        {100 - (levelProgress || 0)} XP to Level {(currentLevel || 1) + 1}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Achievement Badges */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Recent Achievements</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {achievementBadges.length > 0 ? achievementBadges.map((badge, index) => (
-                        <div key={index} className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium">
-                          <span className="text-lg">{badge.icon}</span>
-                          {badge.title}
-                        </div>
-                      )) : (
-                        <div className="text-gray-500 dark:text-gray-400 text-sm italic">
-                          Complete more tasks to unlock achievements! 🏆
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-
                 </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Enhanced Statistics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-6 gap-4 lg:gap-6">
-            {/* Total Tasks */}
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.totalTasks || 0}</div>
-                    <p className="text-blue-100 text-sm font-medium">Total Quests</p>
-                  </div>
-                  <Target className="h-8 w-8 text-blue-200" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Completed Tasks */}
-            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.completedTasks || 0}</div>
-                    <p className="text-green-100 text-sm font-medium">Completed</p>
-                  </div>
-                  <Trophy className="h-8 w-8 text-green-200" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Tasks */}
-            <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.activeTasks || 0}</div>
-                    <p className="text-orange-100 text-sm font-medium">Active</p>
-                  </div>
-                  <Zap className="h-8 w-8 text-orange-200" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Overdue Tasks */}
-            <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.overdueTasks || 0}</div>
-                    <p className="text-red-100 text-sm font-medium">Overdue</p>
-                  </div>
-                  <Timer className="h-8 w-8 text-red-200" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Total Points */}
-            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.totalPoints || 0}</div>
-                    <p className="text-purple-100 text-sm font-medium">XP Points</p>
-                  </div>
-                  <Star className="h-8 w-8 text-purple-200" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Streak Days */}
-            <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl sm:text-3xl font-bold">{stats.streakDays || 0}</div>
-                    <p className="text-yellow-100 text-sm font-medium">Day Streak</p>
-                  </div>
-                  <Flame className="h-8 w-8 text-yellow-200" />
-                </div>
-              </CardContent>
-                        </Card>
-          </div>
-
-
-
-          {/* Batch Operations Controls */}
-          {isBatchMode && (
-            <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border-2 border-blue-200 dark:border-blue-700">
-              <CardContent className="p-4">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-3">
+            {/* Action Buttons */}
                     <div className="flex items-center gap-3">
+              {isBatchMode ? (
+                <>
+                  <Tooltip>
+                                      <TooltipTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={handleSelectAll}
-                        className="flex items-center gap-2 bg-white/80 hover:bg-white"
-                        title={selectedTasks.size === filteredTasks.length ? 'Deselect all tasks' : 'Select all tasks'}
+                      className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
                       >
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="hidden sm:inline">
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      <span className="hidden md:inline">
                           {selectedTasks.size === filteredTasks.length ? 'Deselect All' : 'Select All'}
                         </span>
-                      </Button>
-                      <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                        {selectedTasks.size} of {filteredTasks.length} selected
+                      <span className="md:hidden">
+                        {selectedTasks.size === filteredTasks.length ? 'None' : 'All'}
                       </span>
-                    </div>
-                    {selectedTasks.size > 0 && (
-                      <div className="flex gap-2">
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">
+                      {selectedTasks.size === filteredTasks.length 
+                        ? '📋 Deselect all tasks' 
+                        : '✅ Select all visible tasks'
+                      }
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {selectedTasks.size === filteredTasks.length 
+                        ? 'Clear your current selection to start fresh'
+                        : 'Quickly select all tasks for bulk operations'
+                      }
+                    </p>
+                  </TooltipContent>
+                  </Tooltip>
+
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={handleBatchComplete}
-                          className="flex items-center gap-2 text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 border-green-200"
-                          title={`Complete ${selectedTasks.size} selected tasks`}
+                    onClick={() => setIsBatchMode(false)}
+                    className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
                         >
-                          <Trophy className="h-4 w-4" />
-                          <span className="hidden sm:inline">Complete ({selectedTasks.size})</span>
+                    <X className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Exit Selection</span>
+                    <span className="md:hidden">Exit</span>
                         </Button>
+                </>
+              ) : (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        onClick={loadTasks} 
+                        size="sm" 
+                        variant="outline"
+                        disabled={isLoading}
+                        className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                        <span className="hidden md:inline">Refresh</span>
+                        <span className="md:hidden">↻</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">🔄 Refresh task data</p>
+                      <p className="text-xs text-gray-500">
+                        {isLoading ? 'Loading latest tasks...' : 'Get the most up-to-date task information'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={handleBatchDelete}
-                          className="flex items-center gap-2 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border-red-200"
-                          title={`Delete ${selectedTasks.size} selected tasks`}
+                        onClick={() => setIsBatchMode(true)}
+                        className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
                         >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Delete ({selectedTasks.size})</span>
+                        <ListChecks className="h-4 w-4 mr-2" />
+                        <span className="hidden md:inline">Select</span>
+                        <span className="md:hidden">☑</span>
                         </Button>
-                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">☑️ Enter selection mode</p>
+                      <p className="text-xs text-gray-500">
+                        Select multiple tasks for bulk operations like:
+                        <br />• Mark as complete • Delete selected • Bulk edit
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowCommandDialog(true)}
+                        className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        <span className="hidden md:inline">Quick Actions</span>
+                        <span className="md:hidden">⌘K</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">⌘K Quick command palette</p>
+                      <p className="text-xs text-gray-500">
+                        Search, create, and manage tasks quickly.
+                        <br />Use Ctrl+K (Cmd+K on Mac) to open
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                      >
+                        <Rocket className="h-4 w-4 mr-2" />
+                        <span className="hidden md:inline">Templates</span>
+                        <span className="md:hidden">📋</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-sm">📋 Task templates</p>
+                      <p className="text-xs text-gray-500">
+                        Access saved task templates for quick creation.
+                        <br />Perfect for recurring tasks! 🔄
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Button 
+                    onClick={handleOpenTaskModal}
+                    size="sm"
+                    className="h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Create Task</span>
+                    <span className="sm:hidden">Create</span>
+                  </Button>
+                      </>
                     )}
+                        </div>
+                        </div>
+                    </div>
                   </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* ✨ COMPREHENSIVE: Task Statistics Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 mb-8">
+          {/* Total Tasks */}
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <CheckSquare className="h-5 w-5 md:h-6 md:w-6" />
                 </div>
+              <div className="text-lg md:text-2xl font-bold">{stats.totalTasks || 0}</div>
+              <div className="text-xs text-blue-100 font-medium">Total Tasks</div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Mobile-Optimized Quest Header, Search and Filters */}
-          <Card className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-0 shadow-xl">
-            <CardContent className="p-2 sm:p-6">
-              <div className="space-y-4 sm:space-y-6">
-                {/* Quest Header */}
-                <div className="flex flex-col space-y-2">
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    {activeTab === 'overview' && (
-                      <>
-                        <span className="text-xl sm:text-2xl">📊</span>
-                        <span>All Tasks</span>
-                      </>
-                    )}
-                    {activeTab === 'family' && (
-                      <>
-                        <span className="text-xl sm:text-2xl">👨‍👩‍👧‍👦</span>
-                        <span>Family Tasks</span>
-                      </>
-                    )}
-                    {activeTab === 'queue' && (
-                      <>
-                        <span className="text-xl sm:text-2xl">⏳</span>
-                        <span>In Queue</span>
-                      </>
-                    )}
-                    {activeTab === 'progress' && (
-                      <>
-                        <span className="text-xl sm:text-2xl">⚡</span>
-                        <span>In Progress</span>
-                      </>
-                    )}
-                    {activeTab === 'completed' && (
-                      <>
-                        <span className="text-xl sm:text-2xl">✅</span>
-                        <span>Completed</span>
-                      </>
-                    )}
-                  </h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {filteredTasks.length} {filteredTasks.length === 1 ? 'quest' : 'quests'}
-                    {searchTerm && ` matching "${searchTerm}"`}
-                    {activeTab === 'queue' && ' waiting to be started'}
-                    {activeTab === 'progress' && ' currently in progress'}
-                    {activeTab === 'completed' && ' successfully completed'}
-                    {activeTab === 'overview' && ' in total'}
-                    {activeTab === 'family' && ' shared with your family'}
-                  </p>
+          {/* Completed Tasks */}
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Trophy className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+              <div className="text-lg md:text-2xl font-bold">{stats.completedTasks || 0}</div>
+              <div className="text-xs text-green-100 font-medium">Completed</div>
+              </CardContent>
+            </Card>
+
+          {/* Pending Tasks */}
+          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Clock className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+              <div className="text-lg md:text-2xl font-bold">{stats.activeTasks || 0}</div>
+              <div className="text-xs text-orange-100 font-medium">Pending</div>
+              </CardContent>
+            </Card>
+
+          {/* Family Tasks */}
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+              <div className="text-lg md:text-2xl font-bold">
+                {tasks.filter(task => task.assignedToUserId || task.familyId).length}
                 </div>
+              <div className="text-xs text-purple-100 font-medium">Family</div>
+              </CardContent>
+            </Card>
 
-                              {/* Search and Filters Container */}
-              <div className="flex flex-col space-y-3">
-                {/* Search Bar with Actions */}
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            {/* Overdue Tasks */}
+          <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Clock className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+              <div className="text-lg md:text-2xl font-bold">{stats.overdueTasks || 0}</div>
+              <div className="text-xs text-red-100 font-medium">Overdue</div>
+              </CardContent>
+            </Card>
+
+            {/* Total Points */}
+          <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+            <CardContent className="p-3 md:p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Sparkles className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+              <div className="text-lg md:text-2xl font-bold">{stats.totalPoints || 0}</div>
+              <div className="text-xs text-amber-100 font-medium">XP Points</div>
+              </CardContent>
+            </Card>
+        </div>
+
+        {/* ✨ COMPREHENSIVE: Task Management Tabs */}
+        <Card className="bg-white dark:bg-gray-800 shadow-sm border mb-6">
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <div className="flex overflow-x-auto">
+              {[
+                { id: 'overview', label: 'All Tasks', icon: CheckSquare, count: tasks.length },
+                { id: 'family', label: 'Family', icon: Users, count: tasks.filter(task => task.assignedToUserId || task.familyId).length },
+                { id: 'pending', label: 'Pending', icon: Clock, count: tasks.filter(task => !task.isCompleted).length },
+                { id: 'completed', label: 'Completed', icon: Trophy, count: tasks.filter(task => task.isCompleted).length },
+                { id: 'drafts', label: 'Drafts', icon: Edit, count: 0 } // TODO: Add draft functionality
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id as typeof activeTab)}
+                  className={`flex items-center gap-2 px-4 md:px-6 py-3 text-sm font-medium border-b-2 transition-all duration-200 whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-blue-500 hover:border-blue-300'
+                  }`}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                  <Badge variant="secondary" className={`ml-1 ${
+                    activeTab === tab.id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {tab.count}
+                  </Badge>
+                </button>
+              ))}
+                  </div>
+                </div>
+          
+          {/* Tab Description */}
+          <div className="px-4 md:px-6 py-3 bg-gray-50 dark:bg-gray-700/50">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {activeTab === 'overview' && '📋 Complete overview of all your tasks in one place'}
+              {activeTab === 'family' && '👨‍👩‍👧‍👦 Tasks shared with family members and collaborative work'}
+              {activeTab === 'pending' && '⏳ Tasks that need your attention and are waiting to be completed'}
+              {activeTab === 'completed' && '✅ Your accomplishments and completed task history'}
+              {activeTab === 'drafts' && '📝 Draft tasks and templates you can reuse'}
+            </p>
+          </div>
+        </Card>
+
+        {/* Batch Actions Bar */}
+          {isBatchMode && (
+          <div className="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-blue-200 dark:border-blue-800">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {selectedTasks.size} selected
+                </Badge>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Choose tasks and use the buttons below for bulk actions
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                      <Button
+                      onClick={handleBatchComplete}
+                      disabled={selectedTasks.size === 0}
+                        size="sm"
+                      className="h-8 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <span className="hidden md:inline">Complete ({selectedTasks.size})</span>
+                      <span className="md:hidden">✓ ({selectedTasks.size})</span>
+                      </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">✅ Mark selected tasks complete</p>
+                    <p className="text-xs text-gray-500">
+                      This will mark {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} as completed.
+                      <br />Completed tasks help track your productivity! 🎉
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                      variant="outline"
+                      disabled={selectedTasks.size === 0}
+                      className="h-8 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Rocket className="h-4 w-4 mr-2" />
+                      <span className="hidden md:inline">Save as Template</span>
+                      <span className="md:hidden">💾</span>
+                        </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">💾 Save as reusable template</p>
+                    <p className="text-xs text-gray-500">
+                      Save {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''} as templates for future use.
+                      <br />Great for recurring workflows! 🔄
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleBatchDelete}
+                      disabled={selectedTasks.size === 0}
+                      variant="destructive" 
+                      size="sm"
+                      className="h-8 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      <span className="hidden md:inline">Delete ({selectedTasks.size})</span>
+                      <span className="md:hidden">🗑 ({selectedTasks.size})</span>
+                        </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">🗑️ Delete selected tasks</p>
+                    <p className="text-xs text-gray-500">
+                      ⚠️ This will permanently delete {selectedTasks.size} task{selectedTasks.size !== 1 ? 's' : ''}.
+                      <br />This action cannot be undone!
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+                      </div>
+                  </div>
+                </div>
+        )}
+
+        {/* Filters - Simplified in batch mode */}
+        {!isBatchMode && (
+          <div className="mb-6 flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
                     <Input
-                      placeholder="🔍 Search quests..."
+                placeholder="Search tasks..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 h-10 text-sm border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 bg-gradient-to-r from-white to-purple-50 dark:from-gray-800 dark:to-purple-900/20 transition-all duration-200"
+                className="h-10"
                     />
                   </div>
-                  {user && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={loadTasks}
-                        disabled={isLoading}
-                        className="h-10 px-3 border-gray-200 hover:border-gray-300"
-                        title="Refresh tasks"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsBatchMode(!isBatchMode)}
-                        className={`h-10 px-3 ${isBatchMode 
-                          ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' 
-                          : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        title={isBatchMode ? "Exit batch mode" : "Enter batch mode"}
-                      >
-                        {isBatchMode ? <Circle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                      </Button>
-                    </>
-                  )}
-                </div>
-
-                {/* Filters */}
-                <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-2">
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="h-10 border-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 bg-gradient-to-r from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20">
-                      <SelectValue placeholder="🎯 Status" />
+                 <SelectTrigger className="w-full md:w-[140px] h-10">
+                   <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">🎯 All Quests</SelectItem>
-                      <SelectItem value="pending">⏳ In Progress</SelectItem>
-                      <SelectItem value="completed">✅ Completed</SelectItem>
+                   <SelectItem value="all">All Status</SelectItem>
+                   <SelectItem value="pending">Pending</SelectItem>
+                   <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={filterPriority} onValueChange={setFilterPriority}>
-                    <SelectTrigger className="h-10 border-2 border-green-200 dark:border-green-700 focus:border-green-500 bg-gradient-to-r from-white to-green-50 dark:from-gray-800 dark:to-green-900/20">
-                      <SelectValue placeholder="🌟 Priority" />
+                 <SelectTrigger className="w-full md:w-[140px] h-10">
+                   <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">🌟 All Priorities</SelectItem>
-                      <SelectItem value="Urgent">🔥 Urgent</SelectItem>
-                      <SelectItem value="High">⚡ High</SelectItem>
-                      <SelectItem value="Medium">🎯 Medium</SelectItem>
-                      <SelectItem value="Low">🌱 Low</SelectItem>
+                   <SelectItem value="all">All Priority</SelectItem>
+                   <SelectItem value="high">High</SelectItem>
+                   <SelectItem value="medium">Medium</SelectItem>
+                   <SelectItem value="low">Low</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quest Navigation - Mobile Dropdown + Desktop Tabs */}
-          <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-lg rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-            {/* Mobile Dropdown Navigation */}
-            <div className="block sm:hidden">
-              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)}>
-                <SelectTrigger className="w-full h-14 px-4 border-0 bg-transparent text-left font-medium">
-                  <div className="flex items-center gap-3">
-                    {activeTab === 'overview' && (
-                      <>
-                        <span className="text-2xl">📋</span>
-                        <div>
-                          <span className="font-semibold text-lg">All Tasks</span>
-                          <div className="text-xs text-gray-500">{tabCounts.overview} quests</div>
-                        </div>
-                      </>
-                    )}
-                    {activeTab === 'family' && (
-                      <>
-                        <span className="text-2xl">👨‍👩‍👧‍👦</span>
-                        <div>
-                          <span className="font-semibold text-lg">Family</span>
-                          <div className="text-xs text-gray-500">{tabCounts.family} quests</div>
-                        </div>
-                      </>
-                    )}
-                    {activeTab === 'queue' && (
-                      <>
-                        <span className="text-2xl">⏳</span>
-                        <div>
-                          <span className="font-semibold text-lg">In Queue</span>
-                          <div className="text-xs text-gray-500">{tabCounts.queue} quests</div>
-                        </div>
-                      </>
-                    )}
-                    {activeTab === 'progress' && (
-                      <>
-                        <span className="text-2xl">⚡</span>
-                        <div>
-                          <span className="font-semibold text-lg">In Progress</span>
-                          <div className="text-xs text-gray-500">{tabCounts.progress} quests</div>
-                        </div>
-                      </>
-                    )}
-                    {activeTab === 'completed' && (
-                      <>
-                        <span className="text-2xl">✅</span>
-                        <div>
-                          <span className="font-semibold text-lg">Completed</span>
-                          <div className="text-xs text-gray-500">{tabCounts.completed} quests</div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="max-w-xs">
-                  <SelectItem value="overview">
-                    <div className="flex items-center gap-3 p-2">
-                      <span className="text-xl">📋</span>
-                      <div>
-                        <div className="font-semibold">All Tasks</div>
-                        <div className="text-xs text-gray-500">{tabCounts.overview} quests total</div>
-                      </div>
+        )}
+        
+        {/* Simple search in batch mode */}
+        {isBatchMode && (
+          <div className="mb-6">
+            <Input
+              placeholder="Quick search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 max-w-md"
+            />
                     </div>
-                  </SelectItem>
-                  {hasFamily && (
-                    <SelectItem value="family">
-                      <div className="flex items-center gap-3 p-2">
-                        <span className="text-xl">👨‍👩‍👧‍👦</span>
-                        <div>
-                          <div className="font-semibold">Family</div>
-                          <div className="text-xs text-gray-500">{tabCounts.family} family quests</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  )}
-                  <SelectItem value="queue">
-                    <div className="flex items-center gap-3 p-2">
-                      <span className="text-xl">⏳</span>
-                      <div>
-                        <div className="font-semibold">In Queue</div>
-                        <div className="text-xs text-gray-500">{tabCounts.queue} waiting to start</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="progress">
-                    <div className="flex items-center gap-3 p-2">
-                      <span className="text-xl">⚡</span>
-                      <div>
-                        <div className="font-semibold">In Progress</div>
-                        <div className="text-xs text-gray-500">{tabCounts.progress} active quests</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    <div className="flex items-center gap-3 p-2">
-                      <span className="text-xl">✅</span>
-                      <div>
-                        <div className="font-semibold">Completed</div>
-                        <div className="text-xs text-gray-500">{tabCounts.completed} finished</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        )}
 
-            {/* Desktop Tab Navigation */}
-            <div className="hidden sm:block">
-              <div className="flex border-b border-gray-200 dark:border-gray-700">
-                {[
-                  { id: 'overview', label: 'All Tasks', icon: '📋', count: tabCounts.overview },
-                  ...(hasFamily ? [{ id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', count: tabCounts.family }] : []),
-                  { id: 'queue', label: 'In Queue', icon: '⏳', count: tabCounts.queue },
-                  { id: 'progress', label: 'In Progress', icon: '⚡', count: tabCounts.progress },
-                  { id: 'completed', label: 'Completed', icon: '✅', count: tabCounts.completed }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                    className={`flex-1 px-4 lg:px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2 relative group ${activeTab === tab.id
-                        ? 'border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-900/20'
-                        : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 hover:border-purple-300'
-                      }`}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-lg">{tab.icon}</span>
-                      <span className="hidden lg:inline font-semibold">{tab.label}</span>
-                      <span className="lg:hidden font-semibold">{tab.label.split(' ')[0]}</span>
-                      <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full ${activeTab === tab.id
-                          ? 'bg-purple-500 text-white shadow-lg'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/40'
-                        }`}>
-                        {tab.count}
-                      </span>
-                    </div>
-
-                    {/* Active tab indicator */}
-                    {activeTab === tab.id && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-purple-500 rounded-t-full"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab Content Description */}
-              <div className="px-6 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50">
-                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                  {activeTab === 'overview' && '📋 All your tasks in one comprehensive view'}
-                  {activeTab === 'family' && hasFamily && `👨‍👩‍👧‍👦 Tasks shared with your family members • ${familyMembers.length} members • Collaboration hub`}
-                  {activeTab === 'queue' && '⏳ Lower priority quests waiting to be started'}
-                  {activeTab === 'progress' && '⚡ High priority quests currently in progress'}
-                  {activeTab === 'completed' && '✅ Your victory history of completed quests'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Task List */}
+          {/* ✨ COMPREHENSIVE: Responsive Task Table */}
           <div className="space-y-4">
             {isLoading ? (
-              <Card className="border-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg shadow-xl">
-                <CardContent className="p-8">
-                  <div className="flex items-center justify-center space-x-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                    <div className="text-lg text-gray-600 dark:text-gray-400">Loading your quests...</div>
+              <Card className="bg-white dark:bg-gray-800 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-4 animate-pulse">
+                        <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded flex-1"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-8"></div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -1153,86 +1250,326 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
               ) : (
                 <Card className="border-dashed border-2 border-gray-300 dark:border-gray-600 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg">
                   <CardContent className="p-8 text-center">
-                    <div className="space-y-4">
-                      <div className="text-6xl">🔍</div>
+                    <div className="space-y-6">
+                      <div className="w-24 h-24 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-full flex items-center justify-center mx-auto">
+                        {searchTerm ? (
+                          <div className="text-4xl">🔍</div>
+                        ) : activeTab === 'overview' ? (
+                          <CheckSquare className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                        ) : activeTab === 'family' ? (
+                          <Users className="w-12 h-12 text-purple-400 dark:text-purple-500" />
+                        ) : activeTab === 'pending' ? (
+                          <Clock className="w-12 h-12 text-orange-400 dark:text-orange-500" />
+                        ) : activeTab === 'completed' ? (
+                          <Trophy className="w-12 h-12 text-green-400 dark:text-green-500" />
+                        ) : activeTab === 'drafts' ? (
+                          <Edit className="w-12 h-12 text-blue-400 dark:text-blue-500" />
+                        ) : (
+                          <CheckSquare className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                        )}
+                      </div>
                       <div>
                         <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                          No quests match your filters
+                          {searchTerm ? 'No tasks match your search' : 
+                           activeTab === 'overview' ? 'No tasks found' :
+                           activeTab === 'family' ? 'No family tasks yet' :
+                           activeTab === 'pending' ? 'All caught up!' :
+                           activeTab === 'completed' ? 'No completed tasks yet' :
+                           activeTab === 'drafts' ? 'No templates saved' :
+                           'No tasks found'}
                         </h3>
-                        <p className="text-gray-500 dark:text-gray-400">
-                          Try adjusting your search criteria or clear filters to see all tasks
+                        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                          {searchTerm ? 
+                            'Try adjusting your search criteria or clear filters to see all tasks.' :
+                            activeTab === 'overview' ? 
+                              'Your task dashboard is ready. Create your first task to get started!' :
+                            activeTab === 'family' ? 
+                              'Start collaborating! Create tasks and assign them to family members.' :
+                            activeTab === 'pending' ? 
+                              'Great job! You have no pending tasks. Time to create new ones or enjoy your free time! 🎉' :
+                            activeTab === 'completed' ? 
+                              'Complete some tasks to see your accomplishments here. Your success story starts now!' :
+                            activeTab === 'drafts' ? 
+                              'Save tasks as reusable templates here. Perfect for recurring workflows and productivity!' :
+                              'Create your first task to get started on your productivity journey!'
+                          }
                         </p>
                       </div>
+                      {!searchTerm && (
+                        <div className="flex gap-3 justify-center flex-wrap">
+                          <Button 
+                            onClick={handleOpenTaskModal}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            {activeTab === 'family' ? 'Create Family Task' : 
+                             activeTab === 'drafts' ? 'Create Template' : 
+                             'Create New Task'}
+                          </Button>
+                          {(activeTab === 'completed' || activeTab === 'pending') && (
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleTabChange('overview')}
+                              className="border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              <CheckSquare className="h-4 w-4 mr-2" />
+                              View All Tasks
+                            </Button>
+                          )}
+                          {activeTab === 'drafts' && (
+                            <Button 
+                              variant="outline"
+                              className="border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              <Rocket className="h-4 w-4 mr-2" />
+                              Browse Templates
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               )
             ) : (
-              filteredTasks.map((task) => (
-                <Card key={task.id} className={`group transition-all duration-300 hover:shadow-xl hover:scale-[1.02] ${task.isCompleted
-                  ? 'bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-700'
-                  : 'bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-gray-200 dark:border-gray-700'
-                  } ${selectedTasks.has(task.id) ? 'ring-4 ring-blue-500/50 border-blue-400' : ''} border-2`}>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-
-                        {/* Batch Selection */}
+              <Card className="bg-gradient-to-br from-white via-purple-50/20 to-blue-50/20 dark:from-gray-800 dark:via-purple-900/10 dark:to-blue-900/10 shadow-xl border-2 border-purple-100/50 dark:border-purple-700/30 overflow-hidden relative">
+                {/* Gamification sparkle overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-100/10 to-transparent animate-pulse pointer-events-none"></div>
+                <div className="overflow-x-auto relative z-10">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gradient-to-r from-purple-100 via-blue-100 to-cyan-100 dark:from-purple-800/30 dark:via-blue-800/30 dark:to-cyan-800/30 border-b-2 border-purple-200/50 dark:border-purple-600/30">
+                        {/* Selection Header */}
                         {isBatchMode && (
+                          <TableHead className="w-12">
+                            <button
+                              onClick={handleSelectAll}
+                              className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              {selectedTasks.size === filteredTasks.length ? (
+                                <CheckSquare className="h-4 w-4 text-blue-600" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+                          </TableHead>
+                        )}
+                        
+                        {/* Task Title */}
+                        <TableHead 
+                          className="cursor-pointer hover:bg-purple-200/30 dark:hover:bg-purple-700/30 transition-all duration-200"
+                          onClick={() => handleSort('title')}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-purple-800 dark:text-purple-200">📋 Task</span>
+                            <ArrowUpDown className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                          </div>
+                        </TableHead>
+                        
+                        {/* Priority */}
+                        <TableHead 
+                          className="cursor-pointer hover:bg-orange-200/30 dark:hover:bg-orange-700/30 transition-all duration-200 hidden sm:table-cell"
+                          onClick={() => handleSort('priority')}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-orange-800 dark:text-orange-200">🔥 Priority</span>
+                            <ArrowUpDown className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          </div>
+                        </TableHead>
+                        
+                        {/* Points Column */}
+                        <TableHead className="hidden sm:table-cell">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-yellow-800 dark:text-yellow-200">⭐ XP</span>
+                          </div>
+                        </TableHead>
+                        
+                        {/* Assignee */}
+                        <TableHead 
+                          className="cursor-pointer hover:bg-cyan-200/30 dark:hover:bg-cyan-700/30 transition-all duration-200 hidden md:table-cell"
+                          onClick={() => handleSort('assignee')}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-cyan-800 dark:text-cyan-200">👤 Assignee</span>
+                            <ArrowUpDown className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                          </div>
+                        </TableHead>
+                        
+                        {/* Due Date */}
+                        <TableHead 
+                          className="cursor-pointer hover:bg-green-200/30 dark:hover:bg-green-700/30 transition-all duration-200 hidden lg:table-cell"
+                          onClick={() => handleSort('dueDate')}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-green-800 dark:text-green-200">📅 Due</span>
+                            <ArrowUpDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          </div>
+                        </TableHead>
+                        
+                        {/* Tags */}
+                        <TableHead className="hidden xl:table-cell">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-blue-800 dark:text-blue-200">🏷️ Tags</span>
+                          </div>
+                        </TableHead>
+                        
+                        {/* Actions */}
+                        <TableHead className="w-12">
+                          <span className="sr-only">Actions</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                                             {filteredTasks.map((task) => (
+                         <ContextMenu key={task.id}>
+                           <ContextMenuTrigger asChild>
+                             <TableRow 
+                               className={`group transition-all duration-300 cursor-pointer relative overflow-hidden ${
+                                 task.isCompleted 
+                                   ? 'bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-green-900/20 border-l-4 border-green-400' 
+                                   : selectedTasks.has(task.id)
+                                     ? 'bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 dark:from-blue-900/30 dark:via-cyan-900/30 dark:to-blue-900/30 border-l-4 border-blue-500'
+                                     : (task.pointsValue && task.pointsValue >= 50)
+                                       ? 'bg-gradient-to-r from-yellow-50/50 via-amber-50/50 to-orange-50/50 dark:from-yellow-900/20 dark:via-amber-900/20 dark:to-orange-900/20 hover:from-yellow-100/70 hover:via-amber-100/70 hover:to-orange-100/70 border-l-2 border-yellow-400/50 shadow-md'
+                                       : (task.id % 2 === 0)
+                                         ? 'bg-gradient-to-r from-purple-50/30 via-blue-50/30 to-cyan-50/30 dark:from-purple-900/10 dark:via-blue-900/10 dark:to-cyan-900/10 hover:from-purple-100/50 hover:via-blue-100/50 hover:to-cyan-100/50'
+                                         : 'bg-gradient-to-r from-pink-50/30 via-rose-50/30 to-orange-50/30 dark:from-pink-900/10 dark:via-rose-900/10 dark:to-orange-900/10 hover:from-pink-100/50 hover:via-rose-100/50 hover:to-orange-100/50'
+                               } border-b border-gray-100 dark:border-gray-700/50 ${
+                                 task.pointsValue && task.pointsValue >= 100 ? 'animate-pulse' : ''
+                               }`}
+                             >
+                               {/* High-value task sparkle effect */}
+                               {task.pointsValue && task.pointsValue >= 50 && (
+                                 <div className="absolute top-1 right-1 pointer-events-none">
+                                   <Sparkles className="h-3 w-3 text-yellow-500 animate-pulse" />
+                                 </div>
+                               )}
+                               {/* Batch Selection Cell */}
+                        {isBatchMode && (
+                                 <TableCell>
                           <button
-                            onClick={() => handleSelectTask(task.id)}
-                            className="mt-1 flex-shrink-0 p-2 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleSelectTask(task.id);
+                                     }}
+                                     className="p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
                           >
                             {selectedTasks.has(task.id) ? (
-                              <CheckCircle className="h-6 w-6 text-blue-600" />
+                                       <CheckCircle className="h-4 w-4 text-blue-600" />
                             ) : (
-                              <Circle className="h-6 w-6 text-gray-400 hover:text-blue-600" />
+                                       <Circle className="h-4 w-4 text-gray-400 hover:text-blue-600" />
                             )}
                           </button>
-                        )}
-
-                        {/* Task Content */}
-                        <div className="flex-1 min-w-0 space-y-3">
-                          {/* Task Header */}
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-1">
-                                {/* Priority Badge - only show if we get a valid priority string */}
+                                 </TableCell>
+                               )}
+                               
+                               {/* Task Title Cell with gamification */}
+                               <TableCell 
+                                 className="max-w-0 w-full"
+                                 onClick={() => router.push(`/tasks/${task.id}`)}
+                               >
+                                 <div className="space-y-1">
+                                   <div className="flex items-center gap-2 mb-1">
+                                     {/* Status indicator */}
+                                     {task.isCompleted ? (
+                                       <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                     ) : (
+                                       <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                     )}
+                                     
+                                     {/* Points badge for mobile */}
                                 {(() => {
+                                       const xpValue = task.pointsValue || 10; // Default to 10 XP
+                                       return (
+                                         <Badge className={`text-white text-xs px-2 py-1 sm:hidden shadow-lg ${
+                                           xpValue >= 100 
+                                             ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 animate-pulse' 
+                                             : xpValue >= 50
+                                               ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600'
+                                               : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                                         }`}>
+                                           ⭐{xpValue} XP
+                                           {xpValue >= 100 && <Sparkles className="ml-1 h-3 w-3 inline animate-spin" />}
+                                         </Badge>
+                                       );
+                                     })()}
+                                   </div>
+                                   
+                                   <h4 className={`font-medium truncate ${
+                                     task.isCompleted 
+                                       ? 'line-through text-gray-500 dark:text-gray-400' 
+                                       : 'text-gray-900 dark:text-white'
+                                   }`}>
+                                     {formatTaskTitle(task.title)} {/* ✅ FIXED: Apply title case formatting */}
+                                   </h4>
+                                   
+                                   {task.description && (
+                                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate hidden md:block">
+                                       {formatDescription(truncateToWords(task.description, 8))} {/* ✅ FIXED: Apply sentence case formatting */}
+                                     </p>
+                                   )}
+                                   
+                                   {/* Mobile info row */}
+                                   <div className="flex items-center gap-1 text-xs text-gray-500 sm:hidden">
+                                     {task.dueDate && (
+                                       <span className="flex items-center gap-1">
+                                         <Calendar className="h-3 w-3" />
+                                         {formatDistance(new Date(task.dueDate), new Date(), { addSuffix: true })}
+                                       </span>
+                                     )}
+                                   </div>
+                                 </div>
+                               </TableCell>
+                               
+                               {/* Priority Cell - Hidden on mobile */}
+                               <TableCell className="hidden sm:table-cell">
+                                 {(() => {
+                                   // ✅ FIXED: Pass raw priority to getPriorityDisplay - it handles conversion internally
                                   const priorityDisplay = getPriorityDisplay(task.priority);
-                                  const getMobilePriority = (priority: string) => {
-                                    switch(priority.toLowerCase()) {
-                                      case 'urgent': return 'URG';
-                                      case 'high': return 'HI';
-                                      case 'medium': return 'MED';
-                                      case 'low': return 'LOW';
-                                      default: return priority.substring(0, 3).toUpperCase();
-                                    }
-                                  };
+                                   
+                                   console.log('🔥 Priority cell debug:', {
+                                     taskId: task.id,
+                                     rawPriority: task.priority,
+                                     priorityType: typeof task.priority,
+                                     priorityDisplay
+                                   });
                                   
                                   return priorityDisplay && (
-                                    <Badge className={`${getPriorityColor(task.priority)} text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap`}>
-                                      {getPriorityIcon(task.priority)}
-                                      <span className="hidden sm:inline">{priorityDisplay}</span>
-                                      <span className="sm:hidden">{getMobilePriority(priorityDisplay)}</span>
+                                     <Badge className={`${getPriorityColor(priorityDisplay)} text-xs font-bold px-2 py-1 flex items-center gap-1 shadow-sm`}>
+                                       {getPriorityIcon(priorityDisplay)}
+                                       <span className="hidden lg:inline">{priorityDisplay}</span>
                                     </Badge>
                                   );
                                 })()}
-                                
-                                {task.pointsValue && (
-                                  <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold px-2 py-1 flex-shrink-0 whitespace-nowrap">
-                                    ⭐ {task.pointsValue} XP
+                               </TableCell>
+                               
+                               {/* Points Cell - Hidden on mobile */}
+                               <TableCell className="hidden sm:table-cell">
+                                 {(() => {
+                                   const xpValue = task.pointsValue || 10; // Default to 10 XP if not set
+                                   return (
+                                     <Badge className={`text-white text-sm font-bold px-3 py-1 shadow-lg ${
+                                       xpValue >= 100 
+                                         ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 animate-pulse' 
+                                         : xpValue >= 50
+                                           ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600'
+                                           : 'bg-gradient-to-r from-purple-500 to-blue-500'
+                                     }`}>
+                                       ⭐{xpValue}
+                                       {xpValue >= 100 && <Sparkles className="ml-1 h-3 w-3 inline animate-spin" />}
                                   </Badge>
-                                )}
+                                   );
+                                 })()}
+                               </TableCell>
                                 
-                                {/* ✨ ENHANCED: Family task assignment badge with avatar */}
-                                {task.assignedToUserId && task.assignedToUserName && (
+                               {/* Assignee Cell - Hidden on mobile */}
+                               <TableCell className="hidden md:table-cell">
+                                 {task.assignedToUserId && task.assignedToUserName ? (
                                   <div className="flex items-center gap-2">
                                     {(() => {
                                       const assignedMember = getFamilyMemberByUserId(task.assignedToUserId);
                                       return (
                                         <>
-                                          {/* Family member avatar */}
                                           {assignedMember && hasFamily && (
                                             <Avatar className="h-6 w-6">
                                               <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-teal-500 text-white text-xs">
@@ -1240,69 +1577,94 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                                               </AvatarFallback>
                                             </Avatar>
                                           )}
-                                          {/* Assignment badge */}
-                                          <Badge className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                                            {!assignedMember && <Users className="h-3 w-3" />}
-                                            {task.assignedToUserId === user?.id ? (
-                                              <span className="text-yellow-200">👤 You</span>
-                                            ) : (
-                                              <>
-                                                <span className="hidden sm:inline">{task.assignedToUserName}</span>
-                                                <span className="sm:hidden">{task.assignedToUserName.split(' ')[0]}</span>
-                                              </>
-                                            )}
-                                          </Badge>
+                                           <span className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-20">
+                                             {task.assignedToUserId === user?.id ? 'You' : task.assignedToUserName.split(' ')[0]}
+                                           </span>
                                         </>
                                       );
                                     })()}
                                   </div>
-                                )}
-
-                                {/* ✨ NEW: Family task indicator for unassigned family tasks */}
-                                {task.familyId && !task.assignedToUserId && hasFamily && (
-                                  <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold px-2 py-1 flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-                                    <Users className="h-3 w-3" />
-                                    <span className="hidden sm:inline">Family Task</span>
-                                    <span className="sm:hidden">Family</span>
-                                  </Badge>
-                                )}
-                                
-                                {task.isCompleted && (
-                                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 text-xs font-bold px-2 py-1 flex-shrink-0 whitespace-nowrap">
-                                    ✅ Done
+                                 ) : task.familyId && !task.assignedToUserId && hasFamily && family ? (
+                                   (() => {
+                                     console.log('🏠 Family assignee debug:', {
+                                       taskId: task.id,
+                                       familyId: task.familyId,
+                                       hasFamily,
+                                       familyName: family?.name,
+                                       formattedName: formatFamilyName(family.name)
+                                     });
+                                     return (
+                                       <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2 py-1">
+                                         <Users className="h-3 w-3 mr-1" />
+                                         {formatFamilyName(family.name)} {/* ✅ FIXED: Use helper function for proper formatting */}
+                                       </Badge>
+                                     );
+                                   })()
+                                 ) : (
+                                   <span className="text-sm text-gray-400">-</span>
+                                 )}
+                               </TableCell>
+                               
+                               {/* Due Date Cell - Hidden on mobile */}
+                               <TableCell className="hidden lg:table-cell">
+                                 {task.dueDate ? (
+                                   <div className="flex items-center gap-1 text-sm">
+                                     <Calendar className="h-3 w-3" />
+                                     <span className="text-gray-600 dark:text-gray-400">
+                                       {formatDistance(new Date(task.dueDate), new Date(), { addSuffix: true })}
+                                     </span>
+                                   </div>
+                                 ) : (
+                                   <span className="text-sm text-gray-400">-</span>
+                                 )}
+                               </TableCell>
+                               
+                               {/* Tags Cell - Hidden on smaller screens */}
+                               <TableCell className="hidden xl:table-cell">
+                                 {task.tags && task.tags.length > 0 ? (
+                                   <div className="flex gap-1 flex-wrap max-w-32">
+                                     {task.tags.slice(0, 2).map((tag, index) => (
+                                       <Badge 
+                                         key={tag.id || index} 
+                                         variant="secondary" 
+                                         className="text-xs bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-700 px-1 py-0"
+                                       >
+                                         #{tag.name}
+                                       </Badge>
+                                     ))}
+                                     {task.tags.length > 2 && (
+                                       <Badge variant="secondary" className="text-xs px-1 py-0">
+                                         +{task.tags.length - 2}
                                   </Badge>
                                 )}
                               </div>
-
-                              <h3 className={`font-bold text-lg leading-tight hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer capitalize ${task.isCompleted
-                                  ? 'line-through text-gray-500 dark:text-gray-400'
-                                  : 'text-gray-900 dark:text-white'
-                                }`}
-                                onClick={() => router.push(`/tasks/${task.id}`)}>
-                                {task.title}
-                              </h3>
-                            </div>
-
-                            {/* Task Actions Dropdown */}
+                                 ) : (
+                                   <span className="text-sm text-gray-400">-</span>
+                                 )}
+                               </TableCell>
+                               
+                               {/* Actions Cell */}
+                               <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                       onClick={(e) => e.stopPropagation()}
                                 >
-                                  <MoreVertical className="h-4 w-4" />
+                                       <MoreHorizontal className="h-4 w-4" />
                                   <span className="sr-only">Task actions</span>
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                                   <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => router.push(`/tasks/${task.id}`)}>
                                   <Eye className="h-4 w-4 mr-2" />
-                                  View Details
+                                       View
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEditTask(task)}>
                                   <Edit className="h-4 w-4 mr-2" />
-                                  Edit Task
+                                       Edit
                                 </DropdownMenuItem>
                                 {!task.isCompleted && (
                                   <>
@@ -1312,7 +1674,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                                       className="text-green-600 focus:text-green-600"
                                     >
                                       <CheckCircle className="h-4 w-4 mr-2" />
-                                      Mark Complete
+                                           Complete
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -1322,62 +1684,49 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                                   className="text-red-600 focus:text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete Task
+                                       Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </div>
-
-                          {/* Description */}
-                          {task.description && (
-                            <p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed capitalize">
-                              {truncateToWords(task.description, 50)}
-                            </p>
-                          )}
-
-                          {/* Meta Information */}
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                            {task.dueDate && (
-                              <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 px-3 py-1 rounded-full">
-                                <Calendar className="h-4 w-4" />
-                                <span>Due {formatDistance(new Date(task.dueDate), new Date(), { addSuffix: true })}</span>
-                              </div>
-                            )}
-                            {task.estimatedTimeMinutes && (
-                              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full">
-                                <Clock className="h-4 w-4" />
-                                <span>{task.estimatedTimeMinutes}m estimated</span>
-                              </div>
-                            )}
-                            {task.completedAt && (
-                              <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded-full text-green-600 dark:text-green-400">
-                                <Trophy className="h-4 w-4" />
-                                <span>Completed {formatDistance(new Date(task.completedAt), new Date(), { addSuffix: true })}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Tags */}
-                          {task.tags && task.tags.length > 0 && (
-                            <div className="flex gap-2 flex-wrap">
-                              {task.tags.slice(0, 4).map((tag, index) => (
-                                <Badge key={tag.id || index} variant="secondary" className="text-sm bg-gradient-to-r from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-700">
-                                  #{tag.name}
-                                </Badge>
-                              ))}
-                              {task.tags.length > 4 && (
-                                <Badge variant="secondary" className="text-sm">
-                                  +{task.tags.length - 4} more
-                                </Badge>
-                              )}
+                               </TableCell>
+                             </TableRow>
+                           </ContextMenuTrigger>
+                           
+                           {/* Context Menu */}
+                           <ContextMenuContent>
+                             <ContextMenuItem onClick={() => router.push(`/tasks/${task.id}`)}>
+                               <Eye className="h-4 w-4 mr-2" />
+                               View Details
+                               <ContextMenuShortcut>Enter</ContextMenuShortcut>
+                             </ContextMenuItem>
+                             <ContextMenuItem onClick={() => handleEditTask(task)}>
+                               <Edit className="h-4 w-4 mr-2" />
+                               Edit Task
+                               <ContextMenuShortcut>E</ContextMenuShortcut>
+                             </ContextMenuItem>
+                             {!task.isCompleted && (
+                               <>
+                                 <ContextMenuSeparator />
+                                 <ContextMenuItem onClick={() => handleCompleteTask(task.id)}>
+                                   <CheckCircle className="h-4 w-4 mr-2" />
+                                   Mark Complete
+                                   <ContextMenuShortcut>Space</ContextMenuShortcut>
+                                 </ContextMenuItem>
+                               </>
+                             )}
+                             <ContextMenuSeparator />
+                             <ContextMenuItem onClick={() => handleDeleteTask(task.id)}>
+                               <Trash2 className="h-4 w-4 mr-2" />
+                               Delete Task
+                               <ContextMenuShortcut>Del</ContextMenuShortcut>
+                             </ContextMenuItem>
+                           </ContextMenuContent>
+                         </ContextMenu>
+                       ))}
+                     </TableBody>
+                   </Table>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
                 </Card>
-              ))
             )}
           </div>
 
@@ -1472,6 +1821,109 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
             streakDays={completionModal.streakDays}
           />
 
+          {/* ✨ NEW: Command Dialog for Quick Actions */}
+          <CommandDialog open={showCommandDialog} onOpenChange={setShowCommandDialog}>
+            <CommandInput placeholder="Type a command or search tasks..." />
+            <CommandList>
+              <CommandEmpty>No results found.</CommandEmpty>
+              
+              <CommandGroup heading="Quick Actions">
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleOpenTaskModal();
+                }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span>Create New Task</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  setIsBatchMode(!isBatchMode);
+                }}>
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  <span>{isBatchMode ? 'Exit' : 'Enter'} Batch Mode</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  setSearchTerm('');
+                }}>
+                  <X className="mr-2 h-4 w-4" />
+                  <span>Clear Search</span>
+                </CommandItem>
+              </CommandGroup>
+
+              <CommandSeparator />
+
+              <CommandGroup heading="Navigation">
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleTabChange('overview');
+                }}>
+                  <ListChecks className="mr-2 h-4 w-4" />
+                  <span>All Tasks</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleTabChange('family');
+                }}>
+                  <Users className="mr-2 h-4 w-4" />
+                  <span>Family Tasks</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleTabChange('pending');
+                }}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  <span>Pending Tasks</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleTabChange('completed');
+                }}>
+                  <Trophy className="mr-2 h-4 w-4" />
+                  <span>Completed Tasks</span>
+                </CommandItem>
+                <CommandItem onSelect={() => {
+                  setShowCommandDialog(false);
+                  handleTabChange('drafts');
+                }}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Templates</span>
+                </CommandItem>
+              </CommandGroup>
+
+              {filteredTasks.length > 0 && (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup heading="Recent Tasks">
+                    {filteredTasks.slice(0, 5).map((task) => (
+                      <CommandItem
+                        key={task.id}
+                        onSelect={() => {
+                          setShowCommandDialog(false);
+                          router.push(`/tasks/${task.id}`);
+                        }}
+                      >
+                        {task.isCompleted ? (
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                        ) : (
+                          <Circle className="mr-2 h-4 w-4 text-gray-400" />
+                        )}
+                        <span className={task.isCompleted ? 'line-through text-gray-500' : ''}>
+                          {formatTaskTitle(truncateToWords(task.title, 6))}
+                        </span>
+                        {task.pointsValue && (
+                          <Badge className="ml-auto bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs">
+                            ⭐{task.pointsValue}
+                          </Badge>
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </CommandDialog>
+
           {/* Floating Action Button for New Quest */}
           {user && (
             <Button
@@ -1483,7 +1935,8 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
               <Sparkles className="absolute -top-1 -right-1 h-4 w-4 animate-pulse" />
             </Button>
           )}
-        </div>
+
+        
       </div>
     </div>
   );

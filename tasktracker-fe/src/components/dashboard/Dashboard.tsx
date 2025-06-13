@@ -107,8 +107,18 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
 
   // Helper function to get member avatar
   const getMemberById = (memberId: number | string) => {
-    const id = typeof memberId === 'string' ? parseInt(memberId) : memberId;
-    return familyMembers.find(m => m.id === id);
+    return familyMembers.find(member => member.id === Number(memberId));
+  };
+
+  // ✅ NEW: Helper function to format task titles (Title Case)
+  const formatTaskTitle = (title: string): string => {
+    if (!title) return '';
+    
+    return title
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   // Handle task creation success
@@ -187,7 +197,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
       console.error('Failed to complete task:', error);
       setError('Failed to complete task. Please try again.');
     }
-  }, [currentFamily?.id]);
+  }, [currentFamily?.id, loadFamilyTasks]);
 
   // ✨ NEW: Handle family task approval - temporarily disabled
   // const handleTaskApproval = useCallback(async (taskId: number, approved: boolean) => {
@@ -325,7 +335,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
     } finally {
       // Loading complete
     }
-  }, [user, currentFamily]);
+  }, [user, currentFamily, loadFamilyTasks]);
 
   useEffect(() => {
     loadAdditionalData();
@@ -868,7 +878,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                         className={`h-4 w-4 ${task.isCompleted ? 'text-green-500' : 'text-gray-400'}`}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{task.title}</p>
+                        <p className="font-medium text-sm truncate">{formatTaskTitle(task.title)}</p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</span>
                           {/* ✨ NEW: Family member assignment display */}
@@ -1000,7 +1010,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                       >
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-red-500" />
-                          <span className="text-sm font-medium">{task.title}</span>
+                          <span className="text-sm font-medium">{formatTaskTitle(task.title)}</span>
                         </div>
                         <Button
                           size="sm"
@@ -1030,7 +1040,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                       >
                     <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-orange-500" />
-                          <span className="text-sm font-medium">{task.title}</span>
+                          <span className="text-sm font-medium">{formatTaskTitle(task.title)}</span>
                         </div>
                         <Button
                           size="sm"
@@ -1160,7 +1170,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div className={`w-3 h-3 rounded-full ${task.isCompleted ? 'bg-green-500' : 'bg-orange-500'}`}></div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{task.title}</p>
+                            <p className="text-sm font-medium truncate">{formatTaskTitle(task.title)}</p>
                             {task.assignedToUserName && (
                               <p className="text-xs text-gray-500">
                                 Assigned to: {task.assignedToUserName}

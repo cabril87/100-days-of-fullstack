@@ -62,4 +62,5 @@ export * from './ui';
 export * from './forms';
 export * from './providers';
 export * from './skeleton';
-export * from './cookie-consent'; 
+export * from './cookie-consent';
+export * from './board'; 

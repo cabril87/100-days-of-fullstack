@@ -132,7 +132,17 @@ export async function fetchAuthenticatedData<T>(
       return fallback;
     }
 
-    return await response.json();
+    const jsonResponse = await response.json();
+    
+    // ✅ FIXED: Extract data from ApiResponse<T> structure
+    // Check if response has the API wrapper format with data property
+    if (jsonResponse && typeof jsonResponse === 'object' && 'data' in jsonResponse && 'success' in jsonResponse) {
+      // Extract the data from the API wrapper
+      return jsonResponse.data as T;
+    }
+    
+    // Return the response as-is if it's not in the wrapper format
+    return jsonResponse as T;
   } catch {
     return fallback;
   }

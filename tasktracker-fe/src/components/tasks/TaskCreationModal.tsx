@@ -95,7 +95,7 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         dueDate: formattedDate,
         estimatedTimeMinutes: editingTask.estimatedTimeMinutes || 30,
         pointsValue: editingTask.pointsValue || 10,
-        familyId: editingTask.familyId || family?.id,
+        familyId: editingTask.familyId || undefined,
         assignedToUserId: editingTask.assignedToUserId || undefined,
         tags: editingTask.tags?.map(tag => tag.name) || [],
         taskContext: 'individual', // Default for editing
@@ -113,7 +113,7 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         dueDate: '',
         estimatedTimeMinutes: 30,
         pointsValue: 10,
-        familyId: family?.id,
+        familyId: (defaultContext === 'family' || defaultFamilyId) ? (defaultFamilyId || family?.id) : undefined,
         assignedToUserId: undefined,
         tags: [],
         taskContext: defaultContext || 'individual',
@@ -187,9 +187,6 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         console.log('✅ Task updated successfully:', resultTask);
       } else {
         // Create new task
-        // If assigning to family member, create task without assignment first
-        const isAssigningToFamilyMember = data.assignedToUserId && data.familyId && family;
-        
         const taskData: CreateTaskDTO = {
           title: data.title,
           description: data.description || undefined,
@@ -198,9 +195,12 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
           categoryId: data.categoryId || undefined,
           estimatedTimeMinutes: data.estimatedTimeMinutes || undefined,
           pointsValue: data.pointsValue || 10,
-          // Only set familyId and assignedToUserId if NOT using family assignment system
-          familyId: isAssigningToFamilyMember ? undefined : (data.familyId || undefined),
-          assignedToUserId: isAssigningToFamilyMember ? undefined : (data.assignedToUserId || undefined),
+          familyId: data.assignedToUserId 
+            ? (family?.id || data.familyId) 
+            : (defaultContext === 'family' || data.familyId) 
+              ? (data.familyId || family?.id) 
+              : undefined,
+          assignedToUserId: data.assignedToUserId || undefined,
           tags: finalTags.length > 0 ? finalTags : undefined
         };
 
@@ -208,68 +208,36 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
         resultTask = await taskService.createTask(taskData);
         console.log('✅ Task created successfully:', resultTask);
 
-        // If task is assigned to a family member, assign it through the family task system
-        if (isAssigningToFamilyMember) {
-          console.log('👥 Task assigned to family member, creating family task assignment...');
-          console.log('🔍 Assignment context:', {
+        if (data.assignedToUserId && data.familyId && family) {
+          console.log('👥 Task created with family assignment:', {
+            taskId: resultTask.id,
+            familyId: data.familyId,
             assignedToUserId: data.assignedToUserId,
-            familyMembersCount: familyMembers.length,
-            familyMembers: familyMembers.map(m => ({
-              id: m.id,
-              userId: m.user?.id,
-              name: m.user?.firstName || m.user?.username
-            })),
-            family: family
+            title: resultTask.title
           });
+          
           try {
-            // Find the family member by user ID
             const assignedMember = familyMembers.find(member => member.user?.id === data.assignedToUserId);
-            console.log('🔍 Member lookup result:', {
-              assignedMember,
-              searchingForUserId: data.assignedToUserId,
-              found: !!assignedMember
-            });
             if (assignedMember) {
-              console.log('🎯 Found assigned family member:', {
-                memberId: assignedMember.id,
-                memberName: assignedMember.user?.firstName || assignedMember.user?.username,
-                userId: assignedMember.user?.id
-              });
-
-              // Create family task assignment
               const assignmentData: FlexibleTaskAssignmentDTO = {
                 taskId: resultTask.id,
                 assignToUserId: assignedMember.user!.id,
-                requiresApproval: false, // Default to false, can be made configurable later
+                requiresApproval: false,
                 memberId: assignedMember.id,
                 userId: user.id
               };
 
-              console.log('📋 Creating family task assignment:', assignmentData);
-              try {
-                const familyTask = await taskService.assignTaskToFamilyMember(family.id, assignmentData);
-                
-                if (familyTask) {
-                  console.log('✅ Family task assignment created successfully:', familyTask);
-                } else {
-                  console.warn('⚠️ Family task assignment returned null');
-                }
-              } catch (assignmentError) {
-                console.error('❌ Family task assignment failed with error:', assignmentError);
-                console.error('🔍 Assignment data that failed:', assignmentData);
-                console.error('🔍 Family ID:', family.id);
+              console.log('📋 Creating additional family task assignment for enhanced tracking:', assignmentData);
+              const familyTask = await taskService.assignTaskToFamilyMember(family.id, assignmentData);
+              
+              if (familyTask) {
+                console.log('✅ Enhanced family task assignment created successfully:', familyTask);
+              } else {
+                console.warn('⚠️ Enhanced family task assignment returned null - task still has basic family assignment');
               }
-            } else {
-              console.warn('⚠️ Could not find family member with user ID:', data.assignedToUserId);
-              console.log('🔍 Available family members:', familyMembers.map(m => ({
-                id: m.id,
-                userId: m.user?.id,
-                name: m.user?.firstName || m.user?.username
-              })));
             }
           } catch (familyAssignError) {
-            console.error('❌ Failed to create family task assignment:', familyAssignError);
-            // Don't fail the entire task creation if family assignment fails
+            console.warn('⚠️ Enhanced family task assignment failed, but task has basic family assignment:', familyAssignError);
           }
         }
       }

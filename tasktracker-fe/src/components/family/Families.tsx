@@ -16,7 +16,8 @@ import {
   Star,
   UserPlus,  TrendingUp,
   Plus,
-  Eye
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { 
   FamilyWithMembers
@@ -24,6 +25,7 @@ import {
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { FamiliesContentProps } from '@/lib/types/component-props';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function FamiliesContent({ user }: FamiliesContentProps) {
   const router = useRouter();
@@ -177,263 +179,314 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Home className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              <span>My Families</span>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <Home className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+                My Families
+              </h1>
+              <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1">
+                Manage your family groups and collaborate with your loved ones
+              </p>
             </div>
-            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 w-fit">
-              {families.length} {families.length === 1 ? 'Family' : 'Families'}
-            </Badge>
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm sm:text-base">
-            View and manage all families you&apos;re a member of
-          </p>
+            <div className="flex items-center gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={loadFamiliesData} 
+                    size="sm" 
+                    variant="outline"
+                    disabled={isLoading}
+                    className="h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">🔄 Refresh family data</p>
+                  <p className="text-xs text-gray-500">Get the latest information about your families</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Button 
+                onClick={() => router.push('/family/create')}
+                size="sm"
+                className="h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Create Family</span>
+                <span className="sm:hidden">Create</span>
+              </Button>
+            </div>
+          </div>
         </div>
-        
-        <Button onClick={() => router.push('/settings/family')} variant="outline" className="w-full sm:w-auto">
-          <Settings className="h-4 w-4 mr-2" />
-          <span className="sm:hidden">Manage Families</span>
-          <span className="hidden sm:inline">Family Settings</span>
-        </Button>
       </div>
 
-      {/* Family Stats Overview - Mobile Optimized */}
-      {families.length > 0 && (
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <CardContent className="p-4 sm:p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-blue-600">{families.length}</div>
-                <div className="text-xs sm:text-sm text-gray-600">
-                  {families.length === 1 ? 'Family' : 'Families'} Joined
-                </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* ✨ ENHANCED: Family Statistics Overview - Mobile Optimized */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 border-0">
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Home className="h-6 w-6 md:h-8 md:w-8" />
               </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-green-600">
-                  {families.reduce((total, family) => total + family.memberCount, 0)}
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Total Members</div>
+              <div className="text-xl md:text-3xl font-bold">{families.length}</div>
+              <div className="text-xs md:text-sm text-blue-100 font-medium">Families</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 border-0">
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="h-6 w-6 md:h-8 md:w-8" />
               </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-purple-600">
-                  {families.filter(f => f.myRole.toLowerCase().includes('admin') || f.myRole.toLowerCase().includes('parent')).length}
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Admin/Parent Roles</div>
+              <div className="text-xl md:text-3xl font-bold">
+                {families.reduce((acc, family) => acc + family.memberCount, 0)}
               </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-amber-600">
-                  {Math.round(families.reduce((total, family) => total + family.memberCount, 0) / families.length) || 0}
-                </div>
-                <div className="text-xs sm:text-sm text-gray-600">Avg Family Size</div>
+              <div className="text-xs md:text-sm text-green-100 font-medium">Total Members</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 border-0">
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Shield className="h-6 w-6 md:h-8 md:w-8" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              <div className="text-xl md:text-3xl font-bold">
+                {families.filter(family => 
+                  family.myRole.toLowerCase() === 'admin' || 
+                  family.myRole.toLowerCase() === 'parent'
+                ).length}
+              </div>
+              <div className="text-xs md:text-sm text-purple-100 font-medium">Leadership Roles</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 border-0">
+            <CardContent className="p-4 md:p-6 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <TrendingUp className="h-6 w-6 md:h-8 md:w-8" />
+              </div>
+              <div className="text-xl md:text-3xl font-bold">
+                {families.length > 0 ? Math.round(families.reduce((acc, family) => acc + family.memberCount, 0) / families.length) : 0}
+              </div>
+              <div className="text-xs md:text-sm text-amber-100 font-medium">Avg. Size</div>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Families Grid - Mobile Optimized */}
-      {families.length === 0 ? (
-        <Card className="text-center py-8 sm:py-12">
-          <CardContent className="px-4 sm:px-6">
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-3 sm:p-4 bg-gray-100 rounded-full">
-                <Users className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400" />
-              </div>
-              <div>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  No Families Found
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-2 text-sm sm:text-base">
-                  You&apos;re not currently a member of any families. Create a new family or ask to be invited to an existing one.
-                </p>
-                <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
-                  👨‍👩‍👧‍👦 0 Families • 0 Members
+        {/* Families Grid - Mobile Optimized */}
+        {families.length === 0 ? (
+          <Card className="text-center py-8 sm:py-12 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900/20 border-0 shadow-lg">
+            <CardContent className="px-4 sm:px-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-3 sm:p-4 bg-gradient-to-r from-gray-400 to-blue-500 rounded-full shadow-lg">
+                  <Users className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
                 </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3 mt-4 w-full sm:w-auto">
-                <Button onClick={() => router.push('/settings/family?action=create')} className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Family
-                </Button>
-                <Button onClick={() => router.push('/dashboard')} variant="outline" className="w-full sm:w-auto">
-                  <Home className="h-4 w-4 mr-2" />
-                  Go to Dashboard
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {families.map((family) => (
-            <Card key={family.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
-              <CardHeader className="pb-3 px-4 sm:px-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="p-2 bg-blue-100 rounded-full flex-shrink-0">
-                      <Home className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-base sm:text-lg group-hover:text-blue-600 transition-colors truncate">
-                        {family.name}
-                      </CardTitle>
-                      <CardDescription className="text-sm truncate">
-                        {family.description || 'No description'}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className={`${getRoleBadgeColor(family.myRole)} flex-shrink-0`}>
-                    <div className="flex items-center gap-1">
-                      {getRoleIcon(family.myRole)}
-                      <span className="hidden sm:inline">{family.myRole}</span>
-                      <span className="sm:hidden">{family.myRole.slice(0, 3)}</span>
-                    </div>
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4 px-4 sm:px-6">
-                {/* Family Stats - Mobile Optimized */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg sm:text-xl font-bold text-gray-900">{family.memberCount}</div>
-                    <div className="text-xs text-gray-600">Members</div>
-                  </div>
-                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg sm:text-xl font-bold text-gray-900">
-                      {new Date(family.createdAt).getFullYear()}
-                    </div>
-                    <div className="text-xs text-gray-600">Created</div>
-                  </div>
-                  <div className="text-center p-2 sm:p-3 bg-gray-50 rounded-lg">
-                    <div className="text-lg sm:text-xl font-bold text-purple-600">
-                      {family.members.filter(m => 
-                        m.role?.name.toLowerCase().includes('admin') || 
-                        m.role?.name.toLowerCase().includes('parent')
-                      ).length}
-                    </div>
-                    <div className="text-xs text-gray-600">Admins</div>
-                  </div>
-                </div>
-
-                {/* Recent Members - Mobile Optimized */}
                 <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2 text-sm sm:text-base">
-                    <Users className="h-4 w-4" />
-                    Family Members
-                  </h4>
-                                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-2">
-                     {family.members.slice(0, 4).map((member) => (
-                       <div key={member.id} className="flex items-center gap-2 min-w-0">
-                         <Avatar className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0">
-                           <AvatarFallback className="text-xs">
-                             {member.user?.firstName?.[0] || member.user?.username?.[0] || '?'}
-                           </AvatarFallback>
-                         </Avatar>
-                         <span className="text-xs text-gray-600 truncate">
-                           {member.user?.firstName || member.user?.username || 'Unknown'}
-                         </span>
-                       </div>
-                     ))}
-                    {family.members.length > 4 && (
-                      <span className="text-xs text-gray-500 sm:ml-2">
-                        +{family.members.length - 4} more
-                      </span>
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    No Families Found
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-2 text-sm sm:text-base">
+                    You&apos;re not currently a member of any families. Create a new family or ask to be invited to an existing one.
+                  </p>
+                  <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gradient-to-r from-gray-100 to-blue-100 text-gray-700 shadow-sm">
+                    👨‍👩‍👧‍👦 0 Families • 0 Members
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 mt-4 w-full sm:w-auto">
+                  <Button 
+                    onClick={() => router.push('/settings/family?action=create')} 
+                    className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Family
+                  </Button>
+                  <Button 
+                    onClick={() => router.push('/dashboard')} 
+                    variant="outline" 
+                    className="w-full sm:w-auto border-2 border-blue-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:border-blue-300 transition-all duration-200"
+                  >
+                    <Home className="h-4 w-4 mr-2" />
+                    Go to Dashboard
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+            {families.map((family) => (
+              <Card key={family.id} className="hover:shadow-xl transition-all duration-300 hover:scale-[1.02] border shadow-md bg-white dark:bg-gray-800 group">
+                <CardHeader className="pb-3 px-4 md:px-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex-shrink-0 shadow-md">
+                        <Home className="h-4 w-4 md:h-5 md:w-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base md:text-lg group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 truncate font-bold">
+                          {family.name}
+                        </CardTitle>
+                        <CardDescription className="text-sm truncate">
+                          {family.description || 'No description'}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`${getRoleBadgeColor(family.myRole)} flex-shrink-0 shadow-sm font-semibold text-xs`}>
+                      <div className="flex items-center gap-1">
+                        {getRoleIcon(family.myRole)}
+                        <span className="hidden md:inline">{family.myRole}</span>
+                        <span className="md:hidden">{family.myRole.slice(0, 3)}</span>
+                      </div>
+                    </Badge>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-4 px-4 md:px-6">
+                  {/* ✨ ENHANCED: Family Stats with Gradient Cards - Mobile Optimized */}
+                  <div className="grid grid-cols-3 gap-2 md:gap-3">
+                    <div className="text-center p-2 md:p-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                      <div className="text-lg md:text-xl font-bold">{family.memberCount}</div>
+                      <div className="text-xs text-blue-100 font-medium">Members</div>
+                    </div>
+                    <div className="text-center p-2 md:p-3 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                      <div className="text-lg md:text-xl font-bold">
+                        {new Date(family.createdAt).getFullYear()}
+                      </div>
+                      <div className="text-xs text-green-100 font-medium">Created</div>
+                    </div>
+                    <div className="text-center p-2 md:p-3 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
+                      <div className="text-lg md:text-xl font-bold">
+                        {family.members.filter(m => 
+                          m.role?.name.toLowerCase().includes('admin') || 
+                          m.role?.name.toLowerCase().includes('parent')
+                        ).length}
+                      </div>
+                      <div className="text-xs text-purple-100 font-medium">Admins</div>
+                    </div>
+                  </div>
+
+                  {/* Recent Members - Enhanced Mobile Layout */}
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2 text-sm md:text-base">
+                      <Users className="h-4 w-4 text-blue-600" />
+                      Family Members
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {family.members.slice(0, 4).map((member) => (
+                        <div key={member.id} className="flex items-center gap-2 min-w-0 bg-white dark:bg-gray-600 rounded-full px-2 py-1 text-xs md:text-sm">
+                          <Avatar className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0 bg-gradient-to-r from-blue-500 to-purple-600">
+                            <AvatarFallback className="text-xs text-white font-bold bg-gradient-to-r from-blue-500 to-purple-600">
+                              {member.user?.firstName?.[0] || member.user?.username?.[0] || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-gray-700 dark:text-gray-200 truncate font-medium max-w-20 md:max-w-none">
+                            {member.user?.firstName || member.user?.username || 'Unknown'}
+                          </span>
+                        </div>
+                      ))}
+                      {family.members.length > 4 && (
+                        <span className="text-xs text-gray-500 bg-white dark:bg-gray-600 rounded-full px-2 py-1 font-medium">
+                          +{family.members.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ✨ ENHANCED: Action Buttons - Mobile Optimized */}
+                  <div className="flex flex-col md:flex-row gap-2 pt-2">
+                    <Button 
+                      onClick={() => router.push(`/family/${family.id}`)}
+                      size="sm" 
+                      className="flex-1 h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 text-sm"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
+                    {(family.myRole.toLowerCase() === 'admin' || family.myRole.toLowerCase() === 'parent') && (
+                      <Button 
+                        onClick={() => router.push('/settings/family')}
+                        size="sm" 
+                        variant="outline"
+                        className="md:w-auto h-9 border border-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 text-sm"
+                      >
+                        <Settings className="h-4 w-4 md:mr-2" />
+                        <span className="md:hidden">Settings</span>
+                        <span className="hidden md:inline">Settings</span>
+                      </Button>
                     )}
                   </div>
-                </div>
-
-                {/* Action Buttons - Mobile Optimized */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button 
-                    onClick={() => router.push(`/family/${family.id}`)}
-                    size="sm" 
-                    className="flex-1 h-9 sm:h-8"
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    <span className="sm:hidden">View</span>
-                    <span className="hidden sm:inline">View Details</span>
-                  </Button>
-                  {(family.myRole.toLowerCase() === 'admin' || family.myRole.toLowerCase() === 'parent') && (
-                    <Button 
-                      onClick={() => router.push('/settings/family')}
-                      size="sm" 
-                      variant="outline"
-                      className="sm:w-auto h-9 sm:h-8"
-                    >
-                      <Settings className="h-4 w-4 sm:mr-0" />
-                      <span className="sm:hidden ml-2">Settings</span>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Quick Actions - Mobile Optimized */}
-      <Card>
-        <CardHeader className="px-4 sm:px-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Common family management tasks
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-            <Button 
-              onClick={() => router.push('/settings/family?action=create')}
-              variant="outline" 
-              className="h-auto p-3 sm:p-4"
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
-                <div>
-                  <div className="font-medium text-sm sm:text-base">Create Family</div>
-                  <div className="text-xs text-gray-500">Start a new family</div>
-                </div>
-              </div>
-            </Button>
-            
-            <Button 
-              onClick={() => router.push('/settings/family')}
-              variant="outline" 
-              className="h-auto p-3 sm:p-4"
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" />
-                <div>
-                  <div className="font-medium text-sm sm:text-base">Invite Members</div>
-                  <div className="text-xs text-gray-500">Add family members</div>
-                </div>
-              </div>
-            </Button>
-            
-            <Button 
-              onClick={() => router.push('/dashboard')}
-              variant="outline" 
-              className="h-auto p-3 sm:p-4"
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
-                <div>
-                  <div className="font-medium text-sm sm:text-base">View Dashboard</div>
-                  <div className="text-xs text-gray-500">See family activity</div>
-                </div>
-              </div>
-            </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {/* ✨ ENHANCED: Quick Actions with Gradient Styling */}
+        <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-0 shadow-lg">
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Star className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Common family management tasks
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <Button 
+                onClick={() => router.push('/settings/family?action=create')}
+                variant="outline" 
+                className="h-auto p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border-2 border-green-200 hover:border-green-300 transition-all duration-200 hover:shadow-md"
+              >
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                  <div>
+                    <div className="font-medium text-sm sm:text-base text-green-700">Create Family</div>
+                    <div className="text-xs text-green-600">Start a new family</div>
+                  </div>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={() => router.push('/settings/family')}
+                variant="outline" 
+                className="h-auto p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 border-2 border-blue-200 hover:border-blue-300 transition-all duration-200 hover:shadow-md"
+              >
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                  <div>
+                    <div className="font-medium text-sm sm:text-base text-blue-700">Invite Members</div>
+                    <div className="text-xs text-blue-600">Add family members</div>
+                  </div>
+                </div>
+              </Button>
+              
+              <Button 
+                onClick={() => router.push('/dashboard')}
+                variant="outline" 
+                className="h-auto p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-2 border-purple-200 hover:border-purple-300 transition-all duration-200 hover:shadow-md"
+              >
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+                  <div>
+                    <div className="font-medium text-sm sm:text-base text-purple-700">View Dashboard</div>
+                    <div className="text-xs text-purple-600">See family activity</div>
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 

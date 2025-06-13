@@ -159,18 +159,35 @@ namespace TaskTrackerAPI.Profiles
 
         private int ConvertPriorityToInt(string priority)
         {
-            switch (priority?.ToLower())
+            // Handle null or empty
+            if (string.IsNullOrEmpty(priority))
+                return 1; // Default to Medium
+            
+            // First try to parse as integer (if already stored as "0", "1", "2", "3")
+            if (int.TryParse(priority, out int numericPriority))
+            {
+                // Clamp to valid range
+                return Math.Max(0, Math.Min(3, numericPriority));
+            }
+            
+            // Then try to parse as string
+            switch (priority.ToLower())
             {
                 case "critical":
-                    return 4;
-                case "high":
+                case "urgent":
+                case "3":
                     return 3;
-                case "medium":
+                case "high":
+                case "2":
                     return 2;
-                case "low":
+                case "medium":
+                case "1":
                     return 1;
-                default:
+                case "low":
+                case "0":
                     return 0;
+                default:
+                    return 1; // Default to Medium
             }
         }
 
@@ -178,13 +195,13 @@ namespace TaskTrackerAPI.Profiles
         {
             switch (priority)
             {
-                case 4:
-                    return "Critical";
                 case 3:
-                    return "High";
+                    return "Critical";
                 case 2:
-                    return "Medium";
+                    return "High";
                 case 1:
+                    return "Medium";
+                case 0:
                     return "Low";
                 default:
                     return "Medium";
@@ -196,15 +213,15 @@ namespace TaskTrackerAPI.Profiles
             switch (priority?.ToLower())
             {
                 case "critical":
-                    return 4;
-                case "high":
                     return 3;
-                case "medium":
+                case "high":
                     return 2;
-                case "low":
+                case "medium":
                     return 1;
-                default:
+                case "low":
                     return 0;
+                default:
+                    return 1;
             }
         }
 

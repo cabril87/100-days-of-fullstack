@@ -154,4 +154,26 @@ export const familyTaskFilterSchema = taskFilterSchema.extend({
   assignedToFamilyMemberId: z.number().optional(),
   requiresApproval: z.boolean().optional(),
   approvalStatus: z.enum(['pending', 'approved', 'not_required']).optional()
+});
+
+// === BOARD TASK SCHEMAS ===
+
+/**
+ * Schema for creating tasks in boards
+ */
+export const createTaskItemSchema = z.object({
+  title: z.string().min(1, 'Task title is required').max(200, 'Title must be less than 200 characters'),
+  description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
+  priority: z.enum(['Low', 'Medium', 'High', 'Urgent'], {
+    required_error: 'Please select a priority level'
+  }),
+  status: z.enum(['To Do', 'In Progress', 'Done', 'Backlog', 'Review'], {
+    required_error: 'Please select a status'
+  }),
+  dueDate: z.string().optional(),
+  points: z.number().min(0, 'Points must be at least 0').max(1000, 'Points cannot exceed 1000').optional(),
+  tags: z.array(z.string()).optional(),
+  boardId: z.number().min(1, 'Valid board ID is required').optional(),
+  categoryId: z.number().optional(),
+  estimatedTimeMinutes: z.number().min(1, 'Estimated time must be at least 1 minute').max(1440, 'Estimated time cannot exceed 24 hours').optional()
 }); 

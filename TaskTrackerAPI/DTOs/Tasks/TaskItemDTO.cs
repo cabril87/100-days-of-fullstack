@@ -176,6 +176,11 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// User ID to assign task to
         /// </summary>
         public int? AssignedToUserId { get; set; }
+
+        /// <summary>
+        /// Name of the user assigned to this task (for family tasks)
+        /// </summary>
+        public string? AssignedToUserName { get; set; }
     }
 
     
