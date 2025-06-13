@@ -81,10 +81,8 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
           : DEFAULT_BOARD_COLUMNS,
       };
 
-      // Backend expects the payload to be wrapped in a boardDTO property
-      const payload = { boardDTO: createBoardDto };
-
-      await BoardService.createBoard(payload as any);
+      // Send the CreateBoardDTO directly to the backend
+      await BoardService.createBoard(createBoardDto);
       
       toast.success('🎯 Board created successfully!');
       onBoardCreated();

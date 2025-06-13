@@ -44,10 +44,16 @@ export class BoardService {
    */
   static async getBoardById(boardId: number): Promise<BoardDetailDTO> {
     try {
-      const response = await apiClient.get<BoardDetailDTO>(`${this.BASE_URL}/${boardId}`);
+      const response = await apiClient.get<BoardDetailDTO>(`${this.BASE_URL}/${boardId}/tasks`);
       return response;
     } catch (error) {
       console.error(`Error fetching board ${boardId}:`, error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error && error.message.includes('404')) {
+        throw new Error(`Board with ID ${boardId} not found. It may have been deleted or you may not have access to it.`);
+      }
+      
       throw error;
     }
   }

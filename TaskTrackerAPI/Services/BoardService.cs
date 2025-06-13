@@ -84,7 +84,7 @@ public class BoardService : IBoardService
             return null;
         }
 
-        Board? board = await _boardRepository.GetBoardByIdAsync(boardId);
+        Board? board = await _boardRepository.GetBoardWithColumnsAsync(boardId);
         if (board == null)
         {
             return null;
@@ -106,7 +106,129 @@ public class BoardService : IBoardService
         board.CreatedAt = DateTime.UtcNow;
 
         Board createdBoard = await _boardRepository.CreateBoardAsync(board);
-        return _mapper.Map<BoardDTO>(createdBoard);
+
+        // Debug logging
+        Console.WriteLine($"🔧 BoardService.CreateBoardAsync: Board '{boardDto.Name}' created with ID {createdBoard.Id}");
+        Console.WriteLine($"🔧 BoardDto.Columns is null: {boardDto.Columns == null}");
+        Console.WriteLine($"🔧 BoardDto.Columns count: {boardDto.Columns?.Count() ?? 0}");
+        if (boardDto.Columns != null)
+        {
+            foreach (var col in boardDto.Columns)
+            {
+                Console.WriteLine($"🔧 Column from DTO: {col.Name} (Status: {col.Status}, Order: {col.Order})");
+            }
+        }
+
+        // Create board columns if provided, or create default columns if none provided
+        if (boardDto.Columns != null && boardDto.Columns.Any())
+        {
+            // User provided columns - create them
+            Console.WriteLine($"🔧 BoardService: Creating {boardDto.Columns.Count()} user-provided columns for board {createdBoard.Id}");
+            
+            // Check if columns already exist for this board (safety check)
+            Board? boardWithExistingColumns = await _boardRepository.GetBoardWithColumnsAsync(createdBoard.Id);
+            if (boardWithExistingColumns?.Columns?.Any() == true)
+            {
+                Console.WriteLine($"⚠️ BoardService: Board {createdBoard.Id} already has {boardWithExistingColumns.Columns.Count} columns! Skipping column creation to prevent duplicates.");
+                return _mapper.Map<BoardDTO>(boardWithExistingColumns);
+            }
+            
+            foreach (BoardColumnCreateDTO columnDto in boardDto.Columns)
+            {
+                BoardColumn column = _mapper.Map<BoardColumn>(columnDto);
+                column.BoardId = createdBoard.Id;
+                column.CreatedAt = DateTime.UtcNow;
+                // Ensure proper mapping of missing properties
+                column.IsHidden = false;
+                column.IsCollapsible = true;
+                column.IsDoneColumn = column.MappedStatus == TaskItemStatus.Completed;
+                column.Icon = column.Icon ?? GetDefaultIconForStatus(column.MappedStatus);
+
+                Console.WriteLine($"🔧 Creating column: {column.Name} (Status: {column.MappedStatus}, Order: {column.Order})");
+                await _boardRepository.CreateBoardColumnAsync(column);
+            }
+            Console.WriteLine($"✅ BoardService: Finished creating user-provided columns for board {createdBoard.Id}");
+        }
+        else
+        {
+            // No columns provided - create default columns
+            Console.WriteLine($"🔧 BoardService: No columns provided, creating default columns for board {createdBoard.Id}");
+            BoardColumn[] defaultColumns = new[]
+            {
+                new BoardColumn
+                {
+                    BoardId = createdBoard.Id,
+                    Name = "To Do",
+                    Order = 0,
+                    Color = "#EF4444",
+                    Icon = "folder",
+                    MappedStatus = TaskItemStatus.NotStarted,
+                    IsHidden = false,
+                    IsDoneColumn = false,
+                    IsCollapsible = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new BoardColumn
+                {
+                    BoardId = createdBoard.Id,
+                    Name = "In Progress", 
+                    Order = 1,
+                    Color = "#F59E0B",
+                    Icon = "clock",
+                    MappedStatus = TaskItemStatus.InProgress,
+                    IsHidden = false,
+                    IsDoneColumn = false,
+                    IsCollapsible = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new BoardColumn
+                {
+                    BoardId = createdBoard.Id,
+                    Name = "Completed",
+                    Order = 2,
+                    Color = "#10B981",
+                    Icon = "check-circle",
+                    MappedStatus = TaskItemStatus.Completed,
+                    IsHidden = false,
+                    IsDoneColumn = true,
+                    IsCollapsible = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+
+            foreach (BoardColumn column in defaultColumns)
+            {
+                await _boardRepository.CreateBoardColumnAsync(column);
+            }
+        }
+
+        // Reload board with columns to ensure we return complete data
+        Board? boardWithColumns = await _boardRepository.GetBoardWithColumnsAsync(createdBoard.Id);
+        
+        // Debug: Log final column count
+        Console.WriteLine($"🔧 BoardService: Final board has {boardWithColumns?.Columns?.Count ?? 0} columns");
+        if (boardWithColumns?.Columns != null)
+        {
+            foreach (var col in boardWithColumns.Columns)
+            {
+                Console.WriteLine($"🔧 Final column: {col.Name} (ID: {col.Id}, Status: {col.MappedStatus}, Order: {col.Order})");
+            }
+        }
+        
+        return _mapper.Map<BoardDTO>(boardWithColumns ?? createdBoard);
+    }
+
+    private static string GetDefaultIconForStatus(TaskItemStatus status)
+    {
+        return status switch
+        {
+            TaskItemStatus.NotStarted => "folder",
+            TaskItemStatus.InProgress => "clock",
+            TaskItemStatus.OnHold => "pause",
+            TaskItemStatus.Completed => "check-circle",
+            TaskItemStatus.Pending => "clock",
+            _ => "folder"
+        };
     }
 
     public async Task<BoardDTO?> UpdateBoardAsync(int userId, int boardId, UpdateBoardDTO boardDto)

@@ -24,4 +24,6 @@ public interface IBoardRepository
     Task DeleteBoardAsync(Board board);
     Task<bool> IsBoardOwnedByUserAsync(int boardId, int userId);
     Task<Board?> ReorderTaskInBoardAsync(int boardId, int taskId, int? positionX, int? positionY, int? boardOrder);
+    Task<BoardColumn> CreateBoardColumnAsync(BoardColumn column);
+    Task<Board?> GetBoardWithColumnsAsync(int boardId);
 } 

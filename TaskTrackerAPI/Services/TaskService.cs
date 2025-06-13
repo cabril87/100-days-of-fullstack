@@ -31,6 +31,7 @@ namespace TaskTrackerAPI.Services
         private readonly IChecklistItemRepository _checklistItemRepository;
         private readonly ITaskSyncService _taskSyncService;
         private readonly IGamificationService _gamificationService;
+        private readonly IBoardRepository _boardRepository;
         private readonly ILogger<TaskService> _logger;
         
         public TaskService(
@@ -40,6 +41,7 @@ namespace TaskTrackerAPI.Services
             IChecklistItemRepository checklistItemRepository,
             ITaskSyncService taskSyncService,
             IGamificationService gamificationService,
+            IBoardRepository boardRepository,
             ILogger<TaskService> logger)
         {
             _taskRepository = taskRepository;
@@ -48,6 +50,7 @@ namespace TaskTrackerAPI.Services
             _checklistItemRepository = checklistItemRepository;
             _taskSyncService = taskSyncService;
             _gamificationService = gamificationService;
+            _boardRepository = boardRepository;
             _logger = logger;
         }
         
@@ -91,6 +94,17 @@ namespace TaskTrackerAPI.Services
                 }
             }
             
+            // Validate board ownership if a board is provided
+            if (taskDto.BoardId.HasValue)
+            {
+                bool isBoardOwned = await _boardRepository.IsBoardOwnedByUserAsync(taskDto.BoardId.Value, userId);
+                if (!isBoardOwned)
+                {
+                    throw new UnauthorizedAccessException("You do not have access to the specified board");
+                }
+                _logger.LogInformation("Creating task for board {BoardId}", taskDto.BoardId);
+            }
+            
             TaskItem taskItem = new TaskItem
             {
                 Title = taskDto.Title ?? string.Empty,
@@ -99,10 +113,12 @@ namespace TaskTrackerAPI.Services
                 Priority = taskDto.Priority.ToString(),
                 DueDate = taskDto.DueDate,
                 CategoryId = taskDto.CategoryId,
+                BoardId = taskDto.BoardId, // Ensure BoardId is set
                 UserId = userId,
                 FamilyId = taskDto.FamilyId,
                 AssignedToId = taskDto.AssignedToUserId,
                 EstimatedTimeMinutes = taskDto.EstimatedTimeMinutes,
+                PointsValue = taskDto.PointsValue, // Ensure points are set
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 Version = 1
@@ -166,6 +182,16 @@ namespace TaskTrackerAPI.Services
                     throw new UnauthorizedAccessException("You do not have access to the specified category");
                 }
             }
+            
+            // Validate board ownership if a board is provided
+            if (taskDto.BoardId.HasValue)
+            {
+                bool isBoardOwned = await _boardRepository.IsBoardOwnedByUserAsync(taskDto.BoardId.Value, userId);
+                if (!isBoardOwned)
+                {
+                    throw new UnauthorizedAccessException("You do not have access to the specified board");
+                }
+            }
                 
             TaskItem? existingTask = await _taskRepository.GetTaskByIdAsync(taskId, userId);
             if (existingTask == null)
@@ -212,6 +238,7 @@ namespace TaskTrackerAPI.Services
             existingTask.Priority = taskDto.Priority.ToString();
             existingTask.DueDate = taskDto.DueDate;
             existingTask.CategoryId = taskDto.CategoryId;
+            existingTask.BoardId = taskDto.BoardId; // Update BoardId
             existingTask.EstimatedTimeMinutes = taskDto.EstimatedTimeMinutes;
             existingTask.PointsValue = taskDto.PointsValue;
             existingTask.UpdatedAt = DateTime.UtcNow;
@@ -322,6 +349,19 @@ namespace TaskTrackerAPI.Services
             }
             
             IEnumerable<TaskItem> tasks = await _taskRepository.GetTasksByCategoryAsync(userId, categoryId);
+            return _mapper.Map<IEnumerable<TaskItemDTO>>(tasks);
+        }
+        
+        public async Task<IEnumerable<TaskItemDTO>> GetTasksByBoardAsync(int userId, int boardId)
+        {
+            // Validate board ownership
+            bool isBoardOwned = await _boardRepository.IsBoardOwnedByUserAsync(boardId, userId);
+            if (!isBoardOwned)
+            {
+                throw new UnauthorizedAccessException("You do not have access to the specified board");
+            }
+            
+            IEnumerable<TaskItem> tasks = await _boardRepository.GetTasksByBoardIdAsync(boardId);
             return _mapper.Map<IEnumerable<TaskItemDTO>>(tasks);
         }
         

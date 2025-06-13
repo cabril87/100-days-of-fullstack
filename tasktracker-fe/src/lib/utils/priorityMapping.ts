@@ -65,7 +65,8 @@ export const convertTaskDataForBackend = async (data: TaskDataForBackend, tagIds
     pointsValue: 'PointsValue',
     assignedToUserId: 'AssignedToUserId',
     familyId: 'FamilyId',
-    version: 'Version'
+    version: 'Version',
+    boardId: 'BoardId'
   };
   
   // Convert properties with correct naming

@@ -34,6 +34,7 @@ namespace TaskTrackerAPI.Services.Interfaces
         // Filtering methods
         Task<IEnumerable<TaskItemDTO>> GetTasksByStatusAsync(int userId, TaskItemStatus status);
         Task<IEnumerable<TaskItemDTO>> GetTasksByCategoryAsync(int userId, int categoryId);
+        Task<IEnumerable<TaskItemDTO>> GetTasksByBoardAsync(int userId, int boardId);
         Task<IEnumerable<TaskItemDTO>> GetTasksByTagAsync(int userId, int tagId);
         Task<IEnumerable<TaskItemDTO>> GetTasksByDueDateRangeAsync(int userId, DateTime startDate, DateTime endDate);
         Task<IEnumerable<TaskItemDTO>> GetOverdueTasksAsync(int userId);

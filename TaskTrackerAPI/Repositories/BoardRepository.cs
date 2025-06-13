@@ -42,6 +42,13 @@ public class BoardRepository : IBoardRepository
             .FirstOrDefaultAsync(b => b.Id == boardId);
     }
 
+    public async Task<Board?> GetBoardWithColumnsAsync(int boardId)
+    {
+        return await _context.Boards
+            .Include(b => b.Columns.OrderBy(c => c.Order))
+            .FirstOrDefaultAsync(b => b.Id == boardId);
+    }
+
     public async Task<IEnumerable<TaskItem>> GetTasksByBoardIdAsync(int boardId)
     {
         return await _context.Tasks
@@ -57,6 +64,13 @@ public class BoardRepository : IBoardRepository
         _context.Boards.Add(board);
         await _context.SaveChangesAsync();
         return board;
+    }
+
+    public async Task<BoardColumn> CreateBoardColumnAsync(BoardColumn column)
+    {
+        _context.BoardColumns.Add(column);
+        await _context.SaveChangesAsync();
+        return column;
     }
 
     public async Task<Board> UpdateBoardAsync(Board board)

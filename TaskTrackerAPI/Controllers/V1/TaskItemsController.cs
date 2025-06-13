@@ -389,6 +389,30 @@ public class TaskItemsController : BaseApiController
         }
     }
     
+    // GET: api/TaskItems/board/{boardId}
+    [HttpGet("board/{boardId}")]
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByBoard(int boardId)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByBoardAsync(userId, boardId);
+            
+            return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to access board they don't own");
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving tasks for board ID {BoardId}", boardId);
+            return StatusCode(500, ApiResponse<IEnumerable<TaskItemDTO>>.ServerErrorResponse());
+        }
+    }
+    
     // GET: api/TaskItems/tags/{tagId}
     [HttpGet("tags/{tagId}")]
     public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByTag(int tagId)

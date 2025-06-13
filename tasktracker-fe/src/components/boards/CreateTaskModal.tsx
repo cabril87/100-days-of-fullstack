@@ -23,6 +23,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '../ui/dialog';
 import {
@@ -170,6 +171,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             <Target className="h-5 w-5 text-emerald-500" />
             <span>Create New Quest</span>
           </DialogTitle>
+          <DialogDescription>
+            Create a new task for this board. Fill in the details and assign it to the appropriate column.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -261,17 +265,20 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select 
+                      onValueChange={(value) => field.onChange(Number(value) as TaskItemStatus)} 
+                      defaultValue={field.value?.toString()}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-12">
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={TaskItemStatus.Pending}>To Do</SelectItem>
-                        <SelectItem value={TaskItemStatus.InProgress}>In Progress</SelectItem>
-                        <SelectItem value={TaskItemStatus.UnderReview}>Under Review</SelectItem>
-                        <SelectItem value={TaskItemStatus.Completed}>Completed</SelectItem>
+                        <SelectItem value={TaskItemStatus.NotStarted.toString()}>To Do</SelectItem>
+                        <SelectItem value={TaskItemStatus.InProgress.toString()}>In Progress</SelectItem>
+                        <SelectItem value={TaskItemStatus.OnHold.toString()}>On Hold</SelectItem>
+                        <SelectItem value={TaskItemStatus.Completed.toString()}>Completed</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

@@ -355,13 +355,45 @@ export class ApiClient {
   async put<T>(endpoint: string, body?: unknown, headers?: HeadersInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     
+    // Determine content type and body format
+    const mergedHeaders = { ...getAuthHeaders(), ...headers } as Record<string, string>;
+    const contentType = mergedHeaders['Content-Type'] || mergedHeaders['content-type'];
+    
+    let requestBody: string | undefined;
+    if (body !== undefined) {
+      if (contentType === 'text/plain') {
+        requestBody = String(body);
+      } else {
+        requestBody = JSON.stringify(body);
+      }
+    }
+    
+    // Debug logging for PUT requests
+    console.log('🌐 ApiClient PUT:', {
+      endpoint,
+      url,
+      baseUrl: this.baseUrl,
+      method: 'PUT',
+      hasBody: !!body,
+      contentType,
+      bodyPreview: requestBody ? requestBody.substring(0, 200) : 'no body'
+    });
+    
     return withTimeout(
       withRetry(async () => {
         const response = await fetch(url, {
           method: 'PUT',
-          headers: { ...getAuthHeaders(), ...headers },
-          body: body ? JSON.stringify(body) : undefined,
+          headers: mergedHeaders,
+          body: requestBody,
           credentials: 'include', // Include cookies for HTTP-only cookie support
+        });
+        
+        console.log('📡 ApiClient PUT response:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
         });
         
         return this.handleResponse<T>(response);

@@ -120,9 +120,9 @@ export const BoardsList: React.FC = () => {
   const handleCreateFromTemplate = async (template: BoardTemplate) => {
     try {
       const newBoard = await BoardService.createBoard({
-        name: template.name,
-        description: template.description,
-        columns: template.columns,
+        Name: template.name,
+        Description: template.description,
+        Columns: template.columns,
       });
       
       setShowTemplates(false);
@@ -222,11 +222,11 @@ export const BoardsList: React.FC = () => {
                                 variant="outline"
                                 className="text-xs"
                                 style={{
-                                  borderColor: column.color,
-                                  color: column.color,
+                                  borderColor: column.Color,
+                                  color: column.Color,
                                 }}
                               >
-                                {column.name}
+                                {column.Name}
                               </Badge>
                             ))}
                           </div>

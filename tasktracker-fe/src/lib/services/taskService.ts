@@ -20,7 +20,8 @@ import {
   TaskTimeTracking,
   TaskProgressUpdate,
   BatchTaskResult,
-  CreateChecklistItem
+  CreateChecklistItem,
+  TaskItemStatus
 } from '../types/task';
 import { FamilyTaskStats } from '../types/family-task';
 import { apiClient } from '../config/api-client';
@@ -836,9 +837,50 @@ export class TaskService {
   /**
    * Update task status (for board drag-and-drop)
    */
-  async updateTaskStatus(taskId: number, status: string): Promise<boolean> {
+  async updateTaskStatus(taskId: number, status: string | number | TaskItemStatus): Promise<boolean> {
     try {
-      await apiClient.put(`/v1/taskitems/${taskId}/status`, { status });
+      console.log(`🔍 TaskService: Received status:`, status, `(type: ${typeof status})`);
+      
+      // Convert status to integer if needed
+      let statusValue: number;
+      if (typeof status === 'string') {
+        // Check if it's a numeric string first
+        const numericValue = parseInt(status, 10);
+        if (!isNaN(numericValue)) {
+          statusValue = numericValue;
+          console.log(`📝 Converted numeric string "${status}" to number:`, statusValue);
+        } else {
+          // It's an enum name string, convert to numeric value
+          const enumMapping: Record<string, number> = {
+            'NotStarted': TaskItemStatus.NotStarted,
+            'InProgress': TaskItemStatus.InProgress,
+            'OnHold': TaskItemStatus.OnHold,
+            'Pending': TaskItemStatus.Pending,
+            'Completed': TaskItemStatus.Completed,
+            'Cancelled': TaskItemStatus.Cancelled
+          };
+          statusValue = enumMapping[status];
+          console.log(`📝 Converted enum string "${status}" to number:`, statusValue);
+        }
+      } else if (typeof status === 'number') {
+        statusValue = status;
+        console.log(`📝 Using number as-is:`, statusValue);
+      } else {
+        // It's a TaskItemStatus enum, get its numeric value
+        statusValue = Number(status);
+        console.log(`📝 Converted enum ${status} to number:`, statusValue);
+      }
+      
+      // Validate the conversion was successful
+      if (isNaN(statusValue) || statusValue === undefined) {
+        throw new Error(`Invalid status value: ${status} (converted to: ${statusValue})`);
+      }
+      
+      console.log(`🔄 Updating task ${taskId} status to ${statusValue}`);
+      
+      // Send as raw JSON number (backend expects [FromBody] TaskItemStatus as JSON)
+      console.log(`📤 Request body (raw number):`, statusValue);
+      await apiClient.put(`/v1/taskitems/${taskId}/status`, statusValue);
       this.invalidateCache([`task-${taskId}`]);
       return true;
     } catch (error) {
