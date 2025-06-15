@@ -12,8 +12,9 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TaskItemStatus, Task, UpdateTaskDTO, TaskPriority, TaskItemResponseDTO, TaskApiResponseType, FlexibleApiResponse } from '../../lib/types/task';
+import { TaskItemStatus, UpdateTaskDTO, TaskPriority, TaskItemResponseDTO, TaskApiResponseType, FlexibleApiResponse, CreateTaskItemDTO } from '../../lib/types/task';
 import { taskService } from '../../lib/services/taskService';
+import { familyInvitationService } from '../../lib/services/familyInvitationService';
 import { apiClient } from '../../lib/config/api-client';
 import {
   Dialog,
@@ -26,17 +27,13 @@ import {
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { ScrollArea } from '../ui/scroll-area';
-import { Card, CardContent } from '../ui/card';
+import { Card } from '../ui/card';
 import { toast } from 'sonner';
 import {
   Plus,
   Search,
   Target,
-  Calendar,
   Star,
-  Tag,
-  ArrowRight,
   Loader2,
   Minus,
   ArrowLeft,
@@ -87,51 +84,129 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
   const loadTasks = async () => {
     try {
       setLoading(true);
-      // Get tasks directly from API without conversion to preserve boardId
-      const result = await apiClient.get<TaskApiResponseType>(`/v1/taskitems?pageSize=100`);
+      console.log('🔍 QuestSelectionModal: Loading tasks from multiple sources...');
       
-      let apiTasks: TaskItemResponseDTO[] = [];
-      
-      if (Array.isArray(result)) {
-        // Direct array response (unwrapped) - cast to unknown first then to our type
-        apiTasks = result as unknown as TaskItemResponseDTO[];
-      } else if (result && typeof result === 'object') {
-        // Check for wrapped response patterns
-        const flexibleResponse = result as FlexibleApiResponse;
-        
-        if ('data' in result && Array.isArray(result.data)) {
-          apiTasks = result.data as unknown as TaskItemResponseDTO[];
-        } else if (flexibleResponse.items && Array.isArray(flexibleResponse.items)) {
-          apiTasks = flexibleResponse.items as unknown as TaskItemResponseDTO[];
-        } else if (flexibleResponse.tasks && Array.isArray(flexibleResponse.tasks)) {
-          apiTasks = flexibleResponse.tasks as unknown as TaskItemResponseDTO[];
+      // First, check if user is in a family
+      let userFamily = null;
+      try {
+        userFamily = await familyInvitationService.getUserFamily();
+        if (userFamily) {
+          console.log('🏠 QuestSelectionModal: User is in family:', `Family ID ${userFamily.id} - "${userFamily.name}"`);
+        } else {
+          console.log('🏠 QuestSelectionModal: User has no family (normal for new users)');
         }
+      } catch (error: unknown) {
+        // Handle both API errors and structured responses gracefully
+        const errorObj = error as { status?: number; statusCode?: number; message?: string };
+        if (errorObj?.status === 404 || errorObj?.statusCode === 404 || errorObj?.message?.includes('No family found')) {
+          console.log('🆕 QuestSelectionModal: New user with no family - this is completely normal');
+        } else {
+          console.log('⚠️ QuestSelectionModal: Family check failed:', errorObj?.message || 'Unknown error');
+        }
+        userFamily = null; // Ensure it's null for new users
+      }
+
+      // Fetch tasks from multiple sources
+      const familyTasksPromise = userFamily 
+        ? taskService.getFamilyTasks(userFamily.id).catch((error) => {
+            console.log('⚠️ QuestSelectionModal: Failed to fetch family tasks:', error.message);
+            return [];
+          })
+        : Promise.resolve([]);
+
+      const [individualTasks, familyTasks] = await Promise.allSettled([
+        // Individual user tasks
+        apiClient.get<TaskApiResponseType>(`/v1/taskitems?pageSize=100`),
+        // Family tasks (only if user is in a family)
+        familyTasksPromise
+      ]);
+      
+      let allTasks: TaskItemResponseDTO[] = [];
+      
+      // Process individual tasks
+      if (individualTasks.status === 'fulfilled') {
+        const result = individualTasks.value;
+        let apiTasks: TaskItemResponseDTO[] = [];
+        
+        if (Array.isArray(result)) {
+          apiTasks = result as unknown as TaskItemResponseDTO[];
+        } else if (result && typeof result === 'object') {
+          const flexibleResponse = result as FlexibleApiResponse;
+          
+          if ('data' in result && Array.isArray(result.data)) {
+            apiTasks = result.data as unknown as TaskItemResponseDTO[];
+          } else if (flexibleResponse.items && Array.isArray(flexibleResponse.items)) {
+            apiTasks = flexibleResponse.items as unknown as TaskItemResponseDTO[];
+          } else if (flexibleResponse.tasks && Array.isArray(flexibleResponse.tasks)) {
+            apiTasks = flexibleResponse.tasks as unknown as TaskItemResponseDTO[];
+          }
+        }
+        
+        // Convert individual tasks to our expected format
+        const convertedIndividualTasks: TaskItemResponseDTO[] = apiTasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status || 'NotStarted',
+          priority: task.priority,
+          dueDate: task.dueDate,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          completedAt: task.completedAt,
+          categoryId: task.categoryId,
+          categoryName: task.categoryName,
+          userId: task.userId,
+          tags: task.tags,
+          estimatedMinutes: task.estimatedMinutes,
+          actualMinutes: task.actualMinutes,
+          pointsValue: task.pointsValue,
+          boardId: task.boardId,
+          assignedToUserId: task.assignedToUserId,
+          assignedToUserName: task.assignedToUserName,
+          taskSource: 'individual' // Add source identifier
+        }));
+        
+        allTasks = [...allTasks, ...convertedIndividualTasks];
+        console.log(`✅ QuestSelectionModal: Loaded ${convertedIndividualTasks.length} individual tasks`);
       }
       
-      // Convert API response to our expected format
-      const convertedTasks: TaskItemResponseDTO[] = apiTasks.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status || 'NotStarted',
-        priority: task.priority,
-        dueDate: task.dueDate,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
-        completedAt: task.completedAt,
-        categoryId: task.categoryId,
-        categoryName: task.categoryName,
-        userId: task.userId,
-        tags: task.tags,
-        estimatedMinutes: task.estimatedMinutes,
-        actualMinutes: task.actualMinutes,
-        pointsValue: task.pointsValue,
-        boardId: task.boardId, // This is the key property we need!
-        assignedToUserId: task.assignedToUserId,
-        assignedToUserName: task.assignedToUserName
-      }));
+      // Process family tasks
+      if (familyTasks.status === 'fulfilled' && Array.isArray(familyTasks.value)) {
+        // Convert family tasks to TaskItemResponseDTO format
+        const convertedFamilyTasks: TaskItemResponseDTO[] = familyTasks.value.map(familyTask => ({
+          id: familyTask.id,
+          title: familyTask.title,
+          description: familyTask.description || '',
+          status: familyTask.status || 'NotStarted',
+          priority: familyTask.priority as TaskPriority, // Type cast to TaskPriority enum
+          dueDate: familyTask.dueDate,
+          createdAt: familyTask.createdAt,
+          updatedAt: familyTask.updatedAt,
+          completedAt: familyTask.completedAt,
+          categoryId: undefined, // Family tasks may not have category
+          categoryName: undefined,
+          userId: familyTask.userId, // Use userId instead of createdByUserId
+          tags: [], // Family tasks might not have tags in the same format
+          estimatedMinutes: familyTask.estimatedTimeMinutes,
+          actualMinutes: familyTask.actualTimeMinutes,
+          pointsValue: familyTask.pointsValue,
+          boardId: undefined, // Family tasks won't have boardId initially
+          assignedToUserId: familyTask.assignedToFamilyMemberId,
+          assignedToUserName: familyTask.assignedToFamilyMember?.user?.username, // Access through navigation property
+          taskSource: 'family' // Add source identifier
+        }));
+        
+        // Filter out duplicates (tasks that might exist in both individual and family lists)
+        const uniqueFamilyTasks = convertedFamilyTasks.filter(familyTask => 
+          !allTasks.some(task => task.id === familyTask.id)
+        );
+        
+        allTasks = [...allTasks, ...uniqueFamilyTasks];
+        console.log(`✅ QuestSelectionModal: Loaded ${uniqueFamilyTasks.length} unique family tasks (${convertedFamilyTasks.length} total)`);
+      }
       
-      setTasks(convertedTasks);
+      console.log(`🎯 QuestSelectionModal: Total ${allTasks.length} tasks available for board assignment`);
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast.error('Failed to load tasks');
@@ -164,9 +239,8 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
     try {
       setAssigningTaskId(task.id);
       
-      // Update the existing task to assign it to the board
-      // This prevents duplication by modifying the existing task rather than creating a new one
-      const updateData = {
+      // Update the existing task to assign it to the board (no duplication)
+      const updateTaskDto: UpdateTaskDTO & { boardId?: number; status?: TaskItemStatus } = {
         title: task.title,
         description: task.description,
         priority: task.priority,
@@ -175,15 +249,13 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
         categoryId: task.categoryId,
         estimatedTimeMinutes: task.estimatedMinutes,
         assignedToUserId: task.assignedToUserId,
-        version: 1
-      };
-
-      // Use the backend's task update endpoint to assign to board
-      await taskService.updateTask(task.id, {
-        ...updateData,
+        // Add board assignment fields
         boardId: boardId,
         status: defaultStatus
-      } as UpdateTaskDTO & { boardId: number; status: TaskItemStatus }); // Type assertion for board-specific fields
+      };
+
+      // Update the task with board assignment using regular updateTask
+      await taskService.updateTask(task.id, updateTaskDto as UpdateTaskDTO);
       
       toast.success('🎯 Quest assigned to board!', {
         description: `"${task.title}" has been added to your board`,
@@ -191,7 +263,7 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
 
       // Refresh tasks list to show updated assignment status
       await loadTasks();
-      onTaskCreated();
+      onTaskCreated(); // This will trigger a full reload of the task list
     } catch (error) {
       console.error('Error assigning task to board:', error);
       toast.error('Failed to assign quest to board');
@@ -200,42 +272,8 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
     }
   };
 
-  const handleUnassignTaskFromBoard = async (task: TaskItemResponseDTO) => {
-    try {
-      setAssigningTaskId(task.id);
-      
-      const updateData = {
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        dueDate: task.dueDate,
-        pointsValue: task.pointsValue || 0,
-        categoryId: task.categoryId,
-        estimatedTimeMinutes: task.estimatedMinutes,
-        assignedToUserId: task.assignedToUserId,
-        version: 1
-      };
-
-      // Remove board assignment
-      await taskService.updateTask(task.id, {
-        ...updateData,
-        boardId: undefined // Remove board assignment
-      } as UpdateTaskDTO & { boardId?: number });
-      
-      toast.success('📋 Quest removed from board', {
-        description: `"${task.title}" is now available for other boards`,
-      });
-
-      // Refresh tasks list
-      await loadTasks();
-      onTaskCreated();
-    } catch (error) {
-      console.error('Error unassigning task from board:', error);
-      toast.error('Failed to remove quest from board');
-    } finally {
-      setAssigningTaskId(null);
-    }
-  };
+  // Note: We no longer need unassign functionality since we create new tasks on boards
+  // instead of updating existing tasks. This allows the same quest to exist on multiple boards.
 
   const handleCreateNew = () => {
     setMode('create');
@@ -300,20 +338,27 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="flex items-center space-x-2">
-            <Target className="h-5 w-5 text-emerald-500" />
-            <span>
-              {mode === 'selection' ? 'Add Quest to Board' : 'Create New Quest'}
-            </span>
-          </DialogTitle>
-          <DialogDescription>
-            {mode === 'selection' 
-              ? 'Select existing tasks from your quest log or create new ones. Tasks can be assigned to multiple boards.'
-              : 'Create a new quest that will be added to this board and appear in your main task list.'
-            }
-          </DialogDescription>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border-2 border-transparent bg-clip-padding shadow-2xl shadow-purple-500/20">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-200/50 via-blue-200/50 to-indigo-200/50 dark:from-purple-700/50 dark:via-blue-700/50 dark:to-indigo-700/50 rounded-lg -z-10"></div>
+        
+        <DialogHeader className="flex-shrink-0 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white p-6 -m-6 mb-4 rounded-t-lg relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/90 via-blue-600/90 to-indigo-600/90 backdrop-blur-sm"></div>
+          <div className="relative z-10">
+            <DialogTitle className="flex items-center space-x-3 text-2xl font-bold">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm shadow-lg">
+                <Target className="h-6 w-6" />
+              </div>
+              <span className="bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
+                {mode === 'selection' ? '🎯 Add Quest to Board' : '✨ Create New Quest'}
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-purple-100 text-lg mt-2 font-medium">
+              {mode === 'selection' 
+                ? '🚀 Select existing quests from your adventure log or forge new ones. Quests can be deployed across multiple boards!'
+                : '⚡ Create an epic new quest that will be added to this board and appear in your main quest log.'
+              }
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         {mode === 'selection' ? (
@@ -360,10 +405,17 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
 
               {/* Stats */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                  Showing {filteredTasks.length} of {tasks.length} quests
-                  {searchQuery && ` matching "${searchQuery}"`}
-                </span>
+                <div>
+                  <span>
+                    Showing {filteredTasks.length} of {tasks.length} quests
+                    {searchQuery && ` matching "${searchQuery}"`}
+                  </span>
+                  {tasks.length > 0 && tasks.every(task => task.taskSource === 'individual') && (
+                    <div className="text-xs text-blue-600 mt-1">
+                      💡 Tip: Join or create a family to access shared family tasks!
+                    </div>
+                  )}
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
@@ -461,40 +513,37 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
                                 <span>On board</span>
                               </div>
                             )}
+                            {task.taskSource && (
+                              <div className="flex items-center space-x-1">
+                                <Badge variant="outline" className={cn(
+                                  "text-xs",
+                                  task.taskSource === 'individual' && "bg-blue-50 text-blue-700 border-blue-200",
+                                  task.taskSource === 'family' && "bg-purple-50 text-purple-700 border-purple-200",
+                                  task.taskSource === 'assigned' && "bg-green-50 text-green-700 border-green-200"
+                                )}>
+                                  {task.taskSource === 'individual' && '👤 Personal'}
+                                  {task.taskSource === 'family' && '👨‍👩‍👧‍👦 Family'}
+                                  {task.taskSource === 'assigned' && '📋 Assigned'}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
                         
                         <div className="flex items-center space-x-2 ml-4">
-                          {task.boardId ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUnassignTaskFromBoard(task)}
-                              disabled={assigningTaskId === task.id}
-                              className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                            >
-                              {assigningTaskId === task.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Minus className="h-4 w-4" />
-                              )}
-                              <span className="ml-2">Remove</span>
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() => handleAssignTaskToBoard(task)}
-                              disabled={assigningTaskId === task.id}
-                              size="sm"
-                              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
-                            >
-                              {assigningTaskId === task.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Plus className="h-4 w-4" />
-                              )}
-                              <span className="ml-2">Add to Board</span>
-                            </Button>
-                          )}
+                          <Button
+                            onClick={() => handleAssignTaskToBoard(task)}
+                            disabled={assigningTaskId === task.id}
+                            size="sm"
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+                          >
+                            {assigningTaskId === task.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Plus className="h-4 w-4" />
+                            )}
+                            <span className="ml-2">Add to Board</span>
+                          </Button>
                         </div>
                       </div>
                     </Card>

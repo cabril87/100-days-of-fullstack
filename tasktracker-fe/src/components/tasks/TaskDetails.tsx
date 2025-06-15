@@ -106,12 +106,14 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
     setIsEditing(true);
   };
 
-  const handleTaskUpdated = (updatedTask: Task) => {
-    setTaskDetail(prev => ({ ...prev, task: updatedTask }));
-    setIsEditing(false);
-    setEditingTask(null);
-    if (onTaskUpdated) {
-      onTaskUpdated(updatedTask);
+  const handleTaskUpdated = (updatedTask?: Task) => {
+    if (updatedTask) {
+      setTaskDetail(prev => ({ ...prev, task: updatedTask }));
+      setIsEditing(false);
+      setEditingTask(null);
+      if (onTaskUpdated) {
+        onTaskUpdated(updatedTask);
+      }
     }
   };
 

@@ -32,6 +32,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import {
   useSortable,
@@ -65,7 +66,11 @@ import {
   ChevronDown,
   Clock,
   Pause,
-  X
+  X,
+  ArrowLeft,
+  Users,
+  User,
+  GripVertical
 } from 'lucide-react';
 
 // Types and Services
@@ -81,6 +86,9 @@ import {
 import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/task';
 import { BoardService } from '@/lib/services/boardService';
 import { dragDropService } from '@/lib/services/dragDropService';
+import { taskService } from '@/lib/services/taskService';
+import { familyInvitationService } from '@/lib/services/familyInvitationService';
+import { authService } from '@/lib/services/authService';
 
 // Modals
 import { CreateTaskModal } from './CreateTaskModal';
@@ -272,22 +280,27 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
       <Card
         ref={cardRef}
         className={cn(
-          // Base styling
+          // Base styling - robust and bold like dashboard cards
           'cursor-grab active:cursor-grabbing transition-all duration-300 ease-out',
-          'hover:scale-[1.02] hover:-translate-y-1',
+          'hover:scale-[1.02] hover:-translate-y-1 hover:shadow-xl',
+          'border-0 shadow-lg',
           
-          // Gamification gradients
-          `bg-gradient-to-br ${stylePreset.baseGradient}`,
-          `hover:bg-gradient-to-br hover:${stylePreset.hoverGradient}`,
-          stylePreset.borderColor,
-          stylePreset.shadowColor,
+          // Bold gradient backgrounds like dashboard statistics cards
+          'bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900',
+          'hover:bg-gradient-to-br hover:from-slate-50 hover:to-slate-100 dark:hover:from-slate-700 dark:hover:to-slate-800',
+          
+          // Priority-based gradient accents
+          priority === 'Low' && 'border-l-4 border-l-emerald-500 hover:shadow-emerald-500/20',
+          priority === 'Medium' && 'border-l-4 border-l-yellow-500 hover:shadow-yellow-500/20',
+          priority === 'High' && 'border-l-4 border-l-orange-500 hover:shadow-orange-500/20',
+          priority === 'Urgent' && 'border-l-4 border-l-red-500 hover:shadow-red-500/20',
           
           // Priority glow effect
           showPriorityGlow && priorityConfig[priority as keyof typeof priorityConfig]?.glow,
           
           // Drag state styling
           isActive && [
-            `bg-gradient-to-br ${stylePreset.dragGradient}`,
+            'bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20',
             'scale-105 rotate-2 shadow-2xl z-50',
             'ring-2 ring-blue-400/50 ring-offset-2'
           ],
@@ -311,11 +324,14 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
               )}
             </div>
             
-            {/* Priority indicator */}
+            {/* Priority indicator - bold gradient like dashboard badges */}
             <div className={cn(
-              'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium',
-              'bg-white/80 backdrop-blur-sm border border-white/20',
-              priorityConfig[priority as keyof typeof priorityConfig]?.color
+              'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold shadow-md',
+              'border-0 text-white transition-all duration-200 hover:scale-105',
+              priority === 'Low' && 'bg-gradient-to-r from-emerald-500 to-emerald-600',
+              priority === 'Medium' && 'bg-gradient-to-r from-yellow-500 to-yellow-600',
+              priority === 'High' && 'bg-gradient-to-r from-orange-500 to-orange-600',
+              priority === 'Urgent' && 'bg-gradient-to-r from-red-500 to-red-600'
             )}>
               <PriorityIcon className="w-3 h-3" />
               <span className="hidden sm:inline">{priority}</span>
@@ -325,14 +341,14 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
 
         <CardContent className="pt-0">
           <div className="flex items-center justify-between">
-            {/* Status indicator */}
+            {/* Status indicator - enhanced with gradient */}
             {showStatusIndicator && (
               <div className="flex items-center gap-2">
                 <div className={cn(
-                  'w-2 h-2 rounded-full',
-                  stylePreset.statusIndicator
+                  'w-3 h-3 rounded-full shadow-sm',
+                  'bg-gradient-to-r from-slate-400 to-slate-500'
                 )} />
-                <span className="text-xs text-slate-500 capitalize">
+                <span className="text-xs text-slate-600 dark:text-slate-400 capitalize font-medium">
                   {task.status.replace(/([A-Z])/g, ' $1').trim()}
                 </span>
               </div>
@@ -372,16 +388,21 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
             </DropdownMenu>
           </div>
 
-          {/* Task metadata */}
-          <div className="flex items-center gap-2 mt-2">
+          {/* Task metadata - enhanced with gradients */}
+          <div className="flex items-center gap-2 mt-3">
             {task.dueDate && (
-              <Badge variant="outline" className="text-xs">
+              <Badge className="text-xs font-medium bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-sm">
                 Due {new Date(task.dueDate).toLocaleDateString()}
               </Badge>
             )}
             {task.assignedToUserId && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge className="text-xs font-medium bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-sm">
                 Assigned
+              </Badge>
+            )}
+            {task.pointsValue && (
+              <Badge className="text-xs font-medium bg-gradient-to-r from-yellow-500 to-yellow-600 text-white border-0 shadow-sm">
+                {task.pointsValue} pts
               </Badge>
             )}
           </div>
@@ -401,14 +422,75 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
  */
 interface EnhancedBoardColumnProps extends BoardColumnProps {
   templateName?: string;
+  onTaskDelete?: (task: TaskItemResponseDTO) => void;
 }
+
+// Sortable Column Component for drag and drop
+interface SortableColumnProps extends EnhancedBoardColumnProps {
+  id: string;
+}
+
+const SortableColumn: React.FC<SortableColumnProps> = ({ id, ...props }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 50 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={cn(
+        "relative transition-all duration-200",
+        isDragging && "scale-105 shadow-2xl ring-2 ring-emerald-400 ring-opacity-50"
+      )}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "absolute -top-2 left-1/2 transform -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing p-1.5 rounded-full shadow-lg transition-all duration-200",
+          isDragging 
+            ? "bg-gradient-to-r from-emerald-600 to-teal-600 scale-110 shadow-xl" 
+            : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:shadow-xl hover:scale-110"
+        )}
+        title="Drag to reorder column"
+      >
+        <GripVertical className="h-3 w-3 text-white" />
+      </div>
+      
+      {/* Column Content */}
+      <div className={cn(isDragging && "pointer-events-none")}>
+        <BoardColumn {...props} />
+      </div>
+      
+      {/* Dragging Indicator */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-100/20 to-teal-100/20 rounded-lg pointer-events-none" />
+      )}
+    </div>
+  );
+};
 
 const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
   column,
   tasks,
   onCreateTask,
   enableDropPreview = true,
-  templateName = 'Basic Kanban'
+  templateName = 'Basic Kanban',
+  onTaskDelete
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${column.id}`,
@@ -512,6 +594,7 @@ const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
                   enableAnimations={true}
                   showPriorityGlow={true}
                   showStatusIndicator={false}
+                  onDelete={onTaskDelete}
                 />
               ))}
               
@@ -590,6 +673,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     animationState: 'idle'
   });
 
+  // Family member tracking
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [activeColumn, setActiveColumn] = useState<BoardColumnDTO | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+
   // Modal states
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showQuestSelection, setShowQuestSelection] = useState(false);
@@ -628,19 +717,76 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       setBoardData(data);
     } catch (err) {
       console.error('Error loading board:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load board');
+      
+      // Check if it's a 404 error (board not found)
+      if (err instanceof Error && err.message.includes('not found')) {
+        toast.error('Board not found', {
+          description: 'This board may have been deleted or you may not have access to it.',
+        });
+        // Redirect to boards list after a short delay
+        setTimeout(() => {
+          router.push('/boards');
+        }, 2000);
+        setError('Board not found - redirecting to boards list...');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load board');
+      }
     } finally {
       setLoading(false);
     }
-  }, [boardId]);
+  }, [boardId, router]);
 
   useEffect(() => {
     loadBoardData();
+    loadFamilyData();
   }, [loadBoardData]);
+
+  // Load family data for member tracking
+  const loadFamilyData = useCallback(async () => {
+    try {
+      // Load current user
+      const user = await authService.getCurrentUser();
+      setCurrentUser(user);
+
+      // Load family data
+      const family = await familyInvitationService.getUserFamily();
+      if (family) {
+        const members = await familyInvitationService.getFamilyMembers(family.id);
+        // Filter out any null/undefined members and ensure they have required properties
+        const validMembers = (members || []).filter(member => 
+          member && (member.user?.displayName || member.user?.email)
+        );
+        setFamilyMembers(validMembers);
+      }
+    } catch (error) {
+      console.log('No family data available:', error);
+      // Reset to safe defaults
+      setCurrentUser(null);
+      setFamilyMembers([]);
+    }
+  }, []);
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
-    const taskId = Number(event.active.id);
+    const activeId = event.active.id;
+    setIsDragActive(true);
+    
+    // Check if dragging a column
+    if (String(activeId).startsWith('column-')) {
+      const columnId = Number(String(activeId).replace('column-', ''));
+      const column = boardData?.board.columns.find(col => col.id === columnId);
+      
+      if (column) {
+        setActiveColumn(column);
+        toast.info(`🔄 Moving "${column.name}" column...`, {
+          description: familyMembers.length > 0 ? `${currentUser?.displayName || 'You'} is reordering columns` : undefined,
+        });
+      }
+      return;
+    }
+
+    // Handle task dragging
+    const taskId = Number(activeId);
     const task = boardData?.tasks.find(t => t.id === taskId);
     const fromColumn = boardData?.board.columns.find(col => 
       col.status.toString() === task?.status
@@ -655,6 +801,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         draggedFrom: fromColumn,
         animationState: 'dragging'
       }));
+
+      // Show family member tracking
+      if (familyMembers.length > 0) {
+        toast.info(`🎯 Moving "${task.title}"...`, {
+          description: `${currentUser?.displayName || 'You'} is moving this quest`,
+        });
+      }
 
       // Trigger drag start effects
       dragDropService.onDragStart(task);
@@ -689,9 +842,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleDragEnd = async (event: DndDragEndEvent) => {
     const { active, over } = event;
     
+    // Reset drag state
     setActiveTask(null);
-
-    if (!over || !boardData || !dragState.draggedTask || !dragState.draggedFrom) {
+    setActiveColumn(null);
+    setIsDragActive(false);
+    
+    if (!over || !boardData) {
       setDragState(prev => ({
         ...prev,
         isDragging: false,
@@ -703,8 +859,86 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       return;
     }
 
-    const taskId = Number(active.id);
+    const activeId = String(active.id);
     const overId = String(over.id);
+
+    // Handle column reordering
+    if (activeId.startsWith('column-') && overId.startsWith('column-')) {
+      const activeColumnId = Number(activeId.replace('column-', ''));
+      const overColumnId = Number(overId.replace('column-', ''));
+      
+      if (activeColumnId === overColumnId) return;
+
+      const activeColumn = boardData.board.columns.find(col => col.id === activeColumnId);
+      const overColumn = boardData.board.columns.find(col => col.id === overColumnId);
+      
+      if (!activeColumn || !overColumn) return;
+
+      try {
+        // Optimistically update column order
+        const newColumns = [...boardData.board.columns];
+        const activeIndex = newColumns.findIndex(col => col.id === activeColumnId);
+        const overIndex = newColumns.findIndex(col => col.id === overColumnId);
+        
+        // Remove active column and insert at new position
+        const [movedColumn] = newColumns.splice(activeIndex, 1);
+        newColumns.splice(overIndex, 0, movedColumn);
+        
+        // Update order values
+        const updatedColumns = newColumns.map((col, index) => ({
+          ...col,
+          order: index + 1
+        }));
+
+        setBoardData(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            board: {
+              ...prev.board,
+              columns: updatedColumns
+            }
+          };
+        });
+
+        // Call backend to update column order
+        await BoardService.reorderColumns(boardId, updatedColumns.map(col => ({
+          columnId: col.id,
+          newOrder: col.order
+        })));
+
+        toast.success('📋 Column reordered successfully!', {
+          description: `"${activeColumn.name}" moved to new position`,
+        });
+
+        // Show family member tracking
+        if (familyMembers.length > 0) {
+          toast.info(`👥 ${currentUser?.displayName || 'Someone'} reordered columns`);
+        }
+
+      } catch (error) {
+        console.error('Error reordering columns:', error);
+        // Revert on error
+        await loadBoardData();
+        toast.error('Failed to reorder columns');
+      }
+      return;
+    }
+
+    // Handle task dragging (existing logic with family tracking)
+    if (!dragState.draggedTask || !dragState.draggedFrom) {
+      setDragState(prev => ({
+        ...prev,
+        isDragging: false,
+        draggedTask: null,
+        draggedFrom: null,
+        draggedOver: null,
+        animationState: 'idle'
+      }));
+      return;
+    }
+
+    const taskId = Number(activeId);
     
     // Find target column
     const targetColumn = boardData.board.columns.find(col => 
@@ -785,17 +1019,22 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       );
 
       if (success) {
-        // Show success notification
+        // Show success notification with family tracking
         dragDropService.showMoveNotification(
           dragState.draggedTask,
           dragState.draggedFrom,
           targetColumn
         );
         
+        // Show family member tracking
+        if (familyMembers.length > 0) {
+          toast.info(`👥 ${currentUser?.displayName || 'Someone'} moved "${dragState.draggedTask.title}"`);
+        }
+        
         setDragState(prev => ({ ...prev, animationState: 'success' }));
 
-      // Reload to ensure consistency
-      await loadBoardData();
+        // Reload to ensure consistency
+        await loadBoardData();
       } else {
         throw new Error('Move operation failed');
       }
@@ -856,6 +1095,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleCreateTask = async (columnStatus?: TaskItemStatus) => {
     if (columnStatus && boardData?.board?.columns) {
       setSelectedColumn(boardData.board.columns.find(col => col.status === columnStatus) || null);
+    } else if (boardData?.board?.columns) {
+      // Default to the first column (NotStarted) if no specific column is provided
+      const firstColumn = boardData.board.columns.sort((a, b) => a.order - b.order)[0];
+      setSelectedColumn(firstColumn || null);
     }
     setShowCreateTask(true);
   };
@@ -864,6 +1107,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleQuestSelection = async (columnStatus?: TaskItemStatus) => {
     if (columnStatus && boardData?.board?.columns) {
       setSelectedColumn(boardData.board.columns.find(col => col.status === columnStatus) || null);
+    } else if (boardData?.board?.columns) {
+      // Default to the first column (NotStarted) if no specific column is provided
+      const firstColumn = boardData.board.columns.sort((a, b) => a.order - b.order)[0];
+      setSelectedColumn(firstColumn || null);
     }
     setShowQuestSelection(true);
   };
@@ -888,6 +1135,37 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleBoardDeleted = () => {
     setShowEditBoard(false);
     router.push('/boards');
+  };
+
+  // Handle task deletion
+  const handleTaskDelete = async (task: TaskItemResponseDTO) => {
+    try {
+      // Show confirmation toast
+      const confirmed = window.confirm(`Are you sure you want to delete "${task.title}"? This action cannot be undone.`);
+      if (!confirmed) return;
+
+      // Delete the task
+      await taskService.deleteTask(task.id);
+      
+      // Update local state by removing the task
+      setBoardData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tasks: prev.tasks.filter(t => t.id !== task.id),
+          taskCount: prev.taskCount - 1
+        };
+      });
+
+      toast.success('🗑️ Quest deleted successfully!', {
+        description: `"${task.title}" has been removed from your board`,
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete quest', {
+        description: 'Please try again or contact support if the problem persists.',
+      });
+    }
   };
 
   // Loading state
@@ -955,9 +1233,21 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Board Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
+          {/* Back Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/boards')}
+            className="border-emerald-200 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Back to Boards</span>
+            <span className="sm:hidden">Back</span>
+          </Button>
+          
           <div>
             <h1 className="text-2xl font-bold flex items-center space-x-2">
-              <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
                 <Trophy className="h-6 w-6" />
               </div>
               <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
@@ -968,13 +1258,69 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <p className="text-muted-foreground mt-1">{boardData.board.description}</p>
             )}
           </div>
-          <Badge variant="secondary" className="flex items-center space-x-1 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700">
+          <Badge className="flex items-center space-x-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105">
             <Target className="h-3 w-3" />
             <span>{boardData.taskCount} Quests</span>
           </Badge>
+          
+          {/* Drag Instructions */}
+          <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-lg shadow-sm">
+            <GripVertical className="h-4 w-4 text-gray-500" />
+            <span className="text-sm text-gray-600">
+              Drag columns to reorder • Drag tasks to move
+            </span>
+          </div>
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Family Members Indicator */}
+          {familyMembers.length > 0 && (
+            <div className={cn(
+              "flex items-center space-x-2 px-3 py-1.5 border rounded-lg shadow-sm transition-all duration-300",
+              isDragActive 
+                ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 shadow-md" 
+                : "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
+            )}>
+              <div className="relative">
+                <Users className={cn(
+                  "h-4 w-4 transition-colors duration-300",
+                  isDragActive ? "text-emerald-600" : "text-blue-600"
+                )} />
+                {isDragActive && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                )}
+              </div>
+              <span className={cn(
+                "text-sm font-medium transition-colors duration-300",
+                isDragActive ? "text-emerald-700" : "text-blue-700"
+              )}>
+                {familyMembers.length} member{familyMembers.length !== 1 ? 's' : ''}
+                {isDragActive && " • Active"}
+              </span>
+              <div className="flex -space-x-1">
+                {familyMembers.slice(0, 3).map((member, index) => member && (
+                  <div
+                    key={member.id || index}
+                    className={cn(
+                      "w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all duration-300",
+                      isDragActive 
+                        ? "bg-gradient-to-r from-emerald-400 to-teal-400 ring-1 ring-emerald-300" 
+                        : "bg-gradient-to-r from-emerald-400 to-teal-400"
+                    )}
+                    title={member.user?.displayName || member.user?.email || 'Unknown User'}
+                  >
+                                          {(member?.user?.displayName || member?.user?.email || '?').charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {familyMembers.length > 3 && (
+                  <div className="w-6 h-6 rounded-full bg-gray-400 border-2 border-white flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                    +{familyMembers.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Quest Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1031,24 +1377,34 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {boardData.board.columns
+        {/* Sortable Columns Container */}
+        <SortableContext
+          items={boardData.board.columns
             .sort((a, b) => a.order - b.order)
-            .map((column) => {
-              const columnTasks = tasksByColumn[column.status.toString()] || [];
-              
-              return (
-              <BoardColumn
-                key={column.id}
-                column={column}
-                  tasks={columnTasks}
-                onCreateTask={() => handleCreateTask(column.status)}
-                  enableDropPreview={true}
-                  templateName={boardData.board.name}
-              />
-              );
-            })}
-        </div>
+            .map(col => `column-${col.id}`)}
+          strategy={horizontalListSortingStrategy}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
+            {boardData.board.columns
+              .sort((a, b) => a.order - b.order)
+              .map((column) => {
+                const columnTasks = tasksByColumn[column.status.toString()] || [];
+                
+                return (
+                  <SortableColumn
+                    key={column.id}
+                    id={`column-${column.id}`}
+                    column={column}
+                    tasks={columnTasks}
+                    onCreateTask={() => handleQuestSelection(column.status)}
+                    enableDropPreview={true}
+                    templateName={boardData.board.name}
+                    onTaskDelete={handleTaskDelete}
+                  />
+                );
+              })}
+          </div>
+        </SortableContext>
 
         {/* Drag Overlay */}
         <DragOverlay>
@@ -1059,6 +1415,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               gamificationStyle={TASK_STYLE_PRESETS[theme]}
               enableAnimations={enableAnimations}
             />
+          ) : activeColumn ? (
+            <div className="opacity-50">
+              <BoardColumn
+                column={activeColumn}
+                tasks={[]}
+                onCreateTask={() => {}}
+                enableDropPreview={false}
+                templateName={boardData.board.name}
+              />
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>

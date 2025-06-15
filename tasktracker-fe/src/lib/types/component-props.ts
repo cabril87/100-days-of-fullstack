@@ -45,7 +45,7 @@ export interface TaskCreationModalProps {
   user: User;
   family?: FamilyDTO | null;
   families?: FamilyDTO[];
-  onTaskCreated?: (task: Task) => void;
+  onTaskCreated?: (task?: Task) => void;
   trigger?: React.ReactNode;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;

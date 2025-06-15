@@ -221,8 +221,11 @@ public class BoardColumnRepository : IBoardColumnRepository
         {
             _logger.LogInformation("Reordering columns for board {BoardId}", boardId);
 
+            // Get the column IDs to avoid Dictionary.ContainsKey() in LINQ
+            var columnIds = columnOrders.Keys.ToList();
+
             List<BoardColumn> columns = await _context.BoardColumns
-                .Where(c => c.BoardId == boardId && columnOrders.ContainsKey(c.Id))
+                .Where(c => c.BoardId == boardId && columnIds.Contains(c.Id))
                 .ToListAsync();
 
             if (columns.Count == 0)

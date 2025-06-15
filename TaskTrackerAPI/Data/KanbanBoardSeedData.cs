@@ -169,6 +169,282 @@ public static class KanbanBoardSeedData
                 PreviewImageUrl = null,
                 CreatedAt = new DateTime(2025, 1, 1),
                 UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Family & Household Templates
+            new BoardTemplate
+            {
+                Id = 9,
+                Name = "Simple To-Do",
+                Description = "Basic task tracking with minimal columns",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = true,
+                Category = "Personal",
+                Tags = "minimal,simple,todo,basic",
+                LayoutConfiguration = "{\"theme\":\"minimal\",\"layout\":\"simple\"}",
+                UsageCount = 0,
+                AverageRating = 4.2m,
+                RatingCount = 8,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 10,
+                Name = "Family Chores",
+                Description = "Perfect for organizing household tasks and chores",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = true,
+                Category = "Family",
+                Tags = "household,chores,family,cleaning",
+                LayoutConfiguration = "{\"theme\":\"family\",\"layout\":\"chores\"}",
+                UsageCount = 0,
+                AverageRating = 4.4m,
+                RatingCount = 12,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 11,
+                Name = "Weekly Cleaning",
+                Description = "Organize weekly cleaning tasks by room and priority",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Family",
+                Tags = "cleaning,weekly,household,maintenance",
+                LayoutConfiguration = "{\"theme\":\"cleaning\",\"layout\":\"weekly\"}",
+                UsageCount = 0,
+                AverageRating = 4.0m,
+                RatingCount = 5,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 12,
+                Name = "Meal Planning",
+                Description = "Plan meals, shopping, and cooking tasks",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Family",
+                Tags = "meals,cooking,shopping,planning",
+                LayoutConfiguration = "{\"theme\":\"cooking\",\"layout\":\"meal-plan\"}",
+                UsageCount = 0,
+                AverageRating = 4.3m,
+                RatingCount = 9,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 13,
+                Name = "Home Maintenance",
+                Description = "Track home repairs and maintenance tasks",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Family",
+                Tags = "maintenance,repairs,home,diy",
+                LayoutConfiguration = "{\"theme\":\"maintenance\",\"layout\":\"repair\"}",
+                UsageCount = 0,
+                AverageRating = 4.1m,
+                RatingCount = 7,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Education Templates
+            new BoardTemplate
+            {
+                Id = 14,
+                Name = "School Projects",
+                Description = "Organize homework and school assignments",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Education",
+                Tags = "school,homework,education,students",
+                LayoutConfiguration = "{\"theme\":\"education\",\"layout\":\"homework\"}",
+                UsageCount = 0,
+                AverageRating = 4.2m,
+                RatingCount = 6,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 15,
+                Name = "Kids Activities",
+                Description = "Track children's activities and commitments",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Education",
+                Tags = "kids,activities,schedule,extracurricular",
+                LayoutConfiguration = "{\"theme\":\"kids\",\"layout\":\"activities\"}",
+                UsageCount = 0,
+                AverageRating = 4.0m,
+                RatingCount = 4,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 16,
+                Name = "Reading Goals",
+                Description = "Track family reading goals and book lists",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Education",
+                Tags = "reading,books,education,goals",
+                LayoutConfiguration = "{\"theme\":\"reading\",\"layout\":\"books\"}",
+                UsageCount = 0,
+                AverageRating = 4.1m,
+                RatingCount = 5,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Health & Wellness Templates
+            new BoardTemplate
+            {
+                Id = 17,
+                Name = "Family Health",
+                Description = "Track appointments, medications, and health goals",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Health",
+                Tags = "health,medical,appointments,wellness",
+                LayoutConfiguration = "{\"theme\":\"health\",\"layout\":\"medical\"}",
+                UsageCount = 0,
+                AverageRating = 4.2m,
+                RatingCount = 8,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 18,
+                Name = "Fitness Goals",
+                Description = "Track family fitness activities and goals",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Health",
+                Tags = "fitness,exercise,health,goals",
+                LayoutConfiguration = "{\"theme\":\"fitness\",\"layout\":\"workout\"}",
+                UsageCount = 0,
+                AverageRating = 4.0m,
+                RatingCount = 6,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Events & Planning Templates
+            new BoardTemplate
+            {
+                Id = 19,
+                Name = "Birthday Planning",
+                Description = "Plan birthday parties and celebrations",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Events",
+                Tags = "birthday,party,celebration,planning",
+                LayoutConfiguration = "{\"theme\":\"party\",\"layout\":\"birthday\"}",
+                UsageCount = 0,
+                AverageRating = 4.3m,
+                RatingCount = 7,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 20,
+                Name = "Holiday Planning",
+                Description = "Organize holiday preparations and traditions",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Events",
+                Tags = "holiday,traditions,celebration,seasonal",
+                LayoutConfiguration = "{\"theme\":\"holiday\",\"layout\":\"seasonal\"}",
+                UsageCount = 0,
+                AverageRating = 4.2m,
+                RatingCount = 9,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            new BoardTemplate
+            {
+                Id = 21,
+                Name = "Vacation Planning",
+                Description = "Plan family trips and vacations",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Events",
+                Tags = "vacation,travel,planning,family",
+                LayoutConfiguration = "{\"theme\":\"travel\",\"layout\":\"vacation\"}",
+                UsageCount = 0,
+                AverageRating = 4.4m,
+                RatingCount = 11,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Financial Templates
+            new BoardTemplate
+            {
+                Id = 22,
+                Name = "Family Budget",
+                Description = "Track family expenses and financial goals",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Financial",
+                Tags = "budget,finance,money,expenses",
+                LayoutConfiguration = "{\"theme\":\"finance\",\"layout\":\"budget\"}",
+                UsageCount = 0,
+                AverageRating = 4.1m,
+                RatingCount = 6,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
+            },
+            // Seasonal Templates
+            new BoardTemplate
+            {
+                Id = 23,
+                Name = "Garden Planning",
+                Description = "Plan and track gardening activities",
+                CreatedByUserId = null,
+                IsPublic = true,
+                IsDefault = false,
+                Category = "Seasonal",
+                Tags = "garden,plants,seasonal,outdoor",
+                LayoutConfiguration = "{\"theme\":\"garden\",\"layout\":\"seasonal\"}",
+                UsageCount = 0,
+                AverageRating = 4.0m,
+                RatingCount = 5,
+                PreviewImageUrl = null,
+                CreatedAt = new DateTime(2025, 1, 1),
+                UpdatedAt = new DateTime(2025, 1, 1)
             }
         );
     }
@@ -186,7 +462,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#6B7280",
                 Icon = "clipboard",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -230,7 +506,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#6B7280",
                 Icon = "list",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -316,7 +592,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#F59E0B",
                 Icon = "lightbulb",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -388,7 +664,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#6B7280",
                 Icon = "calendar",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -474,7 +750,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#EF4444",
                 Icon = "calendar",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = 5,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -518,7 +794,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#F59E0B",
                 Icon = "lightbulb",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -590,7 +866,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#EF4444",
                 Icon = "bug",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -662,7 +938,7 @@ public static class KanbanBoardSeedData
                 Order = 1,
                 Color = "#F59E0B",
                 Icon = "lightbulb",
-                MappedStatus = TaskItemStatus.Pending,
+                MappedStatus = TaskItemStatus.NotStarted,
                 TaskLimit = null,
                 IsCollapsible = true,
                 IsDoneColumn = false
@@ -732,6 +1008,778 @@ public static class KanbanBoardSeedData
                 Order = 6,
                 Color = "#10B981",
                 Icon = "trophy",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Simple To-Do Template (ID: 9) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 40,
+                BoardTemplateId = 9,
+                Name = "Tasks",
+                Description = "Tasks that haven't been started yet",
+                Order = 1,
+                Color = "#8B5CF6",
+                Icon = "clipboard",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 41,
+                BoardTemplateId = 9,
+                Name = "In Progress",
+                Description = "Tasks currently being worked on",
+                Order = 2,
+                Color = "#3B82F6",
+                Icon = "play",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = 3,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 42,
+                BoardTemplateId = 9,
+                Name = "Completed",
+                Description = "Tasks that have been finished",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Family Chores Template (ID: 10) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 43,
+                BoardTemplateId = 10,
+                Name = "Assigned",
+                Description = "Chores assigned to family members",
+                Order = 1,
+                Color = "#6366F1",
+                Icon = "user",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 44,
+                BoardTemplateId = 10,
+                Name = "In Progress",
+                Description = "Chores currently being done",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "play",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 45,
+                BoardTemplateId = 10,
+                Name = "Needs Review",
+                Description = "Chores waiting for approval",
+                Order = 3,
+                Color = "#8B5CF6",
+                Icon = "eye",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 46,
+                BoardTemplateId = 10,
+                Name = "Complete",
+                Description = "Chores that have been finished",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Weekly Cleaning Template (ID: 11) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 47,
+                BoardTemplateId = 11,
+                Name = "This Week",
+                Description = "Cleaning tasks assigned for this week",
+                Order = 1,
+                Color = "#DC2626",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 48,
+                BoardTemplateId = 11,
+                Name = "In Progress",
+                Description = "Cleaning tasks currently being done",
+                Order = 2,
+                Color = "#EA580C",
+                Icon = "play",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 49,
+                BoardTemplateId = 11,
+                Name = "Done",
+                Description = "Cleaning tasks that have been finished",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Meal Planning Template (ID: 12) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 50,
+                BoardTemplateId = 12,
+                Name = "Meal Ideas",
+                Description = "Meal ideas and recipes to try",
+                Order = 1,
+                Color = "#F59E0B",
+                Icon = "lightbulb",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 51,
+                BoardTemplateId = 12,
+                Name = "Shopping List",
+                Description = "Ingredients to buy",
+                Order = 2,
+                Color = "#3B82F6",
+                Icon = "shopping-cart",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 52,
+                BoardTemplateId = 12,
+                Name = "Prep & Cook",
+                Description = "Meals currently being prepared",
+                Order = 3,
+                Color = "#8B5CF6",
+                Icon = "chef-hat",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 53,
+                BoardTemplateId = 12,
+                Name = "Served",
+                Description = "Meals that have been served",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Home Maintenance Template (ID: 13) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 54,
+                BoardTemplateId = 13,
+                Name = "Needs Attention",
+                Description = "Items that need maintenance or repair",
+                Order = 1,
+                Color = "#EF4444",
+                Icon = "alert-triangle",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 55,
+                BoardTemplateId = 13,
+                Name = "Planning",
+                Description = "Maintenance tasks being planned",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 56,
+                BoardTemplateId = 13,
+                Name = "Working On",
+                Description = "Maintenance tasks currently being worked on",
+                Order = 3,
+                Color = "#3B82F6",
+                Icon = "wrench",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 57,
+                BoardTemplateId = 13,
+                Name = "Completed",
+                Description = "Items that have been fixed or maintained",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // School Projects Template (ID: 14) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 58,
+                BoardTemplateId = 14,
+                Name = "Homework",
+                Description = "Assignments that need to be started",
+                Order = 1,
+                Color = "#DC2626",
+                Icon = "book",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 59,
+                BoardTemplateId = 14,
+                Name = "Working On",
+                Description = "Assignments currently being worked on",
+                Order = 2,
+                Color = "#EA580C",
+                Icon = "edit",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 60,
+                BoardTemplateId = 14,
+                Name = "Review & Submit",
+                Description = "Assignments ready for review and submission",
+                Order = 3,
+                Color = "#9333EA",
+                Icon = "eye",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 61,
+                BoardTemplateId = 14,
+                Name = "Submitted",
+                Description = "Assignments that have been submitted",
+                Order = 4,
+                Color = "#059669",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Kids Activities Template (ID: 15) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 62,
+                BoardTemplateId = 15,
+                Name = "Upcoming",
+                Description = "Activities scheduled for the future",
+                Order = 1,
+                Color = "#6366F1",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 63,
+                BoardTemplateId = 15,
+                Name = "Today",
+                Description = "Activities happening today",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "play",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 64,
+                BoardTemplateId = 15,
+                Name = "Completed",
+                Description = "Activities that have been completed",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Reading Goals Template (ID: 16) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 65,
+                BoardTemplateId = 16,
+                Name = "Want to Read",
+                Description = "Books on the reading wishlist",
+                Order = 1,
+                Color = "#8B5CF6",
+                Icon = "book",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 66,
+                BoardTemplateId = 16,
+                Name = "Currently Reading",
+                Description = "Books currently being read",
+                Order = 2,
+                Color = "#3B82F6",
+                Icon = "book-open",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 67,
+                BoardTemplateId = 16,
+                Name = "Finished",
+                Description = "Books that have been completed",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Family Health Template (ID: 17) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 68,
+                BoardTemplateId = 17,
+                Name = "Schedule",
+                Description = "Health appointments and tasks to schedule",
+                Order = 1,
+                Color = "#EF4444",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 69,
+                BoardTemplateId = 17,
+                Name = "Upcoming",
+                Description = "Scheduled health appointments and tasks",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "clock",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 70,
+                BoardTemplateId = 17,
+                Name = "Completed",
+                Description = "Completed health appointments and tasks",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Fitness Goals Template (ID: 18) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 71,
+                BoardTemplateId = 18,
+                Name = "Goals",
+                Description = "Fitness goals to start working on",
+                Order = 1,
+                Color = "#6366F1",
+                Icon = "target",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 72,
+                BoardTemplateId = 18,
+                Name = "Active",
+                Description = "Fitness goals currently being worked on",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "activity",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 73,
+                BoardTemplateId = 18,
+                Name = "Achieved",
+                Description = "Fitness goals that have been achieved",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "trophy",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Birthday Planning Template (ID: 19) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 74,
+                BoardTemplateId = 19,
+                Name = "Ideas",
+                Description = "Birthday party ideas and concepts",
+                Order = 1,
+                Color = "#F59E0B",
+                Icon = "lightbulb",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 75,
+                BoardTemplateId = 19,
+                Name = "Planning",
+                Description = "Birthday party tasks being planned",
+                Order = 2,
+                Color = "#3B82F6",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 76,
+                BoardTemplateId = 19,
+                Name = "Preparing",
+                Description = "Birthday party preparations in progress",
+                Order = 3,
+                Color = "#8B5CF6",
+                Icon = "gift",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 77,
+                BoardTemplateId = 19,
+                Name = "Done",
+                Description = "Birthday party tasks completed",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Holiday Planning Template (ID: 20) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 78,
+                BoardTemplateId = 20,
+                Name = "Traditions",
+                Description = "Holiday traditions and ideas to plan",
+                Order = 1,
+                Color = "#DC2626",
+                Icon = "star",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 79,
+                BoardTemplateId = 20,
+                Name = "Shopping",
+                Description = "Holiday shopping and preparation tasks",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "shopping-cart",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 80,
+                BoardTemplateId = 20,
+                Name = "Preparing",
+                Description = "Holiday preparations in progress",
+                Order = 3,
+                Color = "#3B82F6",
+                Icon = "gift",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 81,
+                BoardTemplateId = 20,
+                Name = "Celebrated",
+                Description = "Holiday traditions completed and celebrated",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Vacation Planning Template (ID: 21) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 82,
+                BoardTemplateId = 21,
+                Name = "Research",
+                Description = "Vacation destinations and activities to research",
+                Order = 1,
+                Color = "#6366F1",
+                Icon = "search",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 83,
+                BoardTemplateId = 21,
+                Name = "Booking",
+                Description = "Vacation bookings and reservations to make",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "calendar",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 84,
+                BoardTemplateId = 21,
+                Name = "Preparing",
+                Description = "Vacation preparations in progress",
+                Order = 3,
+                Color = "#8B5CF6",
+                Icon = "luggage",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 85,
+                BoardTemplateId = 21,
+                Name = "Enjoyed",
+                Description = "Vacation activities completed and enjoyed",
+                Order = 4,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Family Budget Template (ID: 22) - 3 columns
+            new BoardTemplateColumn
+            {
+                Id = 86,
+                BoardTemplateId = 22,
+                Name = "Planned",
+                Description = "Expenses and financial goals to plan",
+                Order = 1,
+                Color = "#3B82F6",
+                Icon = "calculator",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 87,
+                BoardTemplateId = 22,
+                Name = "Pending",
+                Description = "Expenses pending payment or approval",
+                Order = 2,
+                Color = "#F59E0B",
+                Icon = "clock",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 88,
+                BoardTemplateId = 22,
+                Name = "Paid",
+                Description = "Expenses that have been paid",
+                Order = 3,
+                Color = "#10B981",
+                Icon = "check",
+                MappedStatus = TaskItemStatus.Completed,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = true
+            },
+
+            // Garden Planning Template (ID: 23) - 4 columns
+            new BoardTemplateColumn
+            {
+                Id = 89,
+                BoardTemplateId = 23,
+                Name = "Planning",
+                Description = "Garden plans and ideas to develop",
+                Order = 1,
+                Color = "#059669",
+                Icon = "lightbulb",
+                MappedStatus = TaskItemStatus.NotStarted,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 90,
+                BoardTemplateId = 23,
+                Name = "Planting",
+                Description = "Seeds and plants being planted",
+                Order = 2,
+                Color = "#10B981",
+                Icon = "seedling",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 91,
+                BoardTemplateId = 23,
+                Name = "Growing",
+                Description = "Plants currently growing and being tended",
+                Order = 3,
+                Color = "#22C55E",
+                Icon = "leaf",
+                MappedStatus = TaskItemStatus.InProgress,
+                TaskLimit = null,
+                IsCollapsible = true,
+                IsDoneColumn = false
+            },
+            new BoardTemplateColumn
+            {
+                Id = 92,
+                BoardTemplateId = 23,
+                Name = "Harvested",
+                Description = "Plants that have been harvested or completed",
+                Order = 4,
+                Color = "#16A34A",
+                Icon = "check",
                 MappedStatus = TaskItemStatus.Completed,
                 TaskLimit = null,
                 IsCollapsible = true,

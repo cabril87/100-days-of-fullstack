@@ -77,8 +77,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   open,
   onClose,
   onTaskCreated,
-  defaultStatus = TaskItemStatus.Pending,
-  boardId
+  defaultStatus = TaskItemStatus.NotStarted,
+  boardId,
+  suggestedColumn
 }) => {
   const [loading, setLoading] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -98,17 +99,37 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
+      // Use suggestedColumn status if available, otherwise use defaultStatus
+      const initialStatus = suggestedColumn?.status ?? defaultStatus;
+      console.log('🎯 CreateTaskModal: Resetting form with status:', initialStatus, 'type:', typeof initialStatus, 'suggestedColumn:', suggestedColumn);
+      console.log('🎯 CreateTaskModal: defaultStatus:', defaultStatus, 'type:', typeof defaultStatus);
+      // Ensure we're using the numeric enum value, not string
+      const numericStatus = typeof initialStatus === 'string' 
+        ? TaskItemStatus[initialStatus as keyof typeof TaskItemStatus] 
+        : initialStatus;
+      console.log('🎯 Converted status:', numericStatus, 'type:', typeof numericStatus);
+      
       form.reset({
         title: '',
         description: '',
         priority: TaskPriority.Medium,
-        status: defaultStatus,
+        status: numericStatus,
         points: 10,
         tags: [],
       });
       setTagInput('');
+      
+      // Force the form to update the status field with proper enum value
+      setTimeout(() => {
+        // Ensure we're setting the numeric enum value, not string
+        const numericStatus = typeof initialStatus === 'string' 
+          ? TaskItemStatus[initialStatus as keyof typeof TaskItemStatus] 
+          : initialStatus;
+        console.log('🎯 Setting numeric status:', numericStatus, 'from:', initialStatus);
+        form.setValue('status', numericStatus);
+      }, 0);
     }
-  }, [open, defaultStatus, form]);
+  }, [open, defaultStatus, suggestedColumn, form]);
 
   const handleSubmit = async (data: CreateTaskFormData) => {
     try {
@@ -165,33 +186,51 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Target className="h-5 w-5 text-emerald-500" />
-            <span>Create New Quest</span>
-          </DialogTitle>
-          <DialogDescription>
-            Create a new task for this board. Fill in the details and assign it to the appropriate column.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-indigo-900/20 border-2 border-transparent bg-clip-padding shadow-2xl shadow-purple-500/20">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-200/50 via-blue-200/50 to-indigo-200/50 dark:from-purple-700/50 dark:via-blue-700/50 dark:to-indigo-700/50 rounded-lg -z-10"></div>
+        
+        <DialogHeader className="flex-shrink-0 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white p-6 -m-6 mb-4 rounded-t-lg relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/90 via-teal-600/90 to-cyan-600/90 backdrop-blur-sm"></div>
+          <div className="relative z-10">
+            <DialogTitle className="flex items-center space-x-3 text-2xl font-bold">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm shadow-lg">
+                <Target className="h-6 w-6" />
+              </div>
+              <span className="bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
+                ✨ Create New Quest
+              </span>
+            </DialogTitle>
+            <DialogDescription className="text-emerald-100 text-lg mt-2 font-medium">
+              🚀 Forge a new epic quest! Fill in the details and assign it to the appropriate column to begin your adventure.
+              {suggestedColumn && (
+                <div className="mt-2 text-sm bg-white/10 rounded-lg p-2 backdrop-blur-sm">
+                  📍 <strong>Suggested Column:</strong> {suggestedColumn.alias || suggestedColumn.name}
+                  {suggestedColumn.description && (
+                    <div className="text-xs mt-1 opacity-90">{suggestedColumn.description}</div>
+                  )}
+                </div>
+              )}
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-1">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             {/* Title */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center space-x-2">
-                    <Zap className="h-4 w-4" />
-                    <span>Quest Title</span>
+                  <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
+                    <Zap className="h-4 w-4 text-yellow-500" />
+                    <span>⚡ Quest Title</span>
                   </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Enter quest title..."
-                      className="h-12"
+                      placeholder="Enter your epic quest title..."
+                      className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80"
                       {...field}
                     />
                   </FormControl>
@@ -206,11 +245,11 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="text-purple-700 dark:text-purple-300 font-semibold">📝 Quest Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Describe the quest details..."
-                      className="min-h-[80px] resize-none"
+                      placeholder="Describe your epic quest adventure and objectives..."
+                      className="min-h-[80px] resize-none border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80"
                       {...field}
                     />
                   </FormControl>
@@ -221,18 +260,18 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
             {/* Priority and Status Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
+                              <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                      </FormControl>
+                    <FormLabel className="text-purple-700 dark:text-purple-300 font-semibold">🔥 Quest Priority</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                              <FormControl>
+                          <SelectTrigger className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80">
+                            <SelectValue placeholder="Select quest priority" />
+                          </SelectTrigger>
+                        </FormControl>
                       <SelectContent>
                         <SelectItem value={TaskPriority.Low}>
                           <div className="flex items-center space-x-2">
@@ -262,28 +301,72 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
+                render={({ field }) => {
+                  console.log('🎯 Status field value:', field.value, 'type:', typeof field.value);
+                  console.log('🎯 TaskItemStatus.NotStarted:', TaskItemStatus.NotStarted, 'toString():', TaskItemStatus.NotStarted.toString());
+                  return (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel className="text-purple-700 dark:text-purple-300 font-semibold">
+                      🎯 Quest Status
+                      {suggestedColumn && (
+                        <span className="ml-2 text-sm font-normal text-slate-600 dark:text-slate-400">
+                          (Suggested: {suggestedColumn.alias || suggestedColumn.name})
+                        </span>
+                      )}
+                    </FormLabel>
                     <Select 
                       onValueChange={(value) => field.onChange(Number(value) as TaskItemStatus)} 
+                      value={field.value?.toString()}
                       defaultValue={field.value?.toString()}
                     >
                       <FormControl>
-                        <SelectTrigger className="h-12">
-                          <SelectValue placeholder="Select status" />
+                        <SelectTrigger className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80">
+                          <SelectValue 
+                            placeholder={
+                              suggestedColumn 
+                                ? `📋 ${suggestedColumn.alias || suggestedColumn.name}` 
+                                : "Select quest status"
+                            } 
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value={TaskItemStatus.NotStarted.toString()}>To Do</SelectItem>
-                        <SelectItem value={TaskItemStatus.InProgress.toString()}>In Progress</SelectItem>
-                        <SelectItem value={TaskItemStatus.OnHold.toString()}>On Hold</SelectItem>
-                        <SelectItem value={TaskItemStatus.Completed.toString()}>Completed</SelectItem>
+                        <SelectItem value={TaskItemStatus.NotStarted.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-gray-500" />
+                            <span>📋 {suggestedColumn?.status === TaskItemStatus.NotStarted ? (suggestedColumn.alias || 'To Do') : 'To Do'}</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TaskItemStatus.InProgress.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                            <span>⚡ {suggestedColumn?.status === TaskItemStatus.InProgress ? (suggestedColumn.alias || 'In Progress') : 'In Progress'}</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TaskItemStatus.Pending.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                            <span>⏸️ {suggestedColumn?.status === TaskItemStatus.Pending ? (suggestedColumn.alias || 'Pending') : 'Pending'}</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TaskItemStatus.OnHold.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-orange-500" />
+                            <span>⏸️ On Hold</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value={TaskItemStatus.Completed.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                            <span>🏆 {suggestedColumn?.status === TaskItemStatus.Completed ? (suggestedColumn.alias || 'Completed') : 'Completed'}</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
-                )}
+                  );
+                }}
               />
             </div>
 
@@ -294,9 +377,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 name="dueDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Due Date</span>
+                    <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span>⏰ Quest Deadline</span>
                     </FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -304,7 +387,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                           <Button
                             variant="outline"
                             className={cn(
-                              "h-12 w-full pl-3 text-left font-normal",
+                              "h-12 w-full pl-3 text-left font-normal border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80",
                               !field.value && "text-muted-foreground"
                             )}
                           >
@@ -339,9 +422,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 name="points"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center space-x-2">
+                    <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
                       <Star className="h-4 w-4 text-yellow-500" />
-                      <span>Quest Points</span>
+                      <span>⭐ Quest Points</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -349,7 +432,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         min="0"
                         max="1000"
                         placeholder="10"
-                        className="h-12"
+                        className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -366,18 +449,18 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               name="tags"
               render={() => (
                 <FormItem>
-                  <FormLabel className="flex items-center space-x-2">
-                    <Tag className="h-4 w-4" />
-                    <span>Tags</span>
+                  <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
+                    <Tag className="h-4 w-4 text-cyan-500" />
+                    <span>🏷️ Quest Tags</span>
                   </FormLabel>
                   <div className="space-y-2">
                     <div className="flex space-x-2">
                       <Input
-                        placeholder="Add a tag..."
+                        placeholder="Add a quest tag..."
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        className="flex-1 h-10"
+                        className="flex-1 h-10 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80"
                       />
                       <Button
                         type="button"
@@ -417,36 +500,37 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               )}
             />
 
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={loading}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Target className="h-4 w-4 mr-2" />
-                    Create Quest
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-6 border-t border-purple-200 dark:border-purple-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={loading}
+                  className="w-full sm:w-auto border-2 border-purple-300 dark:border-purple-600 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                >
+                  ❌ Cancel Quest
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 text-white font-bold shadow-lg shadow-emerald-500/25 border-0"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      🔮 Forging Quest...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="h-4 w-4 mr-2" />
+                      ✨ Create Epic Quest
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

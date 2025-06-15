@@ -54,6 +54,8 @@ export interface TaskItemResponseDTO {
   points?: number;
   pointsValue?: number;
   pointsEarned?: number;
+  // Task source tracking for quest selection
+  taskSource?: 'individual' | 'family' | 'assigned';
 }
 
 /**

@@ -122,9 +122,11 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
   };
 
   // Handle task creation success
-  const handleTaskCreated = useCallback(async (newTask: Task) => {
-    // Add the new task to recent tasks
-    setRecentTasks(prev => [newTask, ...prev.slice(0, 4)]);
+  const handleTaskCreated = useCallback(async (newTask?: Task) => {
+    // Add the new task to recent tasks if provided
+    if (newTask) {
+      setRecentTasks(prev => [newTask, ...prev.slice(0, 4)]);
+    }
     
     // ✨ NOTE: Family tasks refresh is handled separately to avoid circular dependencies
     
@@ -342,7 +344,7 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
   }, [loadAdditionalData]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4 sm:p-6 space-y-6">
         {/* Enhanced Gamified Header */}
         <Card className="bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 text-white border-0 shadow-2xl">

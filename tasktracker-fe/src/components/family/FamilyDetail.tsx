@@ -228,7 +228,7 @@ export default function FamilyDetail({
   }, [family, familyMembers, loadFamilyStats]);
 
   // ✨ NEW: Handle task creation
-  const handleTaskCreated = useCallback((newTask: Task) => {
+  const handleTaskCreated = useCallback((newTask?: Task) => {
     console.log('✅ Task created successfully:', newTask);
     // Refresh family stats to include the new task
     loadFamilyStats();

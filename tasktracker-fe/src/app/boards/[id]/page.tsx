@@ -10,7 +10,7 @@
  */
 
 import { Metadata } from 'next';
-import { KanbanBoard } from '../../../components/boards/KanbanBoard';
+import { BoardTabs } from '../../../components/boards/BoardTabs';
 import { BoardPageProps } from '../../../lib/types/board';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -27,7 +27,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
 
   if (isNaN(boardId)) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-destructive mb-2">Invalid Board</h1>
           <p className="text-muted-foreground">The board ID provided is not valid.</p>
@@ -37,8 +37,9 @@ export default async function BoardPage({ params }: BoardPageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <KanbanBoard boardId={boardId} />
-    </div>
+    <BoardTabs 
+      boardId={boardId} 
+      initialTab="board"
+    />
   );
 } 

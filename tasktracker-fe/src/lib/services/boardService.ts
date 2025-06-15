@@ -138,10 +138,9 @@ export class BoardService {
   /**
    * Reorder columns in a board
    */
-  static async reorderColumns(boardId: number, columnOrders: Array<{ columnId: number; order: number }>): Promise<BoardDTO> {
+  static async reorderColumns(boardId: number, columnOrders: Array<{ columnId: number; newOrder: number }>): Promise<void> {
     try {
-      const response = await apiClient.post<BoardDTO>(`${this.BASE_URL}/${boardId}/columns/reorder`, { columnOrders });
-      return response;
+      await apiClient.put(`${this.BASE_URL}/${boardId}/columns/reorder`, columnOrders);
     } catch (error) {
       console.error(`Error reordering columns in board ${boardId}:`, error);
       throw error;

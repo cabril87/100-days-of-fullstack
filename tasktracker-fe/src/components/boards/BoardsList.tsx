@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BoardDTO, BOARD_TEMPLATES, BoardTemplate } from '../../lib/types/board';
+import { BoardDTO } from '../../lib/types/board';
 import { BoardService } from '../../lib/services/boardService';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -39,14 +39,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '../ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../ui/dialog';
-import { CreateBoardModal } from './CreateBoardModal';
+
+import { CreateCustomBoardModal } from './CreateCustomBoardModal';
 
 export const BoardsList: React.FC = () => {
   const router = useRouter();
@@ -54,7 +48,6 @@ export const BoardsList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(false);
 
   // Load boards
   const loadBoards = async () => {
@@ -79,7 +72,6 @@ export const BoardsList: React.FC = () => {
   // Handle board creation
   const handleBoardCreated = () => {
     setShowCreateBoard(false);
-    setShowTemplates(false);
     loadBoards();
     toast.success('🎯 Board created successfully!');
   };
@@ -116,24 +108,7 @@ export const BoardsList: React.FC = () => {
     }
   };
 
-  // Create board from template
-  const handleCreateFromTemplate = async (template: BoardTemplate) => {
-    try {
-      const newBoard = await BoardService.createBoard({
-        Name: template.name,
-        Description: template.description,
-        Columns: template.columns,
-      });
-      
-      setShowTemplates(false);
-      await loadBoards();
-      toast.success(`🎯 Board created from "${template.name}" template!`);
-      router.push(`/boards/${newBoard.id}`);
-    } catch (error) {
-      console.error('Error creating board from template:', error);
-      toast.error('Failed to create board from template');
-    }
-  };
+
 
   if (loading) {
     return (
@@ -191,61 +166,14 @@ export const BoardsList: React.FC = () => {
         </div>
         
         <div className="flex space-x-2">
-          <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Star className="h-4 w-4 mr-2" />
-                Templates
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center space-x-2">
-                  <Star className="h-5 w-5 text-yellow-500" />
-                  <span>Board Templates</span>
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4">
-                {BOARD_TEMPLATES.map((template, index) => (
-                  <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{template.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {template.description}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-3">
-                            {template.columns.map((column, colIndex) => (
-                              <Badge
-                                key={colIndex}
-                                variant="outline"
-                                className="text-xs"
-                                style={{
-                                  borderColor: column.Color,
-                                  color: column.Color,
-                                }}
-                              >
-                                {column.Name}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleCreateFromTemplate(template)}
-                          className="ml-4"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Use
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button
+            onClick={() => router.push('/boards/templates')}
+            variant="outline"
+            size="sm"
+          >
+            <Star className="h-4 w-4 mr-2" />
+            Browse Templates
+          </Button>
 
           <Button
             onClick={() => setShowCreateBoard(true)}
@@ -269,7 +197,7 @@ export const BoardsList: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
             <Button
-              onClick={() => setShowTemplates(true)}
+              onClick={() => router.push('/boards/templates')}
               variant="outline"
             >
               <Star className="h-4 w-4 mr-2" />
@@ -382,14 +310,16 @@ export const BoardsList: React.FC = () => {
         </div>
       )}
 
-      {/* Create Board Modal */}
+      {/* Create Custom Board Modal */}
       {showCreateBoard && (
-        <CreateBoardModal
+        <CreateCustomBoardModal
           open={showCreateBoard}
           onClose={() => setShowCreateBoard(false)}
           onBoardCreated={handleBoardCreated}
         />
       )}
+
+
     </div>
   );
 }; 
