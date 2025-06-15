@@ -21,6 +21,9 @@ import {
   DragStartEvent,
   DragOverEvent,
   closestCenter,
+  closestCorners,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -33,6 +36,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   horizontalListSortingStrategy,
+  arrayMove,
 } from '@dnd-kit/sortable';
 import {
   useSortable,
@@ -70,7 +74,12 @@ import {
   ArrowLeft,
   Users,
   User,
-  GripVertical
+  GripVertical,
+  CheckSquare,
+  Square,
+  Move,
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 // Types and Services
@@ -94,6 +103,7 @@ import { authService } from '@/lib/services/authService';
 import { CreateTaskModal } from './CreateTaskModal';
 import { EditBoardModal } from './EditBoardModal';
 import { QuestSelectionModal } from './QuestSelectionModal';
+import { BoardColumn as EnhancedBoardColumn } from './BoardColumn';
 
 // Template-specific gradient configurations
 const TEMPLATE_GRADIENTS = {
@@ -428,6 +438,12 @@ interface EnhancedBoardColumnProps extends BoardColumnProps {
 // Sortable Column Component for drag and drop
 interface SortableColumnProps extends EnhancedBoardColumnProps {
   id: string;
+  boardId: number;
+  onColumnUpdate?: (columnId: number, updates: { name?: string; color?: string }) => Promise<boolean>;
+  onColumnDelete?: (columnId: number) => Promise<boolean>;
+  selectedTasks?: Set<number>;
+  isSelectionMode?: boolean;
+  onTaskSelect?: (taskId: number, selected: boolean) => void;
 }
 
 const SortableColumn: React.FC<SortableColumnProps> = ({ id, ...props }) => {
@@ -473,7 +489,7 @@ const SortableColumn: React.FC<SortableColumnProps> = ({ id, ...props }) => {
       
       {/* Column Content */}
       <div className={cn(isDragging && "pointer-events-none")}>
-        <BoardColumn {...props} />
+        <EnhancedBoardColumn {...props} />
       </div>
       
       {/* Dragging Indicator */}
@@ -669,7 +685,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     draggedFrom: null,
     draggedOver: null,
     canDrop: false,
-    dropPreview: true,
+    dropPreview: false,
     animationState: 'idle'
   });
 
@@ -686,17 +702,40 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [selectedColumn, setSelectedColumn] = useState<BoardColumnDTO | null>(null);
   const [activeTask, setActiveTask] = useState<TaskItemResponseDTO | null>(null);
 
+  // Batch selection state
+  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [showBatchActions, setShowBatchActions] = useState(false);
+
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3, // Reduced distance for better responsiveness
       },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Custom collision detection for better drop zone coverage
+  const customCollisionDetection = useCallback((args: Parameters<typeof closestCenter>[0]) => {
+    // First try pointer within (for better column coverage)
+    const pointerIntersections = pointerWithin(args);
+    if (pointerIntersections.length > 0) {
+      return pointerIntersections;
+    }
+
+    // Then try rect intersection (for overlapping elements)
+    const rectIntersections = rectIntersection(args);
+    if (rectIntersections.length > 0) {
+      return rectIntersections;
+    }
+
+    // Finally fall back to closest center
+    return closestCenter(args);
+  }, []);
 
   // Configure drag-drop service
   useEffect(() => {
@@ -820,6 +859,27 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     if (!over || !boardData) return;
 
     const overId = String(over.id);
+    
+    // Check if dragging over a task (for intra-column sorting)
+    const overTask = boardData.tasks.find(t => t.id.toString() === overId);
+    if (overTask) {
+      const targetColumn = boardData.board.columns.find(col => 
+        col.status.toString() === overTask.status
+      );
+      
+      if (targetColumn && dragState.draggedTask) {
+        const validation = dragDropService.validateDrop(dragState.draggedTask, targetColumn);
+        
+        setDragState(prev => ({
+          ...prev,
+          draggedOver: targetColumn,
+          canDrop: validation.isValid
+        }));
+      }
+      return;
+    }
+    
+    // Check if dragging over a column
     const targetColumn = boardData.board.columns.find(col => 
       overId === `column-${col.id}` || overId === String(col.id)
     );
@@ -842,12 +902,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleDragEnd = async (event: DndDragEndEvent) => {
     const { active, over } = event;
     
+    console.log('🎯 Drag End Event:', { 
+      activeId: active.id, 
+      overId: over?.id,
+      activeData: active.data,
+      overData: over?.data 
+    });
+    
     // Reset drag state
     setActiveTask(null);
     setActiveColumn(null);
     setIsDragActive(false);
     
     if (!over || !boardData) {
+      console.log('❌ No over target or board data');
       setDragState(prev => ({
         ...prev,
         isDragging: false,
@@ -861,6 +929,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     const activeId = String(active.id);
     const overId = String(over.id);
+    
+    console.log('🎯 Drag IDs:', { activeId, overId });
 
     // Handle column reordering
     if (activeId.startsWith('column-') && overId.startsWith('column-')) {
@@ -940,12 +1010,33 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
     const taskId = Number(activeId);
     
-    // Find target column
-    const targetColumn = boardData.board.columns.find(col => 
+    // Find target column - check if dropping over column or task
+    let targetColumn: BoardColumnDTO | undefined;
+    
+    // First check if dropping over a column directly
+    targetColumn = boardData.board.columns.find(col => 
       overId === `column-${col.id}` || overId === String(col.id)
     );
+    
+    // If not dropping over column, check if dropping over a task
+    if (!targetColumn) {
+      const overTask = boardData.tasks.find(task => task.id.toString() === overId);
+      if (overTask) {
+        targetColumn = boardData.board.columns.find(col => 
+          col.status.toString() === overTask.status
+        );
+        console.log('🎯 Found target column via task:', { 
+          overTaskId: overId, 
+          overTaskStatus: overTask.status,
+          targetColumnId: targetColumn?.id 
+        });
+      }
+    } else {
+      console.log('🏢 Found target column directly:', { targetColumnId: targetColumn.id });
+    }
 
     if (!targetColumn) {
+      console.log('❌ No target column found for overId:', overId);
       setDragState(prev => ({
         ...prev,
         isDragging: false,
@@ -978,8 +1069,89 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       return;
     }
 
-    // Don't do anything if the task is already in the correct column
+    // Handle intra-column sorting (reordering within same column)
     if (dragState.draggedTask.status === targetColumn.status.toString()) {
+      console.log('🔄 Intra-column sorting detected');
+      const columnTasks = tasksByColumn[targetColumn.status.toString()] || [];
+      const activeIndex = columnTasks.findIndex(task => task.id === taskId);
+      
+      let overIndex = columnTasks.length; // Default to end
+      
+      console.log('📍 Initial indices:', { activeIndex, defaultOverIndex: overIndex });
+      
+      // Check if we're dropping over another task
+      if (!overId.toString().startsWith('column-')) {
+        const overTaskId = Number(overId);
+        const foundIndex = columnTasks.findIndex(task => task.id === overTaskId);
+        
+        console.log('🎯 Dropping over task:', { overTaskId, foundIndex });
+        
+        if (foundIndex !== -1) {
+          // Determine if we should insert before or after the target task
+          // For now, we'll insert at the target position (replace)
+          overIndex = foundIndex;
+        }
+      } else {
+        console.log('🏢 Dropping over column');
+      }
+      
+      console.log('📊 Final indices:', { activeIndex, overIndex, willReorder: activeIndex !== -1 && activeIndex !== overIndex && overIndex >= 0 });
+      
+      // Only reorder if position actually changed and indices are valid
+      if (activeIndex !== -1 && activeIndex !== overIndex && overIndex >= 0) {
+        try {
+          console.log(`🔄 Reordering task: ${activeIndex} → ${overIndex}`);
+          
+          // Use DnD-Kit's built-in arrayMove for proper reordering
+          const reorderedTasks = arrayMove(columnTasks, activeIndex, overIndex);
+          
+          console.log('🔄 Reordered tasks:', reorderedTasks.map(t => `${t.id}:${t.title}`));
+          console.log('✅ Task positions after reorder:', reorderedTasks.map((t, idx) => `Position ${idx + 1}: ${t.title}`));
+          
+          // Update the board state optimistically  
+          setBoardData(prev => {
+            if (!prev) return prev;
+            
+            console.log('🔄 Updating board state...');
+            console.log('📋 Previous tasks in column:', prev.tasks.filter(t => t.status === targetColumn.status.toString()).map(t => `${t.id}:${t.title} (pos: ${t.boardPosition})`));
+            
+            // Create a mapping of all tasks with updated board positions for this column
+            const updatedTasks = prev.tasks.map(task => {
+              if (task.status !== targetColumn.status.toString()) return task;
+              
+              const newIndex = reorderedTasks.findIndex(t => t.id === task.id);
+              const updatedTask = { ...task, boardPosition: newIndex + 1 }; // 1-based ordering
+              
+              console.log(`📝 Task ${task.id} (${task.title}): boardPosition ${task.boardPosition} → ${updatedTask.boardPosition}`);
+              return updatedTask;
+            });
+            
+            console.log('📋 Updated tasks in column:', updatedTasks.filter(t => t.status === targetColumn.status.toString()).map(t => `${t.id}:${t.title} (pos: ${t.boardPosition})`));
+            
+            const newTasksByColumn = groupTasksByColumn(updatedTasks, prev.board.columns);
+            console.log('📋 New tasksByColumn for this column:', newTasksByColumn[targetColumn.status.toString()]?.map(t => `${t.id}:${t.title}`));
+            
+            return {
+              ...prev,
+              tasks: updatedTasks,
+              tasksByColumn: newTasksByColumn
+            };
+          });
+          
+          toast.success('✨ Quest reordered!', {
+            description: `"${dragState.draggedTask.title}" moved to position ${overIndex + 1}`,
+          });
+          
+        } catch (error) {
+          console.error('Error reordering tasks:', error);
+          toast.error('Failed to reorder quest');
+          // Reload to ensure consistency
+          await loadBoardData();
+        }
+      } else {
+        console.log('🚫 No reorder needed:', { activeIndex, overIndex, samePosition: activeIndex === overIndex });
+      }
+      
       setDragState(prev => ({
         ...prev,
         isDragging: false,
@@ -1073,7 +1245,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           draggedFrom: null,
           draggedOver: null,
           canDrop: false,
-          dropPreview: true,
+          dropPreview: false,
           animationState: 'idle'
         });
       }, 500);
@@ -1085,7 +1257,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     const grouped: Record<string, TaskItemResponseDTO[]> = {};
     
     columns.forEach(column => {
-      grouped[column.status.toString()] = tasks.filter(task => task.status === column.status.toString());
+      const columnTasks = tasks.filter(task => task.status === column.status.toString());
+      
+      console.log(`📊 Before sorting column ${column.status}:`, columnTasks.map(t => `${t.id}:${t.title} (pos: ${t.boardPosition})`));
+      
+      // Sort tasks by boardPosition (or fallback to id for stability)
+      columnTasks.sort((a, b) => {
+        const posA = a.boardPosition || 999999;
+        const posB = b.boardPosition || 999999;
+        return posA - posB || a.id - b.id; // Fallback to ID for stability
+      });
+      
+      console.log(`📊 After sorting column ${column.status}:`, columnTasks.map(t => `${t.id}:${t.title} (pos: ${t.boardPosition})`));
+      
+      grouped[column.status.toString()] = columnTasks;
     });
     
     return grouped;
@@ -1168,6 +1353,100 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  // Handle column update (placeholder - will use existing board update mechanisms)
+  const handleColumnUpdate = async (columnId: number, updates: { name?: string; color?: string }) => {
+    try {
+      // For now, just reload the board data
+      // In a full implementation, this would call a specific column update API
+      await loadBoardData();
+      return true;
+    } catch (error) {
+      console.error('Failed to update column:', error);
+      throw error;
+    }
+  };
+
+  // Handle column delete (placeholder - will use existing board update mechanisms)
+  const handleColumnDelete = async (columnId: number) => {
+    try {
+      // For now, just reload the board data
+      // In a full implementation, this would call a specific column delete API
+      await loadBoardData();
+      return true;
+    } catch (error) {
+      console.error('Failed to delete column:', error);
+      throw error;
+    }
+  };
+
+  // Batch selection handlers
+  const handleTaskSelect = useCallback((taskId: number, selected: boolean) => {
+    setSelectedTasks(prev => {
+      const newSet = new Set(prev);
+      if (selected) {
+        newSet.add(taskId);
+      } else {
+        newSet.delete(taskId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (!boardData) return;
+    setSelectedTasks(new Set(boardData.tasks.map(task => task.id)));
+  }, [boardData]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedTasks(new Set());
+  }, []);
+
+  const handleToggleSelectionMode = useCallback(() => {
+    setIsSelectionMode(prev => !prev);
+    if (isSelectionMode) {
+      setSelectedTasks(new Set());
+    }
+  }, [isSelectionMode]);
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedTasks.size === 0) return;
+    
+    const confirmed = window.confirm(`Are you sure you want to delete ${selectedTasks.size} task(s)? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      for (const taskId of selectedTasks) {
+        await taskService.deleteTask(taskId);
+      }
+      
+      toast.success(`🗑️ ${selectedTasks.size} task(s) deleted successfully!`);
+      setSelectedTasks(new Set());
+      setIsSelectionMode(false);
+      await loadBoardData();
+    } catch (error) {
+      console.error('Batch delete failed:', error);
+      toast.error('Failed to delete some tasks');
+    }
+  }, [selectedTasks]);
+
+  const handleBatchMove = useCallback(async (targetStatus: TaskItemStatus) => {
+    if (selectedTasks.size === 0) return;
+
+    try {
+      for (const taskId of selectedTasks) {
+        await taskService.updateTask(taskId, { status: targetStatus });
+      }
+      
+      toast.success(`📋 ${selectedTasks.size} task(s) moved successfully!`);
+      setSelectedTasks(new Set());
+      setIsSelectionMode(false);
+      await loadBoardData();
+    } catch (error) {
+      console.error('Batch move failed:', error);
+      toast.error('Failed to move some tasks');
+    }
+  }, [selectedTasks]);
+
   // Loading state
   if (loading) {
     return (
@@ -1229,9 +1508,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const tasksByColumn = groupTasksByColumn(boardData.tasks, boardData.board.columns);
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("h-screen flex flex-col", className)}>
       {/* Board Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {/* Back Button */}
           <Button
@@ -1321,32 +1601,119 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
           )}
 
-          {/* Quest Actions Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-          <Button
-            size="sm"
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+          {/* Batch Selection Controls */}
+          {isSelectionMode ? (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                className="text-xs"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Add Quest</span>
-                <span className="sm:hidden">Add</span>
-                <ChevronDown className="h-3 w-3 ml-1" />
+                <CheckSquare className="h-4 w-4 mr-1" />
+                All ({boardData.tasks.length})
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => handleCreateTask()}>
-            <Plus className="h-4 w-4 mr-2" />
-                Create New Quest
-                <span className="ml-auto text-xs text-muted-foreground">Fresh start</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleQuestSelection()}>
-                <Target className="h-4 w-4 mr-2" />
-                Add Existing Quest
-                <span className="ml-auto text-xs text-muted-foreground">From tasks</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeselectAll}
+                className="text-xs"
+              >
+                <Square className="h-4 w-4 mr-1" />
+                None
+              </Button>
+              {selectedTasks.size > 0 && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        <Move className="h-4 w-4 mr-1" />
+                        Move ({selectedTasks.size})
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {boardData.board.columns.map((column) => (
+                        <DropdownMenuItem
+                          key={column.id}
+                          onClick={() => handleBatchMove(column.status)}
+                        >
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: column.color || '#6B7280' }}
+                          />
+                          {column.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBatchDelete}
+                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete ({selectedTasks.size})
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleSelectionMode}
+                className="text-xs"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              {/* Selection Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleSelectionMode}
+                className="border-emerald-200 hover:bg-emerald-50"
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Select</span>
+                <span className="sm:hidden">Select</span>
+              </Button>
+
+              {/* Quest Actions Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Add Quest</span>
+                    <span className="sm:hidden">Add</span>
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleCreateTask()}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Quest
+                    <span className="ml-auto text-xs text-muted-foreground">Fresh start</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleQuestSelection()}>
+                    <Target className="h-4 w-4 mr-2" />
+                    Add Existing Quest
+                    <span className="ml-auto text-xs text-muted-foreground">From tasks</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
           
           {/* Board Actions Dropdown */}
           <DropdownMenu>
@@ -1367,12 +1734,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        </div>
       </div>
 
-      {/* Kanban Board */}
-      <DndContext
+      {/* Kanban Board Container */}
+      <div className="flex-1 overflow-hidden">
+        <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={customCollisionDetection}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -1384,7 +1753,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             .map(col => `column-${col.id}`)}
           strategy={horizontalListSortingStrategy}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
+          <div className="h-full p-8 overflow-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 min-h-full">
             {boardData.board.columns
               .sort((a, b) => a.order - b.order)
               .map((column) => {
@@ -1400,9 +1770,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     enableDropPreview={true}
                     templateName={boardData.board.name}
                     onTaskDelete={handleTaskDelete}
+                    boardId={boardId}
+                    onColumnUpdate={handleColumnUpdate}
+                    onColumnDelete={handleColumnDelete}
+                    selectedTasks={selectedTasks}
+                    isSelectionMode={isSelectionMode}
+                    onTaskSelect={handleTaskSelect}
                   />
                 );
               })}
+            </div>
           </div>
         </SortableContext>
 
@@ -1416,18 +1793,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               enableAnimations={enableAnimations}
             />
           ) : activeColumn ? (
-            <div className="opacity-50">
-              <BoardColumn
+            <div className="opacity-80 rotate-3 scale-105 shadow-2xl">
+              <EnhancedBoardColumn
                 column={activeColumn}
                 tasks={[]}
                 onCreateTask={() => {}}
-                enableDropPreview={false}
-                templateName={boardData.board.name}
+                boardId={boardId}
+                className="pointer-events-none"
               />
             </div>
           ) : null}
         </DragOverlay>
-      </DndContext>
+        </DndContext>
+      </div>
 
       {/* Modals */}
         <CreateTaskModal

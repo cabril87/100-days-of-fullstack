@@ -312,18 +312,51 @@ export class TaskService {
         tagIds = await tagService.convertTagNamesToIds(taskData.tags);
       }
       
-      // Convert priority from string to integer for backend compatibility
+      // Get the current task to preserve existing fields
+      const currentTask = await this.getTaskById(taskId);
+      if (!currentTask) {
+        throw new TaskApiError(`Task with ID ${taskId} not found`, 404);
+      }
+
+      // Convert update data for backend compatibility
       const backendData = await convertTaskDataForBackend(taskData, tagIds);
       console.log('🔧 Converted data for backend:', backendData);
-      console.log('🔍 Original taskData:', taskData);
-      console.log('🔍 backendData keys:', Object.keys(backendData));
-      console.log('🔍 backendData.Title:', backendData.Title);
-      console.log('🔍 backendData.EstimatedTimeMinutes:', backendData.EstimatedTimeMinutes);
-      console.log('🔍 backendData.PointsValue:', backendData.PointsValue);
-      console.log('🔍 Original tags:', taskData.tags);
       
-      // Call the backend update endpoint directly (no wrapper)
-      await apiClient.put(`/v1/taskitems/${taskId}`, backendData);
+      // Create a complete TaskItemDTO by merging current task with updates
+      const completeTaskDto = {
+        Id: taskId,
+        Title: backendData.Title || currentTask.title,
+        Description: backendData.Description || currentTask.description || '',
+        Status: backendData.Status !== undefined ? backendData.Status : (currentTask.isCompleted ? 4 : 0), // 4 = Completed, 0 = NotStarted
+        Priority: backendData.Priority !== undefined ? backendData.Priority : 1, // Default to Medium
+        DueDate: backendData.DueDate !== undefined ? backendData.DueDate : currentTask.dueDate,
+        CreatedAt: currentTask.createdAt,
+        UpdatedAt: new Date().toISOString(),
+        CompletedAt: currentTask.completedAt,
+        CategoryId: backendData.CategoryId !== undefined ? backendData.CategoryId : currentTask.categoryId,
+        CategoryName: currentTask.categoryName || '',
+        UserId: currentTask.userId,
+        BoardId: backendData.BoardId !== undefined ? backendData.BoardId : null,
+        TagIds: backendData.TagIds || [],
+        Tags: currentTask.tags || [],
+        EstimatedMinutes: backendData.EstimatedMinutes !== undefined ? backendData.EstimatedMinutes : currentTask.estimatedTimeMinutes,
+        ActualMinutes: currentTask.actualTimeMinutes,
+        ProgressPercentage: 0,
+        IsStarred: false,
+        IsRecurring: false,
+        RecurrencePattern: null,
+        Version: backendData.Version !== undefined ? backendData.Version : currentTask.version || 1,
+        AssignedToName: currentTask.assignedToUserName,
+        PointsValue: backendData.PointsValue !== undefined ? backendData.PointsValue : currentTask.pointsValue,
+        FamilyId: backendData.FamilyId !== undefined ? backendData.FamilyId : currentTask.familyId,
+        AssignedToUserId: backendData.AssignedToUserId !== undefined ? backendData.AssignedToUserId : currentTask.assignedToUserId,
+        AssignedToUserName: currentTask.assignedToUserName
+      };
+
+      console.log('🔧 Complete TaskItemDTO for backend:', completeTaskDto);
+      
+      // Call the backend update endpoint with complete DTO
+      await apiClient.put(`/v1/taskitems/${taskId}`, completeTaskDto);
       
       // Update tags separately if provided (enterprise solution)
       if (tagIds.length > 0) {

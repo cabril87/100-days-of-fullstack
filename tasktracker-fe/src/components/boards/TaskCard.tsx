@@ -20,6 +20,7 @@ import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import {
   Clock,
   User,
@@ -56,7 +57,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   className,
   onEdit,
   onDelete,
-  onView
+  onView,
+  isSelectionMode = false,
+  isSelected = false,
+  onSelect
 }) => {
   const {
     attributes,
@@ -68,9 +72,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   } = useSortable({
     id: task.id.toString(),
     data: {
+      type: 'task',
       taskId: task.id,
       status: task.status,
+      task: task, // Include full task object
     },
+    disabled: isSelectionMode, // Disable dragging in selection mode
   });
 
   const style = {
@@ -147,7 +154,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group cursor-grab active:cursor-grabbing transition-all duration-200",
+        "group transition-all duration-200",
+        !isSelectionMode && "cursor-grab active:cursor-grabbing",
         "hover:shadow-md hover:scale-[1.02] hover:-translate-y-1",
         isDragging && "opacity-50 rotate-3 shadow-xl scale-105",
         isSortableDragging && "z-50",
@@ -156,13 +164,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         "border-l-4",
         className
       )}
-      {...attributes}
-      {...listeners}
+      {...(isSelectionMode ? {} : attributes)}
+      {...(isSelectionMode ? {} : listeners)}
     >
       <CardContent className="p-3 space-y-3">
         {/* Header with priority and actions */}
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-2">
+            {isSelectionMode && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(checked) => onSelect?.(checked as boolean)}
+                className="mt-0.5"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>

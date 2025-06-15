@@ -61,12 +61,13 @@ export const convertTaskDataForBackend = async (data: TaskDataForBackend, tagIds
     priority: 'Priority',
     dueDate: 'DueDate',
     categoryId: 'CategoryId',
-    estimatedTimeMinutes: 'EstimatedTimeMinutes',
+    estimatedTimeMinutes: 'EstimatedMinutes', // Backend expects EstimatedMinutes, not EstimatedTimeMinutes
     pointsValue: 'PointsValue',
     assignedToUserId: 'AssignedToUserId',
     familyId: 'FamilyId',
     version: 'Version',
-    boardId: 'BoardId'
+    boardId: 'BoardId',
+    status: 'Status'
   };
   
   // Convert properties with correct naming
@@ -76,16 +77,37 @@ export const convertTaskDataForBackend = async (data: TaskDataForBackend, tagIds
     }
   });
   
+  // Ensure Version is set as long (backend expects long type)
+  if (converted.Version !== undefined) {
+    converted.Version = Number(converted.Version);
+  }
+  
   // Convert priority from string to integer (TaskItemDTO expects int Priority)
   if (converted.Priority && typeof converted.Priority === 'string') {
     converted.Priority = priorityStringToInt(converted.Priority as PriorityString);
   }
   
-  // Add required fields that might be missing
-  if (!converted.Status) {
+  // Handle status conversion (TaskItemStatus enum to integer)
+  if (converted.Status !== undefined) {
+    // If status is already a number, keep it as is
+    if (typeof converted.Status === 'number') {
+      // Already correct format
+    } else if (typeof converted.Status === 'string') {
+      // Convert string status to number if needed
+      const statusMap: Record<string, number> = {
+        'NotStarted': 0,
+        'InProgress': 1,
+        'OnHold': 2,
+        'Pending': 3,
+        'Completed': 4,
+        'Cancelled': 5
+      };
+      converted.Status = statusMap[converted.Status] ?? 0;
+    }
+  } else {
+    // Add default status if not provided
     converted.Status = 0; // TaskItemStatus.NotStarted
   }
-  // Don't set a default Version - let it come from the actual task data
   
   // Include tag IDs if provided (enterprise solution)
   if (tagIds && tagIds.length > 0) {

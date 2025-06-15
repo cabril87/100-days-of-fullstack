@@ -235,6 +235,10 @@ export interface TaskCardProps {
   enableAnimations?: boolean;
   showPriorityGlow?: boolean;
   showStatusIndicator?: boolean;
+  // Batch selection props
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
 }
 
 export interface CreateTaskModalProps {

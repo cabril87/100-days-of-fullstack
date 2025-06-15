@@ -72,6 +72,8 @@ export interface CreateTaskItemDTO {
   boardId?: number;
   categoryId?: number;
   estimatedTimeMinutes?: number;
+  familyId?: number;
+  assignedToUserId?: number;
 }
 
 export interface TagDto {
@@ -194,6 +196,8 @@ export interface UpdateTaskDTO {
   assignedToUserId?: number;
   tags?: string[];
   version?: number; // For optimistic concurrency control
+  boardId?: number; // Board assignment field
+  status?: TaskItemStatus; // Task status field for board assignment
 }
 
 export interface TaskStats {

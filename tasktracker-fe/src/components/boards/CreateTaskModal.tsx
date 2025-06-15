@@ -17,7 +17,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { TaskItemStatus, TaskPriority, CreateTaskItemDTO } from '../../lib/types/task';
 import { CreateTaskModalProps } from '../../lib/types/board';
+import { FamilyDTO, FamilyMemberDTO } from '../../lib/types/family-invitation';
 import { taskService } from '../../lib/services/taskService';
+import { familyInvitationService } from '../../lib/services/familyInvitationService';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +71,8 @@ const createTaskSchema = z.object({
   dueDate: z.date().optional(),
   points: z.number().min(0).max(1000).optional(),
   tags: z.array(z.string()).optional(),
+  familyId: z.number().optional(),
+  assignedToUserId: z.number().optional(),
 });
 
 type CreateTaskFormData = z.infer<typeof createTaskSchema>;
@@ -83,6 +87,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [families, setFamilies] = useState<FamilyDTO[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+  const [loadingFamilies, setLoadingFamilies] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   const form = useForm<CreateTaskFormData>({
     resolver: zodResolver(createTaskSchema),
@@ -93,8 +101,55 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       status: defaultStatus,
       points: 10,
       tags: [],
+      familyId: undefined,
+      assignedToUserId: undefined,
     },
   });
+
+  // Load families when modal opens
+  useEffect(() => {
+    if (open) {
+      loadFamilies();
+    }
+  }, [open]);
+
+  const loadFamilies = async () => {
+    try {
+      setLoadingFamilies(true);
+      const userFamilies = await familyInvitationService.getAllFamilies();
+      setFamilies(userFamilies || []);
+    } catch (error) {
+      console.error('Failed to load families:', error);
+      setFamilies([]);
+    } finally {
+      setLoadingFamilies(false);
+    }
+  };
+
+  const loadFamilyMembers = async (familyId: number) => {
+    try {
+      setLoadingMembers(true);
+      const members = await familyInvitationService.getFamilyMembers(familyId);
+      setFamilyMembers(members || []);
+    } catch (error) {
+      console.error('Failed to load family members:', error);
+      setFamilyMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const handleFamilyChange = (familyId: string) => {
+    const numericFamilyId = familyId === "personal" ? undefined : Number(familyId);
+    form.setValue('familyId', numericFamilyId);
+    form.setValue('assignedToUserId', undefined); // Reset assignment when family changes
+    
+    if (numericFamilyId) {
+      loadFamilyMembers(numericFamilyId);
+    } else {
+      setFamilyMembers([]);
+    }
+  };
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -116,8 +171,11 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         status: numericStatus,
         points: 10,
         tags: [],
+        familyId: undefined,
+        assignedToUserId: undefined,
       });
       setTagInput('');
+      setFamilyMembers([]); // Reset family members when modal opens
       
       // Force the form to update the status field with proper enum value
       setTimeout(() => {
@@ -144,13 +202,32 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         points: data.points || 0,
         tags: data.tags || [],
         boardId: boardId,
+        // Add family-related fields if family is selected
+        ...(data.familyId && {
+          familyId: data.familyId,
+          ...(data.assignedToUserId && { assignedToUserId: data.assignedToUserId })
+        })
       };
 
       await taskService.createTask(createTaskDto);
       
-      toast.success('🎯 Quest created successfully!', {
-        description: `"${data.title}" has been added to your board`,
-      });
+      // Create more descriptive success message based on family/assignment
+      let successMessage = '🎯 Quest created successfully!';
+      let description = `"${data.title}" has been added to your board`;
+      
+      if (data.familyId) {
+        const selectedFamily = families.find(f => f.id === data.familyId);
+        if (data.assignedToUserId) {
+          const assignedMember = familyMembers.find(m => m.user?.id === data.assignedToUserId);
+          description = `"${data.title}" has been assigned to ${assignedMember?.user?.username || 'family member'} in ${selectedFamily?.name || 'family'}`;
+          successMessage = '🏠 Family Quest assigned successfully!';
+        } else {
+          description = `"${data.title}" has been added as a family quest for ${selectedFamily?.name || 'family'}`;
+          successMessage = '🏠 Family Quest created successfully!';
+        }
+      }
+      
+      toast.success(successMessage, { description });
 
       onTaskCreated();
     } catch (error) {
@@ -368,6 +445,92 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   );
                 }}
               />
+            </div>
+
+            {/* Family and Assignment Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="familyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
+                      🏠 Quest Family
+                    </FormLabel>
+                    <Select
+                      onValueChange={handleFamilyChange}
+                      value={field.value ? field.value.toString() : "personal"}
+                      disabled={loadingFamilies}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80">
+                          <SelectValue placeholder={loadingFamilies ? "Loading families..." : "Select family"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="personal">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                            <span>👤 Personal Quest</span>
+                          </div>
+                        </SelectItem>
+                        {families.map((family) => (
+                          <SelectItem key={family.id} value={family.id.toString()}>
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <span>🏠 {family.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Family Member Assignment - Only show if family is selected */}
+              {form.watch('familyId') && (
+                <FormField
+                  control={form.control}
+                  name="assignedToUserId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center space-x-2 text-purple-700 dark:text-purple-300 font-semibold">
+                        👥 Assign To
+                      </FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(value === "unassigned" ? undefined : Number(value))}
+                        value={field.value ? field.value.toString() : "unassigned"}
+                        disabled={loadingMembers}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-12 border-2 border-purple-200 dark:border-purple-700 focus:border-purple-500 dark:focus:border-purple-400 bg-white/80 dark:bg-gray-800/80">
+                            <SelectValue placeholder={loadingMembers ? "Loading members..." : "Select family member"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="unassigned">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-gray-500" />
+                              <span>🎯 Anyone (Unassigned)</span>
+                            </div>
+                          </SelectItem>
+                          {familyMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.user?.id?.toString() || member.id.toString()}>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                                <span>👤 {member.user?.username || member.user?.firstName || 'Family Member'}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Due Date and Points Row */}

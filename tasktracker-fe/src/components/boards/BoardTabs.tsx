@@ -20,9 +20,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
-  Kanban,
-  Columns,
-  Settings,
   AlertCircle
 } from 'lucide-react';
 
@@ -35,7 +32,6 @@ import { BoardService } from '@/lib/services/boardService';
 import { TabNavigation } from './tabs/TabNavigation';
 import { MobileTabBar } from './tabs/MobileTabBar';
 import { BoardTabContent } from './tabs/BoardTabContent';
-import { ColumnsTabContent } from './tabs/ColumnsTabContent';
 import { SettingsTabContent } from './tabs/SettingsTabContent';
 
 export const BoardTabs: React.FC<BoardTabsProps> = ({
@@ -236,13 +232,6 @@ export const BoardTabs: React.FC<BoardTabsProps> = ({
             board={board}
             onBoardUpdate={handleBoardUpdate}
             onBoardDelete={handleBoardDelete}
-          />
-        )}
-        
-        {activeTab === 'columns' && (
-          <ColumnsTabContent
-            board={board}
-            onColumnsUpdate={handleBoardUpdate}
           />
         )}
         

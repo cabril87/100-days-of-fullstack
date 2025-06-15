@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
 import {
   Kanban,
-  Columns,
   Settings
 } from 'lucide-react';
 
@@ -27,11 +26,6 @@ const TAB_CONFIG = {
     label: 'Board View',
     icon: Kanban,
     description: 'View and manage tasks'
-  },
-  columns: {
-    label: 'Columns',
-    icon: Columns,
-    description: 'Configure board columns'
   },
   settings: {
     label: 'Settings',

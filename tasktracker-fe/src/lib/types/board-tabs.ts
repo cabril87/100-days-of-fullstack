@@ -15,7 +15,7 @@ import { BoardDTO, BoardColumnDTO } from './board';
  * Tab-based Board Details Types
  */
 
-export type BoardTabType = 'board' | 'columns' | 'settings';
+export type BoardTabType = 'board' | 'settings';
 
 export interface BoardTabsProps {
   boardId: number;
@@ -27,11 +27,6 @@ export interface BoardTabContentProps {
   board: BoardDTO;
   onBoardUpdate: () => void;
   onBoardDelete?: () => void;
-}
-
-export interface ColumnsTabContentProps {
-  board: BoardDTO;
-  onColumnsUpdate: () => void;
 }
 
 export interface SettingsTabContentProps {
