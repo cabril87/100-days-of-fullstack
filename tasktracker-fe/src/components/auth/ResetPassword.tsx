@@ -68,9 +68,9 @@ export default function ResetPasswordContent({
   // Invalid token state
   if (!isValidToken) {
     return (
-      <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-        {/* Left Side - Decorative Abstract */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-red-600 via-orange-600 to-amber-600 relative overflow-hidden">
+      <div className="min-h-screen flex bg-gray-900">
+        {/* Left Side - Enterprise Content */}
+        <div className="hidden lg:flex lg:w-1/2  relative overflow-hidden">
           {/* Abstract shapes */}
           <div className="absolute inset-0">
             <div className="absolute top-24 right-32 w-60 h-60 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -118,8 +118,8 @@ export default function ResetPasswordContent({
         </div>
 
         {/* Right Side - Invalid Token Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-50/50 dark:bg-gray-900/50">
-          <Card className="w-full max-w-lg border border-gray-200 dark:border-gray-700 shadow-xl backdrop-blur-sm">{/* Clean glass-like card design */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-900">
+          <Card className="w-full max-w-lg bg-gray-800 border-gray-700 shadow-2xl">{/* Clean dark card design */}
 
             <CardHeader className="text-center pb-6 pt-8 px-4 sm:px-6">
               <div className="flex justify-center mb-4">
@@ -127,10 +127,10 @@ export default function ResetPasswordContent({
                   <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
               </div>
-              <CardTitle className="text-xl sm:text-2xl font-black text-red-700 dark:text-red-400">
+              <CardTitle className="text-xl sm:text-2xl font-black text-red-400">
                 ⚠️ Invalid Reset Link
               </CardTitle>
-              <CardDescription className="text-gray-600 dark:text-gray-400 text-sm sm:text-base px-2">
+              <CardDescription className="text-gray-400 text-sm sm:text-base px-2">
                 {validationMessage || "This password reset link is invalid or has expired."}
               </CardDescription>
           </CardHeader>
@@ -142,7 +142,7 @@ export default function ResetPasswordContent({
                     🔄 Request New Magic Key
                   </Link>
               </Button>
-                <Button variant="outline" asChild className="w-full h-12 sm:h-14 border-2 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold text-base rounded-xl">
+                <Button variant="outline" asChild className="w-full h-12 sm:h-14 border-2 border-gray-600 hover:bg-gray-800 font-bold text-base rounded-xl">
                   <Link href="/auth/login">
                     <Shield className="h-5 w-5 mr-2" />
                     🏠 Return to Login Portal
@@ -159,9 +159,9 @@ export default function ResetPasswordContent({
   // Success state
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-        {/* Left Side - Decorative Abstract */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 relative overflow-hidden">
+      <div className="min-h-screen flex bg-gray-900">
+        {/* Left Side - Enterprise Content */}
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 relative overflow-hidden">
           {/* Abstract shapes */}
           <div className="absolute inset-0">
             <div className="absolute top-28 left-28 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse"></div>

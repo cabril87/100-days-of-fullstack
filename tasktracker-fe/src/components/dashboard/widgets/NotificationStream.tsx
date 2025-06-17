@@ -6,122 +6,168 @@
  * 
  * Notification Stream Widget
  * Displays real-time notifications with priority badges and action buttons.
- * Connects to the main SignalR hub for live notification updates.
+ * Enhanced with enterprise-quality gamification styles and animations.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Bell, 
-  X, 
   CheckCircle, 
-  AlertTriangle, 
-  Info, 
-  Users,
+  X, 
+  Calendar, 
+  Clock, 
+  Info,
+  AlertTriangle,
   Trophy,
-  Calendar,
-  Clock
+  Users,
+  Zap,
+  Star,
+  Crown,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
-import { useMainHubConnection } from '@/lib/hooks/useSignalRConnection';
-import { NotificationItem } from '@/lib/types/celebrations';
+import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
+import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectionManagerStub';
+import { NotificationStreamProps } from '@/lib/types/widget-props';
 
-interface NotificationStreamProps {
-  className?: string;
-  maxDisplay?: number;
+// Enhanced NotificationItem with gamification properties
+interface NotificationItem {
+  id: string;
+  type: 'success' | 'warning' | 'achievement' | 'task' | 'family' | 'info' | 'celebration' | 'milestone';
+  title: string;
+  message: string;
+  timestamp: Date;
+  isRead: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  actionUrl?: string;
+  actionText?: string;
+  points?: number;
+  celebrationLevel?: 'common' | 'rare' | 'epic' | 'legendary';
+  autoHide?: boolean;
+  requiresAction?: boolean;
 }
 
 export function NotificationStream({ 
-  className = '', 
-  maxDisplay = 5 
+  maxDisplay = 5, 
+  className = '',
+  isConnected: sharedIsConnected
 }: NotificationStreamProps) {
+  // ✨ Use stub when shared connection is provided to prevent duplicate connections
+  const shouldUseLocalConnection = sharedIsConnected === undefined;
+  
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [celebratingNotifications, setCelebratingNotifications] = useState<Set<string>>(new Set());
   const [unreadCount, setUnreadCount] = useState(0);
+  const notificationRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // Connect to SignalR for real-time notifications
-  const { isConnected } = useMainHubConnection({
-    onTaskCompleted: (event) => {
-      addNotification({
-        type: 'success',
-        title: 'Task Completed! 🎉',
-        message: `You earned ${event.pointsEarned} points! Keep up the great work!`,
-        priority: 'medium',
-        timestamp: new Date(event.timestamp)
-      });
-    },
+  // SignalR connection for real-time notifications
+  const localConnection = shouldUseLocalConnection 
+    ? useSignalRConnectionManager('notification-stream', {
+        onAchievementUnlocked: (event: any) => {
+          addNotification({
+            id: `achievement-${event.achievementId}-${Date.now()}`,
+            type: 'achievement',
+            title: '🏆 Achievement Unlocked!',
+            message: `You've earned "${event.achievementName}" (+${event.points} points)`,
+            timestamp: new Date(event.timestamp),
+            isRead: false,
+            priority: 'high',
+            points: event.points,
+            celebrationLevel: event.points >= 100 ? 'legendary' : event.points >= 50 ? 'epic' : event.points >= 25 ? 'rare' : 'common',
+            autoHide: false,
+            requiresAction: false
+          });
+        },
+        onTaskCompleted: (event: any) => {
+          addNotification({
+            id: `task-${event.taskId}-${Date.now()}`,
+            type: 'success',
+            title: '✅ Task Completed!',
+            message: `Great job! You earned ${event.pointsEarned} points`,
+            timestamp: new Date(event.timestamp),
+            isRead: false,
+            priority: 'medium',
+            points: event.pointsEarned,
+            autoHide: true,
+            requiresAction: false
+          });
+        },
+        onStreakUpdated: (event: any) => {
+          if (event.newStreak > event.previousStreak) {
+            addNotification({
+              id: `streak-${event.newStreak}-${Date.now()}`,
+              type: 'milestone',
+              title: '🔥 Streak Updated!',
+              message: `Amazing! You're on a ${event.newStreak}-day productivity streak`,
+              timestamp: new Date(event.timestamp),
+              isRead: false,
+              priority: event.newStreak % 7 === 0 ? 'high' : 'medium',
+              celebrationLevel: event.newStreak >= 30 ? 'legendary' : event.newStreak >= 14 ? 'epic' : 'rare',
+              autoHide: false,
+              requiresAction: false
+            });
+          }
+        }
+      })
+    : useSignalRConnectionManagerStub();
+  
+  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localConnection.isConnected;
 
-    onAchievementUnlocked: (event) => {
-      addNotification({
-        type: 'achievement',
-        title: 'Achievement Unlocked! 🏆',
-        message: `"${event.achievementName}" - You earned ${event.points} points!`,
-        priority: 'high',
-        timestamp: new Date(event.timestamp),
-        actionUrl: '/gamification',
-        actionText: 'View Achievement'
-      });
-    },
+  // Add notification with celebration effects
+  const addNotification = useCallback((notification: NotificationItem) => {
+    setNotifications(prev => {
+      const newNotifications = [notification, ...prev.slice(0, maxDisplay - 1)];
+      return newNotifications;
+    });
 
-    onLevelUp: (event) => {
-      addNotification({
-        type: 'achievement',
-        title: 'Level Up! ⭐',
-        message: `Congratulations! You've reached Level ${event.newLevel}!`,
-        priority: 'high',
-        timestamp: new Date(event.timestamp),
-        actionUrl: '/gamification',
-        actionText: 'View Progress'
-      });
+    // Update unread count
+    if (!notification.isRead) {
+      setUnreadCount(prev => prev + 1);
     }
-  });
 
-  // Mark notification as read
-  const markAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === notificationId 
-          ? { ...notification, isRead: true } 
-          : notification
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-  }, []);
-
-  // Add new notification
-  const addNotification = useCallback((newNotification: Omit<NotificationItem, 'id' | 'isRead'>) => {
-    const notification: NotificationItem = {
-      ...newNotification,
-      id: `notification-${Date.now()}-${Math.random()}`,
-      isRead: false
-    };
-
-    setNotifications(prev => [notification, ...prev.slice(0, maxDisplay - 1)]);
-    setUnreadCount(prev => prev + 1);
-
-    // Auto-mark as read after 10 seconds for non-high priority
-    if (notification.priority !== 'high') {
+    // Trigger celebration for special notifications
+    if (notification.type === 'achievement' || notification.type === 'milestone') {
+      setCelebratingNotifications(prev => new Set([...prev, notification.id]));
+      
+      // Remove celebration after duration
       setTimeout(() => {
-        markAsRead(notification.id);
-      }, 10000);
+        setCelebratingNotifications(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(notification.id);
+          return newSet;
+        });
+      }, 4000);
     }
-  }, [maxDisplay, markAsRead]);
+
+    // Auto-hide notifications
+    if (notification.autoHide) {
+      setTimeout(() => {
+        removeNotification(notification.id);
+      }, 5000);
+    }
+  }, [maxDisplay]);
 
   // Remove notification
   const removeNotification = useCallback((notificationId: string) => {
-    setNotifications(prev => {
-      const notification = prev.find(n => n.id === notificationId);
-      if (notification && !notification.isRead) {
-        setUnreadCount(count => Math.max(0, count - 1));
-      }
-      return prev.filter(n => n.id !== notificationId);
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setCelebratingNotifications(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notificationId);
+      return newSet;
     });
   }, []);
 
-  // Clear all notifications
-  const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
-    setUnreadCount(0);
+  // Mark notification as read
+  const markAsRead = useCallback((notificationId: string) => {
+    setNotifications(prev => prev.map(n => 
+      n.id === notificationId ? { ...n, isRead: true } : n
+    ));
+    setUnreadCount(prev => Math.max(0, prev - 1));
   }, []);
 
   // Mark all as read
@@ -130,233 +176,316 @@ export function NotificationStream({
     setUnreadCount(0);
   }, []);
 
+  // Load initial notifications
+  useEffect(() => {
+    const loadInitialNotifications = async () => {
+      try {
+        // Generate some sample notifications for demo
+        const sampleNotifications: NotificationItem[] = [
+          {
+            id: 'welcome-1',
+            type: 'info',
+            title: '👋 Welcome to TaskTracker!',
+            message: 'Start completing tasks to earn points and unlock achievements',
+            timestamp: new Date(Date.now() - 1000 * 60 * 5),
+            isRead: false,
+            priority: 'medium',
+            autoHide: false,
+            requiresAction: false
+          },
+          {
+            id: 'achievement-demo',
+            type: 'achievement',
+            title: '🏆 First Steps',
+            message: 'Welcome to your productivity journey! (+10 points)',
+            timestamp: new Date(Date.now() - 1000 * 60 * 2),
+            isRead: false,
+            priority: 'high',
+            points: 10,
+            celebrationLevel: 'common',
+            autoHide: false,
+            requiresAction: false
+          }
+        ];
+
+        setNotifications(sampleNotifications);
+        setUnreadCount(sampleNotifications.filter(n => !n.isRead).length);
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialNotifications();
+  }, []);
+
+  // Get notification styling based on type and priority
+  const getNotificationStyle = (notification: NotificationItem) => {
+    const isCelebrating = celebratingNotifications.has(notification.id);
+    
+    const baseStyles = "transition-all duration-500 hover:shadow-md";
+    const celebrationStyles = isCelebrating ? "scale-105 shadow-lg animate-pulse" : "";
+    
+    const typeStyles = {
+      success: "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 dark:from-green-900/10 dark:to-emerald-900/10 dark:border-green-700",
+      warning: "bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-200 dark:from-orange-900/10 dark:to-yellow-900/10 dark:border-orange-700",
+      achievement: "bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 dark:from-yellow-900/10 dark:to-orange-900/10 dark:border-yellow-600",
+      task: "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 dark:from-blue-900/10 dark:to-indigo-900/10 dark:border-blue-700",
+      family: "bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 dark:from-purple-900/10 dark:to-pink-900/10 dark:border-purple-700",
+      info: "bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 dark:from-gray-900/10 dark:to-slate-900/10 dark:border-gray-700",
+      celebration: "bg-gradient-to-r from-pink-50 to-rose-50 border-pink-300 dark:from-pink-900/10 dark:to-rose-900/10 dark:border-pink-600",
+      milestone: "bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-300 dark:from-indigo-900/10 dark:to-purple-900/10 dark:border-indigo-600"
+    };
+
+    const priorityStyles = {
+      low: "",
+      medium: "",
+      high: "ring-1 ring-orange-200 dark:ring-orange-800",
+      urgent: "ring-2 ring-red-300 dark:ring-red-700 shadow-lg"
+    };
+
+    return `${baseStyles} ${celebrationStyles} ${typeStyles[notification.type]} ${priorityStyles[notification.priority]}`;
+  };
+
   // Get notification icon
-  const getNotificationIcon = (type: NotificationItem['type']) => {
-    switch (type) {
+  const getNotificationIcon = (notification: NotificationItem) => {
+    const iconProps = { className: "h-4 w-4" };
+    
+    switch (notification.type) {
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle {...iconProps} className="h-4 w-4 text-green-600" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle {...iconProps} className="h-4 w-4 text-orange-600" />;
       case 'achievement':
-        return <Trophy className="h-4 w-4 text-yellow-500" />;
+        return <Trophy {...iconProps} className="h-4 w-4 text-yellow-600" />;
       case 'task':
-        return <Calendar className="h-4 w-4 text-blue-500" />;
+        return <CheckCircle {...iconProps} className="h-4 w-4 text-blue-600" />;
       case 'family':
-        return <Users className="h-4 w-4 text-purple-500" />;
+        return <Users {...iconProps} className="h-4 w-4 text-purple-600" />;
+      case 'celebration':
+        return <Sparkles {...iconProps} className="h-4 w-4 text-pink-600" />;
+      case 'milestone':
+        return <Crown {...iconProps} className="h-4 w-4 text-indigo-600" />;
       default:
-        return <Info className="h-4 w-4 text-gray-500" />;
+        return <Info {...iconProps} className="h-4 w-4 text-gray-600" />;
     }
   };
 
-  // Get priority color
-  const getPriorityColor = (priority: NotificationItem['priority']) => {
-    switch (priority) {
-      case 'high':
-        return 'border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20';
-      case 'medium':
-        return 'border-yellow-300 bg-yellow-50 dark:border-yellow-600 dark:bg-yellow-900/20';
-      default:
-        return 'border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-900/20';
-    }
+  // Get priority badge
+  const getPriorityBadge = (priority: NotificationItem['priority']) => {
+    const styles = {
+      low: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+      medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300",
+      high: "bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300",
+      urgent: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 animate-pulse"
+    };
+
+    if (priority === 'low') return null;
+
+    return (
+      <Badge variant="secondary" className={`text-xs ${styles[priority]}`}>
+        {priority.toUpperCase()}
+      </Badge>
+    );
   };
 
   // Format timestamp
-  const formatTime = (timestamp: Date) => {
+  const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - timestamp.getTime());
-    const diffMinutes = Math.ceil(diffTime / (1000 * 60));
+    const diff = now.getTime() - timestamp.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
     
-    if (diffMinutes < 1) return 'Just now';
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    
-    const diffHours = Math.ceil(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
     return timestamp.toLocaleDateString();
   };
 
-  // Load initial notifications (mock data for demo)
-  useEffect(() => {
-    const loadInitialNotifications = () => {
-      const sampleNotifications: NotificationItem[] = [
-        {
-          id: 'sample-1',
-          type: 'achievement',
-          title: 'Welcome Achievement!',
-          message: 'You&apos;ve unlocked the &quot;Getting Started&quot; achievement!',
-          timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-          isRead: false,
-          priority: 'medium',
-          actionUrl: '/gamification',
-          actionText: 'View Achievement'
-        }
-      ];
-      
-      setNotifications(sampleNotifications);
-      setUnreadCount(sampleNotifications.filter(n => !n.isRead).length);
-    };
-
-    // Only load sample data if no real notifications
-    if (notifications.length === 0) {
-      loadInitialNotifications();
-    }
-  }, [notifications.length]);
+  const displayNotifications = notifications.slice(0, maxDisplay);
 
   return (
-    <Card className={`${className} transition-all duration-300 hover:shadow-lg`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Bell className="h-4 w-4 text-blue-500" />
+    <Card className={`${className} transition-all duration-300 hover:shadow-lg border-2 border-blue-200 dark:border-blue-700 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/10 dark:via-indigo-900/10 dark:to-purple-900/10`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-700 dark:text-blue-300">
+          <div className="relative p-1 bg-blue-100 dark:bg-blue-900/20 rounded-full">
+            <Bell className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            {unreadCount > 0 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-xs text-white font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              </div>
+            )}
+          </div>
           Notifications
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
+        
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              {unreadCount} new
-            </Badge>
-          )}
-          {notifications.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearAllNotifications}
+              onClick={markAllAsRead}
               className="text-xs h-6 px-2"
             >
-              Clear All
+              Mark all read
             </Button>
           )}
+          <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 border-blue-300 dark:border-blue-600">
+            {displayNotifications.length}/{maxDisplay}
+          </Badge>
         </div>
       </CardHeader>
       
       <CardContent>
-        <div className="space-y-3">
-          {/* No Notifications State */}
-          {notifications.length === 0 && (
-            <div className="text-center py-8 space-y-3">
-              <div className="text-4xl opacity-50">🔔</div>
-              <div className="text-sm text-muted-foreground">
-                No notifications yet
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                You&apos;ll receive live updates when you complete tasks and reach milestones!
-              </div>
+            ))}
+          </div>
+        ) : displayNotifications.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Bell className="h-8 w-8 text-blue-500" />
             </div>
-          )}
-
-          {/* Notification List */}
-          {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`
-                relative p-3 rounded-lg border transition-all duration-300 hover:shadow-sm
-                ${getPriorityColor(notification.priority)}
-                ${!notification.isRead ? 'ring-2 ring-blue-200 dark:ring-blue-700' : ''}
-              `}
-            >
-              {/* Unread indicator */}
-              {!notification.isRead && (
-                <div className="absolute top-2 right-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                </div>
-              )}
-
-              <div className="flex items-start gap-3">
-                {/* Notification Icon */}
-                <div className="flex-shrink-0 mt-0.5">
-                  {getNotificationIcon(notification.type)}
-                </div>
-
-                {/* Notification Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-medium text-sm truncate">
-                      {notification.title}
-                    </h4>
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${
-                        notification.priority === 'high' ? 'border-red-400 text-red-600 dark:text-red-400' :
-                        notification.priority === 'medium' ? 'border-yellow-400 text-yellow-600 dark:text-yellow-400' :
-                        'border-gray-400 text-gray-600 dark:text-gray-400'
-                      }`}
-                    >
-                      {notification.priority}
-                    </Badge>
-                  </div>
-                  
-                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                    {notification.message}
-                  </p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatTime(notification.timestamp)}</span>
+            <p className="text-sm text-muted-foreground">No notifications yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Complete tasks to start receiving updates!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {displayNotifications.map((notification) => {
+              const isCelebrating = celebratingNotifications.has(notification.id);
+              
+              return (
+                <div
+                  key={notification.id}
+                  ref={(el) => {
+                    if (el) {
+                      notificationRefs.current[notification.id] = el;
+                    }
+                  }}
+                  className={`
+                    relative p-3 rounded-lg border-2 cursor-pointer
+                    ${getNotificationStyle(notification)}
+                    ${!notification.isRead ? 'border-l-4 border-l-blue-500' : ''}
+                  `}
+                  onClick={() => !notification.isRead && markAsRead(notification.id)}
+                >
+                  {/* Celebration Sparkles */}
+                  {isCelebrating && (
+                    <div className="absolute -top-1 -right-1">
+                      <Sparkles className="h-5 w-5 text-yellow-500 animate-spin" />
                     </div>
-                    
-                    <div className="flex items-center gap-1">
-                      {notification.actionUrl && notification.actionText && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-6 px-2"
-                          onClick={() => {
-                            window.location.href = notification.actionUrl!;
-                            markAsRead(notification.id);
-                          }}
-                        >
-                          {notification.actionText}
-                        </Button>
-                      )}
+                  )}
+
+                  <div className="flex items-start gap-3">
+                    {/* Notification Icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getNotificationIcon(notification)}
+                    </div>
+
+                    {/* Notification Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-medium text-sm truncate">
+                          {notification.title}
+                        </h4>
+                        {getPriorityBadge(notification.priority)}
+                        {notification.points && (
+                          <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+                            <Star className="h-3 w-3 mr-1" />
+                            +{notification.points}
+                          </Badge>
+                        )}
+                      </div>
                       
-                      {!notification.isRead && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                          className="text-xs h-6 px-2"
-                        >
-                          <CheckCircle className="h-3 w-3" />
-                        </Button>
-                      )}
+                      <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                        {notification.message}
+                      </p>
                       
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeNotification(notification.id)}
-                        className="text-xs h-6 px-2 text-gray-400 hover:text-red-500"
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatTimestamp(notification.timestamp)}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {notification.actionUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(notification.actionUrl, '_blank');
+                              }}
+                            >
+                              {notification.actionText || 'View'}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeNotification(notification.id);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Celebration Level Indicator */}
+                  {notification.celebrationLevel && isCelebrating && (
+                    <div className="absolute bottom-1 left-1">
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          notification.celebrationLevel === 'legendary' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300' :
+                          notification.celebrationLevel === 'epic' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
+                          notification.celebrationLevel === 'rare' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                          'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
+                        }`}
                       >
-                        <X className="h-3 w-3" />
-                      </Button>
+                        {notification.celebrationLevel}
+                      </Badge>
                     </div>
-                  </div>
+                  )}
                 </div>
+              );
+            })}
+
+            {/* View All Button */}
+            {notifications.length > maxDisplay && (
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => console.log('View all notifications')}
+                >
+                  View All Notifications ({notifications.length})
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Button>
               </div>
-            </div>
-          ))}
-
-          {/* Mark All Read Button */}
-          {unreadCount > 1 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full flex items-center gap-2"
-              onClick={markAllAsRead}
-            >
-              <CheckCircle className="h-3 w-3" />
-              Mark All as Read ({unreadCount})
-            </Button>
-          )}
-
-          {/* Connection Status */}
-          {!isConnected && (
-            <div className="text-xs text-amber-600 dark:text-amber-400 text-center py-2">
-              ⚠️ Offline - New notifications will appear when reconnected
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

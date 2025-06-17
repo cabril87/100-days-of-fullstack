@@ -50,4 +50,9 @@ public interface IFamilyService
     // Enhanced family management
     Task<FamilyManagementPermissionsDTO> GetUserFamilyManagementPermissionsAsync(int userId, int? familyId = null);
     Task<UserFamilyRelationshipsDTO> GetUserFamilyRelationshipsAsync(int userId);
+    
+    // Primary family management
+    Task<FamilyDTO?> GetPrimaryFamilyAsync(int userId);
+    Task<FamilyDTO> SetPrimaryFamilyAsync(int userId, int familyId);
+    Task<bool> UpdatePrimaryFamilyAsync(int userId, int familyId);
 }

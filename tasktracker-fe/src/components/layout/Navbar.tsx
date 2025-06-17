@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { useTokenRefresh } from '@/lib/hooks/useTokenRefresh';
+import { useNotifications } from '@/lib/hooks/useNotifications';
 import React, { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,7 @@ const FocusModeIndicator = () => {
 export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownToggle, isSidebarOpen }: NavbarProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { customTheme, isAuthenticated: isThemeAuthenticated } = useTheme();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -155,7 +157,26 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
             <div className="hidden md:ml-6 md:flex md:items-center">
               {/* Public Page Navigation */}
               {navigationMode === 'public' && (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-6">
+                  {/* Public Navigation Links */}
+                  <nav className="hidden lg:flex items-center space-x-6">
+                    <Link href="/features" className="text-white hover:text-blue-400 transition-colors">
+                      Features
+                    </Link>
+                    <Link href="/pricing" className="text-white hover:text-blue-400 transition-colors">
+                      Pricing
+                    </Link>
+                    <Link href="/about" className="text-white hover:text-blue-400 transition-colors">
+                      About
+                    </Link>
+                    <Link href="/blog" className="text-white hover:text-blue-400 transition-colors">
+                      Blog
+                    </Link>
+                    <Link href="/contact" className="text-white hover:text-blue-400 transition-colors">
+                      Contact
+                    </Link>
+                  </nav>
+                  
                   <ThemeToggle />
                   {isAuthenticated && user && !isLoading ? (
                     /* Authenticated user on public page - show minimal auth info */
@@ -221,6 +242,27 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                   {/* Future components - commented out */}
                   {/* <GlobalSearch /> */}
                   <ThemeToggle />
+                  
+                  {/* Notification Icon with Badge */}
+                  <div className="relative">
+                    <Link href="/notifications">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="relative navbar-theme theme-transition hover:scale-105 text-white shadow-md bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                        title="Notifications"
+                      >
+                        <Bell className="h-[1.2rem] w-[1.2rem] text-white" />
+                        {/* Notification Badge */}
+                        {unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-white font-bold">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                          </div>
+                        )}
+                      </Button>
+                    </Link>
+                  </div>
+                  
                   {shouldShowSidebar && (
                     <Button
                       variant="ghost"
@@ -448,6 +490,21 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                       >
                         <Trophy className="w-5 h-5 mr-3 text-yellow-400" />
                         <span className="font-medium">Achievements</span>
+                      </Link>
+                      <Link 
+                        href="/notifications" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-blue-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Bell className="w-5 h-5 mr-3 text-blue-400" />
+                        <div className="flex items-center justify-between flex-1">
+                          <span className="font-medium">Notifications</span>
+                          {unreadCount > 0 && (
+                            <div className="w-5 h-5 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                              <span className="text-xs text-white font-bold">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                            </div>
+                          )}
+                        </div>
                       </Link>
                     </div>
                   </div>

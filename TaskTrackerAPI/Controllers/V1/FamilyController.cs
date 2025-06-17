@@ -690,5 +690,72 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiServerError<object>("An error occurred while leaving the family.");
             }
         }
+
+        // Primary family management endpoints
+        [HttpGet("primary")]
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> GetPrimaryFamily()
+        {
+            try
+            {
+                int userId = GetUserId();
+                FamilyDTO? primaryFamily = await _familyService.GetPrimaryFamilyAsync(userId);
+                
+                if (primaryFamily == null)
+                {
+                    return ApiNotFound<FamilyDTO>("No primary family found for user");
+                }
+
+                return ApiOk(primaryFamily);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting primary family for user {UserId}", GetUserId());
+                return ApiServerError<FamilyDTO>("An error occurred while retrieving primary family.");
+            }
+        }
+
+        [HttpPost("{familyId}/set-primary")]
+        public async Task<ActionResult<ApiResponse<FamilyDTO>>> SetPrimaryFamily(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                FamilyDTO primaryFamily = await _familyService.SetPrimaryFamilyAsync(userId, familyId);
+                
+                return ApiOk(primaryFamily, $"Successfully set '{primaryFamily.Name}' as primary family");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation when setting primary family {FamilyId} for user {UserId}", familyId, GetUserId());
+                return ApiBadRequest<FamilyDTO>(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting primary family {FamilyId} for user {UserId}", familyId, GetUserId());
+                return ApiServerError<FamilyDTO>("An error occurred while setting primary family.");
+            }
+        }
+
+        [HttpPut("primary/{familyId}")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdatePrimaryFamily(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                bool success = await _familyService.UpdatePrimaryFamilyAsync(userId, familyId);
+                
+                if (!success)
+                {
+                    return ApiBadRequest<object>("Failed to update primary family. You may not be a member of this family.");
+                }
+
+                return ApiOk<object>(new object(), "Primary family updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating primary family {FamilyId} for user {UserId}", familyId, GetUserId());
+                return ApiServerError<object>("An error occurred while updating primary family.");
+            }
+        }
     }
 } 

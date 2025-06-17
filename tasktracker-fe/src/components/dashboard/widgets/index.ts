@@ -12,5 +12,9 @@ export { FamilyActivityStream } from './FamilyActivityStream';
 export { StreakCounter } from './StreakCounter';
 export { NotificationStream } from './NotificationStream';
 
+// Enterprise Gamification Widgets
+export { FamilyLeaderboardWidget } from './FamilyLeaderboardWidget';
+export { FamilyGoalsWidget } from './FamilyGoalsWidget';
+
 // Widget type definitions for reuse
-export type { CelebrationEvent } from '@/lib/hooks/useGamificationEvents'; 
+export type { CelebrationEvent } from '@/lib/types/gamification'; 

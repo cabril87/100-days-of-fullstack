@@ -498,3 +498,42 @@ export interface FamilyWithMembers extends FamilyDTO {
   myRole: string;
   memberCount: number;
 } 
+
+// === PRIMARY FAMILY TYPES ===
+
+/**
+ * Primary family status response DTO
+ */
+export interface PrimaryFamilyStatusDTO {
+  hasPrimaryFamily: boolean;
+  primaryFamily: FamilyDTO | null;
+  allFamilies: FamilyDTO[];
+  canSetPrimary: boolean;
+}
+
+/**
+ * Set primary family request DTO
+ */
+export interface SetPrimaryFamilyRequest {
+  familyId: number;
+}
+
+/**
+ * Enhanced family list with primary family indication
+ */
+export interface UserFamilyWithPrimary extends FamilyDTO {
+  isPrimary: boolean;
+  memberRole: string;
+  joinedAt: string;
+  canSetAsPrimary: boolean;
+}
+
+/**
+ * Primary family change notification
+ */
+export interface PrimaryFamilyChangeNotification {
+  previousPrimaryFamily: FamilyDTO | null;
+  newPrimaryFamily: FamilyDTO;
+  timestamp: string;
+  reason: 'user_action' | 'family_left' | 'family_deleted' | 'auto_assignment';
+} 

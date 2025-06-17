@@ -1,7 +1,7 @@
 import { ProtectedPagePattern } from '@/lib/auth/auth-config';
 import { FamilyDTO, DashboardStats } from '@/lib/types';
 import { Task, TaskStats } from '@/lib/types/task';
-import Dashboard from '@/components/dashboard/Dashboard';
+import DashboardModeWrapper from '@/components/dashboard/DashboardModeWrapper';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
@@ -44,5 +44,5 @@ export default async function DashboardPage() {
   const initialData = { family, stats, recentTasks, taskStats };
 
   // Pass server-fetched data to client component
-  return <Dashboard user={session} initialData={initialData} />;
+  return <DashboardModeWrapper user={session} initialData={initialData} />;
 } 

@@ -590,7 +590,8 @@ export class TaskService {
    */
   async getEnhancedFamilyTaskStats(familyId: number): Promise<FamilyTaskStats> {
     try {
-      const result = await apiClient.get<ApiResponse<FamilyTaskStats>>(`/v1/family/${familyId}/tasks/stats`);
+      // Use the TaskItems statistics endpoint since family-specific stats endpoint doesn't exist
+      const result = await apiClient.get<ApiResponse<FamilyTaskStats>>(`/v1/taskitems/statistics`);
       return result?.data || {
         totalTasks: 0,
         completedTasks: 0,

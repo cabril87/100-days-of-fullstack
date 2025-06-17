@@ -15,44 +15,51 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trophy, Star, Sparkles, Calendar, ArrowRight } from 'lucide-react';
 import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
-
-interface RecentAchievementsProps {
-  userId: number;
-  className?: string;
-  maxDisplay?: number;
-}
+import { useGamificationEventsStub } from '@/lib/hooks/useGamificationEventsStub';
+import { RecentAchievementsProps } from '@/lib/types/widget-props';
 
 export function RecentAchievements({ 
   userId, 
-  className = '', 
-  maxDisplay = 5 
+  maxDisplay = 5, 
+  className = '',
+  isConnected: sharedIsConnected,
+  gamificationData: sharedGamificationData
 }: RecentAchievementsProps) {
+  // ✨ Use stub when shared data is provided to prevent duplicate connections
+  const shouldUseLocalData = sharedIsConnected === undefined;
+  const localGamificationData = shouldUseLocalData 
+    ? useGamificationEvents(userId) 
+    : useGamificationEventsStub();
+  const gamificationData = sharedGamificationData || localGamificationData;
+  
   const {
-    totalAchievements,
     recentAchievements,
+    totalAchievements,
     isLoading,
-    isConnected,
+    isConnected: localIsConnected,
     activeCelebrations
-  } = useGamificationEvents(userId);
+  } = gamificationData;
+
+  // ✨ Use shared connection status if provided
+  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localIsConnected;
 
   // Animation state for new achievements
   const [celebratingAchievements, setCelebratingAchievements] = useState<Set<number>>(new Set());
 
   // Handle new achievement celebrations
   useEffect(() => {
-    const newCelebrations = activeCelebrations.filter(c => c.type === 'achievement');
+    const achievementCelebrations = activeCelebrations.filter(c => c.type === 'achievement');
     
-    newCelebrations.forEach(celebration => {
-      // Extract achievement ID from message or use timestamp as fallback
-      const achievementId = celebration.timestamp.getTime();
+    achievementCelebrations.forEach(celebration => {
+      // Use timestamp as unique ID for animation
+      const celebrationId = celebration.timestamp.getTime();
+      setCelebratingAchievements(prev => new Set([...prev, celebrationId]));
       
-      setCelebratingAchievements(prev => new Set([...prev, achievementId]));
-      
-      // Remove celebration after animation
+      // Remove celebration animation after duration
       setTimeout(() => {
         setCelebratingAchievements(prev => {
           const newSet = new Set(prev);
-          newSet.delete(achievementId);
+          newSet.delete(celebrationId);
           return newSet;
         });
       }, 3000);
@@ -99,25 +106,37 @@ export function RecentAchievements({
   const displayAchievements = recentAchievements.slice(0, maxDisplay);
 
   return (
-    <Card className={`${className} transition-all duration-300 hover:shadow-lg`}>
+    <Card className={`${className} transition-all duration-300 hover:shadow-lg border-2 border-purple-200 dark:border-purple-700 bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 dark:from-purple-900/10 dark:via-blue-900/10 dark:to-indigo-900/10`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-yellow-500" />
+        <CardTitle className="text-sm font-medium flex items-center gap-2 text-purple-700 dark:text-purple-300">
+          <div className="p-1 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+            <Trophy className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          </div>
           Recent Achievements
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
-        <Badge variant="outline" className="text-xs">
-          {isLoading ? '...' : totalAchievements} Total
+        <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-300 dark:border-purple-600">
+          {totalAchievements || 0} Total
         </Badge>
       </CardHeader>
       
       <CardContent>
         <div className="space-y-3">
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && userId && (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600"></div>
+            </div>
+          )}
+
+          {/* No User State */}
+          {!userId && !isLoading && (
+            <div className="text-center py-8 space-y-3">
+              <div className="text-4xl opacity-50">👤</div>
+              <div className="text-sm text-muted-foreground">
+                Sign in to view achievements
+              </div>
             </div>
           )}
 
@@ -229,4 +248,4 @@ export function RecentAchievements({
       </CardContent>
     </Card>
   );
-} 
+}

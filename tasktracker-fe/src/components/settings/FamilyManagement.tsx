@@ -43,7 +43,9 @@ import {
   FamilyFormData,
   InvitationFormData,
   UserFamilyRelationships,
-  TransferOwnershipDTO
+  TransferOwnershipDTO,
+  UserFamilyWithPrimary,
+  PrimaryFamilyStatusDTO
 } from '@/lib/types/family-invitation';
 import { 
   familyCreateSchema,
@@ -53,6 +55,8 @@ import {
 } from '@/lib/schemas/family-invitation';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { SmartInvitationWizard } from '@/components/family/SmartInvitationWizard';
+import PrimaryFamilySelector from '@/components/family/PrimaryFamilySelector';
+import PrimaryFamilyBadge from '@/components/family/PrimaryFamilyBadge';
 import { FamilyManagementContentProps } from '@/lib/types/settings';
 
 // FamilyManagementContentProps is imported from lib/types/settings
@@ -103,6 +107,10 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
 
   // New state for enhanced family management
   const [familyRelationships, setFamilyRelationships] = useState<UserFamilyRelationships | null>(null);
+  
+  // Primary family state
+  const [primaryFamilyStatus, setPrimaryFamilyStatus] = useState<PrimaryFamilyStatusDTO | null>(null);
+  const [familiesWithPrimary, setFamiliesWithPrimary] = useState<UserFamilyWithPrimary[]>([]);
 
   // Forms
   const familyCreateForm = useForm<FamilyFormData>({
@@ -155,17 +163,51 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       );
       setAllFamilies(uniqueFamilies);
 
-      // Load current family (or first family if multiple) - handle 404 gracefully for new users
+      // Load primary family status and enhanced family data
+      let selectedFamily: FamilyDTO | null = null;
+      
+      try {
+        const [primaryStatus, familiesWithPrimary] = await Promise.all([
+          familyInvitationService.getPrimaryFamilyStatus(),
+          familyInvitationService.getAllFamiliesWithPrimary()
+        ]);
+        
+        setPrimaryFamilyStatus(primaryStatus);
+        setFamiliesWithPrimary(familiesWithPrimary);
+        
+        // Use primary family if available, otherwise fall back to current family logic
+        selectedFamily = primaryStatus.primaryFamily;
+        
+        if (!selectedFamily) {
+          // Try to get current family (fallback)
+          try {
+            selectedFamily = await familyInvitationService.getUserFamily();
+          } catch {
+            // Expected for new users who haven't created/joined a family yet
+            console.debug('User has no current family yet (normal for new users)');
+          }
+        }
+        
+        // Final fallback: use first available family
+        if (!selectedFamily && uniqueFamilies.length > 0) {
+          selectedFamily = uniqueFamilies[0];
+        }
+        
+        setFamilyData(selectedFamily);
+      } catch (error) {
+        console.error('Failed to load primary family data:', error);
+        
+        // Fallback to original logic
       let currentFamily: FamilyDTO | null = null;
       try {
         currentFamily = await familyInvitationService.getUserFamily();
       } catch {
-        // Expected for new users who haven't created/joined a family yet
         console.debug('User has no current family yet (normal for new users)');
       }
       
-      const selectedFamily = currentFamily || (uniqueFamilies.length > 0 ? uniqueFamilies[0] : null);
+        selectedFamily = currentFamily || (uniqueFamilies.length > 0 ? uniqueFamilies[0] : null);
       setFamilyData(selectedFamily);
+      }
 
       // Load age-based permissions from API
       await familyInvitationService.getFamilyManagementPermissions();
@@ -179,10 +221,10 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
         setFamilyRoles([]);
       }
 
-      if (currentFamily?.id) {
+      if (selectedFamily?.id) {
         try {
           // Load family members
-          const members = await familyInvitationService.getFamilyMembers(currentFamily.id);
+          const members = await familyInvitationService.getFamilyMembers(selectedFamily.id);
           setFamilyMembers(members);
 
           // Load pending invitations
@@ -195,7 +237,7 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
           }
 
           // Load family stats
-          const stats = await familyInvitationService.getFamilyStats(currentFamily.id);
+          const stats = await familyInvitationService.getFamilyStats(selectedFamily.id);
           setFamilyStats({
             memberCount: stats.memberCount,
             pendingInvitations: stats.pendingInvitations,
@@ -324,6 +366,31 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       setMessage({ 
         type: 'error', 
         text: error instanceof Error ? error.message : 'Failed to transfer ownership' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Set primary family handler
+  const handleSetPrimaryFamily = async (familyId: number) => {
+    setIsSubmitting(true);
+    setMessage(null);
+
+    try {
+      const primaryFamily = await familyInvitationService.setPrimaryFamily(familyId);
+      setMessage({ 
+        type: 'success', 
+        text: `Successfully set '${primaryFamily.name}' as your primary family!` 
+      });
+      
+      // Reload family data to reflect changes
+      await loadFamilyData();
+    } catch (error) {
+      console.error('Failed to set primary family:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error instanceof Error ? error.message : 'Failed to set primary family' 
       });
     } finally {
       setIsSubmitting(false);

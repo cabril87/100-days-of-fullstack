@@ -45,4 +45,9 @@ public interface IFamilyRepository
     // Family Ownership Transfer (Pass the Baton)
     Task<bool> TransferFamilyOwnershipAsync(int familyId, int currentOwnerId, int newOwnerId);
     Task<bool> CanUserManageFamilyBasedOnAgeAsync(int userId, int familyId);
+    
+    // Primary family management
+    Task<Family?> GetPrimaryFamilyAsync(int userId);
+    Task<bool> SetPrimaryFamilyAsync(int userId, int familyId);
+    Task<bool> UpdatePrimaryFamilyAsync(int userId, int familyId);
 } 

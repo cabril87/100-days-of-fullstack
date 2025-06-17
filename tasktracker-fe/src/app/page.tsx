@@ -1,4 +1,6 @@
 import { PublicPagePattern } from '@/lib/auth/auth-config';
+import { getCurrentStage, getStageConfig } from '@/lib/config/stage-config';
+import { StageLandingPage } from '@/components/landing/StageLandingPage';
 import { ArrowRight, CheckCircle, Users, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -12,7 +14,21 @@ export default async function HomePage() {
   // Allow access regardless of auth state
   await PublicPagePattern();
 
-  // Render public landing page
+  const stage = getCurrentStage();
+  const config = getStageConfig();
+
+  // Show stage-aware landing page for non-production stages or when coming soon is enabled
+  if (stage !== 'production' || config.showComingSoon) {
+    return (
+      <div>
+        <StageLandingPage stage={stage} />
+        {/* Cookie Consent Banner */}
+        <CookieConsentBanner />
+      </div>
+    );
+  }
+
+  // Render full production landing page
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}

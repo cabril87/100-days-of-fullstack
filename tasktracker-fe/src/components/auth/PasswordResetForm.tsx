@@ -365,8 +365,8 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
           <KeyRound className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold">Reset Your Password</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold text-white">Reset Your Password</h2>
+        <p className="text-gray-400">
           Enter your email address and we&apos;ll help you reset your password securely.
         </p>
         </div>
@@ -378,13 +378,14 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Address</FormLabel>
+                <FormLabel className="text-gray-300 font-medium">Email Address</FormLabel>
                 <FormControl>
                   <Input 
                     {...field} 
                     type="email"
                     placeholder="Enter your email address"
                     disabled={flowState.isLoading}
+                    className="bg-gray-700 border-gray-600 focus:border-blue-400 transition-colors text-white"
                   />
                 </FormControl>
                 <FormMessage />
@@ -406,13 +407,13 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                   name="securityQuestion"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Choose a security question</FormLabel>
+                      <FormLabel className="text-gray-300 font-medium">Choose a security question</FormLabel>
                       <FormControl>
                         <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-gray-700 border-gray-600 focus:border-blue-400 text-white">
                             <SelectValue placeholder="Select a security question" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-gray-800 border-gray-600">
                             {securityQuestions.map((question, index) => (
                               <SelectItem key={index} value={question}>
                                 {question}
@@ -432,12 +433,13 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                     name="securityAnswer"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Your answer</FormLabel>
+                        <FormLabel className="text-gray-300 font-medium">Your answer</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
                             placeholder="Enter your answer"
                             disabled={flowState.isLoading}
+                            className="bg-gray-700 border-gray-600 focus:border-blue-400 transition-colors text-white"
                           />
                         </FormControl>
                         <FormMessage />
@@ -450,9 +452,9 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
           )}
 
           {flowState.error && (
-            <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800 dark:text-red-200">
+            <Alert className="border-red-800 bg-red-950/20">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              <AlertDescription className="text-red-200">
                 {flowState.error}
               </AlertDescription>
             </Alert>
@@ -460,7 +462,7 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
           <Button 
             type="submit" 
-            className="w-full"
+            className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
             disabled={flowState.isLoading}
           >
             {flowState.isLoading ? (
@@ -487,15 +489,15 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto">
           <Mail className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold">Check Your Email</h2>
-        <p className="text-muted-foreground">
-          We&apos;ve sent a password reset link to <strong>{flowState.email}</strong>
+        <h2 className="text-2xl font-bold text-white">Check Your Email</h2>
+        <p className="text-gray-400">
+          We&apos;ve sent a password reset link to <strong className="text-white">{flowState.email}</strong>
         </p>
       </div>
 
-      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-        <Clock className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800 dark:text-blue-200">
+      <Alert className="border-blue-800 bg-blue-950/20">
+        <Clock className="h-4 w-4 text-blue-400" />
+        <AlertDescription className="text-blue-200">
           <div className="space-y-1">
             <div><strong>Next Steps:</strong></div>
             <div>1. Check your email inbox (and spam folder)</div>
@@ -543,8 +545,8 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto">
           <Lock className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-2xl font-bold">Create New Password</h2>
-        <p className="text-muted-foreground">
+        <h2 className="text-2xl font-bold text-white">Create New Password</h2>
+        <p className="text-gray-400">
           Choose a strong password that you haven&apos;t used before.
         </p>
       </div>
@@ -700,17 +702,83 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Main Password Reset Card */}
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-6 w-6 text-yellow-500" />
-              <div className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                TaskTracker
-              </div>
+    <div className="min-h-screen flex bg-gray-900">
+      {/* Left Side - Enterprise Gamification Content */}
+      <div className="hidden lg:flex lg:w-1/2  relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-32 left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse delay-700"></div>
+          <div className="absolute top-1/3 right-1/4 w-56 h-56 bg-indigo-300/15 rounded-full blur-2xl animate-bounce delay-300"></div>
+        </div>
+        
+        {/* Enterprise gamification decorative lines */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-60 animate-pulse delay-200"></div>
+          <div className="absolute top-1/2 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-300 to-transparent opacity-80 animate-pulse delay-800"></div>
+          <div className="absolute top-3/4 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-70 animate-pulse delay-1200"></div>
+          
+          {/* Vertical enterprise lines */}
+          <div className="absolute left-1/3 top-0 h-full w-0.5 bg-gradient-to-b from-transparent via-blue-300 to-transparent opacity-50 animate-pulse delay-900"></div>
+          <div className="absolute right-1/4 top-0 h-full w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse delay-400"></div>
+        </div>
+        
+        {/* Enterprise content overlay */}
+        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Key className="h-6 w-6 text-white" />
             </div>
+            <div className="text-2xl font-bold bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-transparent">
+              TaskTracker
+            </div>
+          </div>
+          
+          <h1 className="text-4xl xl:text-5xl font-black mb-6 leading-tight">
+            Secure Password <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
+              Recovery
+            </span>
+          </h1>
+          
+          <p className="text-xl text-blue-100 mb-8 leading-relaxed">
+            Enterprise-grade security for your family's digital safety and productivity journey.
+          </p>
+          
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse"></div>
+              <span className="text-blue-100">Multi-step verification</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-purple-300 rounded-full animate-pulse delay-200"></div>
+              <span className="text-blue-100">Breach detection security</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse delay-500"></div>
+              <span className="text-blue-100">Password strength validation</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse delay-700"></div>
+              <span className="text-blue-100">Secure token encryption</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side - Password Reset Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-900">
+        <div className="space-y-6 w-full max-w-md">
+          {/* Main Password Reset Card */}
+          <Card className="w-full bg-gray-800 border-gray-700 shadow-2xl">
+            <CardHeader className="space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-6 w-6 text-yellow-500" />
+                  <div className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Reset Portal
+                  </div>
+                </div>
             {onClose && (
               <Button variant="ghost" size="sm" onClick={onClose}>
                 ×
@@ -718,15 +786,15 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
             )}
           </div>
           
-          {/* Progress indicator */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Progress</span>
-              <span>{getStepProgress()}%</span>
+                      {/* Progress indicator */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm text-gray-400">
+                <span>Progress</span>
+                <span>{getStepProgress()}%</span>
+              </div>
+              <Progress value={getStepProgress()} className="h-2" />
             </div>
-            <Progress value={getStepProgress()} className="h-2" />
-          </div>
-        </CardHeader>
+          </CardHeader>
         
             <CardContent className="space-y-4">
           {flowState.step === 'request' && renderRequestStep()}
@@ -753,32 +821,34 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
             </Button>
           </div>
           
-          <div className="text-center text-xs text-muted-foreground">
+          <div className="text-center text-xs text-gray-400">
             <div className="flex items-center justify-center gap-1">
               <Shield className="h-3 w-3" />
               <span>Enhanced security with breach detection</span>
             </div>
           </div>
             </CardFooter>
-      </Card>
+        </Card>
 
-      {/* Enhanced Features Showcase */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-md mx-auto">
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-          <Shield className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-          <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Breach Detection</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-          <Key className="h-6 w-6 mx-auto mb-2 text-green-600" />
-          <div className="text-xs font-medium text-green-700 dark:text-green-300">Strength Validation</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-          <HelpCircle className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-          <div className="text-xs font-medium text-purple-700 dark:text-purple-300">Security Questions</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-          <Zap className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-          <div className="text-xs font-medium text-orange-700 dark:text-orange-300">Multi-Step Flow</div>
+          {/* Enhanced Features Showcase */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-blue-950 to-blue-900">
+              <Shield className="h-6 w-6 mx-auto mb-2 text-blue-400" />
+              <div className="text-xs font-medium text-blue-300">Breach Detection</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-green-950 to-green-900">
+              <Key className="h-6 w-6 mx-auto mb-2 text-green-400" />
+              <div className="text-xs font-medium text-green-300">Strength Validation</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-purple-950 to-purple-900">
+              <HelpCircle className="h-6 w-6 mx-auto mb-2 text-purple-400" />
+              <div className="text-xs font-medium text-purple-300">Security Questions</div>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-orange-950 to-orange-900">
+              <Zap className="h-6 w-6 mx-auto mb-2 text-orange-400" />
+              <div className="text-xs font-medium text-orange-300">Multi-Step Flow</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

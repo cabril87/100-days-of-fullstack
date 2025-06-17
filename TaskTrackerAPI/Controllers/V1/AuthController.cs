@@ -1053,6 +1053,47 @@ public class AuthController : BaseApiController
     }
 
     /// <summary>
+    /// Gets authentication headers for SignalR connections
+    /// </summary>
+    /// <returns>Dictionary of headers for authenticated requests</returns>
+    [HttpGet("headers")]
+    [Authorize]
+    public ActionResult<Dictionary<string, string>> GetAuthHeaders()
+    {
+        try
+        {
+            Dictionary<string, string> headers = new Dictionary<string, string>
+            {
+                { "Accept", "application/json" },
+                { "Content-Type", "application/json" }
+            };
+
+            // Add user ID if available
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                string? userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    headers["X-User-Id"] = userId;
+                }
+
+                string? username = User.FindFirstValue(ClaimTypes.Name);
+                if (!string.IsNullOrEmpty(username))
+                {
+                    headers["X-Username"] = username;
+                }
+            }
+
+            return Ok(headers);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating auth headers");
+            return StatusCode(500, new { message = "An error occurred while generating authentication headers." });
+        }
+    }
+
+    /// <summary>
     /// Test cookie authentication - Development only
     /// </summary>
     [HttpGet("cookie-test")]
@@ -1082,6 +1123,96 @@ public class AuthController : BaseApiController
             UserClaims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
         });
     }
+
+    #region Device Recognition Endpoints
+
+    /// <summary>
+    /// Check device recognition status based on device fingerprint
+    /// </summary>
+    [HttpPost("device-recognition")]
+    [AllowAnonymous]
+    public async Task<ActionResult> CheckDeviceRecognition([FromBody] DeviceRecognitionRequestDTO request)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            // Basic device recognition logic
+            // For now, we'll implement a simple heuristic-based approach
+            // In production, this could be enhanced with ML models or more sophisticated device tracking
+            
+            var deviceRecognition = new
+            {
+                isRecognized = false, // Default to not recognized for new implementation
+                deviceFingerprint = request.DeviceFingerprint,
+                lastSeenLocation = (string?)null,
+                lastSeenAt = (string?)null,
+                riskScore = CalculateRiskScore(request.DeviceFingerprint, ipAddress, userAgent),
+                requiresVerification = true
+            };
+
+            // Log device recognition check
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "DEVICE_RECOGNITION_CHECK",
+                action: "POST /api/auth/device-recognition",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                resource: "/api/auth/device-recognition",
+                severity: "INFO",
+                details: $"Device recognition check performed for fingerprint: {request.DeviceFingerprint.Substring(0, Math.Min(8, request.DeviceFingerprint.Length))}...",
+                isSuccessful: true,
+                isSuspicious: false
+            );
+
+            return Ok(deviceRecognition);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during device recognition check");
+            
+            // Return safe defaults on error
+            return Ok(new
+            {
+                isRecognized = false,
+                deviceFingerprint = request.DeviceFingerprint,
+                lastSeenLocation = (string?)null,
+                lastSeenAt = (string?)null,
+                riskScore = 50,
+                requiresVerification = true
+            });
+        }
+    }
+
+    /// <summary>
+    /// Calculate risk score based on device fingerprint and connection details
+    /// </summary>
+    private int CalculateRiskScore(string deviceFingerprint, string ipAddress, string userAgent)
+    {
+        int riskScore = 30; // Base risk score for new devices
+        
+        // Increase risk for certain patterns
+        if (string.IsNullOrWhiteSpace(deviceFingerprint) || deviceFingerprint.Length < 10)
+        {
+            riskScore += 20; // Suspicious or malformed fingerprint
+        }
+        
+        if (userAgent.Contains("bot", StringComparison.OrdinalIgnoreCase) || 
+            userAgent.Contains("crawler", StringComparison.OrdinalIgnoreCase))
+        {
+            riskScore += 30; // Bot or crawler
+        }
+        
+        if (ipAddress == "unknown" || ipAddress.StartsWith("127.") || ipAddress.StartsWith("::1"))
+        {
+            riskScore += 10; // Local or unknown IP
+        }
+        
+        // Cap the risk score
+        return Math.Min(riskScore, 100);
+    }
+
+    #endregion
 
     #region MFA Endpoints
 
@@ -1428,6 +1559,89 @@ public class AuthController : BaseApiController
         {
             _logger.LogError(ex, "Error getting MFA status");
             return StatusCode(500, new { message = "An error occurred while getting MFA status." });
+        }
+    }
+
+    #endregion
+
+    #region Account Unlock
+
+    /// <summary>
+    /// Requests account unlock via email verification
+    /// </summary>
+    /// <param name="request">Unlock request details</param>
+    /// <returns>Success response</returns>
+    [HttpPost("unlock-request")]
+    [AllowAnonymous]
+    public async Task<ActionResult> RequestAccountUnlock([FromBody] AccountUnlockRequestDTO request)
+    {
+        string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+        
+        try
+        {
+            if (string.IsNullOrEmpty(request.Email))
+            {
+                return BadRequest(new { message = "Email is required" });
+            }
+
+            if (string.IsNullOrEmpty(request.Method))
+            {
+                return BadRequest(new { message = "Unlock method is required" });
+            }
+
+            // Check if account is actually locked
+            bool isLockedOut = await _failedLoginService.IsAccountLockedAsync(request.Email);
+            if (!isLockedOut)
+            {
+                // Always return success to prevent email enumeration attacks
+                return Ok(new { message = "If your account is locked, an unlock email has been sent." });
+            }
+
+            // For email verification method, send unlock email
+            if (request.Method == "email_verification")
+            {
+                // Send unlock email using the password reset service (same infrastructure)
+                await _passwordResetService.SendPasswordResetEmailAsync(request.Email);
+                
+                // Log unlock request
+                await _securityMonitoringService.LogSecurityAuditAsync(
+                    eventType: "ACCOUNT_UNLOCK_REQUEST",
+                    action: "POST /api/auth/unlock-request",
+                    ipAddress: ipAddress,
+                    userAgent: userAgent,
+                    username: request.Email,
+                    resource: "/api/auth/unlock-request",
+                    severity: "INFO",
+                    details: $"Account unlock requested via {request.Method} for: {request.Email}",
+                    isSuccessful: true,
+                    isSuspicious: false
+                );
+            }
+            
+            // Always return success to prevent email enumeration attacks
+            return Ok(new { message = "If your account is locked, an unlock email has been sent." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing unlock request for {Email}", request.Email);
+            
+            // Log failed unlock request
+            await _securityMonitoringService.LogSecurityAuditAsync(
+                eventType: "ACCOUNT_UNLOCK_REQUEST_FAILED",
+                action: "POST /api/auth/unlock-request",
+                ipAddress: ipAddress,
+                userAgent: userAgent,
+                username: request.Email ?? "unknown",
+                resource: "/api/auth/unlock-request",
+                severity: "MEDIUM",
+                details: $"Failed unlock request: {ex.Message}",
+                isSuccessful: false,
+                isSuspicious: false
+            );
+            
+            // Always return success to prevent information disclosure
+            return Ok(new { message = "If your account is locked, an unlock email has been sent." });
         }
     }
 

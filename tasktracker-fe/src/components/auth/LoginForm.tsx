@@ -36,7 +36,9 @@ import {
   UserCheck,
   ShieldCheck,
   Globe,
-  Wifi
+  Wifi,
+  Star,
+  User
 } from 'lucide-react';
 
 // Enhanced Auth Types & Schemas
@@ -330,9 +332,9 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
   const DeviceRecognitionDisplay = () => {
     if (isCheckingDevice) {
       return (
-        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-          <Monitor className="h-4 w-4 text-blue-600 animate-pulse" />
-          <AlertDescription className="text-blue-800 dark:text-blue-200 flex items-center gap-2">
+        <Alert className="border-blue-800 bg-blue-950/50 shadow-lg">
+          <Monitor className="h-4 w-4 text-blue-400 animate-pulse" />
+          <AlertDescription className="text-blue-200 flex items-center gap-2">
             <RefreshCw className="h-3 w-3 animate-spin" />
             Analyzing device security...
           </AlertDescription>
@@ -342,31 +344,31 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
 
     if (deviceRecognition?.isRecognized) {
       return (
-        <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800 dark:text-green-200">
+        <Alert className="border-green-800 bg-green-950/50 shadow-lg">
+          <CheckCircle2 className="h-4 w-4 text-green-400" />
+          <AlertDescription className="text-green-200">
             <div className="flex items-center justify-between">
               <div>
-                <strong className="flex items-center gap-1">
-                  <UserCheck className="h-3 w-3" />
+                <strong className="flex items-center gap-2 text-base font-semibold">
+                  <UserCheck className="h-4 w-4" />
                   Trusted Device
                 </strong>
-                <div className="text-xs mt-1 flex items-center gap-2">
+                <div className="text-sm mt-2 flex items-center gap-3 font-medium">
                   {deviceRecognition.lastSeenLocation && (
                     <span className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
+                      <MapPin className="h-4 w-4" />
                       {deviceRecognition.lastSeenLocation}
                     </span>
                   )}
                   {deviceRecognition.lastSeenAt && (
                     <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-4 w-4" />
                       {new Date(deviceRecognition.lastSeenAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
               </div>
-              <Badge variant="outline" className="text-green-700">
+              <Badge variant="outline" className="text-green-300 border-green-600 bg-green-900/50 font-semibold">
                 Risk: {deviceRecognition.riskScore}/100
               </Badge>
             </div>
@@ -382,20 +384,20 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
         riskLevel === 'medium' ? 'amber' : 'blue';
 
       return (
-        <Alert className={`border-${riskColor}-200 bg-${riskColor}-50 dark:bg-${riskColor}-950/20`}>
-          <AlertTriangle className={`h-4 w-4 text-${riskColor}-600`} />
-          <AlertDescription className={`text-${riskColor}-800 dark:text-${riskColor}-200`}>
+        <Alert className={`border-${riskColor}-800 bg-${riskColor}-950/50 shadow-lg`}>
+          <AlertTriangle className={`h-4 w-4 text-${riskColor}-400`} />
+          <AlertDescription className={`text-${riskColor}-200`}>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="flex items-center gap-1">
-                  <Monitor className="h-3 w-3" />
+                <strong className="flex items-center gap-2 text-base font-semibold">
+                  <Monitor className="h-4 w-4" />
                   New Device Detected
                 </strong>
-                <div className="text-xs mt-1">
+                <div className="text-sm mt-2 font-medium">
                   Additional verification may be required for security.
                 </div>
               </div>
-              <Badge variant="outline" className={`text-${riskColor}-700`}>
+              <Badge variant="outline" className={`text-${riskColor}-300 border-${riskColor}-600 bg-${riskColor}-900/50 font-semibold`}>
                 Risk: {deviceRecognition.riskScore}/100
               </Badge>
             </div>
@@ -413,10 +415,10 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
 
     const getAlertStyle = (severity: string) => {
       switch (severity) {
-        case 'critical': return 'border-red-200 bg-red-50 dark:bg-red-950/20 text-red-800 dark:text-red-200';
-        case 'high': return 'border-orange-200 bg-orange-50 dark:bg-orange-950/20 text-orange-800 dark:text-orange-200';
-        case 'medium': return 'border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200';
-        default: return 'border-blue-200 bg-blue-50 dark:bg-blue-950/20 text-blue-800 dark:text-blue-200';
+        case 'critical': return 'border-red-800 bg-red-950/50 text-red-200 shadow-lg';
+        case 'high': return 'border-orange-800 bg-orange-950/50 text-orange-200 shadow-lg';
+        case 'medium': return 'border-amber-800 bg-amber-950/50 text-amber-200 shadow-lg';
+        default: return 'border-blue-800 bg-blue-950/50 text-blue-200 shadow-lg';
       }
     };
 
@@ -491,91 +493,168 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
     };
 
     return (
-      <div className="space-y-4">
-        <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <Lock className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800 dark:text-red-200">
-            <div className="space-y-2">
-              <div>
-                <strong>Account Temporarily Locked</strong>
-                <div className="text-sm mt-1">
-                  {getLockReasonText(lockoutInfo.lockReason)}
-                </div>
-              </div>
-
-              {lockoutInfo.lockExpiry && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Timer className="h-3 w-3" />
-                  <span>Unlocks in: {formatTime(lockoutInfo.lockExpiry)}</span>
-                </div>
-              )}
-
-              {lockoutInfo.attemptsRemaining > 0 && (
-                <div className="text-sm">
-                  Attempts remaining: {lockoutInfo.attemptsRemaining}
-                </div>
-              )}
+      <div className="space-y-6">
+        {/* Enhanced Security Alert */}
+        <Alert className="border-red-800 bg-red-950/50 shadow-xl">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-red-900/50 rounded-lg">
+              <Lock className="h-6 w-6 text-red-400" />
             </div>
-          </AlertDescription>
-        </Alert>
+            <AlertDescription className="text-red-200 flex-1">
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-lg font-bold text-red-100 mb-2">Account Temporarily Locked</h3>
+                  <p className="text-sm font-medium text-red-300">
+                    {getLockReasonText(lockoutInfo.lockReason)}
+                  </p>
+                </div>
 
-        {lockoutInfo.canUnlock && lockoutInfo.unlockMethods.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Unlock className="h-4 w-4" />
-                Unlock Your Account
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Choose a method to regain access to your account
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {lockoutInfo.unlockMethods
-                .filter(method => method.available)
-                .map((method, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {method.method === 'email_verification' && <Mail className="h-4 w-4 text-blue-600" />}
-                      {method.method === 'security_questions' && <HelpCircle className="h-4 w-4 text-green-600" />}
-                      {method.method === 'admin_approval' && <Shield className="h-4 w-4 text-purple-600" />}
-                      {method.method === 'time_based' && <Timer className="h-4 w-4 text-orange-600" />}
-
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                  {lockoutInfo.lockExpiry && (
+                    <div className="flex items-center gap-2 text-sm bg-red-900/30 rounded-lg p-3">
+                      <Timer className="h-4 w-4 text-red-400" />
                       <div>
-                        <div className="font-medium text-sm">{method.description}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Estimated time: {method.estimatedTime}
-                        </div>
+                        <div className="font-semibold text-red-200">Auto-unlock in:</div>
+                        <div className="text-red-300">{formatTime(lockoutInfo.lockExpiry)}</div>
                       </div>
                     </div>
+                  )}
 
-                    {method.method !== 'time_based' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUnlockRequest(method.method)}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? <RefreshCw className="h-3 w-3 animate-spin" /> : 'Request'}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {lockoutInfo.securityContact && (
-          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-            <Mail className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800 dark:text-blue-200">
-              <strong>Need Help?</strong>
-              <div className="text-sm mt-1">
-                Contact security support: {lockoutInfo.securityContact}
+                  {lockoutInfo.attemptsRemaining > 0 && (
+                    <div className="flex items-center gap-2 text-sm bg-red-900/30 rounded-lg p-3">
+                      <AlertTriangle className="h-4 w-4 text-orange-400" />
+                      <div>
+                        <div className="font-semibold text-red-200">Attempts left:</div>
+                        <div className="text-red-300">{lockoutInfo.attemptsRemaining}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </AlertDescription>
-          </Alert>
-        )}
+          </div>
+        </Alert>
+
+        {/* Enterprise Unlock Options */}
+        <Card className="bg-gray-800 border-gray-700 shadow-xl">
+          <CardHeader className="pb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                <Unlock className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold text-white">
+                Unlock Your Account
+              </CardTitle>
+            </div>
+            <CardDescription className="text-gray-400 text-base">
+              Choose a secure method to regain access to your family hub
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Primary Email Unlock Option */}
+            <div className="group relative overflow-hidden bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-2 border-blue-700/50 rounded-xl p-4 hover:border-blue-600 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <Mail className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-100 mb-1">Email Verification</h3>
+                    <p className="text-sm text-blue-300 font-medium">Send unlock code to your registered email</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-300 font-semibold">Recommended • 2-3 minutes</span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleUnlockRequest('email_verification')}
+                  disabled={isLoading}
+                  className="h-12 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span>Sending...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 group-hover:rotate-12 transition-transform duration-300" />
+                      <span>Send Code</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Other Unlock Methods */}
+            {lockoutInfo.canUnlock && lockoutInfo.unlockMethods.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-gray-400 font-medium">
+                  <div className="flex-1 h-px bg-gray-700"></div>
+                  <span>Other Options</span>
+                  <div className="flex-1 h-px bg-gray-700"></div>
+                </div>
+                {lockoutInfo.unlockMethods
+                  .filter(method => method.available && method.method !== 'email_verification')
+                  .map((method, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-gray-700/50 border border-gray-600 rounded-xl hover:bg-gray-700 transition-all duration-300">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-gray-600 rounded-lg">
+                          {method.method === 'security_questions' && <HelpCircle className="h-5 w-5 text-green-400" />}
+                          {method.method === 'admin_approval' && <Shield className="h-5 w-5 text-purple-400" />}
+                          {method.method === 'time_based' && <Timer className="h-5 w-5 text-orange-400" />}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-white text-base">{method.description}</div>
+                          <div className="text-sm text-gray-400 font-medium">
+                            Estimated time: {method.estimatedTime}
+                          </div>
+                        </div>
+                      </div>
+
+                      {method.method !== 'time_based' && (
+                        <Button
+                          variant="outline"
+                          onClick={() => handleUnlockRequest(method.method)}
+                          disabled={isLoading}
+                          className="h-10 px-4 border-gray-500 text-gray-300 hover:bg-gray-600 hover:text-white font-semibold rounded-lg transition-all duration-300"
+                        >
+                          {isLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Request'}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Enterprise Security Support */}
+        <Alert className="border-indigo-800 bg-indigo-950/50 shadow-xl">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-indigo-900/50 rounded-lg">
+              <HelpCircle className="h-5 w-5 text-indigo-400" />
+            </div>
+            <AlertDescription className="text-indigo-200 flex-1">
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-base font-bold text-indigo-100 mb-1">Need Additional Help?</h3>
+                  <p className="text-sm text-indigo-300 font-medium">
+                    Our security team is available 24/7 to assist with account recovery
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 bg-indigo-900/30 rounded-lg p-3">
+                  <Mail className="h-4 w-4 text-indigo-400" />
+                  <div>
+                    <div className="font-semibold text-indigo-200 text-sm">Security Support:</div>
+                    <div className="text-indigo-300 font-medium">{lockoutInfo.securityContact || 'security@tasktracker.com'}</div>
+                  </div>
+                </div>
+              </div>
+            </AlertDescription>
+          </div>
+        </Alert>
       </div>
     );
   };
@@ -641,259 +720,351 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Main Authentication Card */}
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Trophy className="h-8 w-8 text-yellow-500" />
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen flex bg-gray-900">
+      {/* Left Side - Enterprise Gamification Content */}
+      <div className="hidden lg:flex lg:w-1/2  relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-32 left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse delay-700"></div>
+          <div className="absolute top-1/3 right-1/4 w-56 h-56 bg-indigo-300/15 rounded-full blur-2xl animate-bounce delay-300"></div>
+        </div>
+
+        {/* Enterprise gamification decorative lines */}
+                  <div className="absolute inset-0">
+            <div className="absolute top-1/4 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-60 animate-pulse delay-200"></div>
+            <div className="absolute top-1/2 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-300 to-transparent opacity-80 animate-pulse delay-800"></div>
+            <div className="absolute top-3/4 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent opacity-70 animate-pulse delay-1200"></div>
+            
+            {/* Vertical enterprise lines */}
+            <div className="absolute left-1/3 top-0 h-full w-0.5 bg-gradient-to-b from-transparent via-purple-300 to-transparent opacity-50 animate-pulse delay-900"></div>
+            <div className="absolute right-1/4 top-0 h-full w-1 bg-gradient-to-b from-transparent via-blue-400 to-transparent opacity-60 animate-pulse delay-400"></div>
+          </div>
+
+        {/* Enterprise content overlay */}
+        <div className="relative z-10 flex flex-col justify-center px-12 text-white">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <Trophy className="h-6 w-6 text-white" />
+            </div>
+            <div className="text-2xl font-bold bg-gradient-to-r from-purple-200 to-blue-200 bg-clip-text text-transparent">
               TaskTracker
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your family task management account
-          </CardDescription>
-        </CardHeader>
 
-        <CardContent className="space-y-4">
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'unlock')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login" className="flex items-center gap-2">
-                <LogIn className="h-4 w-4" />
-                Sign In
-              </TabsTrigger>
-              <TabsTrigger value="unlock" disabled={!lockoutInfo} className="flex items-center gap-2">
-                <Unlock className="h-4 w-4" />
-                Unlock Account
-              </TabsTrigger>
-            </TabsList>
+                    <h1 className="text-4xl xl:text-5xl font-black mb-6 leading-tight">
+            Welcome Back to <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-200 to-blue-200">
+              Your Family Hub
+            </span>
+          </h1>
+          
+          <p className="text-xl text-purple-100 mb-8 leading-relaxed">
+            Continue your productivity journey with enterprise-grade family task management and gamification.
+          </p>
 
-            <TabsContent value="login" className="space-y-4">
-              {/* Device Recognition Status */}
-              {showDeviceRecognition && <DeviceRecognitionDisplay />}
+          {/* Enterprise gamification features */}
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-purple-300 rounded-full animate-pulse"></div>
+              <span className="text-purple-100">Advanced family collaboration</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-blue-300 rounded-full animate-pulse delay-200"></div>
+              <span className="text-purple-100">Enterprise gamification system</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-indigo-300 rounded-full animate-pulse delay-500"></div>
+              <span className="text-purple-100">Real-time achievement tracking</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-purple-300 rounded-full animate-pulse delay-700"></div>
+              <span className="text-purple-100">Secure family data protection</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-              {/* Security Alert */}
-              <SecurityAlertDisplay />
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-900">
+        <Card className="w-full max-w-lg bg-gray-800 border-gray-700 shadow-2xl">
+          <CardHeader className="text-center pb-8 pt-10 px-6">
+            {/* Sleek icon with glow effect */}
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/25 transform hover:scale-105 transition-all duration-300">
+                  <LogIn className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-500 rounded-2xl blur-xl opacity-30 -z-10"></div>
+              </div>
+            </div>
 
-              {/* Login Form */}
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="emailOrUsername"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email or Username</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="text"
-                            placeholder="Enter your email or username"
-                            autoComplete="username"
-                            disabled={isLoading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {/* Refined typography */}
+            <CardTitle className="text-3xl font-bold mb-3">
+              <span className="bg-gradient-to-r from-purple-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                Welcome Back
+              </span>
+            </CardTitle>
+            
+            <CardDescription className="text-gray-400 text-lg mb-6">
+              Continue your family productivity journey
+            </CardDescription>
 
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              {...field}
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="Enter your password"
-                              autoComplete="current-password"
-                              disabled={isLoading}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                handlePasswordChange(e.target.value);
-                              }}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                              onClick={() => setShowPassword(!showPassword)}
-                              disabled={isLoading}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
+            {/* Enterprise gamification badges */}
+            <div className="flex justify-center gap-3 mb-4">
+              <div className="group flex items-center gap-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Star className="h-4 w-4 text-amber-500 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="text-sm font-medium text-gray-300">Level Up</span>
+              </div>
+              <div className="group flex items-center gap-2 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-700/30 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Shield className="h-4 w-4 text-blue-500 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="text-sm font-medium text-gray-300">Secure</span>
+              </div>
+            </div>
+          </CardHeader>
 
-                        {/* Real-time password strength indicator */}
-                        {field.value && field.value.length > 0 && (
-                          <PasswordStrengthDisplay />
-                        )}
-                      </FormItem>
-                    )}
-                  />
+          <CardContent className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'unlock')}>
+              <TabsList className="grid w-full grid-cols-2 bg-gray-700">
+                <TabsTrigger value="login" className="flex items-center gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white">
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="unlock" disabled={!lockoutInfo} className="flex items-center gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white">
+                  <Unlock className="h-4 w-4" />
+                  Unlock Account
+                </TabsTrigger>
+              </TabsList>
 
-                  {/* Enhanced Device Options */}
-                  {showDeviceRecognition && (
-                    <div className="space-y-3">
-                      <Separator />
+              <TabsContent value="login" className="space-y-4">
+                {/* Device Recognition Status */}
+                {showDeviceRecognition && <DeviceRecognitionDisplay />}
 
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="trustDevice"
-                            checked={trustThisDevice}
-                            onCheckedChange={(checked) => {
-                              setTrustThisDevice(checked as boolean);
-                              form.setValue('trustDevice', checked as boolean);
-                            }}
-                            disabled={isLoading}
-                          />
-                          <label
-                            htmlFor="trustDevice"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                          >
-                            <ShieldCheck className="h-3 w-3" />
-                            Trust this device
-                          </label>
-                        </div>
+                {/* Security Alert */}
+                <SecurityAlertDisplay />
 
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="rememberDevice"
-                            checked={rememberThisDevice}
-                            onCheckedChange={(checked) => {
-                              setRememberThisDevice(checked as boolean);
-                              form.setValue('rememberDevice', checked as boolean);
-                            }}
-                            disabled={isLoading}
-                          />
-                          <label
-                            htmlFor="rememberDevice"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
-                          >
-                            <Monitor className="h-3 w-3" />
-                            Remember this device
-                          </label>
-                        </div>
-                      </div>
-
-                      {(trustThisDevice || rememberThisDevice) && (
-                        <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-                          <Wifi className="h-4 w-4 text-blue-600" />
-                          <AlertDescription className="text-blue-800 dark:text-blue-200 text-xs">
-                            Device settings will improve your login experience while maintaining security.
-                          </AlertDescription>
-                        </Alert>
+                {/* Login Form */}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="emailOrUsername"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-gray-300 font-semibold text-base flex items-center gap-3">
+                            <div className="p-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
+                              <User className="h-4 w-4 text-white" />
+                            </div>
+                            Email or Username
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <Input
+                                {...field}
+                                type="text"
+                                placeholder="Enter your email or username"
+                                autoComplete="username"
+                                disabled={isLoading}
+                                className="h-14 text-lg bg-gray-700 border-2 border-gray-600 focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl text-white font-medium group-hover:border-purple-300"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-red-400 text-sm font-medium" />
+                        </FormItem>
                       )}
-                    </div>
-                  )}
+                    />
 
-                  {/* Error Message */}
-                  {errorMessage && (
-                    <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20">
-                      <AlertTriangle className="h-4 w-4 text-red-600" />
-                      <AlertDescription className="text-red-800 dark:text-red-200">
-                        {errorMessage}
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-gray-300 font-semibold text-base flex items-center gap-3">
+                            <div className="p-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                              <Lock className="h-4 w-4 text-white" />
+                            </div>
+                            Password
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <Input
+                                {...field}
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Enter your password"
+                                autoComplete="current-password"
+                                disabled={isLoading}
+                                className="h-14 text-lg bg-gray-700 border-2 border-gray-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl pr-14 text-white font-medium group-hover:border-blue-300"
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  handlePasswordChange(e.target.value);
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 hover:bg-blue-900/50 rounded-lg transition-all duration-200 hover:scale-110"
+                                onClick={() => setShowPassword(!showPassword)}
+                                disabled={isLoading}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4 text-gray-400 hover:text-blue-400 transition-colors" />
+                                ) : (
+                                  <Eye className="h-4 w-4 text-gray-400 hover:text-blue-400 transition-colors" />
+                                )}
+                              </Button>
+                              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-red-400 text-sm font-medium" />
 
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading || isCheckingDevice}
-                  >
-                    {isLoading ? (
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <LogIn className="mr-2 h-4 w-4" />
+                          {/* Real-time password strength indicator */}
+                          {field.value && field.value.length > 0 && (
+                            <PasswordStrengthDisplay />
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Enhanced Device Options */}
+                    {showDeviceRecognition && (
+                      <div className="space-y-3">
+                        <Separator />
+
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="trustDevice"
+                              checked={trustThisDevice}
+                              onCheckedChange={(checked) => {
+                                setTrustThisDevice(checked as boolean);
+                                form.setValue('trustDevice', checked as boolean);
+                              }}
+                              disabled={isLoading}
+                            />
+                            <label
+                              htmlFor="trustDevice"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                            >
+                              <ShieldCheck className="h-3 w-3" />
+                              Trust this device
+                            </label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="rememberDevice"
+                              checked={rememberThisDevice}
+                              onCheckedChange={(checked) => {
+                                setRememberThisDevice(checked as boolean);
+                                form.setValue('rememberDevice', checked as boolean);
+                              }}
+                              disabled={isLoading}
+                            />
+                            <label
+                              htmlFor="rememberDevice"
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                            >
+                              <Monitor className="h-3 w-3" />
+                              Remember this device
+                            </label>
+                          </div>
+                        </div>
+
+                        {(trustThisDevice || rememberThisDevice) && (
+                          <Alert className="border-blue-700/30 bg-blue-950/20">
+                            <Wifi className="h-4 w-4 text-blue-400" />
+                            <AlertDescription className="text-blue-200 text-xs">
+                              Device settings will improve your login experience while maintaining security.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
                     )}
-                    {isLoading ? 'Signing In...' : 'Sign In'}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
 
-            <TabsContent value="unlock" className="space-y-4">
-              <AccountLockoutDisplay />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
+                    {/* Error Message */}
+                    {errorMessage && (
+                      <Alert className="border-red-800 bg-red-950/50 shadow-lg">
+                        <AlertTriangle className="h-4 w-4 text-red-400" />
+                        <AlertDescription className="text-red-200 font-medium text-sm">
+                          {errorMessage}
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="flex items-center justify-between w-full text-sm">
-            <Button variant="link" size="sm" asChild>
-              <Link href="/auth/forgot-password">
+                    <Button
+                      type="submit"
+                      className="w-full h-14 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold text-lg rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group"
+                      disabled={isLoading || isCheckingDevice}
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span className="font-semibold">Signing In...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <LogIn className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+                          <span className="font-semibold">Sign In</span>
+                        </div>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+
+              <TabsContent value="unlock" className="space-y-4">
+                <AccountLockoutDisplay />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+
+          <CardFooter className="flex flex-col space-y-4 pt-6">
+            <div className="flex items-center justify-between w-full text-sm">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
+              >
                 Forgot password?
               </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSecurityInfo(!showSecurityInfo)}
-            >
-              <Shield className="h-3 w-3 mr-1" />
-              Security Info
-            </Button>
-          </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSecurityInfo(!showSecurityInfo)}
+                className="text-gray-400 hover:text-gray-300"
+              >
+                <Shield className="h-3 w-3 mr-1" />
+                Security Info
+              </Button>
+            </div>
 
-          <div className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Button variant="link" size="sm" asChild>
-              <Link href="/auth/register">
-                Sign up
+            <div className="text-center text-sm text-gray-400">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/auth/register"
+                className="font-medium text-purple-400 hover:text-purple-300 hover:underline transition-colors"
+              >
+                Sign up for free
               </Link>
-            </Button>
-          </div>
+            </div>
 
-          {showSecurityInfo && (
-            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 mt-4">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 dark:text-blue-200 text-xs">
-                <div className="space-y-1">
-                  <div><strong>Enhanced Security Features:</strong></div>
-                  <div>• Device recognition and fingerprinting</div>
-                  <div>• Real-time security monitoring</div>
-                  <div>• Advanced password breach detection</div>
-                  <div>• Family-safe authentication controls</div>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardFooter>
-      </Card>
-
-      {/* Enhanced Features Showcase */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-md mx-auto">
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-          <Shield className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-          <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Enhanced Security</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-          <Monitor className="h-6 w-6 mx-auto mb-2 text-green-600" />
-          <div className="text-xs font-medium text-green-700 dark:text-green-300">Device Trust</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-          <Sparkles className="h-6 w-6 mx-auto mb-2 text-purple-600" />
-          <div className="text-xs font-medium text-purple-700 dark:text-purple-300">Smart Login</div>
-        </div>
-        <div className="text-center p-3 rounded-lg bg-gradient-to-b from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-          <Trophy className="h-6 w-6 mx-auto mb-2 text-orange-600" />
-          <div className="text-xs font-medium text-orange-700 dark:text-orange-300">Family Safe</div>
-        </div>
+            {showSecurityInfo && (
+              <Alert className="border-purple-200 bg-purple-50 dark:bg-purple-950/20 mt-4">
+                <Shield className="h-4 w-4 text-purple-600" />
+                <AlertDescription className="text-purple-800 dark:text-purple-200 text-xs">
+                  <div className="space-y-1">
+                    <div><strong>Enhanced Security Features:</strong></div>
+                    <div>• Device recognition and fingerprinting</div>
+                    <div>• Real-time security monitoring</div>
+                    <div>• Advanced password breach detection</div>
+                    <div>• Family-safe authentication controls</div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardFooter>
+        </Card>
       </div>
     </div>
   );

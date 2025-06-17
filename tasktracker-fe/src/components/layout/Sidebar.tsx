@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/providers/AuthProvider';
+import { useNotifications } from '@/lib/hooks/useNotifications';
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +17,7 @@ interface SidebarProps {
 
 export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const router = useRouter();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -24,6 +26,7 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
     families: true,
     family: true,
     gamification: true,
+    notifications: true,
     admin: true,
     customerSupport: true,
     templates: true,
@@ -367,13 +370,20 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
 
                   <Link
                     href="/settings/notifications"
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActiveLink('/settings/notifications')
                         ? 'bg-yellow-500/20 border-l-4 border-yellow-400 text-yellow-700 dark:text-yellow-300'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >
-                    🔔 Notifications
+                    <span className="flex items-center gap-3">
+                      🔔 Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 rounded-full">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
 
                   <Link
@@ -431,6 +441,52 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                     }`}
                   >
                     🎮 Gamification Hub
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Notifications Section */}
+            <div>
+              <button
+                onClick={() => toggleSection('notifications')}
+                className="flex items-center justify-between w-full text-left text-sm font-bold mb-3 transition-colors text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              >
+                <span className="flex items-center gap-2">
+                  🔔 Notifications
+                  {unreadCount > 0 && (
+                    <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 rounded-full animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </span>
+                <svg
+                  className={`w-4 h-4 transform transition-transform ${expandedSections.notifications ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {expandedSections.notifications && (
+                <div className="space-y-1 ml-4">
+                  <Link
+                    href="/notifications"
+                    className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/notifications')
+                        ? 'bg-blue-500/20 border-l-4 border-blue-400 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      🔔 All Notifications
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 rounded-full">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 </div>
               )}

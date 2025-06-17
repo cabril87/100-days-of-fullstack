@@ -18,7 +18,11 @@ import {
   SmartInvitationRequest,
   InvitationValidationResult,
   FamilyRelationshipType,
-  getRelationshipDisplayName
+  getRelationshipDisplayName,
+  PrimaryFamilyStatusDTO,
+  SetPrimaryFamilyRequest,
+  UserFamilyWithPrimary,
+  PrimaryFamilyChangeNotification
 } from '../types/family-invitation';
 import { FamilyMemberAgeGroup } from '../types/auth';
 import { apiClient } from '../config/api-client';
@@ -1069,6 +1073,149 @@ export class FamilyInvitationService {
         maxFamilySize: 10,
         familySizeWarning: undefined
         };
+    }
+  }
+
+  // === PRIMARY FAMILY OPERATIONS ===
+
+  /**
+   * Get user's primary family
+   */
+  async getPrimaryFamily(): Promise<FamilyDTO | null> {
+    try {
+      return await apiClient.get<FamilyDTO>('/v1/family/primary');
+    } catch (error: any) {
+      if (error?.status === 404) {
+        // No primary family set - this is normal
+        console.debug('User has no primary family set yet');
+        return null;
+      }
+      console.error('Failed to fetch primary family:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set primary family for current user
+   */
+  async setPrimaryFamily(familyId: number): Promise<FamilyDTO> {
+    try {
+      const result = await apiClient.post<FamilyDTO>(`/v1/family/${familyId}/set-primary`);
+      console.log(`Successfully set family ${familyId} as primary family`);
+      return result;
+    } catch (error) {
+      console.error('Failed to set primary family:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update primary family for current user
+   */
+  async updatePrimaryFamily(familyId: number): Promise<boolean> {
+    try {
+      await apiClient.put<void>(`/v1/family/primary/${familyId}`);
+      console.log(`Successfully updated primary family to ${familyId}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to update primary family:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get all families with primary family indication
+   */
+  async getAllFamiliesWithPrimary(): Promise<UserFamilyWithPrimary[]> {
+    try {
+      const [allFamilies, primaryFamily] = await Promise.all([
+        this.getAllFamilies(),
+        this.getPrimaryFamily()
+      ]);
+
+      return allFamilies.map(family => ({
+        ...family,
+        isPrimary: primaryFamily?.id === family.id,
+        memberRole: 'Member', // TODO: Get actual role from family members
+        joinedAt: family.createdAt, // TODO: Get actual join date
+        canSetAsPrimary: true // TODO: Add actual permission check
+      }));
+    } catch (error) {
+      console.error('Failed to fetch families with primary indication:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get primary family status for current user
+   */
+  async getPrimaryFamilyStatus(): Promise<PrimaryFamilyStatusDTO> {
+    try {
+      const [primaryFamily, allFamilies] = await Promise.all([
+        this.getPrimaryFamily(),
+        this.getAllFamilies()
+      ]);
+
+      return {
+        hasPrimaryFamily: primaryFamily !== null,
+        primaryFamily,
+        allFamilies,
+        canSetPrimary: allFamilies.length > 0
+      };
+    } catch (error) {
+      console.error('Failed to get primary family status:', error);
+      return {
+        hasPrimaryFamily: false,
+        primaryFamily: null,
+        allFamilies: [],
+        canSetPrimary: false
+      };
+    }
+  }
+
+  /**
+   * Auto-assign primary family if user has only one family and no primary set
+   */
+  async autoAssignPrimaryFamily(): Promise<FamilyDTO | null> {
+    try {
+      const status = await this.getPrimaryFamilyStatus();
+      
+      // If no primary family and exactly one family, auto-assign it
+      if (!status.hasPrimaryFamily && status.allFamilies.length === 1) {
+        const family = status.allFamilies[0];
+        console.log(`Auto-assigning primary family: ${family.name} (ID: ${family.id})`);
+        return await this.setPrimaryFamily(family.id);
+      }
+
+      return status.primaryFamily;
+    } catch (error) {
+      console.error('Failed to auto-assign primary family:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current family (enhanced to use primary family logic)
+   */
+  async getCurrentFamilyEnhanced(): Promise<FamilyDTO | null> {
+    try {
+      // Try to get primary family first
+      let family = await this.getPrimaryFamily();
+      
+      // If no primary family, try auto-assignment
+      if (!family) {
+        family = await this.autoAssignPrimaryFamily();
+      }
+      
+      // Fall back to original getCurrentFamily method
+      if (!family) {
+        family = await this.getCurrentFamily();
+      }
+
+      return family;
+    } catch (error) {
+      console.error('Failed to get current family (enhanced):', error);
+      return null;
     }
   }
 }

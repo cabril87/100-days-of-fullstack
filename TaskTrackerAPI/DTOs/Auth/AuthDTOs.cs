@@ -597,4 +597,43 @@ namespace TaskTrackerAPI.DTOs.Auth
         /// </summary>
         public DateTime CreatedAt { get; set; }
     }
+
+    /// <summary>
+    /// DTO for device recognition request
+    /// </summary>
+    public class DeviceRecognitionRequestDTO
+    {
+        /// <summary>
+        /// Device fingerprint for recognition
+        /// </summary>
+        [Required]
+        [StringLength(255, ErrorMessage = "Device fingerprint cannot exceed 255 characters")]
+        public string DeviceFingerprint { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// DTO for account unlock request
+    /// </summary>
+    public class AccountUnlockRequestDTO
+    {
+        /// <summary>
+        /// Email address of the locked account
+        /// </summary>
+        [Required]
+        [EmailAddress]
+        [StringLength(100, ErrorMessage = "Email cannot exceed 100 characters")]
+        public string Email { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Unlock method (e.g., "email_verification", "security_questions")
+        /// </summary>
+        [Required]
+        [StringLength(50, ErrorMessage = "Method cannot exceed 50 characters")]
+        public string Method { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Additional data for specific unlock methods
+        /// </summary>
+        public Dictionary<string, object>? AdditionalData { get; set; }
+    }
 } 

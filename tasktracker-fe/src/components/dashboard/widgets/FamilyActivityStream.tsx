@@ -11,92 +11,34 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { 
   Users, 
   CheckCircle, 
   Trophy, 
-  Star, 
-  Clock, 
   UserPlus, 
+  Zap, 
+  Star, 
   Target,
-  Zap,
-  ArrowRight
+  Clock,
+  ExternalLink
 } from 'lucide-react';
-import { useMainHubConnection } from '@/lib/hooks/useSignalRConnection';
+import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
+import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectionManagerStub';
 import { FamilyActivityItem } from '@/lib/types/celebrations';
-
-interface FamilyActivityStreamProps {
-  userId: number;
-  familyId?: number;
-  className?: string;
-  maxDisplay?: number;
-}
+import { FamilyActivityStreamProps } from '@/lib/types/widget-props';
 
 export function FamilyActivityStream({ 
   userId, 
   familyId, 
-  className = '', 
-  maxDisplay = 8 
+  maxDisplay = 5, 
+  className = '',
+  isConnected: sharedIsConnected
 }: FamilyActivityStreamProps) {
   const [activities, setActivities] = useState<FamilyActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Connect to SignalR for real-time updates
-  const { isConnected } = useMainHubConnection({
-    onTaskCompleted: (event) => {
-      addActivity({
-        type: 'task_completed',
-        userId: event.userId,
-        userName: 'Family Member', // Will be populated from API
-        title: 'Task Completed',
-        description: `Completed a task and earned ${event.pointsEarned} points`,
-        points: event.pointsEarned,
-        timestamp: new Date(event.timestamp)
-      });
-    },
-    
-    onAchievementUnlocked: (event) => {
-      addActivity({
-        type: 'achievement_unlocked',
-        userId: event.userId,
-        userName: 'Family Member',
-        title: 'Achievement Unlocked!',
-        description: `Unlocked "${event.achievementName}"`,
-        points: event.points,
-        timestamp: new Date(event.timestamp)
-      });
-    },
-    
-    onPointsEarned: (event) => {
-      if (event.points >= 20) { // Only show significant point gains
-        addActivity({
-          type: 'points_earned',
-          userId: event.userId,
-          userName: 'Family Member',
-          title: 'Points Earned',
-          description: event.reason,
-          points: event.points,
-          timestamp: new Date(event.timestamp)
-        });
-      }
-    },
-    
-    onStreakUpdated: (event) => {
-      if (event.isNewRecord || event.currentStreak % 7 === 0) {
-        addActivity({
-          type: 'streak_updated',
-          userId: event.userId,
-          userName: 'Family Member',
-          title: event.isNewRecord ? 'New Streak Record!' : 'Streak Milestone',
-          description: `${event.currentStreak} day productivity streak!`,
-          timestamp: new Date(event.timestamp)
-        });
-      }
-    }
-  });
 
   // Add new activity to the feed
   const addActivity = useCallback((newActivity: Omit<FamilyActivityItem, 'id'>) => {
@@ -110,6 +52,48 @@ export function FamilyActivityStream({
     setActivities(prev => [activity, ...prev.slice(0, maxDisplay - 1)]);
   }, [maxDisplay]);
 
+  // ✨ Use stub when shared connection is provided to prevent duplicate connections
+  const shouldUseLocalConnection = sharedIsConnected === undefined;
+  const localConnection = shouldUseLocalConnection 
+    ? useSignalRConnectionManager('family-activity-stream', {
+        onTaskCompleted: (event: any) => {
+          addActivity({
+            type: 'task_completed',
+            userId: event.userId,
+            userName: `User ${event.userId}`, // Use user ID since userName is not available
+            title: 'Task Completed',
+            description: `Completed a task and earned ${event.pointsEarned} points`,
+            points: event.pointsEarned,
+            timestamp: new Date(event.timestamp)
+          });
+        },
+        onAchievementUnlocked: (event: any) => {
+          addActivity({
+            type: 'achievement_unlocked',
+            userId: event.userId,
+            userName: `User ${event.userId}`, // Use user ID since userName is not available
+            title: 'Achievement Unlocked',
+            description: `Unlocked "${event.achievementName}" achievement`,
+            points: event.points,
+            timestamp: new Date(event.timestamp)
+          });
+        },
+        onPointsEarned: (event: any) => {
+          addActivity({
+            type: 'points_earned',
+            userId: event.userId,
+            userName: `User ${event.userId}`,
+            title: 'Points Earned',
+            description: `Earned ${event.points} points for ${event.reason}`,
+            points: event.points,
+            timestamp: new Date(event.timestamp)
+          });
+        }
+      })
+    : useSignalRConnectionManagerStub();
+  
+  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localConnection.isConnected;
+
   // Load initial family activity
   useEffect(() => {
     const loadFamilyActivity = async () => {
@@ -119,16 +103,21 @@ export function FamilyActivityStream({
       }
 
       try {
-        // Fetch recent family activity from API
-        const response = await fetch(`/api/v1/families/${familyId}/activity`, {
+        // Fetch recent family activity from API (correct route)
+        const response = await fetch(`http://localhost:5000/api/v1/activity/family/${familyId}/recent`, {
           credentials: 'include'
         });
 
         if (response.ok) {
           const activityData = await response.json();
+          console.log('✅ FamilyActivityStream: Raw API response:', activityData);
           
-          // Transform API data to our format
-          const transformedActivities: FamilyActivityItem[] = activityData.map((item: { id?: string; activityType?: string; userId: number; userName?: string; userAvatar?: string; title?: string; description?: string; points?: number; timestamp?: string; familyId?: number }) => ({
+          // Handle different response formats - ensure we have an array
+          const activityArray = Array.isArray(activityData) 
+            ? activityData 
+            : activityData?.result || activityData?.data || [];
+          
+          const transformedActivities: FamilyActivityItem[] = activityArray.map((item: { id?: string; activityType?: string; userId: number; userName?: string; userAvatar?: string; title?: string; description?: string; points?: number; timestamp?: string; familyId?: number }) => ({
             id: item.id || `activity-${Date.now()}-${Math.random()}`,
             type: item.activityType || 'task_completed',
             userId: item.userId,
@@ -151,7 +140,7 @@ export function FamilyActivityStream({
           {
             id: 'sample-1',
             type: 'achievement_unlocked',
-            userId: userId,
+            userId: userId || 0,
             userName: 'You',
             title: 'Achievement Unlocked!',
             description: 'Early Bird - Complete tasks before 9 AM',
@@ -161,7 +150,7 @@ export function FamilyActivityStream({
           {
             id: 'sample-2',
             type: 'task_completed',
-            userId: userId + 1,
+            userId: (userId || 0) + 1,
             userName: 'Family Member',
             title: 'Task Completed',
             description: 'Finished homework and earned points',
@@ -224,19 +213,19 @@ export function FamilyActivityStream({
   };
 
   return (
-    <Card className={`${className} transition-all duration-300 hover:shadow-lg`}>
+    <Card className={`${className} transition-all duration-300 hover:shadow-lg border-2 border-green-200 dark:border-green-700 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 dark:from-green-900/10 dark:via-emerald-900/10 dark:to-teal-900/10`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Users className="h-4 w-4 text-blue-500" />
+        <CardTitle className="text-sm font-medium flex items-center gap-2 text-green-700 dark:text-green-300">
+          <div className="p-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+            <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </div>
           Family Activity
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
-        {familyId && (
-          <Badge variant="outline" className="text-xs">
-            Live Feed
-          </Badge>
-        )}
+        <Badge variant="outline" className="text-xs bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300 border-green-300 dark:border-green-600">
+          Live Feed
+        </Badge>
       </CardHeader>
       
       <CardContent>
@@ -332,7 +321,7 @@ export function FamilyActivityStream({
               }}
             >
               View Full Family Activity
-              <ArrowRight className="h-3 w-3" />
+              <ExternalLink className="h-3 w-3" />
             </Button>
           )}
 

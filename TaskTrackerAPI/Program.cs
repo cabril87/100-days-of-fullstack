@@ -497,17 +497,30 @@ public class Program
                 // Add events for additional security checks and SignalR support
                 options.Events = new JwtBearerEvents
                 {
-                    // Handle SignalR authentication - extract token from query parameters
+                    // Handle SignalR authentication - extract token from query parameters OR cookies
                     OnMessageReceived = context =>
                     {
-                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
 
                         // If the request is for our SignalR hub...
-                        var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        if (path.StartsWithSegments("/hubs"))
+                        {
+                            // First try to get token from query string (JWT-based auth)
+                            var accessToken = context.Request.Query["access_token"];
+                            
+                            if (!string.IsNullOrEmpty(accessToken))
                         {
                             // Read the token out of the query string
                             context.Token = accessToken;
+                            }
+                            else
+                            {
+                                // Fall back to cookie-based auth for SignalR
+                                if (context.Request.Cookies.TryGetValue("access_token", out string? cookieToken) && !string.IsNullOrEmpty(cookieToken))
+                                {
+                                    context.Token = cookieToken;
+                                }
+                            }
                         }
                         return Task.CompletedTask;
                     },

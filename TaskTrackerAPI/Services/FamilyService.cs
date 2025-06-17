@@ -661,4 +661,79 @@ public class FamilyService : IFamilyService
                 };
         }
     }
+
+    // Primary family management
+    public async Task<FamilyDTO?> GetPrimaryFamilyAsync(int userId)
+    {
+        try
+        {
+            Family? primaryFamily = await _familyRepository.GetPrimaryFamilyAsync(userId);
+            return primaryFamily != null ? _mapper.Map<FamilyDTO>(primaryFamily) : null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting primary family for user {UserId}", userId);
+            return null;
+        }
+    }
+
+    public async Task<FamilyDTO> SetPrimaryFamilyAsync(int userId, int familyId)
+    {
+        try
+        {
+            // Validate that the user can set this family as primary
+            if (!await IsFamilyMemberAsync(familyId, userId))
+            {
+                throw new InvalidOperationException($"User {userId} is not a member of family {familyId}");
+            }
+
+            // Set the primary family
+            bool success = await _familyRepository.SetPrimaryFamilyAsync(userId, familyId);
+            if (!success)
+            {
+                throw new InvalidOperationException($"Failed to set primary family {familyId} for user {userId}");
+            }
+
+            // Return the newly set primary family
+            Family? family = await _familyRepository.GetByIdAsync(familyId);
+            if (family == null)
+            {
+                throw new InvalidOperationException($"Family {familyId} not found after setting as primary");
+            }
+
+            _logger.LogInformation("Successfully set primary family {FamilyId} for user {UserId}", familyId, userId);
+            return _mapper.Map<FamilyDTO>(family);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting primary family {FamilyId} for user {UserId}", familyId, userId);
+            throw;
+        }
+    }
+
+    public async Task<bool> UpdatePrimaryFamilyAsync(int userId, int familyId)
+    {
+        try
+        {
+            // Validate that the user can update to this family as primary
+            if (!await IsFamilyMemberAsync(familyId, userId))
+            {
+                _logger.LogWarning("User {UserId} attempted to set primary family {FamilyId} but is not a member", userId, familyId);
+                return false;
+            }
+
+            bool success = await _familyRepository.UpdatePrimaryFamilyAsync(userId, familyId);
+            if (success)
+            {
+                _logger.LogInformation("Successfully updated primary family to {FamilyId} for user {UserId}", familyId, userId);
+            }
+            
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating primary family {FamilyId} for user {UserId}", familyId, userId);
+            return false;
+        }
+    }
 }

@@ -9,7 +9,7 @@
 
 // Base API configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
   VERSION: 'v1', // Note: v1 may not be needed for hubs in the future
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,

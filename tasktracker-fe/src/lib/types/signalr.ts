@@ -58,17 +58,22 @@ export interface AchievementUnlockedEvent extends GamificationEvent {
   achievementName: string;
   achievementId: number;
   points: number;
+  category: string;
+  difficulty: 'VeryEasy' | 'Easy' | 'Medium' | 'Hard' | 'VeryHard';
 }
 
 export interface LevelUpEvent extends GamificationEvent {
   eventType: 'LevelUp';
+  previousLevel: number;
   newLevel: number;
-  oldLevel: number;
+  pointsRequired: number;
+  bonusPoints?: number;
 }
 
 export interface StreakUpdatedEvent extends GamificationEvent {
   eventType: 'StreakUpdated';
   currentStreak: number;
+  previousStreak: number;
   isNewRecord: boolean;
 }
 
@@ -76,7 +81,8 @@ export interface BadgeEarnedEvent extends GamificationEvent {
   eventType: 'BadgeEarned';
   badgeName: string;
   badgeId: number;
-  rarity: string;
+  rarity: 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+  points: number;
 }
 
 export interface ChallengeProgressEvent extends GamificationEvent {

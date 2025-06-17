@@ -472,4 +472,66 @@ public class FamilyRepository : IFamilyRepository
                 return false;
         }
     }
+
+    // Primary family management
+    public async Task<Family?> GetPrimaryFamilyAsync(int userId)
+    {
+        try
+        {
+            User? user = await _context.Users
+                .Include(u => u.PrimaryFamily)
+                    .ThenInclude(f => f.Members)
+                        .ThenInclude(m => m.Role)
+                            .ThenInclude(r => r.Permissions)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            return user?.PrimaryFamily;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting primary family for user {UserId}", userId);
+            return null;
+        }
+    }
+
+    public async Task<bool> SetPrimaryFamilyAsync(int userId, int familyId)
+    {
+        try
+        {
+            // Verify user exists
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found when setting primary family", userId);
+                return false;
+            }
+
+            // Verify family exists and user is a member
+            var isMember = await IsMemberAsync(familyId, userId);
+            if (!isMember)
+            {
+                _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", userId, familyId);
+                return false;
+            }
+
+            // Update user's primary family
+            user.PrimaryFamilyId = familyId;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully set primary family {FamilyId} for user {UserId}", familyId, userId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting primary family {FamilyId} for user {UserId}", familyId, userId);
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdatePrimaryFamilyAsync(int userId, int familyId)
+    {
+        // For this implementation, UpdatePrimaryFamily is the same as SetPrimaryFamily
+        // Could be enhanced in the future to include additional validation or logic
+        return await SetPrimaryFamilyAsync(userId, familyId);
+    }
 }

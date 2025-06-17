@@ -14,20 +14,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Flame, Target, Zap } from 'lucide-react';
+import { Flame, Target, TrendingUp, Calendar, Clock, Award } from 'lucide-react';
 import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
+import { useGamificationEventsStub } from '@/lib/hooks/useGamificationEventsStub';
+import { StreakCounterProps } from '@/lib/types/widget-props';
 
-interface StreakCounterProps {
-  userId: number;
-  className?: string;
-}
-
-export function StreakCounter({ userId, className = '' }: StreakCounterProps) {
+export function StreakCounter({ 
+  userId, 
+  className = '',
+  isConnected: sharedIsConnected,
+  gamificationData: sharedGamificationData
+}: StreakCounterProps) {
+  // ✨ Use stub when shared data is provided to prevent duplicate connections
+  const shouldUseLocalData = sharedIsConnected === undefined;
+  const localGamificationData = shouldUseLocalData 
+    ? useGamificationEvents(userId) 
+    : useGamificationEventsStub();
+  const gamificationData = sharedGamificationData || localGamificationData;
+  
   const {
     currentStreak,
     isLoading,
-    isConnected
-  } = useGamificationEvents(userId);
+    isConnected: localIsConnected
+  } = gamificationData;
+
+  // ✨ Use shared connection status if provided
+  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localIsConnected;
 
   // Animation state for streak updates
   const [isAnimating, setIsAnimating] = useState(false);
@@ -137,15 +149,17 @@ export function StreakCounter({ userId, className = '' }: StreakCounterProps) {
   const streakBadges = getStreakBadges(currentStreak);
 
   return (
-    <Card className={`${className} transition-all duration-300 hover:shadow-lg ${isAnimating ? 'scale-105 shadow-2xl' : ''}`}>
+    <Card className={`${className} transition-all duration-300 hover:shadow-lg border-2 ${isAnimating ? 'scale-105 shadow-2xl border-orange-300' : 'border-orange-200 dark:border-orange-700'} bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 dark:from-orange-900/10 dark:via-red-900/10 dark:to-pink-900/10`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Flame className="h-4 w-4 text-orange-500" />
+        <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-700 dark:text-orange-300">
+          <div className="p-1 bg-orange-100 dark:bg-orange-900/20 rounded-full">
+            <Flame className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          </div>
           Productivity Streak
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-400'}`} />
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
-        <Badge variant="outline" className={`text-xs ${streakInfo.color}`}>
+        <Badge variant="outline" className={`text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300 border-orange-300 dark:border-orange-600`}>
           {streakInfo.status}
         </Badge>
       </CardHeader>
@@ -153,21 +167,28 @@ export function StreakCounter({ userId, className = '' }: StreakCounterProps) {
       <CardContent>
         <div className="space-y-4">
           {/* Main Streak Display */}
-          <div className={`text-center p-4 rounded-lg ${streakInfo.bgColor} transition-all duration-500`}>
-            <div className="text-4xl mb-2">
+          <div className={`text-center p-4 rounded-lg border-2 ${streakInfo.bgColor} border-orange-200 dark:border-orange-700 transition-all duration-500`}>
+            <div className="text-5xl mb-3 animate-pulse">
               {getFireIntensity(currentStreak)}
             </div>
             <div 
-              className={`text-3xl font-bold transition-all duration-500 ${
+              className={`text-4xl font-bold transition-all duration-500 ${
                 isLoading ? 'text-gray-400 animate-pulse' : 
-                isAnimating ? `${streakInfo.color} scale-110` : streakInfo.color
+                isAnimating ? `${streakInfo.color} scale-110 drop-shadow-lg animate-bounce` : `${streakInfo.color} drop-shadow-md`
               }`}
             >
               {isLoading ? '...' : currentStreak}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm font-semibold mt-2 text-orange-700 dark:text-orange-300">
               {currentStreak === 1 ? 'Day Streak' : 'Days Streak'}
             </p>
+            {currentStreak > 0 && (
+              <div className="mt-2 px-3 py-1 bg-orange-200 dark:bg-orange-900/30 rounded-full">
+                <p className="text-xs font-medium text-orange-800 dark:text-orange-200">
+                  🔥 Keep the fire burning!
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Motivational Message */}
@@ -254,15 +275,25 @@ export function StreakCounter({ userId, className = '' }: StreakCounterProps) {
                 window.location.href = '/tasks';
               }}
             >
-              <Zap className="h-3 w-3" />
+              <Target className="h-3 w-3" />
               Start Your Streak Today!
             </Button>
           )}
 
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && userId && (
             <div className="flex items-center justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+            </div>
+          )}
+
+          {/* No User State */}
+          {!userId && !isLoading && (
+            <div className="text-center py-4 space-y-2">
+              <div className="text-2xl opacity-50">👤</div>
+              <div className="text-sm text-muted-foreground">
+                Sign in to track streaks
+              </div>
             </div>
           )}
 

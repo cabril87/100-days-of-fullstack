@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
+import { Footer } from './Footer';
 import { AppLayoutProps } from '@/lib/types';
 import { shouldShowSidebar } from '@/lib/utils/authUtils';
 
@@ -43,14 +44,17 @@ export function AppLayout({ children }: AppLayoutProps) {
           {sidebarShouldShow && (
             <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
           )}
-          <main className={`flex-1 min-h-[calc(100vh-4rem)] transition-all duration-300 ${
+          <main className={`flex-1 transition-all duration-300 ${
             sidebarShouldShow && isSidebarOpen ? 'lg:mx-10' : ''
           }`}>
-            <div className="container mx-auto px-4 py-6 w-full">
+            <div className="container mx-auto px-4 py-6 w-full min-h-[calc(100vh-8rem)]">
               {children}
             </div>
           </main>
         </div>
+        
+        {/* Footer - only show on public pages */}
+        {!sidebarShouldShow && <Footer />}
       </div>
     );
   }
@@ -71,14 +75,17 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
 
         {/* Main content */}
-        <main className={`flex-1 min-h-[calc(100vh-4rem)] transition-all duration-300 ${
+        <main className={`flex-1 transition-all duration-300 ${
           sidebarShouldShow && isSidebarOpen ? 'lg:mx-10' : ''
         }`}>
-          <div className="container mx-auto px-4 py-6">
+          <div className="container mx-auto px-4 py-6 min-h-[calc(100vh-8rem)]">
             {children}
           </div>
         </main>
       </div>
+      
+      {/* Footer - only show on public pages */}
+      {!sidebarShouldShow && <Footer />}
     </div>
   );
 } 
