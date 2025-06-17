@@ -10,7 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.User;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ public class FamilyPersonDTO
     public string Name { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? AvatarUrl { get; set; }
-    public FamilyRelationship Relationship { get; set; }
+    public FamilyRelationshipDTO Relationship { get; set; }
     public int FamilyId { get; set; }
     public string FamilyName { get; set; } = string.Empty;
 }
@@ -47,7 +47,7 @@ public class CreateFamilyPersonDTO
     
     public string? AvatarUrl { get; set; }
     
-    public FamilyRelationship Relationship { get; set; } = FamilyRelationship.Other;
+    public FamilyRelationshipDTO Relationship { get; set; } = FamilyRelationshipDTO.Other;
     
     [Required]
     public int FamilyId { get; set; }
@@ -65,7 +65,7 @@ public class UpdateFamilyPersonDTO
     
     public string? AvatarUrl { get; set; }
     
-    public FamilyRelationship? Relationship { get; set; }
+    public FamilyRelationshipDTO? Relationship { get; set; }
     
     public int? UserId { get; set; }
 } 

@@ -9,7 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Family;
 
@@ -18,7 +18,7 @@ public class FamilyEventReminderDTO
     public int Id { get; set; }
     public int EventId { get; set; }
     public int TimeBeforeInMinutes { get; set; }
-    public ReminderMethod ReminderMethod { get; set; } = ReminderMethod.Notification;
+    public ReminderMethodDTO ReminderMethod { get; set; } = ReminderMethodDTO.Notification;
     public bool Sent { get; set; } = false;
     public DateTime? SentAt { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -35,22 +35,33 @@ namespace TaskTrackerAPI.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
-                    b.Property<double>("ExecutionTime")
-                        .HasColumnType("float");
+                    b.Property<int>("ExecutionCount")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Parameters")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
 
-                    b.Property<string>("QueryName")
+                    b.Property<DateTime?>("LastExecuted")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("QueryDefinition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("QueryType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -876,6 +887,246 @@ namespace TaskTrackerAPI.Migrations
                             Tags = "events,planning,coordination,logistics",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            AverageRating = 4.2m,
+                            Category = "Personal",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Basic task tracking with minimal columns",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"minimal\",\"layout\":\"simple\"}",
+                            Name = "Simple To-Do",
+                            RatingCount = 8,
+                            Tags = "minimal,simple,todo,basic",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 10,
+                            AverageRating = 4.4m,
+                            Category = "Family",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Perfect for organizing household tasks and chores",
+                            IsDefault = true,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"family\",\"layout\":\"chores\"}",
+                            Name = "Family Chores",
+                            RatingCount = 12,
+                            Tags = "household,chores,family,cleaning",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 11,
+                            AverageRating = 4.0m,
+                            Category = "Family",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Organize weekly cleaning tasks by room and priority",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"cleaning\",\"layout\":\"weekly\"}",
+                            Name = "Weekly Cleaning",
+                            RatingCount = 5,
+                            Tags = "cleaning,weekly,household,maintenance",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 12,
+                            AverageRating = 4.3m,
+                            Category = "Family",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Plan meals, shopping, and cooking tasks",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"cooking\",\"layout\":\"meal-plan\"}",
+                            Name = "Meal Planning",
+                            RatingCount = 9,
+                            Tags = "meals,cooking,shopping,planning",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            AverageRating = 4.1m,
+                            Category = "Family",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track home repairs and maintenance tasks",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"maintenance\",\"layout\":\"repair\"}",
+                            Name = "Home Maintenance",
+                            RatingCount = 7,
+                            Tags = "maintenance,repairs,home,diy",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 14,
+                            AverageRating = 4.2m,
+                            Category = "Education",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Organize homework and school assignments",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"education\",\"layout\":\"homework\"}",
+                            Name = "School Projects",
+                            RatingCount = 6,
+                            Tags = "school,homework,education,students",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            AverageRating = 4.0m,
+                            Category = "Education",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track children's activities and commitments",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"kids\",\"layout\":\"activities\"}",
+                            Name = "Kids Activities",
+                            RatingCount = 4,
+                            Tags = "kids,activities,schedule,extracurricular",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 16,
+                            AverageRating = 4.1m,
+                            Category = "Education",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track family reading goals and book lists",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"reading\",\"layout\":\"books\"}",
+                            Name = "Reading Goals",
+                            RatingCount = 5,
+                            Tags = "reading,books,education,goals",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            AverageRating = 4.2m,
+                            Category = "Health",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track appointments, medications, and health goals",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"health\",\"layout\":\"medical\"}",
+                            Name = "Family Health",
+                            RatingCount = 8,
+                            Tags = "health,medical,appointments,wellness",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            AverageRating = 4.0m,
+                            Category = "Health",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track family fitness activities and goals",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"fitness\",\"layout\":\"workout\"}",
+                            Name = "Fitness Goals",
+                            RatingCount = 6,
+                            Tags = "fitness,exercise,health,goals",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 19,
+                            AverageRating = 4.3m,
+                            Category = "Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Plan birthday parties and celebrations",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"party\",\"layout\":\"birthday\"}",
+                            Name = "Birthday Planning",
+                            RatingCount = 7,
+                            Tags = "birthday,party,celebration,planning",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 20,
+                            AverageRating = 4.2m,
+                            Category = "Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Organize holiday preparations and traditions",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"holiday\",\"layout\":\"seasonal\"}",
+                            Name = "Holiday Planning",
+                            RatingCount = 9,
+                            Tags = "holiday,traditions,celebration,seasonal",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 21,
+                            AverageRating = 4.4m,
+                            Category = "Events",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Plan family trips and vacations",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"travel\",\"layout\":\"vacation\"}",
+                            Name = "Vacation Planning",
+                            RatingCount = 11,
+                            Tags = "vacation,travel,planning,family",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 22,
+                            AverageRating = 4.1m,
+                            Category = "Financial",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Track family expenses and financial goals",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"finance\",\"layout\":\"budget\"}",
+                            Name = "Family Budget",
+                            RatingCount = 6,
+                            Tags = "budget,finance,money,expenses",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
+                        },
+                        new
+                        {
+                            Id = 23,
+                            AverageRating = 4.0m,
+                            Category = "Seasonal",
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Description = "Plan and track gardening activities",
+                            IsDefault = false,
+                            IsPublic = true,
+                            LayoutConfiguration = "{\"theme\":\"garden\",\"layout\":\"seasonal\"}",
+                            Name = "Garden Planning",
+                            RatingCount = 5,
+                            Tags = "garden,plants,seasonal,outdoor",
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UsageCount = 0
                         });
                 });
 
@@ -939,7 +1190,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "clipboard",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "To Do",
                             Order = 1
                         },
@@ -979,7 +1230,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "list",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Backlog",
                             Order = 1
                         },
@@ -1061,7 +1312,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "lightbulb",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Ideas",
                             Order = 1
                         },
@@ -1129,7 +1380,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "calendar",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Planning",
                             Order = 1
                         },
@@ -1211,7 +1462,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "calendar",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Today",
                             Order = 1,
                             TaskLimit = 5
@@ -1251,7 +1502,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "lightbulb",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Ideation",
                             Order = 1
                         },
@@ -1319,7 +1570,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "bug",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Reported",
                             Order = 1
                         },
@@ -1387,7 +1638,7 @@ namespace TaskTrackerAPI.Migrations
                             Icon = "lightbulb",
                             IsCollapsible = true,
                             IsDoneColumn = false,
-                            MappedStatus = 3,
+                            MappedStatus = 0,
                             Name = "Concept",
                             Order = 1
                         },
@@ -1459,6 +1710,696 @@ namespace TaskTrackerAPI.Migrations
                             MappedStatus = 4,
                             Name = "Completed",
                             Order = 6
+                        },
+                        new
+                        {
+                            Id = 40,
+                            BoardTemplateId = 9,
+                            Color = "#8B5CF6",
+                            Description = "Tasks that haven't been started yet",
+                            Icon = "clipboard",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Tasks",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 41,
+                            BoardTemplateId = 9,
+                            Color = "#3B82F6",
+                            Description = "Tasks currently being worked on",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Progress",
+                            Order = 2,
+                            TaskLimit = 3
+                        },
+                        new
+                        {
+                            Id = 42,
+                            BoardTemplateId = 9,
+                            Color = "#10B981",
+                            Description = "Tasks that have been finished",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 43,
+                            BoardTemplateId = 10,
+                            Color = "#6366F1",
+                            Description = "Chores assigned to family members",
+                            Icon = "user",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Assigned",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 44,
+                            BoardTemplateId = 10,
+                            Color = "#F59E0B",
+                            Description = "Chores currently being done",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Progress",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 45,
+                            BoardTemplateId = 10,
+                            Color = "#8B5CF6",
+                            Description = "Chores waiting for approval",
+                            Icon = "eye",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Needs Review",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 46,
+                            BoardTemplateId = 10,
+                            Color = "#10B981",
+                            Description = "Chores that have been finished",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Complete",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 47,
+                            BoardTemplateId = 11,
+                            Color = "#DC2626",
+                            Description = "Cleaning tasks assigned for this week",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "This Week",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 48,
+                            BoardTemplateId = 11,
+                            Color = "#EA580C",
+                            Description = "Cleaning tasks currently being done",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "In Progress",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 49,
+                            BoardTemplateId = 11,
+                            Color = "#10B981",
+                            Description = "Cleaning tasks that have been finished",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Done",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 50,
+                            BoardTemplateId = 12,
+                            Color = "#F59E0B",
+                            Description = "Meal ideas and recipes to try",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Meal Ideas",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 51,
+                            BoardTemplateId = 12,
+                            Color = "#3B82F6",
+                            Description = "Ingredients to buy",
+                            Icon = "shopping-cart",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Shopping List",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 52,
+                            BoardTemplateId = 12,
+                            Color = "#8B5CF6",
+                            Description = "Meals currently being prepared",
+                            Icon = "chef-hat",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Prep & Cook",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 53,
+                            BoardTemplateId = 12,
+                            Color = "#10B981",
+                            Description = "Meals that have been served",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Served",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 54,
+                            BoardTemplateId = 13,
+                            Color = "#EF4444",
+                            Description = "Items that need maintenance or repair",
+                            Icon = "alert-triangle",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Needs Attention",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 55,
+                            BoardTemplateId = 13,
+                            Color = "#F59E0B",
+                            Description = "Maintenance tasks being planned",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Planning",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 56,
+                            BoardTemplateId = 13,
+                            Color = "#3B82F6",
+                            Description = "Maintenance tasks currently being worked on",
+                            Icon = "wrench",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Working On",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 57,
+                            BoardTemplateId = 13,
+                            Color = "#10B981",
+                            Description = "Items that have been fixed or maintained",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 58,
+                            BoardTemplateId = 14,
+                            Color = "#DC2626",
+                            Description = "Assignments that need to be started",
+                            Icon = "book",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Homework",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 59,
+                            BoardTemplateId = 14,
+                            Color = "#EA580C",
+                            Description = "Assignments currently being worked on",
+                            Icon = "edit",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Working On",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 60,
+                            BoardTemplateId = 14,
+                            Color = "#9333EA",
+                            Description = "Assignments ready for review and submission",
+                            Icon = "eye",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Review & Submit",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 61,
+                            BoardTemplateId = 14,
+                            Color = "#059669",
+                            Description = "Assignments that have been submitted",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Submitted",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 62,
+                            BoardTemplateId = 15,
+                            Color = "#6366F1",
+                            Description = "Activities scheduled for the future",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Upcoming",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 63,
+                            BoardTemplateId = 15,
+                            Color = "#F59E0B",
+                            Description = "Activities happening today",
+                            Icon = "play",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Today",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 64,
+                            BoardTemplateId = 15,
+                            Color = "#10B981",
+                            Description = "Activities that have been completed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 65,
+                            BoardTemplateId = 16,
+                            Color = "#8B5CF6",
+                            Description = "Books on the reading wishlist",
+                            Icon = "book",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Want to Read",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 66,
+                            BoardTemplateId = 16,
+                            Color = "#3B82F6",
+                            Description = "Books currently being read",
+                            Icon = "book-open",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Currently Reading",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 67,
+                            BoardTemplateId = 16,
+                            Color = "#10B981",
+                            Description = "Books that have been completed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Finished",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 68,
+                            BoardTemplateId = 17,
+                            Color = "#EF4444",
+                            Description = "Health appointments and tasks to schedule",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Schedule",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 69,
+                            BoardTemplateId = 17,
+                            Color = "#F59E0B",
+                            Description = "Scheduled health appointments and tasks",
+                            Icon = "clock",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Upcoming",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 70,
+                            BoardTemplateId = 17,
+                            Color = "#10B981",
+                            Description = "Completed health appointments and tasks",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Completed",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 71,
+                            BoardTemplateId = 18,
+                            Color = "#6366F1",
+                            Description = "Fitness goals to start working on",
+                            Icon = "target",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Goals",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 72,
+                            BoardTemplateId = 18,
+                            Color = "#F59E0B",
+                            Description = "Fitness goals currently being worked on",
+                            Icon = "activity",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Active",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 73,
+                            BoardTemplateId = 18,
+                            Color = "#10B981",
+                            Description = "Fitness goals that have been achieved",
+                            Icon = "trophy",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Achieved",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 74,
+                            BoardTemplateId = 19,
+                            Color = "#F59E0B",
+                            Description = "Birthday party ideas and concepts",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Ideas",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 75,
+                            BoardTemplateId = 19,
+                            Color = "#3B82F6",
+                            Description = "Birthday party tasks being planned",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Planning",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 76,
+                            BoardTemplateId = 19,
+                            Color = "#8B5CF6",
+                            Description = "Birthday party preparations in progress",
+                            Icon = "gift",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Preparing",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 77,
+                            BoardTemplateId = 19,
+                            Color = "#10B981",
+                            Description = "Birthday party tasks completed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Done",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 78,
+                            BoardTemplateId = 20,
+                            Color = "#DC2626",
+                            Description = "Holiday traditions and ideas to plan",
+                            Icon = "star",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Traditions",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 79,
+                            BoardTemplateId = 20,
+                            Color = "#F59E0B",
+                            Description = "Holiday shopping and preparation tasks",
+                            Icon = "shopping-cart",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Shopping",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 80,
+                            BoardTemplateId = 20,
+                            Color = "#3B82F6",
+                            Description = "Holiday preparations in progress",
+                            Icon = "gift",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Preparing",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 81,
+                            BoardTemplateId = 20,
+                            Color = "#10B981",
+                            Description = "Holiday traditions completed and celebrated",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Celebrated",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 82,
+                            BoardTemplateId = 21,
+                            Color = "#6366F1",
+                            Description = "Vacation destinations and activities to research",
+                            Icon = "search",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Research",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 83,
+                            BoardTemplateId = 21,
+                            Color = "#F59E0B",
+                            Description = "Vacation bookings and reservations to make",
+                            Icon = "calendar",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Booking",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 84,
+                            BoardTemplateId = 21,
+                            Color = "#8B5CF6",
+                            Description = "Vacation preparations in progress",
+                            Icon = "luggage",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Preparing",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 85,
+                            BoardTemplateId = 21,
+                            Color = "#10B981",
+                            Description = "Vacation activities completed and enjoyed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Enjoyed",
+                            Order = 4
+                        },
+                        new
+                        {
+                            Id = 86,
+                            BoardTemplateId = 22,
+                            Color = "#3B82F6",
+                            Description = "Expenses and financial goals to plan",
+                            Icon = "calculator",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Planned",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 87,
+                            BoardTemplateId = 22,
+                            Color = "#F59E0B",
+                            Description = "Expenses pending payment or approval",
+                            Icon = "clock",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Pending",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 88,
+                            BoardTemplateId = 22,
+                            Color = "#10B981",
+                            Description = "Expenses that have been paid",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Paid",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 89,
+                            BoardTemplateId = 23,
+                            Color = "#059669",
+                            Description = "Garden plans and ideas to develop",
+                            Icon = "lightbulb",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 0,
+                            Name = "Planning",
+                            Order = 1
+                        },
+                        new
+                        {
+                            Id = 90,
+                            BoardTemplateId = 23,
+                            Color = "#10B981",
+                            Description = "Seeds and plants being planted",
+                            Icon = "seedling",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Planting",
+                            Order = 2
+                        },
+                        new
+                        {
+                            Id = 91,
+                            BoardTemplateId = 23,
+                            Color = "#22C55E",
+                            Description = "Plants currently growing and being tended",
+                            Icon = "leaf",
+                            IsCollapsible = true,
+                            IsDoneColumn = false,
+                            MappedStatus = 1,
+                            Name = "Growing",
+                            Order = 3
+                        },
+                        new
+                        {
+                            Id = 92,
+                            BoardTemplateId = 23,
+                            Color = "#16A34A",
+                            Description = "Plants that have been harvested or completed",
+                            Icon = "check",
+                            IsCollapsible = true,
+                            IsDoneColumn = true,
+                            MappedStatus = 4,
+                            Name = "Harvested",
+                            Order = 4
                         });
                 });
 
@@ -8270,7 +9211,7 @@ namespace TaskTrackerAPI.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Tasks");
+                    b.ToTable("TaskItems");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.TaskTag", b =>
@@ -8581,39 +9522,17 @@ namespace TaskTrackerAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<int>("CompletionTimeMinutes")
                         .HasColumnType("int");
-
-                    b.Property<decimal>("EfficiencyScore")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Feedback")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("Success")
                         .HasColumnType("bit");
 
-                    b.Property<int>("TasksCompleted")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TasksCreated")
-                        .HasColumnType("int");
-
                     b.Property<int>("TemplateId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("UsedDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+                    b.Property<DateTime>("UsedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -9123,6 +10042,105 @@ namespace TaskTrackerAPI.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserSessions");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserSubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AutoRenew")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("BillingCyclesCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CancelledByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExternalSubscriptionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsTrial")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastBillingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("NextBillingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("StartDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("SubscriptionTierId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SubscriptionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("TrialEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CancelledByUserId");
+
+                    b.HasIndex("SubscriptionTierId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSubscriptions");
                 });
 
             modelBuilder.Entity("TaskTrackerAPI.Models.WorkflowStep", b =>
@@ -10123,6 +11141,31 @@ namespace TaskTrackerAPI.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TaskTrackerAPI.Models.UserSubscription", b =>
+                {
+                    b.HasOne("TaskTrackerAPI.Models.User", "CancelledByUser")
+                        .WithMany()
+                        .HasForeignKey("CancelledByUserId");
+
+                    b.HasOne("TaskTrackerAPI.Models.SubscriptionTier", "SubscriptionTier")
+                        .WithMany()
+                        .HasForeignKey("SubscriptionTierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskTrackerAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CancelledByUser");
+
+                    b.Navigation("SubscriptionTier");
 
                     b.Navigation("User");
                 });

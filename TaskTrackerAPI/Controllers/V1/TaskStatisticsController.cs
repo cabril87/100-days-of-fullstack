@@ -15,12 +15,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Models;
-using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Linq;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Attributes;
 

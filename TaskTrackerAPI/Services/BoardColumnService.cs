@@ -160,7 +160,7 @@ public class BoardColumnService : IBoardColumnService
                 Icon = createDto.Icon ?? "folder",
                 IsHidden = false, // New columns are visible by default
                 IsDoneColumn = createDto.IsDoneColumn,
-                MappedStatus = createDto.MappedStatus,
+                MappedStatus = _mapper.Map<TaskItemStatus>(createDto.MappedStatus),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -217,7 +217,7 @@ public class BoardColumnService : IBoardColumnService
                 existingColumn.IsDoneColumn = updateDto.IsDoneColumn.Value;
             
             if (updateDto.MappedStatus.HasValue)
-                existingColumn.MappedStatus = updateDto.MappedStatus.Value;
+                existingColumn.MappedStatus = _mapper.Map<TaskItemStatus>(updateDto.MappedStatus.Value);
 
             existingColumn.UpdatedAt = DateTime.UtcNow;
 

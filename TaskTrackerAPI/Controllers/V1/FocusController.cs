@@ -115,7 +115,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Check if the task exists and belongs to the user
-            TaskItem? task = await _context.Tasks
+            TaskItem? task = await _context.TaskItems
                 .Where(t => t.Id == request.TaskId && t.UserId == userId)
                 .FirstOrDefaultAsync();
 
@@ -183,7 +183,7 @@ namespace TaskTrackerAPI.Controllers.V1
             }
 
             // Check if the task exists and belongs to the user
-            TaskItem? task = await _context.Tasks
+            TaskItem? task = await _context.TaskItems
                 .Where(t => t.Id == request.TaskId && t.UserId == userId)
                 .FirstOrDefaultAsync();
 
@@ -656,7 +656,7 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            List<TaskItem> suggestions = await _context.Tasks
+            List<TaskItem> suggestions = await _context.TaskItems
                 .Where(t => t.UserId == userId && t.Status != TaskItemStatus.Completed)
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)

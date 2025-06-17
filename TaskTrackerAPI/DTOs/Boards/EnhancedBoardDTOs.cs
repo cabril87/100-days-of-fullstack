@@ -11,7 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Tasks;
 
 namespace TaskTrackerAPI.DTOs.Boards
 {
@@ -27,7 +27,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         public int Order { get; set; }
         public string Color { get; set; } = "#6B7280";
         public string? Icon { get; set; }
-        public TaskItemStatus MappedStatus { get; set; }
+        public TaskItemStatusDTO MappedStatus { get; set; }
         public int? TaskLimit { get; set; }
         public bool IsCollapsible { get; set; } = true;
         public bool IsHidden { get; set; } = false;
@@ -60,7 +60,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         public string? Icon { get; set; }
 
         [Required]
-        public TaskItemStatus MappedStatus { get; set; }
+        public TaskItemStatusDTO MappedStatus { get; set; }
 
         public int? TaskLimit { get; set; }
         public bool IsCollapsible { get; set; } = true;
@@ -86,7 +86,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         [StringLength(50)]
         public string? Icon { get; set; }
 
-        public TaskItemStatus? MappedStatus { get; set; }
+        public TaskItemStatusDTO? MappedStatus { get; set; }
         public int? TaskLimit { get; set; }
         public bool? IsCollapsible { get; set; }
         public bool? IsHidden { get; set; }
@@ -227,7 +227,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         public int Order { get; set; }
         public string Color { get; set; } = "#6B7280";
         public string? Icon { get; set; }
-        public TaskItemStatus MappedStatus { get; set; }
+        public TaskItemStatusDTO MappedStatus { get; set; }
         public int? TaskLimit { get; set; }
         public bool IsCollapsible { get; set; } = true;
         public bool IsDoneColumn { get; set; } = false;
@@ -284,7 +284,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         public string? Icon { get; set; }
 
         [Required]
-        public TaskItemStatus MappedStatus { get; set; }
+        public TaskItemStatusDTO MappedStatus { get; set; }
 
         public int? TaskLimit { get; set; }
         public bool IsCollapsible { get; set; } = true;
@@ -345,7 +345,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         [Required]
         public int TargetColumnId { get; set; }
 
-        public TaskItemStatus? TargetStatus { get; set; }
+        public TaskItemStatusDTO? TargetStatus { get; set; }
         public int? TargetPosition { get; set; }
     }
 

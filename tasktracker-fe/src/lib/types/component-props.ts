@@ -9,6 +9,13 @@
 import { User } from './auth';
 import { FamilyDTO, FamilyMemberDTO } from './family-invitation';
 import { Task } from './task';
+import { 
+  LoginAttemptResult,
+  AccountLockoutStatus,
+  SessionDetailView,
+  SecurityAlert,
+  TrustedDeviceInfo
+} from './enhanced-auth';
 
 // Page Content Component Props
 export interface FamiliesContentProps {
@@ -56,9 +63,12 @@ export interface TaskCreationModalProps {
 }
 
 export interface SmartInvitationWizardProps {
+  familyId: number;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onInvitationSent: (invitation: unknown) => void;
+  showAdvancedOptions?: boolean;
+  allowBulkInvitations?: boolean;
 }
 
 export interface FamilySeedingPanelProps {
@@ -69,7 +79,9 @@ export interface FamilySeedingPanelProps {
 export interface MFASetupWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete?: () => void;
+  onSetupComplete: (result: unknown) => void;
+  preferredMethod?: 'email' | 'sms' | 'app' | 'hardware';
+  skipBackupCodes?: boolean;
 }
 
 export interface MFAStatusCardContainerProps {
@@ -299,4 +311,274 @@ export interface ProgressiveFormProps {
 export interface FamilyTaskManagementPageProps {
   user: User;
   familyId: number;
-} 
+}
+
+// === ENHANCED AUTHENTICATION COMPONENT PROPS ===
+
+export interface EnhancedLoginFormProps {
+  onLoginSuccess?: (result: LoginAttemptResult) => void;
+  onMfaRequired?: (userId: number) => void;
+  onAccountLocked?: (lockoutInfo: AccountLockoutStatus) => void;
+  showDeviceRecognition?: boolean;
+  rememberDevice?: boolean;
+}
+
+export interface EnhancedPasswordResetFormProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  onSuccess?: () => void;
+  showSecurityQuestions?: boolean;
+  allowMfaBypass?: boolean;
+}
+
+export interface SecuritySettingsProps {
+  userId: number;
+  onSecurityUpdate?: (type: string, success: boolean) => void;
+  showAdvancedOptions?: boolean;
+  allowDeviceManagement?: boolean;
+}
+
+export interface DeviceManagementProps {
+  userId: number;
+  devices: TrustedDeviceInfo[];
+  onDeviceRevoked: (deviceId: string) => void;
+  onDeviceTrusted: (deviceId: string, trusted: boolean) => void;
+  allowBulkOperations?: boolean;
+}
+
+export interface SessionManagementProps {
+  userId: number;
+  sessions: SessionDetailView[];
+  onSessionTerminated: (sessionId: string) => void;
+  showLocationInfo?: boolean;
+  allowBulkTermination?: boolean;
+}
+
+export interface SecurityAuditLogProps {
+  userId: number;
+  logs: unknown[];
+  showDetails?: boolean;
+  allowExport?: boolean;
+  maxEntries?: number;
+}
+
+export interface SecurityAlertsProps {
+  alerts: SecurityAlert[];
+  onAlertDismissed: (alertId: string) => void;
+  onAlertAction: (alertId: string, action: string) => void;
+  maxAlertsToShow?: number;
+  autoRefresh?: boolean;
+}
+
+// === ENHANCED FAMILY COMPONENT PROPS ===
+
+export interface FamilyInvitationManagerProps {
+  familyId: number;
+  onInvitationSent: (invitation: unknown) => void;
+  onInvitationCancelled: (invitationId: number) => void;
+  showPendingInvitations?: boolean;
+  allowBulkOperations?: boolean;
+}
+
+export interface EnhancedFamilyManagementProps {
+  familyId: number;
+  isAdmin: boolean;
+  onFamilyUpdated: (family: unknown) => void;
+  onMemberRoleChanged: (memberId: number, newRole: string) => void;
+  showAdvancedSettings?: boolean;
+  allowMemberManagement?: boolean;
+}
+
+export interface FamilySecurityDashboardProps {
+  familyId: number;
+  isParent: boolean;
+  onSecuritySettingChanged: (setting: string, value: unknown) => void;
+  showChildProtectionFeatures?: boolean;
+  allowParentalControls?: boolean;
+}
+
+export interface FamilyPrivacySettingsProps {
+  familyId: number;
+  currentSettings: unknown;
+  onSettingsUpdated: (settings: unknown) => void;
+  showAdvancedPrivacy?: boolean;
+  allowDataExport?: boolean;
+}
+
+export interface RoleAssignmentWizardProps {
+  familyId: number;
+  memberId: number;
+  currentRole: string;
+  onRoleAssigned: (newRole: string) => void;
+  showRolePermissions?: boolean;
+  allowCustomPermissions?: boolean;
+}
+
+// === SHARED COMPONENT PROPS ===
+
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  description?: string;
+  showCloseButton?: boolean;
+  preventClickOutside?: boolean;
+}
+
+export interface WizardProps {
+  currentStep: number;
+  totalSteps: number;
+  canGoBack: boolean;
+  canProceed: boolean;
+  onNext: () => void;
+  onPrevious: () => void;
+  onComplete: () => void;
+  onCancel: () => void;
+}
+
+export interface LoadingStateProps {
+  isLoading: boolean;
+  loadingText?: string;
+  showSpinner?: boolean;
+  showProgress?: boolean;
+  progress?: number;
+}
+
+export interface ErrorStateProps {
+  error: string | null;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  showRetryButton?: boolean;
+  errorType?: 'validation' | 'network' | 'permission' | 'unknown';
+}
+
+// === FORM COMPONENT PROPS ===
+
+export interface FormFieldProps {
+  name: string;
+  label?: string;
+  placeholder?: string;
+  description?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+}
+
+export interface FormSelectProps extends FormFieldProps {
+  options: Array<{ value: string; label: string; description?: string }>;
+  multiple?: boolean;
+  searchable?: boolean;
+}
+
+export interface FormCheckboxProps extends FormFieldProps {
+  checked?: boolean;
+  indeterminate?: boolean;
+}
+
+export interface FormInputProps extends FormFieldProps {
+  type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url';
+  maxLength?: number;
+  minLength?: number;
+  pattern?: string;
+  showPasswordToggle?: boolean;
+}
+
+export interface FormTextareaProps extends FormFieldProps {
+  rows?: number;
+  maxLength?: number;
+  showCharacterCount?: boolean;
+  resizable?: boolean;
+}
+
+// === DASHBOARD COMPONENT PROPS ===
+
+export interface DashboardCardProps {
+  title: string;
+  description?: string;
+  value?: string | number;
+  change?: number;
+  trend?: 'up' | 'down' | 'stable';
+  onClick?: () => void;
+  actions?: Array<{ label: string; onClick: () => void }>;
+}
+
+export interface StatisticsWidgetProps {
+  title: string;
+  metrics: Array<{
+    label: string;
+    value: string | number;
+    unit?: string;
+    color?: string;
+  }>;
+  chartData?: unknown[];
+  chartType?: 'line' | 'bar' | 'pie' | 'donut';
+}
+
+export interface ActivityFeedProps {
+  activities: Array<{
+    id: string;
+    type: string;
+    description: string;
+    timestamp: string;
+    user?: string;
+    metadata?: Record<string, unknown>;
+  }>;
+  maxItems?: number;
+  showTimestamp?: boolean;
+  allowFiltering?: boolean;
+}
+
+// === NOTIFICATION COMPONENT PROPS ===
+
+export interface NotificationProps {
+  id: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
+  duration?: number;
+  persistent?: boolean;
+  actions?: Array<{ label: string; onClick: () => void }>;
+  onDismiss?: () => void;
+}
+
+export interface ToastNotificationProps extends NotificationProps {
+  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
+  animationType?: 'slide' | 'fade' | 'bounce';
+}
+
+// === TABLE COMPONENT PROPS ===
+
+export interface DataTableProps<T = unknown> {
+  data: T[];
+  columns: Array<{
+    key: keyof T;
+    label: string;
+    sortable?: boolean;
+    filterable?: boolean;
+    render?: (value: unknown, row: T) => React.ReactNode;
+  }>;
+  pagination?: {
+    pageSize: number;
+    currentPage: number;
+    totalItems: number;
+    onPageChange: (page: number) => void;
+  };
+  sorting?: {
+    sortBy?: keyof T;
+    sortOrder?: 'asc' | 'desc';
+    onSort: (key: keyof T, order: 'asc' | 'desc') => void;
+  };
+  filtering?: {
+    filters: Record<string, unknown>;
+    onFilterChange: (filters: Record<string, unknown>) => void;
+  };
+  selection?: {
+    selectedRows: string[];
+    onSelectionChange: (selectedRows: string[]) => void;
+    bulkActions?: Array<{ label: string; onClick: (selectedRows: string[]) => void }>;
+  };
+}
+
+// === EXPORT ALL TYPES ===
+
+export * from './family-invitation'; 

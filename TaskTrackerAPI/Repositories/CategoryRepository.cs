@@ -95,13 +95,13 @@ public class CategoryRepository : ICategoryRepository
     
     public async Task<bool> HasTasksAsync(int categoryId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .AnyAsync(t => t.CategoryId == categoryId);
     }
     
     public async Task<int> GetCategoryTaskCountAsync(int categoryId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .CountAsync(t => t.CategoryId == categoryId);
     }
     

@@ -12,7 +12,6 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { cn } from '@/lib/utils/utils';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,29 +32,12 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// DnD Kit imports
-import {
-  DndContext,
-  DragEndEvent as DndDragEndEvent,
-  DragStartEvent,
-  DragOverEvent,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core';
-import {
-  sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable';
-
 // Types and Services
 import { BoardTabContentProps } from '@/lib/types/board-tabs';
-import { BoardDetailDTO, BoardColumnDTO } from '@/lib/types/board';
-import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/task';
+import { BoardDetailDTO } from '@/lib/types/board';
+import { TaskItemStatus } from '@/lib/types/task';
 import { BoardService } from '@/lib/services/boardService';
-import { dragDropService } from '@/lib/services/dragDropService';
+
 
 // Components
 import { CreateTaskModal } from '../CreateTaskModal';
@@ -67,8 +49,6 @@ import { KanbanBoard } from '../KanbanBoard';
 
 export const BoardTabContent: React.FC<BoardTabContentProps> = ({
   board,
-  onBoardUpdate,
-  onBoardDelete,
 }) => {
   const [boardData, setBoardData] = useState<BoardDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,17 +57,7 @@ export const BoardTabContent: React.FC<BoardTabContentProps> = ({
   const [showQuestSelection, setShowQuestSelection] = useState(false);
   const [selectedColumnStatus, setSelectedColumnStatus] = useState<TaskItemStatus | undefined>();
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+
 
   // Load board data
   const loadBoardData = useCallback(async () => {
@@ -110,14 +80,7 @@ export const BoardTabContent: React.FC<BoardTabContentProps> = ({
     loadBoardData();
   }, [loadBoardData]);
 
-  // Group tasks by column
-  const groupTasksByColumn = (tasks: TaskItemResponseDTO[], columns: BoardColumnDTO[]): Record<string, TaskItemResponseDTO[]> => {
-    const grouped: Record<string, TaskItemResponseDTO[]> = {};
-    columns.forEach(column => {
-      grouped[column.status.toString()] = tasks.filter(task => task.status.toString() === column.status.toString());
-    });
-    return grouped;
-  };
+
 
   const handleCreateTask = async (columnStatus?: TaskItemStatus) => {
     setSelectedColumnStatus(columnStatus);

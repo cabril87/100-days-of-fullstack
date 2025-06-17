@@ -401,8 +401,8 @@ modelBuilder.Entity<User>().HasData(
         try 
         {
             // First, remove any tasks that reference users
-            List<TaskItem> tasks = _dbContext.Tasks.ToList();
-            _dbContext.Tasks.RemoveRange(tasks);
+            List<TaskItem> tasks = _dbContext.TaskItems.ToList();
+            _dbContext.TaskItems.RemoveRange(tasks);
             _dbContext.SaveChanges();
             
             _logger.LogInformation("Removed {Count} tasks that had User references", tasks.Count);

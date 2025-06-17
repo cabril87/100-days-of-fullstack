@@ -51,7 +51,7 @@ public class BoardRepository : IBoardRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksByBoardIdAsync(int boardId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Where(t => t.BoardId == boardId)
             .Include(t => t.Category)
             .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
@@ -99,7 +99,7 @@ public class BoardRepository : IBoardRepository
         if (board == null)
             return null;
 
-        TaskItem? task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == taskId && t.BoardId == boardId);
+        TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.BoardId == boardId);
         if (task == null)
             return null;
 

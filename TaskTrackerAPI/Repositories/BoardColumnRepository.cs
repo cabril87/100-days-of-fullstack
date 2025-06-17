@@ -362,7 +362,7 @@ public class BoardColumnRepository : IBoardColumnRepository
             }
 
             // Count tasks in this board with the column's mapped status
-            int taskCount = await _context.Tasks
+            int taskCount = await _context.TaskItems
                 .CountAsync(t => t.BoardId == column.BoardId && t.Status == column.MappedStatus);
 
             _logger.LogInformation("Column {ColumnId} has {TaskCount} tasks", columnId, taskCount);

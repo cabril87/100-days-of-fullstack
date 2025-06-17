@@ -152,7 +152,7 @@ public class NotificationPreferenceService : INotificationPreferenceService
             // Update properties
             preference.NotificationType = preferenceDto.NotificationType;
             preference.Enabled = preferenceDto.Enabled;
-            preference.Priority = preferenceDto.Priority;
+            preference.Priority = _mapper.Map<NotificationPriority>(preferenceDto.Priority);
             preference.FamilyId = preferenceDto.FamilyId;
             preference.EnableEmailNotifications = preferenceDto.EnableEmailNotifications;
             preference.EnablePushNotifications = preferenceDto.EnablePushNotifications;
@@ -196,7 +196,7 @@ public class NotificationPreferenceService : INotificationPreferenceService
                 UserId = userId,
                 NotificationType = preferenceDto.NotificationType,
                 Enabled = preferenceDto.Enabled,
-                Priority = preferenceDto.Priority,
+                Priority = _mapper.Map<NotificationPriority>(preferenceDto.Priority),
                 FamilyId = preferenceDto.FamilyId,
                 EnableEmailNotifications = preferenceDto.EnableEmailNotifications,
                 EnablePushNotifications = preferenceDto.EnablePushNotifications,

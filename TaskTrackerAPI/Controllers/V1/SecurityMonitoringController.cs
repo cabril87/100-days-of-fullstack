@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.DTOs.Analytics;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -832,7 +833,7 @@ public class SecurityMonitoringController : BaseApiController
     }
 
     /// <summary>
-    /// Gets behavioral analytics summary
+    /// Gets behavioral analytics summary - now redirects to unified analytics
     /// </summary>
     /// <returns>Behavioral analytics summary data</returns>
     [HttpGet("behavioral-analytics/summary")]
@@ -841,8 +842,21 @@ public class SecurityMonitoringController : BaseApiController
     {
         try
         {
-            IBehavioralAnalyticsService behavioralAnalyticsService = HttpContext.RequestServices.GetRequiredService<IBehavioralAnalyticsService>();
-            BehavioralAnalyticsSummaryDTO summary = await behavioralAnalyticsService.GetBehavioralAnalyticsSummaryAsync();
+            // Use unified analytics service for behavioral analytics
+            IUnifiedAnalyticsService unifiedAnalyticsService = HttpContext.RequestServices.GetRequiredService<IUnifiedAnalyticsService>();
+            SecurityAnalyticsDTO securityAnalytics = await unifiedAnalyticsService.GetSecurityAnalyticsAsync();
+            
+            // Convert to legacy format for backward compatibility
+            BehavioralAnalyticsSummaryDTO summary = new BehavioralAnalyticsSummaryDTO
+            {
+                TotalEvents = securityAnalytics.TotalSecurityEvents,
+                AnomalousEvents = securityAnalytics.AnomalousActivities,
+                HighRiskEvents = securityAnalytics.HighRiskEvents,
+                AverageAnomalyScore = securityAnalytics.AverageAnomalyScore,
+                RecentEvents = securityAnalytics.RecentSecurityEvents,
+                EventsByType = securityAnalytics.ThreatsByType
+            };
+            
             return Ok(ApiResponse<BehavioralAnalyticsSummaryDTO>.SuccessResponse(summary));
         }
         catch (Exception ex)

@@ -25,16 +25,12 @@ import {
   Trophy,
   Target,
   Zap,
-  Crown,
   Sparkles,
   Rocket,
   Plus,
   Users,
   Briefcase,
   Home,
-  Heart,
-  BookOpen,
-  Gamepad2,
   Search,
   Filter,
   ArrowLeft,
@@ -384,7 +380,7 @@ export const Templates: React.FC = () => {
                     return (
                       <button
                         key={option.value}
-                        onClick={() => setSortBy(option.value as any)}
+                        onClick={() => setSortBy(option.value as 'popularity' | 'difficulty' | 'name')}
                         className={cn(
                           "w-full flex items-center space-x-3 p-2 rounded-lg transition-all duration-200 text-left",
                           sortBy === option.value
@@ -430,7 +426,7 @@ export const Templates: React.FC = () => {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredAndSortedTemplates.map((template, index) => {
+                {filteredAndSortedTemplates.map((template) => {
                   const actualIndex = ENHANCED_TEMPLATES.indexOf(template);
                   const category = TEMPLATE_CATEGORIES.find(c => c.id === template.category);
                   const CategoryIcon = category?.icon || Target;

@@ -10,7 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Family;
 
 namespace TaskTrackerAPI.DTOs.User
 {
@@ -69,7 +69,7 @@ namespace TaskTrackerAPI.DTOs.User
         
         /// Age group for family functionality
         
-        public FamilyMemberAgeGroup? AgeGroup { get; set; }
+        public FamilyMemberAgeGroupDTO? AgeGroup { get; set; }  
 
         
         /// Date when the user joined

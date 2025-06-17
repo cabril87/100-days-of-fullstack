@@ -11,7 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+
 using TaskTrackerAPI.DTOs.Tasks;
 
 namespace TaskTrackerAPI.DTOs.Boards
@@ -88,7 +88,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         
         /// Column type/status
         
-        public TaskItemStatus Status { get; set; }
+        public TaskItemStatusDTO Status { get; set; }
     }
 
     
@@ -163,7 +163,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         
         /// Column type/status
         
-        public TaskItemStatus Status { get; set; }
+        public TaskItemStatusDTO Status { get; set; }
     }
 
     
@@ -219,7 +219,7 @@ namespace TaskTrackerAPI.DTOs.Boards
         
         /// Column type/status
         
-        public TaskItemStatus? Status { get; set; }
+        public TaskItemStatusDTO? Status { get; set; }
     }
 
     
@@ -237,13 +237,13 @@ namespace TaskTrackerAPI.DTOs.Boards
         /// Source column/status
         
         [Required]
-        public TaskItemStatus SourceStatus { get; set; }
+        public TaskItemStatusDTO SourceStatus { get; set; }
 
         
         /// Target column/status
         
         [Required]
-        public TaskItemStatus TargetStatus { get; set; }
+        public TaskItemStatusDTO TargetStatus { get; set; }
 
         
         /// Position in the target column (0-based)

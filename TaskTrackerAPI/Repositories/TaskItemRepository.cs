@@ -36,7 +36,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetAllTasksAsync(int userId)
     {
-        IQueryable<TaskItem> query = _context.Tasks
+        IQueryable<TaskItem> query = _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -51,7 +51,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<PagedResult<TaskItem>> GetPagedTasksAsync(int userId, PaginationParams paginationParams)
     {
-        IQueryable<TaskItem> query = _context.Tasks
+        IQueryable<TaskItem> query = _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -84,7 +84,7 @@ public class TaskItemRepository : ITaskItemRepository
     /// <returns>Task if found and owned by user, null otherwise</returns>
     public async Task<TaskItem?> GetTaskByIdAndUserIdAsync(int id, int userId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Where(t => t.Id == id && t.UserId == userId)
             .FirstOrDefaultAsync();
     }
@@ -97,7 +97,7 @@ public class TaskItemRepository : ITaskItemRepository
     /// <returns>Task with all properties mapped including tags</returns>
     public async Task<TaskItem?> GetTaskByIdAsync(int id, int userId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -116,7 +116,7 @@ public class TaskItemRepository : ITaskItemRepository
     /// <returns>Created task</returns>
     public async Task<TaskItem> CreateTaskAsync(TaskItem task)
     {
-        await _context.Tasks.AddAsync(task);
+        await _context.TaskItems.AddAsync(task);
         await _context.SaveChangesAsync();
         return task;
     }
@@ -129,24 +129,24 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task UpdateTaskAsync(TaskItem task)
     {
         // For in-memory database during tests, we need this modified approach
-        EntityEntry<TaskItem> entry = _context.Tasks.Entry(task);
+        EntityEntry<TaskItem> entry = _context.TaskItems.Entry(task);
         if (entry.State == EntityState.Detached)
         {
-            TaskItem? existingTask = await _context.Tasks.FindAsync(task.Id);
+            TaskItem? existingTask = await _context.TaskItems.FindAsync(task.Id);
             if (existingTask != null)
             {
                 _context.Entry(existingTask).CurrentValues.SetValues(task);
             }
             else
             {
-                _context.Tasks.Attach(task);
+                _context.TaskItems.Attach(task);
                 entry.State = EntityState.Modified;
             }
         }
         else
         {
             // Normal approach for SQL Server
-            _context.Tasks.Update(task);
+            _context.TaskItems.Update(task);
         }
 
         await _context.SaveChangesAsync();
@@ -177,7 +177,7 @@ public class TaskItemRepository : ITaskItemRepository
             _logger.LogInformation("✅ Task verification passed: {TaskTitle} (ID: {TaskId}) owned by user {UserId}", taskExists.Title, id, userId);
 
             // Load task with all related entities for deletion
-            TaskItem? taskToDelete = await _context.Tasks
+            TaskItem? taskToDelete = await _context.TaskItems
                 .Include(t => t.ChecklistItems)
                 .Include(t => t.TaskTags)
                 .Where(t => t.Id == id && t.UserId == userId)
@@ -194,7 +194,7 @@ public class TaskItemRepository : ITaskItemRepository
                 taskToDelete.TaskTags?.Count ?? 0);
 
             // Enterprise deletion - Entity Framework handles cascade deletes based on configuration
-            _context.Tasks.Remove(taskToDelete);
+            _context.TaskItems.Remove(taskToDelete);
             
             // Save changes with proper error handling
             int changesCount = await _context.SaveChangesAsync();
@@ -226,7 +226,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksByStatusAsync(int userId, TaskItemStatus status)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -236,7 +236,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksByCategoryAsync(int userId, int categoryId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -251,7 +251,7 @@ public class TaskItemRepository : ITaskItemRepository
             .Select(tt => tt.TaskId)
             .ToListAsync();
 
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -261,7 +261,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> IsTaskOwnedByUserAsync(int taskId, int userId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .AnyAsync(t => t.Id == taskId && t.UserId == userId);
     }
 
@@ -328,7 +328,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<TaskItem?> GetSharedTaskByIdAsync(int taskId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -343,7 +343,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksAssignedToFamilyMemberAsync(int familyMemberId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -355,7 +355,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetFamilyTasksAsync(int familyId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)
@@ -370,7 +370,7 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task<bool> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId, int assignedByUserId, bool requiresApproval)
     {
         // First check if task and family member exist
-        bool taskExists = await _context.Tasks.AnyAsync(t => t.Id == taskId);
+        bool taskExists = await _context.TaskItems.AnyAsync(t => t.Id == taskId);
         if (!taskExists)
             return false;
 
@@ -382,7 +382,7 @@ public class TaskItemRepository : ITaskItemRepository
             return false;
         
         // Use ExecuteUpdateAsync to avoid loading the entity with AssignedToName issues
-        int rowsAffected = await _context.Tasks
+        int rowsAffected = await _context.TaskItems
             .Where(t => t.Id == taskId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(t => t.AssignedToFamilyMemberId, familyMemberId)
@@ -398,7 +398,7 @@ public class TaskItemRepository : ITaskItemRepository
     public async Task<bool> UnassignTaskFromFamilyMemberAsync(int taskId)
     {
         // Use ExecuteUpdateAsync to avoid loading the entity with AssignedToName
-        int rowsAffected = await _context.Tasks
+        int rowsAffected = await _context.TaskItems
             .Where(t => t.Id == taskId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
@@ -409,7 +409,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> ApproveTaskAsync(int taskId, int approverUserId, string? comment)
     {
-        TaskItem? task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.TaskItems.FindAsync(taskId);
         if (task == null || !task.RequiresApproval)
             return false;
 
@@ -425,7 +425,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<bool> IsUserFamilyTaskOwnerAsync(int taskId, int userId)
     {
-        TaskItem? task = await _context.Tasks.FindAsync(taskId);
+        TaskItem? task = await _context.TaskItems.FindAsync(taskId);
         if (task == null)
             return false;
 
@@ -434,7 +434,7 @@ public class TaskItemRepository : ITaskItemRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksWithUpcomingDeadlinesAsync(DateTime start, DateTime end)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.User)
             .Include(t => t.TaskTags!)
                 .ThenInclude(tt => tt.Tag)

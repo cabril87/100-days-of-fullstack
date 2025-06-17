@@ -12,7 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using TaskTrackerAPI.DTOs.Boards;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -42,7 +42,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
         
         /// Type of template (Custom, Daily, Weekly, etc.)
         
-        public TaskTemplateType Type { get; set; } = TaskTemplateType.Custom;
+        public TaskTemplateTypeDTO Type { get; set; } = TaskTemplateTypeDTO.Custom;
 
         
         /// JSON template data
@@ -201,7 +201,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
         public string? Description { get; set; }
         
         /// Type of template
-        public TaskTemplateType? Type { get; set; }
+        public TaskTemplateTypeDTO? Type { get; set; }
         
         /// Template data as JSON
         public string? TemplateData { get; set; }

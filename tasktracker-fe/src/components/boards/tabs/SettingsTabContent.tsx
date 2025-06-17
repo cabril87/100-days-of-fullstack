@@ -12,7 +12,7 @@
  */
 
 import React, { useState } from 'react';
-import { cn } from '@/lib/utils/utils';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,6 @@ import {
   Trash2,
   AlertTriangle,
   Calendar,
-  Users,
   Tag,
   Info,
   Settings,
@@ -98,7 +97,7 @@ export const SettingsTabContent: React.FC<SettingsTabContentProps> = ({
 
   const handleDeleteBoard = async () => {
     if (deleteConfirmText.toLowerCase() !== 'delete') {
-      toast.error('Please type "DELETE" to confirm');
+      toast.error('Please type &quot;DELETE&quot; to confirm');
       return;
     }
 
@@ -378,7 +377,7 @@ export const SettingsTabContent: React.FC<SettingsTabContentProps> = ({
                   </DialogTitle>
                   <DialogDescription>
                     This action cannot be undone. This will permanently delete the board
-                    "{board.name}" and all of its tasks.
+                    &quot;{board.name}&quot; and all of its tasks.
                   </DialogDescription>
                 </DialogHeader>
 

@@ -12,7 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Boards;
-using TaskTrackerAPI.Models;
+using TaskTrackerAPI.DTOs.Analytics;
 
 namespace TaskTrackerAPI.Services.Interfaces;
 

@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces;
@@ -42,8 +43,8 @@ public interface ITaskTemplateService
     Task<IEnumerable<TaskTemplateDTO>> GetPopularTemplatesAsync(int count = 10);
     
     // Analytics methods
-    Task<TemplateUsageAnalyticsDTO> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes);
-    Task<IEnumerable<TemplateUsageAnalyticsDTO>> GetTemplateAnalyticsAsync(int templateId);
+    Task<TemplateUsageRecordDTO> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes);
+    Task<IEnumerable<TemplateUsageRecordDTO>> GetTemplateAnalyticsAsync(int templateId);
     Task<TemplateAnalyticsSummaryDTO> GetTemplateAnalyticsSummaryAsync(int templateId);
     Task UpdateTemplateRatingAsync(int templateId, decimal rating);
     Task IncrementTemplateDownloadCountAsync(int templateId);

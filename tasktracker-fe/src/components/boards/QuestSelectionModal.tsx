@@ -335,9 +335,7 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
     onTaskCreated();
   };
 
-  const handleBackToSelection = () => {
-    setMode('selection');
-  };
+      
 
   const getPriorityColor = (priority: TaskPriority) => {
     switch (priority) {
@@ -595,7 +593,7 @@ export const QuestSelectionModal: React.FC<QuestSelectionModalProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
               <p>
-                <strong>"{duplicateTaskInfo?.task.title}"</strong> is already assigned to a board.
+                <strong>&quot;{duplicateTaskInfo?.task.title}&quot;</strong> is already assigned to a board.
               </p>
               {duplicateTaskInfo && duplicateTaskInfo.duplicateCount > 0 && (
                 <p className="text-sm text-gray-600">

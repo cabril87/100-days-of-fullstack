@@ -129,7 +129,7 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.Board, opt => opt.Ignore())
                 .ForMember(dest => dest.AssignedTo, opt => opt.Ignore())
                 .ForMember(dest => dest.AssignedToName, opt => opt.Ignore())
-                .ForMember(dest => dest.IsCompleted, opt => opt.MapFrom(src => src.Status == TaskItemStatus.Completed))
+                .ForMember(dest => dest.IsCompleted, opt => opt.MapFrom(src => src.Status.ToString() == "Completed"))
                 .ForMember(dest => dest.Version, opt => opt.MapFrom(src => 1))
                 .ForMember(dest => dest.AssignedToId, opt => opt.Ignore())
                 .ForMember(dest => dest.AssignedToFamilyMemberId, opt => opt.Ignore())
@@ -153,7 +153,7 @@ namespace TaskTrackerAPI.Profiles
                 .ForMember(dest => dest.ActualTimeSpentMinutes, opt => opt.MapFrom(src => src.ActualMinutes))
                 .ForMember(dest => dest.RecurringPattern, opt => opt.MapFrom(src => src.RecurrencePattern))
                 .ForMember(dest => dest.IsCompleted, opt => opt.MapFrom(src => 
-                    src.Status.HasValue ? src.Status.Value == TaskItemStatus.Completed : (bool?)null))
+                    src.Status.HasValue ? src.Status.Value.ToString() == "Completed" : (bool?)null))
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
         }
 

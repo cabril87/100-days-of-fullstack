@@ -20,6 +20,7 @@ using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
+using AutoMapper;
 using TaskDto = TaskTrackerAPI.DTOs.Tasks.TagDto;
 
 namespace TaskTrackerAPI.Services;
@@ -28,11 +29,13 @@ public class TagService : ITagService
 {
     private readonly ITagRepository _tagRepository;
     private readonly ILogger<TagService> _logger;
+    private readonly IMapper _mapper;
     
-    public TagService(ITagRepository tagRepository, ILogger<TagService> logger)
+    public TagService(ITagRepository tagRepository, ILogger<TagService> logger, IMapper mapper)
     {
         _tagRepository = tagRepository;
         _logger = logger;
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     }
     
     public async Task<IEnumerable<TagDTO>> GetAllTagsAsync(int userId)
@@ -258,14 +261,14 @@ public class TagService : ITagService
     }
     
     // Helper method to map TaskItem to TaskItemDTO
-    private static TaskItemDTO MapToTaskItemDto(TaskItem task)
+    private TaskItemDTO MapToTaskItemDto(TaskItem task)
     {
         return new TaskItemDTO
         {
             Id = task.Id,
             Title = task.Title,
             Description = task.Description,
-            Status = task.Status,
+            Status = _mapper.Map<TaskItemStatusDTO>(task.Status),
             DueDate = task.DueDate,
             CreatedAt = task.CreatedAt,
             UpdatedAt = task.UpdatedAt,

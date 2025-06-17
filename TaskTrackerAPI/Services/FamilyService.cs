@@ -363,7 +363,7 @@ public class FamilyService : IFamilyService
         // Update member profile
         member.Name = profileDto.Name;
         member.Email = profileDto.Email;
-        member.Relationship = profileDto.Relationship;
+        member.Relationship = _mapper.Map<FamilyRelationship>(profileDto.Relationship);
         member.AvatarUrl = profileDto.AvatarUrl;
         member.ProfileCompleted = true;
 

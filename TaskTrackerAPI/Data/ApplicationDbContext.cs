@@ -42,7 +42,7 @@ public class ApplicationDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; } = null!;
-    public DbSet<TaskItem> Tasks { get; set; } = null!; // Changed from Task to TaskItem
+    public DbSet<TaskItem> TaskItems { get; set; } = null!; 
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<TaskTag> TaskTags { get; set; } = null!;
@@ -127,6 +127,7 @@ public class ApplicationDbContext : DbContext
     // Add these DbSet properties after the existing ones
     public DbSet<SubscriptionTier> SubscriptionTiers { get; set; } = null!;
     public DbSet<UserApiQuota> UserApiQuotas { get; set; } = null!;
+    public DbSet<UserSubscription> UserSubscriptions { get; set; } = null!;
     public DbSet<RateLimitTierConfig> RateLimitTierConfigs { get; set; } = null!;
     public DbSet<AuditLog> AuditLogs { get; set; } = null!;
     

@@ -11,7 +11,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -21,7 +20,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
     public class TaskStatusUpdateRequestDTO
     {
         [Required]
-        public TaskItemStatus Status { get; set; }
+        public TaskItemStatusDTO Status { get; set; }
     }
 
     /// <summary>
@@ -30,8 +29,8 @@ namespace TaskTrackerAPI.DTOs.Tasks
     public class TaskStatusUpdateResponseDTO
     {
         public int TaskId { get; set; }
-        public TaskItemStatus PreviousStatus { get; set; }
-        public TaskItemStatus NewStatus { get; set; }
+        public TaskItemStatusDTO PreviousStatus { get; set; }
+        public TaskItemStatusDTO NewStatus { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 
@@ -59,6 +58,37 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// New status for all tasks
         /// </summary>
         [Required]
-        public TaskItemStatus Status { get; set; }
+        public TaskItemStatusDTO Status { get; set; }
+    }
+
+    /// <summary>
+    /// Simple task status update DTO
+    /// </summary>
+    public class TaskStatusUpdateDTO
+    {
+        /// <summary>
+        /// New status to set for the task
+        /// </summary>
+        [Required]
+        public TaskItemStatusDTO Status { get; set; }
+    }
+
+    /// <summary>
+    /// Bulk status update for multiple tasks
+    /// </summary>
+    public class BulkStatusUpdateDTO
+    {
+        /// <summary>
+        /// Task IDs to update
+        /// </summary>
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one task ID must be provided")]
+        public List<int> TaskIds { get; set; } = new List<int>();
+
+        /// <summary>
+        /// New status to apply to all selected tasks
+        /// </summary>
+        [Required]
+        public TaskItemStatusDTO Status { get; set; }
     }
 } 

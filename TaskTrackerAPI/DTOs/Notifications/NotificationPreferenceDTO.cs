@@ -10,7 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Notifications;
 
@@ -19,7 +19,7 @@ public class NotificationPreferenceDTO
     public int Id { get; set; }
     public string NotificationType { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
-    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
+    public NotificationPriorityDTO Priority { get; set; } = NotificationPriorityDTO.Normal;
     public int? FamilyId { get; set; }
     public string? FamilyName { get; set; }
     public bool EnableEmailNotifications { get; set; } = false;
@@ -33,7 +33,7 @@ public class UpdateNotificationPreferenceDTO
     
     public bool Enabled { get; set; } = true;
     
-    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
+    public NotificationPriorityDTO Priority { get; set; } = NotificationPriorityDTO.Normal;
     
     public int? FamilyId { get; set; }
     

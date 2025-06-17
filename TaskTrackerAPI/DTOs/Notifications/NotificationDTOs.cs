@@ -11,9 +11,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.User;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Notifications
 {
@@ -67,7 +66,7 @@ namespace TaskTrackerAPI.DTOs.Notifications
     {
         public bool? IsRead { get; set; }
         public bool? IsImportant { get; set; }
-        public NotificationType? Type { get; set; }
+        public NotificationTypeDTO? Type { get; set; }
         public string? RelatedEntityType { get; set; }
         public int? RelatedEntityId { get; set; }
         public DateTime? FromDate { get; set; }
@@ -113,7 +112,7 @@ namespace TaskTrackerAPI.DTOs.Notifications
         [MaxLength(50)]
         public string NotificationType { get; set; } = string.Empty;
 
-        public NotificationType? Type { get; set; }
+        public NotificationTypeDTO? Type { get; set; }
 
         public bool IsImportant { get; set; } = false;
 

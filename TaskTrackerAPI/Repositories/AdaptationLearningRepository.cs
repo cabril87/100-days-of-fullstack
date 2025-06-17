@@ -47,7 +47,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<bool> DeleteUserLearningProfileAsync(int userId)
         {
-            var profile = await GetUserLearningProfileAsync(userId);
+            UserLearningProfile? profile = await GetUserLearningProfileAsync(userId);
             if (profile == null) return false;
 
             _context.UserLearningProfiles.Remove(profile);
@@ -61,7 +61,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<RecommendationScore>> GetRecommendationScoresAsync(int userId, int? templateId = null)
         {
-            var query = _context.RecommendationScores
+            IQueryable<RecommendationScore> query = _context.RecommendationScores
                 .Include(r => r.User)
                 .Include(r => r.Template)
                 .Where(r => r.UserId == userId);
@@ -93,7 +93,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<RecommendationScore>> GetRecentRecommendationsAsync(int userId, int hours = 24)
         {
-            var cutoffTime = DateTime.UtcNow.AddHours(-hours);
+            DateTime cutoffTime = DateTime.UtcNow.AddHours(-hours);
             return await _context.RecommendationScores
                 .Include(r => r.Template)
                 .Where(r => r.UserId == userId && r.CreatedAt >= cutoffTime)
@@ -114,11 +114,11 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task MarkRecommendationsAsShownAsync(List<int> recommendationIds)
         {
-            var recommendations = await _context.RecommendationScores
+            List<RecommendationScore> recommendations = await _context.RecommendationScores
                 .Where(r => recommendationIds.Contains(r.Id))
                 .ToListAsync();
 
-            foreach (var recommendation in recommendations)
+            foreach (RecommendationScore recommendation in recommendations)
             {
                 recommendation.WasShown = true;
                 recommendation.ShownAt = DateTime.UtcNow;
@@ -134,7 +134,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<AdaptationEvent>> GetAdaptationEventsAsync(int userId, DateTime? since = null)
         {
-            var query = _context.AdaptationEvents
+            IQueryable<AdaptationEvent> query = _context.AdaptationEvents
                 .Include(e => e.User)
                 .Where(e => e.UserId == userId);
 
@@ -164,7 +164,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<AdaptationEvent>> GetRecentAdaptationsAsync(int userId, int days = 30)
         {
-            var cutoffDate = DateTime.UtcNow.AddDays(-days);
+            DateTime cutoffDate = DateTime.UtcNow.AddDays(-days);
             return await _context.AdaptationEvents
                 .Where(e => e.UserId == userId && e.CreatedAt >= cutoffDate)
                 .OrderByDescending(e => e.CreatedAt)
@@ -177,7 +177,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<Dictionary<AdaptationEventType, int>> GetAdaptationCountsByTypeAsync(int userId, DateTime? since = null)
         {
-            var query = _context.AdaptationEvents
+            IQueryable<AdaptationEvent> query = _context.AdaptationEvents
                 .Where(e => e.UserId == userId);
 
             if (since.HasValue)
@@ -192,7 +192,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<double> GetAdaptationSuccessRateAsync(int userId, AdaptationEventType? eventType = null)
         {
-            var query = _context.AdaptationEvents
+            IQueryable<AdaptationEvent> query = _context.AdaptationEvents
                 .Where(e => e.UserId == userId && e.WasSuccessful.HasValue);
 
             if (eventType.HasValue)
@@ -200,7 +200,7 @@ namespace TaskTrackerAPI.Repositories
                 query = query.Where(e => e.EventType == eventType.Value);
             }
 
-            var events = await query.ToListAsync();
+            List<AdaptationEvent> events = await query.ToListAsync();
             if (!events.Any()) return 0.0;
 
             return events.Count(e => e.WasSuccessful == true) / (double)events.Count;
@@ -208,7 +208,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<RecommendationScore>> GetFeedbackRecommendationsAsync(int userId, DateTime? since = null)
         {
-            var query = _context.RecommendationScores
+            IQueryable<RecommendationScore> query = _context.RecommendationScores
                 .Include(r => r.Template)
                 .Where(r => r.UserId == userId && r.UserFeedback.HasValue);
 
@@ -224,7 +224,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<Dictionary<string, double>> GetRecommendationMetricsAsync(int userId, DateTime? since = null)
         {
-            var query = _context.RecommendationScores
+            IQueryable<RecommendationScore> query = _context.RecommendationScores
                 .Where(r => r.UserId == userId);
 
             if (since.HasValue)
@@ -232,7 +232,7 @@ namespace TaskTrackerAPI.Repositories
                 query = query.Where(r => r.CreatedAt >= since.Value);
             }
 
-            var recommendations = await query.ToListAsync();
+            List<RecommendationScore> recommendations = await query.ToListAsync();
             if (!recommendations.Any())
             {
                 return new Dictionary<string, double>
@@ -245,10 +245,10 @@ namespace TaskTrackerAPI.Repositories
                 };
             }
 
-            var shown = recommendations.Where(r => r.WasShown).ToList();
-            var accepted = recommendations.Where(r => r.UserFeedback == 1).ToList();
-            var used = recommendations.Where(r => r.WasUsed).ToList();
-            var rated = recommendations.Where(r => r.SatisfactionRating.HasValue).ToList();
+            List<RecommendationScore> shown = recommendations.Where(r => r.WasShown).ToList();
+            List<RecommendationScore> accepted = recommendations.Where(r => r.UserFeedback == 1).ToList();
+            List<RecommendationScore> used = recommendations.Where(r => r.WasUsed).ToList();
+            List<RecommendationScore> rated = recommendations.Where(r => r.SatisfactionRating.HasValue).ToList();
 
             return new Dictionary<string, double>
             {
@@ -267,49 +267,49 @@ namespace TaskTrackerAPI.Repositories
         public async Task<int> GetUserDataPointCountAsync(int userId)
         {
             // Count various data points: task completions, template uses, adaptations, feedback
-            var taskCount = await _context.Tasks.CountAsync(t => t.UserId == userId);
-            var templateUseCount = await _context.TemplateUsageAnalytics.CountAsync(u => u.UserId == userId);
-            var adaptationCount = await _context.AdaptationEvents.CountAsync(e => e.UserId == userId);
-            var feedbackCount = await _context.RecommendationScores.CountAsync(r => r.UserId == userId && r.UserFeedback.HasValue);
+            int taskCount = await _context.TaskItems.CountAsync(t => t.UserId == userId);
+            int templateUseCount = await _context.TemplateUsageAnalytics.CountAsync(u => u.UserId == userId);
+            int adaptationCount = await _context.AdaptationEvents.CountAsync(e => e.UserId == userId);
+            int feedbackCount = await _context.RecommendationScores.CountAsync(r => r.UserId == userId && r.UserFeedback.HasValue);
 
             return taskCount + templateUseCount + adaptationCount + feedbackCount;
         }
 
         public async Task<double> CalculateLearningVelocityAsync(int userId)
         {
-            var recentAdaptations = await GetRecentAdaptationsAsync(userId, 30);
+            List<AdaptationEvent> recentAdaptations = await GetRecentAdaptationsAsync(userId, 30);
             if (!recentAdaptations.Any()) return 1.0;
 
             // Calculate learning velocity based on adaptation frequency and success rate
-            var adaptationsPerWeek = recentAdaptations.Count / 4.0; // 30 days / ~4 weeks
-            var successRate = await GetAdaptationSuccessRateAsync(userId);
-            var confidenceAvg = recentAdaptations.Average(a => a.Confidence);
+            double adaptationsPerWeek = recentAdaptations.Count / 4.0; // 30 days / ~4 weeks
+            double successRate = await GetAdaptationSuccessRateAsync(userId);
+            double confidenceAvg = recentAdaptations.Average(a => a.Confidence);
 
             // Normalize to 0.1 - 5.0 range
-            var velocity = (adaptationsPerWeek * successRate * confidenceAvg) + 0.5;
+            double velocity = (adaptationsPerWeek * successRate * confidenceAvg) + 0.5;
             return Math.Max(0.1, Math.Min(5.0, velocity));
         }
 
         public async Task<double> CalculateAdaptationConfidenceAsync(int userId)
         {
-            var dataPointCount = await GetUserDataPointCountAsync(userId);
-            var recentSuccessRate = await GetAdaptationSuccessRateAsync(userId);
-            var recentAdaptations = await GetRecentAdaptationsAsync(userId, 30);
+            int dataPointCount = await GetUserDataPointCountAsync(userId);
+            double recentSuccessRate = await GetAdaptationSuccessRateAsync(userId);
+            List<AdaptationEvent> recentAdaptations = await GetRecentAdaptationsAsync(userId, 30);
 
             if (!recentAdaptations.Any()) return 0.1;
 
             // Calculate confidence based on data points, success rate, and consistency
-            var dataPointConfidence = Math.Min(1.0, dataPointCount / 100.0); // Max at 100 data points
-            var successConfidence = recentSuccessRate;
-            var consistencyConfidence = recentAdaptations.Any() ? recentAdaptations.Average(a => a.Confidence) : 0.5;
+            double dataPointConfidence = Math.Min(1.0, dataPointCount / 100.0); // Max at 100 data points
+            double successConfidence = recentSuccessRate;
+            double consistencyConfidence = recentAdaptations.Any() ? recentAdaptations.Average(a => a.Confidence) : 0.5;
 
             return (dataPointConfidence + successConfidence + consistencyConfidence) / 3.0;
         }
 
         public async Task<List<(DateTime Date, double SuccessRate)>> GetSuccessRateTrendsAsync(int userId, int days = 30)
         {
-            var startDate = DateTime.UtcNow.AddDays(-days);
-            var adaptations = await _context.AdaptationEvents
+            DateTime startDate = DateTime.UtcNow.AddDays(-days);
+            List<AdaptationEvent> adaptations = await _context.AdaptationEvents
                 .Where(e => e.UserId == userId && e.CreatedAt >= startDate && e.WasSuccessful.HasValue)
                 .OrderBy(e => e.CreatedAt)
                 .ToListAsync();
@@ -320,7 +320,7 @@ namespace TaskTrackerAPI.Repositories
             }
 
             // Group by week and calculate success rate trends
-            var trends = adaptations
+            List<(DateTime Date, double SuccessRate)> trends = adaptations
                 .GroupBy(a => new DateTime(a.CreatedAt.Year, a.CreatedAt.Month, a.CreatedAt.Day).AddDays(-(int)a.CreatedAt.DayOfWeek))
                 .Select(g => (
                     Date: g.Key,

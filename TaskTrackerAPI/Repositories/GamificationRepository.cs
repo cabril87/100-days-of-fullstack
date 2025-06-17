@@ -298,28 +298,28 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<int> GetCompletedTasksCountAsync(int userId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null)
                 .CountAsync();
         }
 
         public async Task<int> GetCompletedTasksCountByCategoryAsync(int userId, string category)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null && t.Category!.Name == category)
                 .CountAsync();
         }
 
         public async Task<int> GetCompletedTasksByPriorityCountAsync(int userId, string priority)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null && t.Priority == priority)
                 .CountAsync();
         }
 
         public async Task<int> GetTaskCompletionStreakAsync(int userId)
         {
-            var completions = await _context.Tasks
+            var completions = await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null)
                 .OrderByDescending(t => t.CompletedAt)
                 .Select(t => t.CompletedAt!.Value.Date)
@@ -347,7 +347,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<DateTime?> GetLastActivityDateAsync(int userId)
         {
-            var lastTaskCompletion = await _context.Tasks
+            var lastTaskCompletion = await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null)
                 .OrderByDescending(t => t.CompletedAt)
                 .Select(t => t.CompletedAt)
@@ -369,7 +369,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<IEnumerable<TaskItem>> GetUserTasksAsync(int userId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId)
                 .Include(t => t.Category)
                 .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
@@ -378,7 +378,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<IEnumerable<TaskItem>> GetUserTasksCompletedInTimeRangeAsync(int userId, DateTime startDate, DateTime endDate)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.CompletedAt != null && 
                            t.CompletedAt >= startDate && t.CompletedAt <= endDate)
                 .Include(t => t.Category)
@@ -435,7 +435,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<TaskItem?> GetTaskAsync(int taskId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Include(t => t.Category)
                 .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
                 .FirstOrDefaultAsync(t => t.Id == taskId);
@@ -636,7 +636,7 @@ namespace TaskTrackerAPI.Repositories
         }
         public async Task<List<TaskItem>> GetIncompleteTasksAsync(int userId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.AssignedToId == userId && !t.IsCompleted)
                 .Include(t => t.Category)
                 .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
@@ -683,7 +683,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<TaskCountData>> GetUserTaskCountsAsync()
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.IsCompleted && t.AssignedToId.HasValue)
                 .GroupBy(t => t.AssignedToId)
                 .Select(g => new TaskCountData { UserId = g.Key, Count = g.Count() })
@@ -755,7 +755,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<UserTaskCountDTO>> GetFamilyTaskCountsAsync(List<int> familyUserIds)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.IsCompleted && t.AssignedToId.HasValue && familyUserIds.Contains(t.AssignedToId.Value))
                 .GroupBy(t => t.AssignedToId)
                 .Select(g => new UserTaskCountDTO { UserId = g.Key!.Value, Count = g.Count() })
@@ -773,7 +773,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<CategoryCount>> GetCategoryCountsAsync(int userId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.AssignedToId == userId && t.IsCompleted)
                 .GroupBy(t => t.Category != null ? t.Category.Name : "Uncategorized")
                 .Select(g => new CategoryCount { Category = g.Key, Count = g.Count() })
@@ -864,7 +864,7 @@ namespace TaskTrackerAPI.Repositories
         // Task queries
         public async Task<int> GetTaskCountByPriorityAsync(int userId, string priority)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .CountAsync(t => t.UserId == userId && 
                                t.IsCompleted && 
                                t.Priority != null &&
@@ -873,7 +873,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<int> GetTaskCountByCategoryAndDateAsync(int userId, string categoryName, DateTime startDate, DateTime endDate)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.IsCompleted && 
                            t.Category != null && t.Category.Name.ToLower().Contains(categoryName.ToLower()) &&
                            t.CompletedAt.HasValue && t.CompletedAt.Value >= startDate && t.CompletedAt.Value < endDate)
@@ -882,26 +882,26 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<int> GetTaskCountByFamilyAsync(int userId, bool isCompleted = true)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .CountAsync(t => t.UserId == userId && t.IsCompleted == isCompleted && 
                                (t.FamilyId.HasValue || t.AssignedToFamilyMemberId.HasValue));
         }
 
         public async Task<int> GetTaskCountWithNotesAsync(int userId, int minLength = 0)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .CountAsync(t => t.UserId == userId && !string.IsNullOrEmpty(t.Description) && t.Description.Length > minLength);
         }
 
         public async Task<bool> HasTaskWithDetailedNotesAsync(int userId, int minLength = 100)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .AnyAsync(t => t.UserId == userId && !string.IsNullOrEmpty(t.Description) && t.Description.Length > minLength);
         }
 
         public async Task<int> GetRecurringTaskCountAsync(int userId)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .CountAsync(t => t.UserId == userId && t.IsRecurring);
         }
 
@@ -910,7 +910,7 @@ namespace TaskTrackerAPI.Repositories
             DateTime startOfDay = date.Date;
             DateTime endOfDay = startOfDay.AddDays(1);
 
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.IsCompleted && 
                            t.CompletedAt.HasValue && 
                            t.CompletedAt.Value >= startOfDay && 
@@ -923,7 +923,7 @@ namespace TaskTrackerAPI.Repositories
 
         public async Task<List<TaskItem>> GetTasksByPriorityAsync(int userId, List<string> priorities)
         {
-            return await _context.Tasks
+            return await _context.TaskItems
                 .Where(t => t.UserId == userId && t.IsCompleted && 
                            !string.IsNullOrEmpty(t.Priority) && priorities.Contains(t.Priority))
                 .Include(t => t.Category)
@@ -955,7 +955,7 @@ namespace TaskTrackerAPI.Repositories
         // Feature usage checks
         public async Task<bool> HasUserUsedTasksAsync(int userId)
         {
-            return await _context.Tasks.AnyAsync(t => t.UserId == userId);
+            return await _context.TaskItems.AnyAsync(t => t.UserId == userId);
         }
 
         public async Task<bool> HasUserUsedCategoriesAsync(int userId)

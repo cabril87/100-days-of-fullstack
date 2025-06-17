@@ -117,15 +117,20 @@ export const API_ENDPOINTS = {
   },
 } as const;
 
-// SignalR Hub endpoints - these don't use versioning
+// SignalR Hub endpoints - Consolidated architecture (2 hubs instead of 7)
 export const HUB_ENDPOINTS = {
-  TASKS: '/hubs/tasks',
-  NOTIFICATIONS: '/hubs/notifications',
-  GAMIFICATION: '/hubs/gamification',
+  // Main hub handles: tasks, notifications, gamification, boards, templates
+  MAIN: '/hubs/main',
+  // Calendar hub handles: calendar events, availability, focus mode
   CALENDAR: '/hubs/calendar',
-  ENHANCED_BOARD: '/hubs/enhanced-board',
-  TEMPLATE_MARKETPLACE: '/hubs/template-marketplace',
-  SETTINGS_SYNC: '/hubs/settings-sync',
+  
+  // Legacy endpoints - DEPRECATED (kept for backward compatibility during migration)
+  // TODO: Remove these after frontend migration is complete
+  TASKS: '/hubs/main', // Redirects to main hub
+  NOTIFICATIONS: '/hubs/main', // Redirects to main hub
+  GAMIFICATION: '/hubs/main', // Redirects to main hub
+  ENHANCED_BOARD: '/hubs/main', // Redirects to main hub
+  TEMPLATE_MARKETPLACE: '/hubs/main', // Redirects to main hub
 } as const;
 
 // ================================

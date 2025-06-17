@@ -17,6 +17,7 @@ using AutoMapper;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -607,16 +608,16 @@ public class TaskTemplateService : ITaskTemplateService
     }
 
     // Analytics methods
-    public async Task<IEnumerable<TemplateUsageAnalyticsDTO>> GetTemplateAnalyticsAsync(int templateId)
+    public async Task<IEnumerable<TemplateUsageRecordDTO>> GetTemplateAnalyticsAsync(int templateId)
     {
         IEnumerable<TemplateUsageAnalytics> analytics = await _taskTemplateRepository.GetTemplateAnalyticsAsync(templateId);
-        return _mapper.Map<IEnumerable<TemplateUsageAnalyticsDTO>>(analytics);
+        return _mapper.Map<IEnumerable<TemplateUsageRecordDTO>>(analytics);
     }
 
-    public async Task<TemplateUsageAnalyticsDTO> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes)
+    public async Task<TemplateUsageRecordDTO> RecordTemplateUsageAsync(int templateId, int userId, bool success, int completionTimeMinutes)
     {
         TemplateUsageAnalytics analytics = await _taskTemplateRepository.RecordTemplateUsageAsync(templateId, userId, success, completionTimeMinutes);
-        return _mapper.Map<TemplateUsageAnalyticsDTO>(analytics);
+        return _mapper.Map<TemplateUsageRecordDTO>(analytics);
     }
 
     public async Task<TemplateAnalyticsSummaryDTO> GetTemplateAnalyticsSummaryAsync(int templateId)
@@ -638,9 +639,13 @@ public class TaskTemplateService : ITaskTemplateService
             int successfulUsages = analyticsList.Where(a => a.Success).Count();
             decimal successRate = totalUsages > 0 ? (decimal)(successfulUsages * 100.0 / totalUsages) : 0;
             int avgCompletionTime = analyticsList.Any() ? (int)analyticsList.Average(a => a.CompletionTimeMinutes) : 0;
-            decimal avgEfficiencyScore = analyticsList.Any() ? analyticsList.Average(a => a.EfficiencyScore) : 0;
+            decimal avgEfficiencyScore = 0; // Calculate efficiency based on success rate and completion time
+            if (analyticsList.Any())
+            {
+                avgEfficiencyScore = (decimal)(successfulUsages * 100.0 / totalUsages);
+            }
             int uniqueUsers = analyticsList.Select(a => a.UserId).Distinct().Count();
-            DateTime? lastUsed = analyticsList.Any() ? analyticsList.Max(a => a.UsedDate) : (DateTime?)null;
+            DateTime? lastUsed = analyticsList.Any() ? analyticsList.Max(a => a.UsedAt) : (DateTime?)null;
 
             return new TemplateAnalyticsSummaryDTO
             {

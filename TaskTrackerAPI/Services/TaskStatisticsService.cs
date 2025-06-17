@@ -19,6 +19,7 @@ using TaskTrackerAPI.Repositories.Interfaces;
 using System.Globalization;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Data;
 using AutoMapper;
 
@@ -251,7 +252,13 @@ namespace TaskTrackerAPI.Services
                 };
 
                 // Add category breakdown
-                analytics.CategoryBreakdown = await GetMostActiveCategoriesAsync(userId, 10);
+                List<CategoryActivityDTO> categoryActivities = await GetMostActiveCategoriesAsync(userId, 10);
+                analytics.CategoryBreakdown = categoryActivities.Select(ca => new CategoryBreakdownDTO
+                {
+                    Category = ca.CategoryName,
+                    Count = ca.TaskCount,
+                    Percentage = ca.Percentage
+                }).ToList();
 
                 // Calculate hourly distribution
                 Dictionary<int, int> hourlyDistribution = new Dictionary<int, int>();
@@ -300,7 +307,7 @@ namespace TaskTrackerAPI.Services
                         Value = completedOnDay
                     });
                 }
-                analytics.DailyCompletions = completionTrend;
+                analytics.DailyCompletions = completionTrend.ToDictionary(ct => ct.Date, ct => ct.Value);
 
                 // Calculate average completion time
                 IEnumerable<TaskItem> completedTasks = tasksInRange.Where(t => 

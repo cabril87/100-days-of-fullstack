@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 import { SidebarProvider } from '@/lib/providers/SidebarContext';
 import { AuthProvider } from '@/lib/providers/AuthProvider';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -77,9 +78,11 @@ export default function RootLayout({
         >
           <AuthProvider>
             <SidebarProvider>
-              <AppLayout>
-                {children}
-              </AppLayout>
+              <ToastProvider>
+                <AppLayout>
+                  {children}
+                </AppLayout>
+              </ToastProvider>
             </SidebarProvider>
           </AuthProvider>
         </ThemeProvider>

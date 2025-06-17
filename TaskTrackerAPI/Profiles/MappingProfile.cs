@@ -20,12 +20,89 @@ using TaskTrackerAPI.DTOs.Categories;
 using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs.Security;
 
+
+// Clean aliases for enum mappings
+using ModelTaskItemStatus = TaskTrackerAPI.Models.TaskItemStatus;
+using DtoTaskItemStatus = TaskTrackerAPI.DTOs.Tasks.TaskItemStatusDTO;
+using ModelUserRole = TaskTrackerAPI.Models.UserRole;
+using DtoUserRole = TaskTrackerAPI.DTOs.Auth.UserRoleDTO;
+using ModelNotificationType = TaskTrackerAPI.Models.NotificationType;
+using DtoNotificationType = TaskTrackerAPI.DTOs.Notifications.NotificationTypeDTO;
+using ModelFamilyMemberAgeGroup = TaskTrackerAPI.Models.FamilyMemberAgeGroup;
+using DtoFamilyMemberAgeGroup = TaskTrackerAPI.DTOs.Family.FamilyMemberAgeGroupDTO;
+using ModelFamilyRelationship = TaskTrackerAPI.Models.FamilyRelationship;
+using DtoFamilyRelationship = TaskTrackerAPI.DTOs.Family.FamilyRelationshipDTO;
+using ModelFamilyRelationshipType = TaskTrackerAPI.Models.FamilyRelationshipType;
+using DtoFamilyRelationshipType = TaskTrackerAPI.DTOs.Family.FamilyRelationshipTypeDTO;
+using ModelTaskPriority = TaskTrackerAPI.Models.TaskPriority;
+using DtoTaskPriority = TaskTrackerAPI.DTOs.Tasks.TaskPriorityDTO;
+using ModelNotificationPriority = TaskTrackerAPI.Models.NotificationPriority;
+using DtoNotificationPriority = TaskTrackerAPI.DTOs.Notifications.NotificationPriorityDTO;
+using ModelAttendeeResponse = TaskTrackerAPI.Models.AttendeeResponse;
+using DtoAttendeeResponse = TaskTrackerAPI.DTOs.Family.AttendeeResponseDTO;
+using ModelReminderMethod = TaskTrackerAPI.Models.ReminderMethod;
+using DtoReminderMethod = TaskTrackerAPI.DTOs.Family.ReminderMethodDTO;
+using ModelAvailabilityStatus = TaskTrackerAPI.Models.AvailabilityStatus;
+using DtoAvailabilityStatus = TaskTrackerAPI.DTOs.Family.AvailabilityStatusDTO;
+using ModelTaskTemplateType = TaskTrackerAPI.Models.TaskTemplateType;
+using DtoTaskTemplateType = TaskTrackerAPI.DTOs.Tasks.TaskTemplateTypeDTO;
+
+
 namespace TaskTrackerAPI.Profiles
 {
     public class MappingProfile : Profile
     {
         public MappingProfile()
         {
+            // ===== ENUM CONVERSIONS =====
+            // TaskItemStatus: Models ↔ DTOs
+            CreateMap<ModelTaskItemStatus, DtoTaskItemStatus>();
+            CreateMap<DtoTaskItemStatus, ModelTaskItemStatus>();
+            
+            // UserRole: Models ↔ DTOs  
+            CreateMap<ModelUserRole, DtoUserRole>();
+            CreateMap<DtoUserRole, ModelUserRole>();
+            
+            // NotificationType: Models ↔ DTOs
+            CreateMap<ModelNotificationType, DtoNotificationType>();
+            CreateMap<DtoNotificationType, ModelNotificationType>();
+            
+            // FamilyMemberAgeGroup: Models ↔ DTOs
+            CreateMap<ModelFamilyMemberAgeGroup, DtoFamilyMemberAgeGroup>();
+            CreateMap<DtoFamilyMemberAgeGroup, ModelFamilyMemberAgeGroup>();
+            
+            // FamilyRelationship: Models ↔ DTOs
+            CreateMap<ModelFamilyRelationship, DtoFamilyRelationship>();
+            CreateMap<DtoFamilyRelationship, ModelFamilyRelationship>();
+            
+            // FamilyRelationshipType: Models ↔ DTOs
+            CreateMap<ModelFamilyRelationshipType, DtoFamilyRelationshipType>();
+            CreateMap<DtoFamilyRelationshipType, ModelFamilyRelationshipType>();
+            
+            // TaskPriority: Models ↔ DTOs
+            CreateMap<ModelTaskPriority, DtoTaskPriority>();
+            CreateMap<DtoTaskPriority, ModelTaskPriority>();
+            
+            // NotificationPriority: Models ↔ DTOs
+            CreateMap<ModelNotificationPriority, DtoNotificationPriority>();
+            CreateMap<DtoNotificationPriority, ModelNotificationPriority>();
+            
+            // AttendeeResponse: Models ↔ DTOs
+            CreateMap<ModelAttendeeResponse, DtoAttendeeResponse>();
+            CreateMap<DtoAttendeeResponse, ModelAttendeeResponse>();
+            
+            // ReminderMethod: Models ↔ DTOs
+            CreateMap<ModelReminderMethod, DtoReminderMethod>();
+            CreateMap<DtoReminderMethod, ModelReminderMethod>();
+            
+            // AvailabilityStatus: Models ↔ DTOs
+            CreateMap<ModelAvailabilityStatus, DtoAvailabilityStatus>();
+            CreateMap<DtoAvailabilityStatus, ModelAvailabilityStatus>();
+            
+            // TaskTemplateType: Models ↔ DTOs
+            CreateMap<ModelTaskTemplateType, DtoTaskTemplateType>();
+            CreateMap<DtoTaskTemplateType, ModelTaskTemplateType>();
+            
             // Map from TaskItem to TaskItemDTO (legacy)
             CreateMap<TaskItem, TaskItemDTO>()
                 .ForMember(dest => dest.CategoryName, opt => 
@@ -116,7 +193,7 @@ namespace TaskTrackerAPI.Profiles
             
             // Advanced security mappings
             CreateMap<ThreatIntelligence, ThreatIntelligenceDTO>();
-            CreateMap<BehavioralAnalytics, BehavioralAnalyticsDTO>();
+
 
             // User Security Settings mappings
             CreateMap<UserSecuritySettings, UserSecuritySettingsDTO>();

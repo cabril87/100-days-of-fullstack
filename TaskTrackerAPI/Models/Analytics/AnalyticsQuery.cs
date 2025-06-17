@@ -16,7 +16,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace TaskTrackerAPI.Models.Analytics
 {
     /// <summary>
-    /// Represents an executed analytics query for tracking and optimization
+    /// Analytics query model for storing and managing analytics queries
     /// </summary>
     public class AnalyticsQuery
     {
@@ -24,28 +24,30 @@ namespace TaskTrackerAPI.Models.Analytics
         public int Id { get; set; }
 
         [Required]
-        public int UserId { get; set; }
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(100)]
-        public string QueryName { get; set; } = string.Empty;
+        public string QueryDefinition { get; set; } = string.Empty; // JSON
 
         [Required]
         [StringLength(50)]
         public string QueryType { get; set; } = string.Empty;
 
-        [Required]
-        [Column(TypeName = "nvarchar(max)")]
-        public string Parameters { get; set; } = string.Empty; // JSON
+        public int UserId { get; set; }
 
-        [Required]
-        public double ExecutionTime { get; set; } // in milliseconds
+        public bool IsPublic { get; set; } = false;
 
-        [Required]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
+
+        public DateTime? LastExecuted { get; set; }
+
+        public int ExecutionCount { get; set; } = 0;
 
         // Navigation properties
         [ForeignKey("UserId")]
-        public virtual User User { get; set; } = null!;
+        public virtual User? User { get; set; }
     }
 } 

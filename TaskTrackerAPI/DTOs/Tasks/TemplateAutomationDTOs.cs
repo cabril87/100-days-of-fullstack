@@ -158,23 +158,6 @@ public class UpdateWorkflowStepDTO
     public string? Dependencies { get; set; }
 }
 
-// Analytics DTOs
-public class TemplateUsageAnalyticsDTO
-{
-    public int Id { get; set; }
-    public int TemplateId { get; set; }
-    public int UserId { get; set; }
-    public DateTime UsedDate { get; set; }
-    public int CompletionTimeMinutes { get; set; }
-    public bool Success { get; set; }
-    public string? Notes { get; set; }
-    public int TasksCreated { get; set; }
-    public int TasksCompleted { get; set; }
-    public decimal EfficiencyScore { get; set; }
-    public string? Feedback { get; set; }
-    public DateTime? CompletedAt { get; set; }
-}
-
 public class TemplateAnalyticsSummaryDTO
 {
     public int TemplateId { get; set; }

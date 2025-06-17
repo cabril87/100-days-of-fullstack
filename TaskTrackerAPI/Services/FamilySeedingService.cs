@@ -18,6 +18,7 @@ using TaskTrackerAPI.DTOs.Auth;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Repositories.Interfaces;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Services;
 
@@ -32,6 +33,7 @@ public class FamilySeedingService : IFamilySeedingService
     private readonly IUserRepository _userRepository;
     private readonly IAuthService _authService;
     private readonly ILogger<FamilySeedingService> _logger;
+    private readonly IMapper _mapper;
 
     public FamilySeedingService(
         IFamilyRepository familyRepository,
@@ -39,7 +41,8 @@ public class FamilySeedingService : IFamilySeedingService
         IFamilyRoleRepository familyRoleRepository,
         IUserRepository userRepository,
         IAuthService authService,
-        ILogger<FamilySeedingService> logger)
+        ILogger<FamilySeedingService> logger,
+        IMapper mapper)
     {
         _familyRepository = familyRepository;
         _familyMemberRepository = familyMemberRepository;
@@ -47,6 +50,7 @@ public class FamilySeedingService : IFamilySeedingService
         _userRepository = userRepository;
         _authService = authService;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<FamilySeedingResponseDTO> SeedFamilyAsync(FamilySeedingRequestDTO request, int adminUserId)
@@ -180,7 +184,7 @@ public class FamilySeedingService : IFamilySeedingService
                         Email = existingUser.Email,
                         FirstName = existingUser.FirstName,
                         LastName = existingUser.LastName,
-                        AgeGroup = existingUser.AgeGroup
+                        AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(existingUser.AgeGroup)
                     };
                 }
                 else
@@ -195,7 +199,7 @@ public class FamilySeedingService : IFamilySeedingService
                         FirstName = memberConfig.Name.Split(' ').FirstOrDefault(),
                         LastName = memberConfig.Name.Split(' ').Skip(1).FirstOrDefault() ?? "Test",
                         AgeGroup = memberConfig.AgeGroup,
-                        DateOfBirth = memberConfig.DateOfBirth ?? GenerateDateOfBirth(memberConfig.AgeGroup)
+                        DateOfBirth = memberConfig.DateOfBirth ?? GenerateDateOfBirth(_mapper.Map<FamilyMemberAgeGroup>(memberConfig.AgeGroup))
                     };
 
                     user = await _authService.RegisterUserAsync(userCreateDto);
@@ -254,7 +258,7 @@ public class FamilySeedingService : IFamilySeedingService
                         Id = adminUserId,
                         Name = $"{requestingAdmin.FirstName} {requestingAdmin.LastName}".Trim(),
                         Email = requestingAdmin.Email,
-                        AgeGroup = requestingAdmin.AgeGroup,
+                        AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(requestingAdmin.AgeGroup),
                         RelationshipToAdmin = FamilyRelationshipType.Self,
                         RoleName = "Admin",
                         IsAdmin = true,
@@ -572,7 +576,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "John Thompson",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-42),
@@ -581,7 +585,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Sarah Thompson",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Spouse,
                 DateOfBirth = DateTime.Today.AddYears(-39),
                 Notes = "Spouse of admin"
@@ -589,7 +593,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Michael Thompson",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-16),
                 WantsAdminRole = true,
@@ -598,7 +602,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Emma Thompson",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-10),
                 Notes = "Young child"
@@ -613,7 +617,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Maria Rodriguez",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-35),
@@ -622,7 +626,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Isabella Rodriguez",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-15),
                 WantsAdminRole = true,
@@ -632,7 +636,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Carlos Rodriguez",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-8),
                 Notes = "Younger child"
@@ -647,7 +651,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "William Chen",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-68),
@@ -656,7 +660,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Helen Chen",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Spouse,
                 DateOfBirth = DateTime.Today.AddYears(-65),
                 WantsAdminRole = true,
@@ -665,7 +669,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "David Chen",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-45),
                 WantsAdminRole = true,
@@ -674,7 +678,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Lisa Chen",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.MotherInLaw,
                 DateOfBirth = DateTime.Today.AddYears(-43),
                 Notes = "Daughter-in-law"
@@ -682,7 +686,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Kevin Chen",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Grandchild,
                 DateOfBirth = DateTime.Today.AddYears(-17),
                 WantsAdminRole = true,
@@ -692,7 +696,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Sophie Chen",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Grandchild,
                 DateOfBirth = DateTime.Today.AddYears(-12),
                 Notes = "Child granddaughter"
@@ -700,7 +704,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Robert Chen",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Uncle,
                 DateOfBirth = DateTime.Today.AddYears(-50),
                 Notes = "Uncle living with family"
@@ -715,7 +719,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Mark Johnson",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-41),
@@ -724,8 +728,8 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Jennifer Johnson",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
-                                    RelationshipToAdmin = FamilyRelationshipType.Stepparent,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
+                RelationshipToAdmin = FamilyRelationshipType.Stepparent,
                 DateOfBirth = DateTime.Today.AddYears(-38),
                 WantsAdminRole = true,
                 Notes = "Step-mother, wants admin role"
@@ -733,7 +737,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Tyler Johnson",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-16),
                 Notes = "Biological son"
@@ -741,7 +745,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Ashley Johnson",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-11),
                 Notes = "Biological daughter"
@@ -749,7 +753,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Brandon Martinez",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Stepchild,
                 DateOfBirth = DateTime.Today.AddYears(-15),
                 WantsAdminRole = true,
@@ -758,7 +762,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Chloe Martinez",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Stepchild,
                 DateOfBirth = DateTime.Today.AddYears(-9),
                 Notes = "Step-daughter from previous marriage"
@@ -773,7 +777,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Eleanor Washington",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Grandparent,
                 DateOfBirth = DateTime.Today.AddYears(-89),
                 Notes = "Great-grandmother, family matriarch"
@@ -781,7 +785,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "James Washington",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-67),
@@ -790,7 +794,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Dorothy Washington",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Spouse,
                 DateOfBirth = DateTime.Today.AddYears(-64),
                 WantsAdminRole = true,
@@ -799,7 +803,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Marcus Washington",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Child,
                 DateOfBirth = DateTime.Today.AddYears(-44),
                 WantsAdminRole = true,
@@ -808,7 +812,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Angela Washington",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.MotherInLaw,
                 DateOfBirth = DateTime.Today.AddYears(-42),
                 Notes = "Daughter-in-law"
@@ -816,7 +820,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Jamal Washington",
-                AgeGroup = FamilyMemberAgeGroup.Teen,
+                AgeGroup = FamilyMemberAgeGroupDTO.Teen,
                 RelationshipToAdmin = FamilyRelationshipType.Grandchild,
                 DateOfBirth = DateTime.Today.AddYears(-16),
                 WantsAdminRole = true,
@@ -826,7 +830,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Zoe Washington",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Grandchild,
                 DateOfBirth = DateTime.Today.AddYears(-11),
                 Notes = "Child granddaughter"
@@ -834,7 +838,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Aiden Washington",
-                AgeGroup = FamilyMemberAgeGroup.Child,
+                AgeGroup = FamilyMemberAgeGroupDTO.Child,
                 RelationshipToAdmin = FamilyRelationshipType.Grandchild,
                 DateOfBirth = DateTime.Today.AddYears(-6),
                 Notes = "Youngest grandchild"
@@ -849,7 +853,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Frank Miller",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-45),
@@ -858,7 +862,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Grace Miller",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Spouse,
                 DateOfBirth = DateTime.Today.AddYears(-43),
                 WantsAdminRole = true,
@@ -875,7 +879,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Alex Turner",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-32),
@@ -892,7 +896,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Patricia Davis",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-38),
@@ -909,7 +913,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Steven Anderson",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-47),
@@ -926,7 +930,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Leslie Cooper",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-40),
@@ -943,7 +947,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Robert Williams",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-72),
@@ -960,7 +964,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Admin User",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Self,
                 RoleName = "Admin",
                 DateOfBirth = DateTime.Today.AddYears(-35),
@@ -969,7 +973,7 @@ public class FamilySeedingService : IFamilySeedingService
             new CustomFamilyMemberDTO
             {
                 Name = "Test Member",
-                AgeGroup = FamilyMemberAgeGroup.Adult,
+                AgeGroup = FamilyMemberAgeGroupDTO.Adult,
                 RelationshipToAdmin = FamilyRelationshipType.Spouse,
                 DateOfBirth = DateTime.Today.AddYears(-33),
                 Notes = "Basic member for minimal testing"

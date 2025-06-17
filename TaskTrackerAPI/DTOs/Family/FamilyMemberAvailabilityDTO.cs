@@ -10,7 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Family;
 
@@ -47,7 +47,7 @@ public class CreateFamilyMemberAvailabilityDTO
     
     public string? RecurrencePattern { get; set; }
     
-    public AvailabilityStatus Status { get; set; } = AvailabilityStatus.Available;
+    public AvailabilityStatusDTO Status { get; set; } = AvailabilityStatusDTO.Available;
     
     [StringLength(200)]
     public string? Note { get; set; }
@@ -66,7 +66,7 @@ public class UpdateFamilyMemberAvailabilityDTO
     
     public string? RecurrencePattern { get; set; }
     
-    public AvailabilityStatus? Status { get; set; }
+    public AvailabilityStatusDTO? Status { get; set; }
     
     [StringLength(200)]
     public string? Note { get; set; }

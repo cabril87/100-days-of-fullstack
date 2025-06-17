@@ -30,20 +30,23 @@ namespace TaskTrackerAPI.Services
     public class GamificationService : IGamificationService
     {
         private readonly IGamificationRepository _gamificationRepository;
-        private readonly ILogger<GamificationService> _logger;
+        private readonly IUserRepository _userRepository;
+        private readonly IUnifiedRealTimeService _unifiedRealTimeService;
         private readonly IMapper _mapper;
-        private readonly IGamificationRealTimeService _realTimeService;
+        private readonly ILogger<GamificationService> _logger;
 
         public GamificationService(
-            IGamificationRepository gamificationRepository, 
-            ILogger<GamificationService> logger, 
-            IMapper mapper, 
-            IGamificationRealTimeService realTimeService)
+            IGamificationRepository gamificationRepository,
+            IUserRepository userRepository,
+            IUnifiedRealTimeService unifiedRealTimeService,
+            IMapper mapper,
+            ILogger<GamificationService> logger)
         {
-            _gamificationRepository = gamificationRepository;
-            _logger = logger;
-            _mapper = mapper;
-            _realTimeService = realTimeService;
+            _gamificationRepository = gamificationRepository ?? throw new ArgumentNullException(nameof(gamificationRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _unifiedRealTimeService = unifiedRealTimeService ?? throw new ArgumentNullException(nameof(unifiedRealTimeService));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         #region User Progress
@@ -201,13 +204,13 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Send points earned notification
-                await _realTimeService.SendPointsEarnedAsync(userId, finalPoints, description, taskId);
+                await _unifiedRealTimeService.SendPointsEarnedAsync(userId, finalPoints, description, taskId);
                 
                 // Send level up notification if level changed
                 UserProgress updatedProgress = await GetInternalUserProgressAsync(userId);
                 if (updatedProgress.Level > userProgress.Level)
                 {
-                    await _realTimeService.SendLevelUpAsync(userId, updatedProgress.Level, userProgress.Level);
+                    await _unifiedRealTimeService.SendLevelUpAsync(userId, updatedProgress.Level, userProgress.Level);
                 }
             }
             catch (Exception ex)
@@ -274,7 +277,7 @@ namespace TaskTrackerAPI.Services
             try
             {
                 bool isNewRecord = userProgress.CurrentStreak == userProgress.LongestStreak;
-                await _realTimeService.SendStreakUpdatedAsync(userId, userProgress.CurrentStreak, isNewRecord);
+                await _unifiedRealTimeService.SendStreakUpdatedAsync(userId, userProgress.CurrentStreak, isNewRecord);
             }
             catch (Exception ex)
             {
@@ -387,7 +390,7 @@ namespace TaskTrackerAPI.Services
             // Send real-time achievement unlock notification
             try
             {
-                await _realTimeService.SendAchievementUnlockedAsync(userId, achievement.Name, achievementId, calculatedPoints);
+                await _unifiedRealTimeService.SendAchievementUnlockedAsync(userId, achievement.Name, achievementId, calculatedPoints);
             }
             catch (Exception ex)
             {
@@ -471,7 +474,7 @@ namespace TaskTrackerAPI.Services
             // Send real-time badge earned notification
             try
             {
-                await _realTimeService.SendBadgeEarnedAsync(userId, badge.Name, badgeId, badge.Rarity ?? "Common");
+                await _unifiedRealTimeService.SendBadgeEarnedAsync(userId, badge.Name, badgeId, badge.Rarity ?? "Common");
             }
             catch (Exception ex)
             {

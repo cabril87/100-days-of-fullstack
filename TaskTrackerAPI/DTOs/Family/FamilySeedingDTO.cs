@@ -59,7 +59,7 @@ public class CustomFamilyMemberDTO
     public string Name { get; set; } = string.Empty;
     
     [Required]
-    public FamilyMemberAgeGroup AgeGroup { get; set; }
+    public FamilyMemberAgeGroupDTO AgeGroup { get; set; }
     
     [Required]
     public FamilyRelationshipType RelationshipToAdmin { get; set; }
@@ -112,7 +112,7 @@ public class SeededMemberInfoDTO
     
     public string Email { get; set; } = string.Empty;
     
-    public FamilyMemberAgeGroup AgeGroup { get; set; }
+    public FamilyMemberAgeGroupDTO AgeGroup { get; set; }
     
     public FamilyRelationshipType RelationshipToAdmin { get; set; }
     

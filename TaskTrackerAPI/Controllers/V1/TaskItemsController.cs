@@ -16,6 +16,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
+using ModelUserRole = TaskTrackerAPI.Models.UserRole;
+using ModelTaskItemStatus = TaskTrackerAPI.Models.TaskItemStatus;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.DTOs.Tags;
@@ -36,7 +38,7 @@ namespace TaskTrackerAPI.Controllers.V1;
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
 [Authorize]
-[RequireRole(UserRole.RegularUser)] // All authenticated users can access task management
+[RequireRole(ModelUserRole.RegularUser)] // All authenticated users can access task management
 [RateLimit(100, 60)] // Default rate limit for all controller methods: 100 requests per 60 seconds
 public class TaskItemsController : BaseApiController
 {
@@ -68,7 +70,7 @@ public class TaskItemsController : BaseApiController
         [FromQuery] string? due = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] TaskItemStatus? status = null,
+        [FromQuery] TaskItemStatusDTO? status = null,
         [FromQuery] int? categoryId = null,
         [FromQuery] string? priorityLevel = null,
         [FromQuery] DateTime? dueDateStart = null,
@@ -204,7 +206,7 @@ public class TaskItemsController : BaseApiController
                 
                 // Use AutoMapper to convert QuickTaskDTO to TaskItemDTO
                 TaskItemDTO taskDto = _mapper.Map<TaskItemDTO>(quickTaskDto);
-                taskDto.Status = TaskItemStatus.NotStarted;
+                taskDto.Status = TaskItemStatusDTO.NotStarted;
                 taskDto.IsRecurring = false;
                 
                 createdTask = await _taskService.CreateTaskAsync(userId, taskDto);
@@ -348,13 +350,13 @@ public class TaskItemsController : BaseApiController
     
     // GET: api/TaskItems/status/{status}
     [HttpGet("status/{status}")]
-    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByStatus(TaskItemStatus status)
+    public async Task<ActionResult<IEnumerable<TaskItemDTO>>> GetTasksByStatus(TaskItemStatusDTO status)
     {
         try
         {
             int userId = User.GetUserIdAsInt();
             
-            IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByStatusAsync(userId, status);
+            IEnumerable<TaskItemDTO> tasks = await _taskService.GetTasksByStatusAsync(userId, _mapper.Map<ModelTaskItemStatus>(status));
             
             return Ok(ApiResponse<IEnumerable<TaskItemDTO>>.SuccessResponse(tasks));
         }
@@ -572,7 +574,7 @@ public class TaskItemsController : BaseApiController
     
     // PUT: api/TaskItems/{id}/status
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> UpdateTaskStatus(int id, [FromBody] TaskItemStatus status)
+    public async Task<IActionResult> UpdateTaskStatus(int id, [FromBody] TaskItemStatusDTO status)
     {
         try
         {
@@ -585,7 +587,7 @@ public class TaskItemsController : BaseApiController
                 return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
-            await _taskService.UpdateTaskStatusAsync(userId, id, status);
+            await _taskService.UpdateTaskStatusAsync(userId, id, _mapper.Map<ModelTaskItemStatus>(status));
             
             return NoContent();
         }
@@ -1108,7 +1110,7 @@ public class TaskItemsController : BaseApiController
                 Id = id,
                 Title = task.Title,
                 Description = task.Description,
-                Status = TaskItemStatus.Completed,
+                Status = TaskItemStatusDTO.Completed,
                 Priority = task.Priority,
                 DueDate = task.DueDate,
                 CategoryId = task.CategoryId,
@@ -1159,7 +1161,7 @@ public class TaskItemsController : BaseApiController
                 EstimatedTimeMinutes = task.EstimatedTimeMinutes,
                 ActualTimeSpentMinutes = task.ActualTimeSpentMinutes ?? 0,
                 ProgressPercentage = task.ProgressPercentage ?? 0,
-                IsCompleted = task.Status == TaskItemStatus.Completed,
+                IsCompleted = task.Status == TaskItemStatusDTO.Completed,
                 CompletedAt = task.CompletedAt,
                 TotalFocusSessions = 0, // Would be calculated from focus sessions
                 AverageSessionLength = 0, // Would be calculated from focus sessions

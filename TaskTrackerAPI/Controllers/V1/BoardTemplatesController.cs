@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
 using TaskTrackerAPI.Extensions;

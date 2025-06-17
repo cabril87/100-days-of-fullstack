@@ -38,7 +38,7 @@ namespace TaskTrackerAPI.Repositories
         {
             try
             {
-                return await _context.Tasks.AnyAsync(t => t.Id == taskId && t.UserId == userId);
+                return await _context.TaskItems.AnyAsync(t => t.Id == taskId && t.UserId == userId);
             }
             catch (Exception ex)
             {

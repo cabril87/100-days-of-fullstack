@@ -9,7 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 using System;
-using TaskTrackerAPI.Models;
+
 
 namespace TaskTrackerAPI.DTOs.Family;
 
@@ -19,7 +19,7 @@ public class FamilyEventAttendeeDTO
     public int EventId { get; set; }
     public int FamilyMemberId { get; set; }
     public string MemberName { get; set; } = string.Empty;
-    public AttendeeResponse Response { get; set; } = AttendeeResponse.NoResponse;
+    public AttendeeResponseDTO Response { get; set; } = AttendeeResponseDTO.NoResponse;
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

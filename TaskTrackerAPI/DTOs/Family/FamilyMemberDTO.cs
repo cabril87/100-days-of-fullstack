@@ -10,8 +10,7 @@
  */
 using System;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
-using TaskTrackerAPI.DTOs;
+
 using TaskTrackerAPI.DTOs.User;
 
 namespace TaskTrackerAPI.DTOs.Family;
@@ -23,7 +22,7 @@ public class FamilyMemberDTO
     public string Name { get; set; } = string.Empty;
     public string? Email { get; set; }
     public string? AvatarUrl { get; set; }
-    public FamilyRelationship Relationship { get; set; }
+    public FamilyRelationshipDTO Relationship { get; set; }
     public UserDTO User { get; set; } = null!;
     public FamilyRoleDTO Role { get; set; } = null!;
     public DateTime JoinedAt { get; set; }
@@ -32,9 +31,9 @@ public class FamilyMemberDTO
     public string? Nickname { get; set; }
     
     // New relationship fields
-    public FamilyRelationshipType RelationshipToAdmin { get; set; }
+    public FamilyRelationshipTypeDTO RelationshipToAdmin { get; set; }
     public int? RelatedToMemberId { get; set; }
-    public FamilyRelationshipType? RelationshipToMember { get; set; }
+    public FamilyRelationshipTypeDTO? RelationshipToMember { get; set; }
     public bool IsNaturalLeader { get; set; }
     public DateTime? LastActiveAt { get; set; }
     public bool WantsAdminRole { get; set; }
@@ -46,32 +45,32 @@ public class FamilyMemberDTO
     public bool IsActive => LastActiveAt?.AddDays(30) > DateTime.UtcNow; // Active in last 30 days
     public int? DaysUntilAdult => GetDaysUntilAdult();
     
-    private string GetRelationshipDisplayName(FamilyRelationshipType relationship)
+    private string GetRelationshipDisplayName(FamilyRelationshipTypeDTO relationship)
     {
         return relationship switch
         {
-            FamilyRelationshipType.Parent => "Parent",
-            FamilyRelationshipType.Child => "Child",
-            FamilyRelationshipType.Spouse => "Spouse",
-            FamilyRelationshipType.Partner => "Partner",
-            FamilyRelationshipType.Sibling => "Sibling",
-            FamilyRelationshipType.Grandparent => "Grandparent",
-            FamilyRelationshipType.Grandchild => "Grandchild",
-            FamilyRelationshipType.Stepparent => "Step-Parent",
-            FamilyRelationshipType.Stepchild => "Step-Child",
-            FamilyRelationshipType.Stepsister => "Step-Sister",
-            FamilyRelationshipType.Stepbrother => "Step-Brother",
-            FamilyRelationshipType.FamilyFriend => "Family Friend",
-            FamilyRelationshipType.Caregiver => "Caregiver",
-            FamilyRelationshipType.Guardian => "Guardian",
-            FamilyRelationshipType.Other => "Other",
+            FamilyRelationshipTypeDTO.Parent => "Parent",
+            FamilyRelationshipTypeDTO.Child => "Child",
+            FamilyRelationshipTypeDTO.Spouse => "Spouse",
+            FamilyRelationshipTypeDTO.Partner => "Partner",
+            FamilyRelationshipTypeDTO.Sibling => "Sibling",
+            FamilyRelationshipTypeDTO.Grandparent => "Grandparent",
+            FamilyRelationshipTypeDTO.Grandchild => "Grandchild",
+            FamilyRelationshipTypeDTO.Stepparent => "Step-Parent",
+            FamilyRelationshipTypeDTO.Stepchild => "Step-Child",
+            FamilyRelationshipTypeDTO.Stepsister => "Step-Sister",
+            FamilyRelationshipTypeDTO.Stepbrother => "Step-Brother",
+            FamilyRelationshipTypeDTO.FamilyFriend => "Family Friend",
+            FamilyRelationshipTypeDTO.Caregiver => "Caregiver",
+            FamilyRelationshipTypeDTO.Guardian => "Guardian",
+            FamilyRelationshipTypeDTO.Other => "Other",
             _ => "Unknown"
         };
     }
     
     private int? GetDaysUntilAdult()
     {
-        if (DateOfBirth == null || User?.AgeGroup != FamilyMemberAgeGroup.Teen) return null;
+        if (DateOfBirth == null || User?.AgeGroup != FamilyMemberAgeGroupDTO.Teen) return null;
         
         DateTime adultDate = DateOfBirth.Value.AddYears(18);
         int daysUntil = (adultDate - DateTime.UtcNow).Days;
@@ -91,7 +90,7 @@ public class FamilyMemberCreateDTO
     
     public string? AvatarUrl { get; set; }
     
-    public FamilyRelationship Relationship { get; set; } = FamilyRelationship.Other;
+    public FamilyRelationshipDTO Relationship { get; set; } = FamilyRelationshipDTO.Other;
     
     [Required]
     public int RoleId { get; set; }
@@ -105,9 +104,9 @@ public class FamilyMemberCreateDTO
     public string? Nickname { get; set; }
     
     // Relationship information
-    public FamilyRelationshipType RelationshipToAdmin { get; set; } = FamilyRelationshipType.Other;
+    public FamilyRelationshipTypeDTO RelationshipToAdmin { get; set; } = FamilyRelationshipTypeDTO.Other;
     public int? RelatedToMemberId { get; set; }
-    public FamilyRelationshipType? RelationshipToMember { get; set; }
+    public FamilyRelationshipTypeDTO? RelationshipToMember { get; set; }
     public bool IsNaturalLeader { get; set; } = false;
     public bool WantsAdminRole { get; set; } = false;
     public DateTime? DateOfBirth { get; set; }
@@ -124,16 +123,16 @@ public class FamilyMemberUpdateDTO
     
     public string? AvatarUrl { get; set; }
     
-    public FamilyRelationship? Relationship { get; set; }
+    public FamilyRelationshipDTO? Relationship { get; set; }
     
     public int? RoleId { get; set; }
     
     public string? Nickname { get; set; }
     
     // Relationship updates
-    public FamilyRelationshipType? RelationshipToAdmin { get; set; }
+    public FamilyRelationshipTypeDTO? RelationshipToAdmin { get; set; }
     public int? RelatedToMemberId { get; set; }
-    public FamilyRelationshipType? RelationshipToMember { get; set; }
+    public FamilyRelationshipTypeDTO? RelationshipToMember { get; set; }
     public bool? IsNaturalLeader { get; set; }
     public bool? WantsAdminRole { get; set; }
     public DateTime? DateOfBirth { get; set; }

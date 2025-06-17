@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { UpdateBoardDTO, EditBoardModalProps, BoardColumnDTO } from '../../lib/types/board';
 import { TaskItemStatus } from '../../lib/types/task';
-import { BoardService } from '../../lib/services/boardService';
+
 import { apiClient } from '../../lib/config/api-client';
 import { StatusMappingService } from '../../lib/utils/statusMapping';
 import {
@@ -82,15 +82,11 @@ import {
   Sparkles,
   Crown,
   Target,
-  Palette,
   Info,
   Plus,
   Shield,
   Zap,
-  CheckCircle,
-  Clock,
-  Pause,
-  XCircle
+  CheckCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils/utils';
 
@@ -138,7 +134,7 @@ interface EnhancedSortableColumnItemProps {
   onSave: () => void;
   onCancel: () => void;
   onDelete: () => void;
-  onEditDataChange: (field: keyof ColumnEditFormData, value: any) => void;
+  onEditDataChange: (field: keyof ColumnEditFormData, value: string | number) => void;
   loading: boolean;
   deleting: boolean;
   isDragDisabled: boolean;
@@ -604,7 +600,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
                 
                 {confirmText.length > 0 && !isConfirmed && (
                   <p className="text-sm text-red-600 animate-pulse px-2">
-                    Please type exactly "DELETE" (case insensitive)
+                    Please type exactly &quot;DELETE&quot; (case insensitive)
                   </p>
                 )}
                 
@@ -669,7 +665,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 };
 
 // Utility function for robust status normalization
-const normalizeStatus = (status: any): TaskItemStatus => {
+const normalizeStatus = (status: unknown): TaskItemStatus => {
   // Debug logging to understand what we're receiving
   console.log('Normalizing status:', { status, type: typeof status, value: status });
 
@@ -765,35 +761,6 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  // Initialize columns
-  useEffect(() => {
-    if (board.columns) {
-      console.log('Board columns received:', board.columns);
-      const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
-      console.log('Sorted columns:', sortedColumns);
-      setColumns(sortedColumns);
-      validateAllColumns(sortedColumns);
-    }
-  }, [board.columns]);
-
-  // Handle modal close with protection
-  const handleModalClose = (shouldClose: boolean) => {
-    if (preventModalClose && isDragging) {
-      console.log('Modal close prevented - drag in progress');
-      return;
-    }
-
-    if (pendingChanges) {
-      // Apply pending changes when modal closes
-      onBoardUpdated();
-      setPendingChanges(false);
-    }
-
-    if (shouldClose) {
-      onClose();
-    }
-  };
 
   // Comprehensive validation functions
   const validateAllColumns = useCallback((columnsToValidate: BoardColumnDTO[]) => {
@@ -912,6 +879,35 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
     return !hasErrors;
   }, []);
 
+  // Initialize columns
+  useEffect(() => {
+    if (board.columns) {
+      console.log('Board columns received:', board.columns);
+      const sortedColumns = [...board.columns].sort((a, b) => a.order - b.order);
+      console.log('Sorted columns:', sortedColumns);
+      setColumns(sortedColumns);
+      validateAllColumns(sortedColumns);
+    }
+  }, [board.columns, validateAllColumns]);
+
+  // Handle modal close with protection
+  const handleModalClose = (shouldClose: boolean) => {
+    if (preventModalClose && isDragging) {
+      console.log('Modal close prevented - drag in progress');
+      return;
+    }
+
+    if (pendingChanges) {
+      // Apply pending changes when modal closes
+      onBoardUpdated();
+      setPendingChanges(false);
+    }
+
+    if (shouldClose) {
+      onClose();
+    }
+  };
+
   // Comprehensive auto-fix for all validation issues
   const handleAutoFixStatuses = async () => {
     try {
@@ -1026,7 +1022,7 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
       console.log('Final fixed columns:', fixedColumns);
 
       // Step 6: Save all changes to backend
-      const savePromises = fixedColumns.map(async (col, index) => {
+      const savePromises = fixedColumns.map(async (col) => {
         try {
           if (col.id && typeof col.id === 'number' && col.id > 0) {
             // Update existing column
@@ -1156,7 +1152,7 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
       };
 
       const response = await apiClient.post('/v1/boards', customBoardData);
-      const newBoard = (response as any).data;
+      const newBoard = (response as { data: { id: number } }).data;
 
       // Copy all tasks from the template board to the new custom board
       if (board.taskCount > 0) {
@@ -1317,7 +1313,7 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
     });
   };
 
-  const handleEditDataChange = (field: keyof ColumnEditFormData, value: any) => {
+  const handleEditDataChange = (field: keyof ColumnEditFormData, value: string | number) => {
     setEditColumnData(prev => ({
       ...prev,
       [field]: value
@@ -1934,7 +1930,7 @@ export const EditBoardModal: React.FC<EditBoardModalProps> = ({
               </div>
               <div className="flex items-center space-x-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>You'll have full editing control over the new board</span>
+                <span>You&apos;ll have full editing control over the new board</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Info className="h-4 w-4 text-blue-500" />

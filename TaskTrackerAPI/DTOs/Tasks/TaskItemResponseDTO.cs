@@ -10,8 +10,6 @@
  */
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -38,7 +36,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
         
         /// Current status of the task
         
-        public TaskItemStatus Status { get; set; }
+        public TaskItemStatusDTO Status { get; set; }
 
         
         /// Priority level of the task

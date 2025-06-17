@@ -1050,4 +1050,11 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
       }
     }
   }
-]; 
+];
+
+// === FORM DATA INTERFACES ===
+
+export interface ColumnFormData extends BoardColumnDTO {
+  isDefault: boolean;
+  color?: string;
+}

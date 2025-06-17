@@ -107,7 +107,7 @@ public class TagRepository : ITagRepository
             .Select(tt => tt.TaskId)
             .ToListAsync();
             
-        return await _context.Tasks
+        return await _context.TaskItems
             .Include(t => t.Category)
             .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
             .Where(t => taskIds.Contains(t.Id) && t.UserId == userId)

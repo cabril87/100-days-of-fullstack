@@ -80,7 +80,7 @@ public class FamilyMemberRepository : IFamilyMemberRepository
             return false;
 
             // Clear any orphaned tasks - set a flag in case we need to handle notifications or logs
-            int count = await _context.Tasks
+            int count = await _context.TaskItems
                 .Where(t => t.AssignedToFamilyMemberId == id)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
@@ -130,7 +130,7 @@ public class FamilyMemberRepository : IFamilyMemberRepository
 
     public async Task<IEnumerable<TaskItem>> GetTasksByFamilyMemberIdAsync(int familyMemberId)
     {
-        return await _context.Tasks
+        return await _context.TaskItems
             .Where(t => t.AssignedToFamilyMemberId == familyMemberId)
             .Include(t => t.Category)
             .Include(t => t.TaskTags!).ThenInclude(tt => tt.Tag)
@@ -158,7 +158,7 @@ public class FamilyMemberRepository : IFamilyMemberRepository
         try
         {
             // Clear any orphaned tasks
-            int count = await _context.Tasks
+            int count = await _context.TaskItems
                 .Where(t => t.AssignedToFamilyMemberId == familyMember.Id)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.AssignedToFamilyMemberId, (int?)null)
@@ -197,7 +197,7 @@ public class FamilyMemberRepository : IFamilyMemberRepository
 
     public async Task<bool> AssignTaskToFamilyMemberAsync(int taskId, int familyMemberId)
     {
-        TaskItem? task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == taskId);
+        TaskItem? task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId);
         if (task == null)
             return false;
 

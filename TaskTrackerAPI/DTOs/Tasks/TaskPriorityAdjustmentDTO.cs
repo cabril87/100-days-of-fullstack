@@ -8,7 +8,8 @@
  * This file may not be used, copied, modified, or distributed except in
  * accordance with the terms contained in the LICENSE file.
  */
-using TaskTrackerAPI.Models;
+
+using System.ComponentModel.DataAnnotations;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -30,16 +31,28 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// <summary>
         /// The original priority before adjustment
         /// </summary>
-        public TaskPriority PreviousPriority { get; set; }
+        public TaskPriorityDTO PreviousPriority { get; set; }
         
         /// <summary>
         /// The new priority after adjustment
         /// </summary>
-        public TaskPriority NewPriority { get; set; }
+        public TaskPriorityDTO NewPriority { get; set; }
         
         /// <summary>
         /// Human-readable reason for the priority adjustment
         /// </summary>
         public string AdjustmentReason { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Current priority of the task
+        /// </summary>
+        [Required]
+        public TaskPriorityDTO CurrentPriority { get; set; }
+
+        /// <summary>
+        /// Target priority to change to
+        /// </summary>
+        [Required]
+        public TaskPriorityDTO TargetPriority { get; set; }
     }
 } 

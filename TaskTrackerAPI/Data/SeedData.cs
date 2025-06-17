@@ -194,7 +194,7 @@ public static class DatabaseSeeder
 
     private static async Task SeedDefaultTasksAsync(ApplicationDbContext context)
     {
-        if (await context.Tasks.AnyAsync())
+        if (await context.TaskItems.AnyAsync())
         {
             return; // Tasks already seeded
         }
@@ -231,7 +231,7 @@ public static class DatabaseSeeder
             }
         };
 
-        await context.Tasks.AddRangeAsync(tasks);
+        await context.TaskItems.AddRangeAsync(tasks);
         await context.SaveChangesAsync();
     }
 
@@ -288,7 +288,7 @@ public static class DatabaseSeeder
         }
 
         // Get the first few tasks and tags to associate them
-        List<TaskItem> tasks = await context.Tasks.Take(2).ToListAsync();
+        List<TaskItem> tasks = await context.TaskItems.Take(2).ToListAsync();
         List<Tag> tags = await context.Tags.Take(4).ToListAsync();
 
         if (!tasks.Any() || !tags.Any()) return;

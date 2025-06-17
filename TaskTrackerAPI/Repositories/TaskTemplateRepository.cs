@@ -236,12 +236,9 @@ public class TaskTemplateRepository : ITaskTemplateRepository
         {
             TemplateId = templateId,
             UserId = userId,
-            UsedDate = DateTime.UtcNow,
+            UsedAt = DateTime.UtcNow,
             Success = success,
-            CompletionTimeMinutes = completionTimeMinutes,
-            TasksCreated = 1,
-            TasksCompleted = success ? 1 : 0,
-            EfficiencyScore = success ? (completionTimeMinutes > 0 ? Math.Min(100, 1000 / completionTimeMinutes) : 100) : 0
+            CompletionTimeMinutes = completionTimeMinutes
         };
         
         _context.TemplateUsageAnalytics.Add(analytics);
@@ -278,7 +275,7 @@ public class TaskTemplateRepository : ITaskTemplateRepository
     {
         return await _context.TemplateUsageAnalytics
             .Where(a => a.TemplateId == templateId)
-            .OrderByDescending(a => a.UsedDate)
+            .OrderByDescending(a => a.UsedAt)
             .ToListAsync();
     }
 

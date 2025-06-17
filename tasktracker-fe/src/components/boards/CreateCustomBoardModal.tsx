@@ -122,7 +122,7 @@ export const CreateCustomBoardModal: React.FC<CreateBoardModalProps> = ({
       
       setCustomColumns(updatedColumns);
     }
-  }, [customColumns.length]);
+  }, [customColumns.length, customColumns]);
 
   const handleSubmit = async (data: CreateCustomBoardFormData) => {
     try {
@@ -242,7 +242,7 @@ export const CreateCustomBoardModal: React.FC<CreateBoardModalProps> = ({
               </div>
             </DialogTitle>
             <DialogDescription className="text-sm text-slate-600 mt-2">
-              Build your personalized task management board with unlimited columns. First column is always "Not Started" and last column is always "Completed".
+              Build your personalized task management board with unlimited columns. First column is always &quot;Not Started&quot; and last column is always &quot;Completed&quot;.
             </DialogDescription>
           </DialogHeader>
 
@@ -265,7 +265,7 @@ export const CreateCustomBoardModal: React.FC<CreateBoardModalProps> = ({
                           <FormLabel className="text-slate-700 font-semibold">Board Name</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="e.g., Family Chores, Work Projects, Personal Goals..."
+                              placeholder="e.g., Family Chores, Work Projects, Personal Goals"
                               className="h-12 bg-white/80 backdrop-blur-sm border-2 border-slate-200 focus:border-purple-400"
                               {...field}
                             />

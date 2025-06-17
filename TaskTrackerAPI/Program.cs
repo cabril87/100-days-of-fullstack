@@ -19,12 +19,8 @@ using TaskTrackerAPI.Repositories;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services;
 using TaskTrackerAPI.Services.Interfaces;
-using AutoMapper;
 using TaskTrackerAPI.Middleware;
-using TaskTrackerAPI.Exceptions;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Identity;
-using TaskTrackerAPI.Models;
 using QRCoder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
@@ -32,7 +28,6 @@ using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.Extensions.Options;
 using TaskTrackerAPI.Extensions;
 using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.SignalR;
 using TaskTrackerAPI.Hubs;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
@@ -56,6 +51,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.ResponseCompression;
 using System.Text.Json.Serialization.Metadata;
+using System.IO.Compression;
 
 namespace TaskTrackerAPI;
 
@@ -246,8 +242,8 @@ public class Program
         // Add smart role recommendation service
         builder.Services.AddScoped<ISmartRoleRecommendationService, SmartRoleRecommendationService>();
 
-        // Add real-time services
-        builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
+        // Add unified real-time service (consolidates 5 services into 1 for better performance)
+        builder.Services.AddScoped<IUnifiedRealTimeService, UnifiedRealTimeService>();
 
         builder.Services.AddScoped<IUserDeviceService, UserDeviceService>();
         builder.Services.AddScoped<IFamilyCalendarService, FamilyCalendarService>();
@@ -258,7 +254,6 @@ public class Program
         builder.Services.AddScoped<IGamificationService, GamificationService>();
         builder.Services.AddScoped<IUserActivityService, UserActivityService>();
         builder.Services.AddScoped<IFocusService, FocusService>();
-        builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
         builder.Services.AddScoped<ITaskPriorityService, TaskPriorityService>();
 
         // Register auth services
@@ -295,17 +290,8 @@ public class Program
             options.MaximumReceiveMessageSize = 102400; // 100KB
         });
 
-        // Register notification real-time service
-        builder.Services.AddScoped<INotificationRealTimeService, NotificationRealTimeService>();
-
-        // Register gamification real-time service
-        builder.Services.AddScoped<IGamificationRealTimeService, GamificationRealTimeService>();
-
-        // Register calendar real-time service
+        // Register calendar real-time service (kept separate due to complex scheduling logic)
         builder.Services.AddScoped<ICalendarRealTimeService, CalendarRealTimeService>();
-
-        // Register task synchronization service
-        builder.Services.AddScoped<ITaskSyncService, TaskSyncService>();
 
         // Register HttpContextAccessor and UserAccessor
         builder.Services.AddHttpContextAccessor();
@@ -348,16 +334,10 @@ public class Program
         builder.Services.AddScoped<IFailedLoginRepository, FailedLoginRepository>();
         builder.Services.AddScoped<ISessionManagementRepository, SessionManagementRepository>();
 
-        // Register new analytics & subscription repositories (Phase 3 repository pattern compliance)
-        builder.Services.AddScoped<IBehavioralAnalyticsRepository, BehavioralAnalyticsRepository>();
         builder.Services.AddScoped<IUserSubscriptionRepository, UserSubscriptionRepository>();
 
         // Register DeadlineNotificationService as a hosted service
         builder.Services.AddHostedService<DeadlineNotificationService>();
-
-        // Register Enhanced Board Background Services
-        builder.Services.AddHostedService<TaskTrackerAPI.Services.Background.EnhancedBoardAnalyticsService>();
-        builder.Services.AddHostedService<TaskTrackerAPI.Services.Background.TemplateMarketplaceService>();
 
         // Register QRCode Generator as singleton
         builder.Services.AddSingleton<QRCodeGenerator>();
@@ -392,13 +372,8 @@ public class Program
 
         // Register Advanced Security Services
         builder.Services.AddScoped<IThreatIntelligenceService, ThreatIntelligenceService>();
-        builder.Services.AddScoped<IBehavioralAnalyticsService, BehavioralAnalyticsService>();
-
-        // Register ML Analytics Service
-        builder.Services.AddScoped<IMLAnalyticsService, MLAnalyticsService>();
-
-        // Register Advanced Analytics Service (Day 59)
-        builder.Services.AddScoped<IAdvancedAnalyticsService, TaskTrackerAPI.Services.Analytics.AdvancedAnalyticsService>();
+        // Analytics Services - consolidated into unified analytics
+        // IBehavioralAnalyticsService, IMLAnalyticsService, IAdvancedAnalyticsService functionality moved to IUnifiedAnalyticsService
 
         // Register Analytics repositories and services (Day 59)
         builder.Services.AddScoped<ISavedFilterRepository, SavedFilterRepository>();
@@ -407,10 +382,14 @@ public class Program
         builder.Services.AddScoped<IDataExportService, DataExportService>();
         builder.Services.AddScoped<IDashboardWidgetRepository, DashboardWidgetRepository>();
         builder.Services.AddScoped<IDataVisualizationService, DataVisualizationService>();
+        
+        // Register Unified Analytics (consolidates 7+ analytics services)
+        builder.Services.AddScoped<IUnifiedAnalyticsRepository, UnifiedAnalyticsRepository>();
+        builder.Services.AddScoped<IUnifiedAnalyticsService, TaskTrackerAPI.Services.Analytics.UnifiedAnalyticsService>();
 
         // Register Background Service Status Management (Day 61)
         builder.Services.AddScoped<IBackgroundServiceStatusRepository, BackgroundServiceStatusRepository>();
-        builder.Services.AddScoped<IBackgroundServiceStatusService, BackgroundServiceStatusService>();
+        // IBackgroundServiceStatusService functionality moved to IUnifiedAnalyticsService
 
         // Add response compression
         builder.Services.AddResponseCompression(options =>
@@ -423,13 +402,13 @@ public class Program
         // Configure Brotli compression level
         builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
         {
-            options.Level = System.IO.Compression.CompressionLevel.Optimal;
+            options.Level = CompressionLevel.Optimal;
         });
 
         // Configure Gzip compression level
         builder.Services.Configure<GzipCompressionProviderOptions>(options =>
         {
-            options.Level = System.IO.Compression.CompressionLevel.Optimal;
+            options.Level = CompressionLevel.Optimal;
         });
 
         // Load configuration from environment variables
@@ -655,7 +634,6 @@ public class Program
 
         // Register additional repositories for proper separation of concerns
         builder.Services.AddScoped<IGamificationRepository, GamificationRepository>();
-        builder.Services.AddScoped<IMLAnalyticsRepository, MLAnalyticsRepository>();
         builder.Services.AddScoped<IAdaptationLearningRepository, AdaptationLearningRepository>();
         builder.Services.AddScoped<ISecurityMonitoringRepository, SecurityMonitoringRepository>();
         builder.Services.AddScoped<IUserSecuritySettingsRepository, UserSecuritySettingsRepository>();
@@ -773,16 +751,9 @@ public class Program
         // Add query batching middleware
         app.UseMiddleware<QueryBatchingMiddleware>();
 
-        // Map SignalR hubs
-        app.MapHub<TaskHub>("/hubs/tasks");
-        app.MapHub<NotificationHub>("/hubs/notifications");
-        app.MapHub<GamificationHub>("/hubs/gamification");
-        app.MapHub<CalendarHub>("/hubs/calendar");
-
-        // Map Enhanced Kanban Board SignalR hubs
-        app.MapHub<EnhancedBoardHub>("/hubs/enhanced-board");
-        app.MapHub<TemplateMarketplaceHub>("/hubs/template-marketplace");
-        app.MapHub<SettingsSyncHub>("/hubs/settings-sync");
+        // Map Consolidated SignalR hubs for optimal performance
+        app.MapHub<UnifiedMainHub>("/hubs/main");           // Consolidated: Tasks + Gamification + Notifications + Boards + Templates
+        app.MapHub<CalendarHub>("/hubs/calendar");          // Specialized: Calendar and scheduling features
 
         // Add health check endpoint for Docker
         app.MapGet("/health", () => Microsoft.AspNetCore.Http.Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));

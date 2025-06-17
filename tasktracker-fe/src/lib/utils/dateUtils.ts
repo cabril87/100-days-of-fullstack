@@ -37,7 +37,6 @@ export function parseBackendDate(dateInput: string | Date | undefined | null): D
         // Backend in Docker stores UTC timestamps without 'Z' suffix
         // Force interpretation as UTC by adding 'Z'
         const utcDateString = dateStr + 'Z';
-        const withoutZ = new Date(dateStr);
         const withZ = new Date(utcDateString);
         
         // Timezone conversion: Backend UTC timestamp → Local timezone

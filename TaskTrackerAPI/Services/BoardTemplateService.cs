@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -289,7 +290,7 @@ public class BoardTemplateService : IBoardTemplateService
     }
 
     /// <inheritdoc />
-    public async Task<BoardTemplateDTO> CreateTemplateAsync(DTOs.Boards.CreateBoardTemplateDTO createDto, int userId)
+    public async Task<BoardTemplateDTO> CreateTemplateAsync(CreateBoardTemplateDTO createDto, int userId)
     {
         try
         {
@@ -317,9 +318,9 @@ public class BoardTemplateService : IBoardTemplateService
             // Create default columns if provided
             if (createDto.DefaultColumns.Any())
             {
-                foreach (DTOs.Boards.CreateBoardTemplateColumnDTO columnDto in createDto.DefaultColumns)
+                foreach (CreateBoardTemplateColumnDTO columnDto in createDto.DefaultColumns)
                 {
-                    BoardTemplateColumn column = new BoardTemplateColumn
+                    BoardTemplateColumn templateColumn = new BoardTemplateColumn
                     {
                         BoardTemplateId = createdTemplate.Id,
                         Name = columnDto.Name,
@@ -329,7 +330,7 @@ public class BoardTemplateService : IBoardTemplateService
                         Color = columnDto.Color,
                         Icon = columnDto.Icon,
                         IsDoneColumn = columnDto.IsDoneColumn,
-                        MappedStatus = columnDto.MappedStatus
+                        MappedStatus = _mapper.Map<TaskItemStatus>(columnDto.MappedStatus)
                     };
 
                     // Note: Template columns don't have CreateTemplateColumnAsync in repository yet
@@ -733,7 +734,7 @@ public class BoardTemplateService : IBoardTemplateService
                 PublicTemplates = allTemplates.Count(t => t.IsPublic),
                 PrivateTemplates = allTemplates.Count(t => !t.IsPublic),
                 TotalUsages = allTemplates.Sum(t => t.UsageCount),
-                AverageRating = allTemplates.Where(t => t.AverageRating.HasValue).DefaultIfEmpty().Average(t => t?.AverageRating) ?? 0
+                AverageRating = (double)(allTemplates.Where(t => t.AverageRating.HasValue).DefaultIfEmpty().Average(t => t?.AverageRating) ?? 0)
             };
 
             // Get top templates

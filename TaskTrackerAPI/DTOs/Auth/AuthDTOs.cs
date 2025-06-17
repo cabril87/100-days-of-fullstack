@@ -11,9 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.DTOs.User;
 using TaskTrackerAPI.DTOs.Family;
-using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Auth
 {
@@ -68,7 +66,7 @@ namespace TaskTrackerAPI.DTOs.Auth
         public string Role { get; set; } = "User";
         
         /// Age group
-        public FamilyMemberAgeGroup? AgeGroup { get; set; }
+        public FamilyMemberAgeGroupDTO? AgeGroup { get; set; }
         
         /// Date when the user joined
         
@@ -143,7 +141,7 @@ namespace TaskTrackerAPI.DTOs.Auth
         public string? LastName { get; set; }
         
         /// Age group
-        public FamilyMemberAgeGroup? AgeGroup { get; set; }
+        public FamilyMemberAgeGroupDTO? AgeGroup { get; set; }
 
         /// Date of Birth
         [DataType(DataType.Date)]
@@ -503,7 +501,7 @@ namespace TaskTrackerAPI.DTOs.Auth
         /// Age group for family permissions
         /// </summary>
         [Required]
-        public FamilyMemberAgeGroup AgeGroup { get; set; }
+        public FamilyMemberAgeGroupDTO AgeGroup { get; set; }
 
         /// <summary>
         /// Family ID to assign the user to (optional)

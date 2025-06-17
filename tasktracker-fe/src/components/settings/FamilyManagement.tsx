@@ -1170,9 +1170,10 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
 
       {/* Smart Invitation Wizard */}
       <SmartInvitationWizard
+        familyId={familyData?.id || 1} // Use selected family ID or fallback
         isOpen={showSmartInvitationWizard}
         onClose={() => setShowSmartInvitationWizard(false)}
-        onSuccess={() => {
+        onInvitationSent={() => {
           setShowSmartInvitationWizard(false);
           setMessage({ type: 'success', text: 'Smart invitation sent successfully!' });
           loadFamilyData();

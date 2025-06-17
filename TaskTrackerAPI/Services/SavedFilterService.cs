@@ -29,13 +29,13 @@ namespace TaskTrackerAPI.Services
     public class SavedFilterService : ISavedFilterService
     {
         private readonly ISavedFilterRepository _repository;
-        private readonly IAdvancedAnalyticsService _analyticsService;
+        private readonly IUnifiedAnalyticsService _analyticsService;
         private readonly IMapper _mapper;
         private readonly ILogger<SavedFilterService> _logger;
 
         public SavedFilterService(
             ISavedFilterRepository repository,
-            IAdvancedAnalyticsService analyticsService,
+            IUnifiedAnalyticsService analyticsService,
             IMapper mapper,
             ILogger<SavedFilterService> logger)
         {
@@ -254,20 +254,12 @@ namespace TaskTrackerAPI.Services
                 // Execute analytics based on filter type
                 return filter.QueryType switch
                 {
-                    "advanced" => await _analyticsService.GetAdvancedAnalyticsAsync(userId, startDate, endDate),
-                    "trends" => await _analyticsService.GetTaskTrendsAsync(userId, 
-                        startDate ?? DateTime.UtcNow.AddDays(-30), 
-                        endDate ?? DateTime.UtcNow),
-                    "productivity" => await _analyticsService.GetProductivityMetricsAsync(userId, 
-                        startDate ?? DateTime.UtcNow.AddDays(-30), 
-                        endDate ?? DateTime.UtcNow),
-                    "time" => await _analyticsService.GetTimeAnalysisAsync(userId, 
-                        startDate ?? DateTime.UtcNow.AddDays(-30), 
-                        endDate ?? DateTime.UtcNow),
-                    "category" => await _analyticsService.GetCategoryBreakdownAsync(userId, 
-                        startDate ?? DateTime.UtcNow.AddDays(-30), 
-                        endDate ?? DateTime.UtcNow),
-                    _ => await _analyticsService.GetAdvancedAnalyticsAsync(userId, startDate, endDate)
+                    "advanced" => await _analyticsService.GetUserAnalyticsDashboardAsync(userId, startDate, endDate),
+                    "trends" => await _analyticsService.GetUserProductivityInsightsAsync(userId),
+                    "productivity" => await _analyticsService.GetUserProductivityInsightsAsync(userId),
+                    "time" => await _analyticsService.GetUserProductivityInsightsAsync(userId),
+                    "category" => await _analyticsService.GetUserAnalyticsDashboardAsync(userId, startDate, endDate),
+                    _ => await _analyticsService.GetUserAnalyticsDashboardAsync(userId, startDate, endDate)
                 };
             }
             catch (Exception ex)

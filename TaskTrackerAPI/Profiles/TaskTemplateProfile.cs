@@ -10,6 +10,7 @@
  */
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Models;
 using System;
 
@@ -98,11 +99,11 @@ public class TaskTemplateProfile : Profile
             .ForMember(dest => dest.Template, opt => opt.Ignore());
 
         // Template Usage Analytics mappings
-        CreateMap<TemplateUsageAnalytics, TemplateUsageAnalyticsDTO>()
+        CreateMap<TemplateUsageAnalytics, TemplateUsageRecordDTO>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.TemplateId, opt => opt.MapFrom(src => src.TemplateId))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.UsedDate, opt => opt.MapFrom(src => src.UsedDate))
+            .ForMember(dest => dest.UsedAt, opt => opt.MapFrom(src => src.UsedAt))
             .ForMember(dest => dest.CompletionTimeMinutes, opt => opt.MapFrom(src => src.CompletionTimeMinutes))
             .ForMember(dest => dest.Success, opt => opt.MapFrom(src => src.Success));
     }

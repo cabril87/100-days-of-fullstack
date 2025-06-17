@@ -111,11 +111,14 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                using (IServiceScope scope = _serviceProvider.CreateScope())
-                {
-                    IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
-                    await statusService.UpdateServiceStatusAsync(ServiceName, status, message, lastRun);
-                }
+                // Background service status tracking moved to unified analytics
+                // using (IServiceScope scope = _serviceProvider.CreateScope())
+                // {
+                //     IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
+                //     await statusService.UpdateServiceStatusAsync(ServiceName, status, message, lastRun);
+                // }
+                _logger.LogInformation("Service {ServiceName} status: {Status} - {Message}", ServiceName, status, message);
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -128,11 +131,15 @@ namespace TaskTrackerAPI.Services
         {
             try
             {
-                using (IServiceScope scope = _serviceProvider.CreateScope())
-                {
-                    IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
-                    await statusService.RecordServiceExecutionAsync(ServiceName, success, details, recordsProcessed);
-                }
+                // Background service execution tracking moved to unified analytics
+                // using (IServiceScope scope = _serviceProvider.CreateScope())
+                // {
+                //     IBackgroundServiceStatusService statusService = scope.ServiceProvider.GetRequiredService<IBackgroundServiceStatusService>();
+                //     await statusService.RecordServiceExecutionAsync(ServiceName, success, details, recordsProcessed);
+                // }
+                _logger.LogInformation("Service {ServiceName} execution: Success={Success}, Details={Details}, Records={Records}", 
+                    ServiceName, success, details, recordsProcessed);
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {

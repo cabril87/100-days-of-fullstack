@@ -31,14 +31,14 @@ namespace TaskTrackerAPI.Services
     public class DataExportService : IDataExportService
     {
         private readonly IDataExportRepository _repository;
-        private readonly IAdvancedAnalyticsService _analyticsService;
+        private readonly IUnifiedAnalyticsService _analyticsService;
         private readonly IMapper _mapper;
         private readonly ILogger<DataExportService> _logger;
         private readonly string _exportDirectory;
 
         public DataExportService(
             IDataExportRepository repository,
-            IAdvancedAnalyticsService analyticsService,
+            IUnifiedAnalyticsService analyticsService,
             IMapper mapper,
             ILogger<DataExportService> logger)
         {
@@ -303,14 +303,10 @@ namespace TaskTrackerAPI.Services
             // Get analytics data based on data type
             return dataType switch
             {
-                "advanced" => await _analyticsService.GetAdvancedAnalyticsAsync(request.UserId, startDate, endDate),
-                "trends" => await _analyticsService.GetTaskTrendsAsync(request.UserId, 
-                    startDate ?? DateTime.UtcNow.AddDays(-30), 
-                    endDate ?? DateTime.UtcNow),
-                "productivity" => await _analyticsService.GetProductivityMetricsAsync(request.UserId, 
-                    startDate ?? DateTime.UtcNow.AddDays(-30), 
-                    endDate ?? DateTime.UtcNow),
-                _ => await _analyticsService.GetAdvancedAnalyticsAsync(request.UserId, startDate, endDate)
+                "advanced" => await _analyticsService.GetUserAnalyticsDashboardAsync(request.UserId, startDate, endDate),
+                "trends" => await _analyticsService.GetUserProductivityInsightsAsync(request.UserId),
+                "productivity" => await _analyticsService.GetUserProductivityInsightsAsync(request.UserId),
+                _ => await _analyticsService.GetUserAnalyticsDashboardAsync(request.UserId, startDate, endDate)
             };
         }
 

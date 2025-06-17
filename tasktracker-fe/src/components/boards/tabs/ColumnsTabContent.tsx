@@ -13,12 +13,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import {
   Plus,
@@ -28,7 +27,6 @@ import {
   RotateCcw,
   AlertCircle,
   CheckCircle,
-  Palette,
   Info
 } from 'lucide-react';
 
@@ -70,7 +68,7 @@ export const ColumnsTabContent: React.FC<ColumnsTabContentProps> = ({
     setColumns(sortedColumns.map(col => ({ ...col, hasChanges: false, isNew: false })));
   }, [board.columns]);
 
-  const handleColumnChange = (index: number, field: keyof BoardColumnDTO, value: any) => {
+  const handleColumnChange = (index: number, field: keyof BoardColumnDTO, value: string | number | TaskItemStatus) => {
     setColumns(prev => {
       const updated = [...prev];
       updated[index] = {
@@ -351,9 +349,9 @@ export const ColumnsTabContent: React.FC<ColumnsTabContentProps> = ({
               <h4 className="font-medium text-blue-900">Column Configuration Tips</h4>
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• Boards must have at least 3 columns</li>
-                <li>• First column represents "Not Started" tasks</li>
-                <li>• Last column represents "Completed" tasks</li>
-                <li>• Middle columns represent "In Progress" tasks</li>
+                <li>• First column represents &quot;Not Started&quot; tasks</li>
+                <li>• Last column represents &quot;Completed&quot; tasks</li>
+                <li>• Middle columns represent &quot;In Progress&quot; tasks</li>
                 <li>• Drag columns to reorder them</li>
               </ul>
             </div>

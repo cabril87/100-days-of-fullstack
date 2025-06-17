@@ -16,6 +16,7 @@ using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.DTOs.Tasks;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Services
 {
@@ -23,11 +24,13 @@ namespace TaskTrackerAPI.Services
     {
         private readonly ITaskItemRepository _taskRepository;
         private readonly ITaskService _taskService;
+        private readonly IMapper _mapper;
 
-        public TaskPriorityService(ITaskItemRepository taskRepository, ITaskService taskService)
+        public TaskPriorityService(ITaskItemRepository taskRepository, ITaskService taskService, IMapper mapper)
         {
             _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
         /// <inheritdoc />
@@ -197,7 +200,7 @@ namespace TaskTrackerAPI.Services
                         Id = task.Id,
                         Title = task.Title,
                         Description = task.Description,
-                        Status = task.Status,
+                        Status = _mapper.Map<TaskItemStatusDTO>(task.Status),
                         Priority = (int)calculatedPriority,
                         DueDate = task.DueDate,
                         CategoryId = task.CategoryId,
@@ -213,8 +216,8 @@ namespace TaskTrackerAPI.Services
                     {
                         TaskId = task.Id,
                         TaskTitle = task.Title,
-                        PreviousPriority = originalPriority,
-                        NewPriority = calculatedPriority,
+                        PreviousPriority = _mapper.Map<TaskPriorityDTO>(originalPriority),
+                        NewPriority = _mapper.Map<TaskPriorityDTO>(calculatedPriority),
                         AdjustmentReason = GetAdjustmentReason(task, calculatedPriority)
                     });
                     

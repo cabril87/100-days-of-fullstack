@@ -637,9 +637,10 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
       
       {/* Smart Invitation Wizard */}
       <SmartInvitationWizard
+        familyId={1} // TODO: Get actual family ID from user context
         isOpen={showSmartInvitationWizard}
         onClose={() => setShowSmartInvitationWizard(false)}
-        onSuccess={() => {
+        onInvitationSent={() => {
           setShowSmartInvitationWizard(false);
           // You can add success feedback here
           console.log('Smart invitation sent successfully');

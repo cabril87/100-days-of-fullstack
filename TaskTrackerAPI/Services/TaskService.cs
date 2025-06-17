@@ -26,32 +26,32 @@ namespace TaskTrackerAPI.Services
     public class TaskService : ITaskService
     {
         private readonly ITaskItemRepository _taskRepository;
-        private readonly IMapper _mapper;
         private readonly ICategoryRepository _categoryRepository;
         private readonly IChecklistItemRepository _checklistItemRepository;
-        private readonly ITaskSyncService _taskSyncService;
-        private readonly IGamificationService _gamificationService;
         private readonly IBoardRepository _boardRepository;
+        private readonly IGamificationService _gamificationService;
+        private readonly IUnifiedRealTimeService _unifiedRealTimeService;
+        private readonly IMapper _mapper;
         private readonly ILogger<TaskService> _logger;
         
         public TaskService(
-            ITaskItemRepository taskRepository, 
-            IMapper mapper, 
+            ITaskItemRepository taskRepository,
             ICategoryRepository categoryRepository,
             IChecklistItemRepository checklistItemRepository,
-            ITaskSyncService taskSyncService,
-            IGamificationService gamificationService,
             IBoardRepository boardRepository,
+            IGamificationService gamificationService,
+            IUnifiedRealTimeService unifiedRealTimeService,
+            IMapper mapper,
             ILogger<TaskService> logger)
         {
-            _taskRepository = taskRepository;
-            _mapper = mapper;
-            _categoryRepository = categoryRepository;
-            _checklistItemRepository = checklistItemRepository;
-            _taskSyncService = taskSyncService;
-            _gamificationService = gamificationService;
-            _boardRepository = boardRepository;
-            _logger = logger;
+            _taskRepository = taskRepository ?? throw new ArgumentNullException(nameof(taskRepository));
+            _categoryRepository = categoryRepository ?? throw new ArgumentNullException(nameof(categoryRepository));
+            _checklistItemRepository = checklistItemRepository ?? throw new ArgumentNullException(nameof(checklistItemRepository));
+            _boardRepository = boardRepository ?? throw new ArgumentNullException(nameof(boardRepository));
+            _gamificationService = gamificationService ?? throw new ArgumentNullException(nameof(gamificationService));
+            _unifiedRealTimeService = unifiedRealTimeService ?? throw new ArgumentNullException(nameof(unifiedRealTimeService));
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
         
         public async Task<IEnumerable<TaskItemDTO>> GetAllTasksAsync(int userId)
@@ -94,7 +94,7 @@ namespace TaskTrackerAPI.Services
                 }
             }
             
-            // Validate board ownership if a board is provided
+            // Validate board ownership if specified
             if (taskDto.BoardId.HasValue)
             {
                 bool isBoardOwned = await _boardRepository.IsBoardOwnedByUserAsync(taskDto.BoardId.Value, userId);
@@ -102,14 +102,13 @@ namespace TaskTrackerAPI.Services
                 {
                     throw new UnauthorizedAccessException("You do not have access to the specified board");
                 }
-                _logger.LogInformation("Creating task for board {BoardId}", taskDto.BoardId);
             }
             
             TaskItem taskItem = new TaskItem
             {
                 Title = taskDto.Title ?? string.Empty,
                 Description = taskDto.Description ?? string.Empty,
-                Status = taskDto.Status,
+                Status = _mapper.Map<TaskItemStatus>(taskDto.Status),
                 Priority = taskDto.Priority.ToString(),
                 DueDate = taskDto.DueDate,
                 CategoryId = taskDto.CategoryId,
@@ -138,7 +137,7 @@ namespace TaskTrackerAPI.Services
                 TaskItemDTO resultDto = _mapper.Map<TaskItemDTO>(result);
                 
                 // Notify via SignalR
-                await _taskSyncService.NotifyTaskCreatedAsync(userId, resultDto);
+                await _unifiedRealTimeService.NotifyTaskCreatedAsync(userId, resultDto);
                 
                 // Handle gamification for task creation
                 try
@@ -148,10 +147,9 @@ namespace TaskTrackerAPI.Services
                     await _gamificationService.AddPointsAsync(
                         userId, 
                         pointsToAward, 
-                        "task_creation", 
-                        $"Created task: {result.Title}", 
-                        result.Id
-                    );
+                        "task_creation",
+                        $"Created task: {taskDto.Title}", 
+                        result.Id);
                     
                     // Process any challenge progress related to task creation
                     await _gamificationService.ProcessChallengeProgressAsync(userId, "task_creation", result.Id);
@@ -183,7 +181,7 @@ namespace TaskTrackerAPI.Services
                 }
             }
             
-            // Validate board ownership if a board is provided
+            // Validate board ownership if specified
             if (taskDto.BoardId.HasValue)
             {
                 bool isBoardOwned = await _boardRepository.IsBoardOwnedByUserAsync(taskDto.BoardId.Value, userId);
@@ -225,7 +223,7 @@ namespace TaskTrackerAPI.Services
                 if (taskDto.DueDate != previousState.DueDate) conflict.ConflictingFields.Add("dueDate");
                 
                 // Notify about the conflict
-                await _taskSyncService.NotifyTaskConflictAsync(userId, conflict);
+                await _unifiedRealTimeService.NotifyTaskConflictAsync(userId, conflict);
                 
                 // Return null to indicate conflict
                 throw new ConcurrencyException("Task was modified by another user", conflict);
@@ -234,7 +232,7 @@ namespace TaskTrackerAPI.Services
             // Update properties
             existingTask.Title = taskDto.Title ?? string.Empty;
             existingTask.Description = taskDto.Description ?? string.Empty;
-            existingTask.Status = taskDto.Status;
+            existingTask.Status = _mapper.Map<TaskItemStatus>(taskDto.Status);
             existingTask.Priority = taskDto.Priority.ToString();
             existingTask.DueDate = taskDto.DueDate;
             existingTask.CategoryId = taskDto.CategoryId;
@@ -258,7 +256,7 @@ namespace TaskTrackerAPI.Services
                 TaskItemDTO resultDto = _mapper.Map<TaskItemDTO>(result);
                 
                 // Notify via SignalR
-                await _taskSyncService.NotifyTaskUpdatedAsync(userId, resultDto, previousState);
+                await _unifiedRealTimeService.NotifyTaskUpdatedAsync(userId, resultDto, previousState);
                 
                 return resultDto;
             }
@@ -291,10 +289,9 @@ namespace TaskTrackerAPI.Services
                 await _gamificationService.AddPointsAsync(
                     userId, 
                     1, 
-                    "task_deletion", 
+                    "task_deletion",
                     $"Deleted task: {taskTitle}", 
-                    taskId // TaskId is still valid at this point
-                );
+                    taskId);
                 
                 _logger.LogInformation("Successfully awarded deletion points for task {TaskId}", taskId);
                 
@@ -306,7 +303,7 @@ namespace TaskTrackerAPI.Services
                 _logger.LogInformation("Successfully deleted task {TaskId} for user {UserId}", taskId, userId);
                 
                 // Send notifications AFTER successful deletion
-                await _taskSyncService.NotifyTaskDeletedAsync(userId, taskId, boardId);
+                await _unifiedRealTimeService.NotifyTaskDeletedAsync(userId, taskId, boardId);
                 
                 _logger.LogInformation("Task deletion completed successfully for task {TaskId}", taskId);
             }
@@ -529,21 +526,18 @@ namespace TaskTrackerAPI.Services
                     int pointsAwarded = await _gamificationService.CalculateTaskCompletionPointsAsync(
                         userId, 
                         taskId, 
-                        task.Priority ?? "Medium",
-                        task.Priority ?? "Medium",
-                        task.DueDate,
-                        false // isCollaborative - could be enhanced later
-                    );
+                        "Medium", // difficulty
+                        task.Priority ?? "Medium", // priority as string
+                        task.DueDate);
                     
                     if (pointsAwarded > 0)
                     {
                         await _gamificationService.AddPointsAsync(
                             userId, 
                             pointsAwarded, 
-                            "task_completion", 
+                            "task_completion",
                             $"Completed task: {task.Title}", 
-                            taskId
-                        );
+                            taskId);
                     }
                     
                     // Update user streak for task completion
@@ -680,7 +674,7 @@ namespace TaskTrackerAPI.Services
             }
 
             List<TaskStatusUpdateResponseDTO> results = new List<TaskStatusUpdateResponseDTO>();
-            TaskItemStatus newStatus = batchUpdateDto.Status;
+            TaskItemStatus newStatus = _mapper.Map<TaskItemStatus>(batchUpdateDto.Status);
 
             foreach (int taskId in batchUpdateDto.TaskIds)
             {
@@ -729,21 +723,18 @@ namespace TaskTrackerAPI.Services
                             int pointsAwarded = await _gamificationService.CalculateTaskCompletionPointsAsync(
                                 userId, 
                                 taskId, 
-                                task.Priority ?? "Medium",
-                                task.Priority ?? "Medium",
-                                task.DueDate,
-                                false // isCollaborative
-                            );
+                                "Medium", // difficulty
+                                task.Priority ?? "Medium", // priority as string
+                                task.DueDate);
                             
                             if (pointsAwarded > 0)
                             {
                                 await _gamificationService.AddPointsAsync(
                                     userId, 
                                     pointsAwarded, 
-                                    "task_completion", 
+                                    "task_completion",
                                     $"Completed task: {task.Title}", 
-                                    taskId
-                                );
+                                    taskId);
                             }
                             
                             // Update user streak for task completion
@@ -773,8 +764,8 @@ namespace TaskTrackerAPI.Services
                     TaskStatusUpdateResponseDTO response = new TaskStatusUpdateResponseDTO
                     {
                         TaskId = taskId,
-                        PreviousStatus = previousStatus,
-                        NewStatus = newStatus,
+                        PreviousStatus = _mapper.Map<TaskItemStatusDTO>(previousStatus),
+                        NewStatus = _mapper.Map<TaskItemStatusDTO>(newStatus),
                         UpdatedAt = DateTime.UtcNow
                     };
 
@@ -790,7 +781,7 @@ namespace TaskTrackerAPI.Services
             // Notify via SignalR about the batch update if any task was updated
             if (results.Count > 0)
             {
-                await _taskSyncService.NotifyTaskBatchUpdateAsync(userId, results);
+                await _unifiedRealTimeService.NotifyTaskBatchUpdateAsync(userId, results);
             }
 
             return results;

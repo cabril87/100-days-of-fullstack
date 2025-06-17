@@ -635,7 +635,7 @@ public class FamilyCalendarService : IFamilyCalendarService
             availability.RecurrencePattern = availabilityDto.RecurrencePattern;
         
         if (availabilityDto.Status.HasValue)
-            availability.Status = availabilityDto.Status.Value;
+            availability.Status = _mapper.Map<AvailabilityStatus>(availabilityDto.Status.Value);
         
         if (availabilityDto.Note != null)
             availability.Note = availabilityDto.Note;

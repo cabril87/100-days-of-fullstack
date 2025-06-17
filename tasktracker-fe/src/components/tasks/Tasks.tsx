@@ -53,19 +53,22 @@ import TaskCreationModal from './TaskCreationModal';
 import ErrorModal from '@/components/ui/ErrorModal';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
 import CompletionModal from '@/components/ui/completion-modal';
+import { useTaskCompletion } from '@/components/ui/ToastProvider';
+import TaskCompletionService from '@/lib/services/TaskCompletionService';
 import { TasksPageContentProps, Task, TaskStats, TaskItemStatus } from '@/lib/types/task';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { formatDistance } from 'date-fns';
 import { priorityIntToString } from '@/lib/utils/priorityMapping';
-import { StatusSyncService } from '@/lib/utils/statusMapping';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { FamilyDTO } from '@/lib/types/family-invitation'; // ✅ NEW: Import FamilyDTO
-import { parseBackendDate, formatDisplayDate, debugTimezone } from '@/lib/utils/dateUtils';
+import { parseBackendDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 
 export default function TasksPageContent({ user, initialData }: TasksPageContentProps) {
   const router = useRouter();
+  const { celebrateTaskCompletion } = useTaskCompletion();
+  const taskCompletionService = TaskCompletionService.getInstance();
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks || []);
   const [stats, setStats] = useState<TaskStats>(initialData.stats);
   const [isLoading, setIsLoading] = useState(false);
@@ -377,56 +380,69 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
       const taskToComplete = tasks.find(t => t.id === taskId);
       if (!taskToComplete) return;
 
-      const updatedTask = await taskService.completeTask(taskId);
+      console.log('🎉 Starting enhanced task completion for:', taskToComplete.title);
+
+      // Use the enhanced TaskCompletionService for real-time celebrations
+      const completionResult = await taskCompletionService.completeTaskWithCelebration(
+        taskId,
+        user?.id || 0,
+        taskToComplete.familyId
+      );
+
+      if (!completionResult.success) {
+        throw new Error(completionResult.error || 'Task completion failed');
+      }
+
+      // Update local task state
       setTasks(prev => prev.map(task =>
-        task.id === taskId ? updatedTask : task
+        task.id === taskId ? { ...task, isCompleted: true, status: 'Completed' } : task
       ));
 
-      // Calculate XP based on priority
-      const priorityXP = {
-        'Urgent': 50,
-        'High': 30,
-        'Medium': 20,
-        'Low': 10
-      };
-      const xpEarned = priorityXP[taskToComplete.priority as keyof typeof priorityXP] || 10;
-
-      // Update stats locally without refetching
-      const previousLevel = calculateLevel(stats.totalPoints);
-      const newTotalPoints = (stats.totalPoints || 0) + xpEarned;
-      const newLevel = calculateLevel(newTotalPoints);
+      // Update stats with actual earned points
+      const pointsEarned = completionResult.pointsEarned || 0;
+      const newTotalPoints = (stats.totalPoints || 0) + pointsEarned;
 
       setStats(prev => ({
         ...prev,
         completedTasks: (prev.completedTasks || 0) + 1,
         activeTasks: Math.max(0, (prev.activeTasks || 0) - 1),
         totalPoints: newTotalPoints,
-        streakDays: (prev.streakDays || 0) + 1 // Simplified streak calculation
+        streakDays: (prev.streakDays || 0) + 1
       }));
 
-      // Check for new achievements
-      const newCompletedCount = (stats.completedTasks || 0) + 1;
-      const achievements = [];
-      if (newCompletedCount === 1) achievements.push('First Quest');
-      if (newCompletedCount === 10) achievements.push('Getting Started');
-      if (newCompletedCount === 25) achievements.push('Quarter Century');
-      if (newCompletedCount === 50) achievements.push('Half Century');
-      if (newCompletedCount === 100) achievements.push('Centurion');
-      if (newLevel > previousLevel) achievements.push('Level Up');
-
-      // Show completion celebration modal
-      setCompletionModal({
-        isOpen: true,
+      // 🎉 Trigger enhanced real-time celebrations
+      celebrateTaskCompletion({
         taskTitle: taskToComplete.title,
-        xpEarned,
-        newLevel: newLevel > previousLevel ? newLevel : undefined,
-        achievements,
-        streakDays: (stats.streakDays || 0) + 1
+        pointsEarned,
+        achievementsUnlocked: completionResult.achievementsUnlocked || [],
+        levelUp: completionResult.levelUp
       });
 
-      console.log('📊 Local stats updated after task completion');
+      // Legacy completion modal for backwards compatibility
+      const achievementNames = (completionResult.achievementsUnlocked || []).map(a => a.name || a.title || 'New Achievement');
+      if (completionResult.levelUp) {
+        achievementNames.push('Level Up!');
+      }
+
+      if (achievementNames.length > 0 || pointsEarned >= 25) {
+        setCompletionModal({
+          isOpen: true,
+          taskTitle: taskToComplete.title,
+          xpEarned: pointsEarned,
+          newLevel: completionResult.levelUp?.newLevel,
+          achievements: achievementNames,
+          streakDays: (stats.streakDays || 0) + 1
+        });
+      }
+
+      console.log('🎉 Enhanced task completion successful:', {
+        pointsEarned,
+        achievementsCount: completionResult.achievementsUnlocked?.length || 0,
+        levelUp: !!completionResult.levelUp
+      });
+
     } catch (error) {
-      console.error('Failed to complete task:', error);
+      console.error('❌ Enhanced task completion failed:', error);
 
       // Handle authentication errors
       if (error instanceof Error && error.message.includes('401')) {
@@ -435,15 +451,27 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         return;
       }
 
-      // Show error to user for other types of errors
+      // Show error to user
       setErrorModal({
         isOpen: true,
         title: 'Task Completion Failed',
-        message: 'Failed to complete the task. Please try again.',
+        message: 'Failed to complete the task with real-time celebration. Please try again.',
         details: error instanceof Error ? { error: error.message } : { error: 'Unknown error' },
         type: 'error',
         showDetails: false
       });
+
+      // Fallback: try basic completion without celebrations
+      try {
+        console.log('🔄 Attempting fallback task completion...');
+        const updatedTask = await taskService.completeTask(taskId);
+        setTasks(prev => prev.map(task =>
+          task.id === taskId ? updatedTask : task
+        ));
+        console.log('✅ Fallback completion successful');
+      } catch (fallbackError) {
+        console.error('❌ Fallback completion also failed:', fallbackError);
+      }
     }
   };
 
@@ -639,25 +667,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
     return counts;
   };
 
-  // ✅ NEW: Status display functions for board-task sync
-  const getStatusDisplay = (status: string | number): string => {
-    const statusStr = typeof status === 'number' ? status.toString() : status.toLowerCase();
-    switch (statusStr) {
-      case '0':
-      case 'notstarted': return 'To Do';
-      case '1':
-      case 'inprogress': return 'In Progress';
-      case '2':
-      case 'onhold': return 'On Hold';
-      case '3':
-      case 'pending': return 'Pending';
-      case '4':
-      case 'completed': return 'Completed';
-      case '5':
-      case 'cancelled': return 'Cancelled';
-      default: return 'To Do';
-    }
-  };
+
 
   const getStatusColor = (status: string | number): string => {
     const statusStr = typeof status === 'number' ? status.toString() : status.toLowerCase();

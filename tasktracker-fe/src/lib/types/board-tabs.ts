@@ -9,7 +9,7 @@
  * accordance with the terms contained in the LICENSE file.
  */
 
-import { BoardDTO, BoardColumnDTO } from './board';
+import { BoardDTO } from './board';
 
 /**
  * Tab-based Board Details Types
@@ -33,6 +33,13 @@ export interface SettingsTabContentProps {
   board: BoardDTO;
   onBoardUpdate: () => void;
   onBoardDelete?: () => void;
+}
+
+export interface ColumnsTabContentProps {
+  board: BoardDTO;
+  onBoardUpdate: () => void;
+  onBoardDelete?: () => void;
+  onColumnsUpdate: () => void;
 }
 
 export interface TabNavigationProps {

@@ -11,6 +11,7 @@
 using System;
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Boards;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Profiles;
@@ -44,7 +45,7 @@ public class BoardProfile : Profile
             .ForMember(dest => dest.BoardId, opt => opt.Ignore()) // Set by service
             .ForMember(dest => dest.MappedStatus, opt => opt.MapFrom(src => src.Status))
             .ForMember(dest => dest.IsHidden, opt => opt.MapFrom(src => false))
-            .ForMember(dest => dest.IsDoneColumn, opt => opt.MapFrom(src => src.Status == TaskItemStatus.Completed))
+            .ForMember(dest => dest.IsDoneColumn, opt => opt.MapFrom(src => src.Status.ToString() == "Completed"))
             .ForMember(dest => dest.TaskLimit, opt => opt.Ignore())
             .ForMember(dest => dest.Icon, opt => opt.Ignore())
             .ForMember(dest => dest.IsCollapsible, opt => opt.MapFrom(src => true))

@@ -11,8 +11,8 @@
 // Services/AuthService.cs
 using System.Security.Claims;
 using System.Security;
-using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Auth;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Helpers;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AutoMapper;
 
 namespace TaskTrackerAPI.Services;
 
@@ -31,17 +32,20 @@ public class AuthService : IAuthService
     private readonly AuthHelper _authHelper;
     private readonly ILogger<AuthService> _logger;
     private readonly ISessionManagementService _sessionManagementService;
+    private readonly IMapper _mapper;
 
     public AuthService(
         IUserRepository userRepository,
         AuthHelper authHelper,
         ILogger<AuthService> logger,
-        ISessionManagementService sessionManagementService)
+        ISessionManagementService sessionManagementService,
+        IMapper mapper)
     {
         _userRepository = userRepository;
         _authHelper = authHelper;
         _logger = logger;
         _sessionManagementService = sessionManagementService;
+        _mapper = mapper;
     }
 
     public async Task<UserDTO> RegisterUserAsync(UserCreateDTO userDto)
@@ -101,7 +105,7 @@ public class AuthService : IAuthService
             LastName = userDto.LastName,
             Role = "User",
             CreatedAt = DateTime.UtcNow,
-            AgeGroup = userDto.AgeGroup ?? ageGroup // Use provided age group or calculated one
+            AgeGroup = userDto.AgeGroup.HasValue ? _mapper.Map<FamilyMemberAgeGroup>(userDto.AgeGroup.Value) : ageGroup
         };
 
         await _userRepository.CreateUserAsync(user);
@@ -116,7 +120,7 @@ public class AuthService : IAuthService
             LastName = user.LastName,
             Role = user.Role,
             CreatedAt = user.CreatedAt,
-            AgeGroup = user.AgeGroup
+            AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(user.AgeGroup)
         };
     }
 
@@ -229,7 +233,7 @@ public class AuthService : IAuthService
                     LastName = user.LastName,
                     Role = user.Role,
                     CreatedAt = user.CreatedAt,
-                    AgeGroup = user.AgeGroup
+                    AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(user.AgeGroup)
                 }
             };
 
@@ -333,7 +337,7 @@ public class AuthService : IAuthService
                 LastName = user.LastName,
                 Role = user.Role,
                 CreatedAt = user.CreatedAt,
-                AgeGroup = user.AgeGroup
+                AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(user.AgeGroup)
             }
         };
     }
@@ -357,7 +361,7 @@ public class AuthService : IAuthService
             LastName = user.LastName,
             Role = user.Role,
             CreatedAt = user.CreatedAt,
-            AgeGroup = user.AgeGroup
+            AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(user.AgeGroup)
         };
     }
     
@@ -462,7 +466,8 @@ public class AuthService : IAuthService
             FirstName = u.FirstName,
             LastName = u.LastName,
             Role = u.Role,
-            CreatedAt = u.CreatedAt
+            CreatedAt = u.CreatedAt,
+            AgeGroup = _mapper.Map<FamilyMemberAgeGroupDTO>(u.AgeGroup)
         });
     }
     

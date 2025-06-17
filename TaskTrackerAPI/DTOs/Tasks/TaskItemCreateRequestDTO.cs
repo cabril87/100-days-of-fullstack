@@ -11,7 +11,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
@@ -78,7 +77,7 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// <summary>
         /// Current status of the task
         /// </summary>
-        public TaskItemStatus Status { get; set; } = TaskItemStatus.NotStarted;
+        public TaskItemStatusDTO Status { get; set; } = TaskItemStatusDTO.NotStarted;
 
         /// <summary>
         /// Whether the task is important/starred

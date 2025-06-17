@@ -21,7 +21,6 @@ import {
   DragStartEvent,
   DragOverEvent,
   closestCenter,
-  closestCorners,
   pointerWithin,
   rectIntersection,
   KeyboardSensor,
@@ -29,12 +28,10 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
   horizontalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
@@ -65,21 +62,18 @@ import {
   Zap,
   Star,
   Flame,
-  Rocket,
+
   Zap as Lightning,
   ChevronDown,
-  Clock,
-  Pause,
+
   X,
   ArrowLeft,
   Users,
-  User,
   GripVertical,
   CheckSquare,
   Square,
   Move,
-  Trash2,
-  RotateCcw
+  Trash2
 } from 'lucide-react';
 
 // Types and Services
@@ -105,132 +99,11 @@ import { EditBoardModal } from './EditBoardModal';
 import { QuestSelectionModal } from './QuestSelectionModal';
 import { BoardColumn as EnhancedBoardColumn } from './BoardColumn';
 
-// Template-specific gradient configurations
-const TEMPLATE_GRADIENTS = {
-  'Basic Kanban': {
-    primary: 'from-blue-500 to-blue-600',
-    secondary: 'from-blue-100 to-blue-200',
-    accent: 'from-blue-50 to-blue-100',
-    text: 'text-blue-700',
-    border: 'border-blue-200'
-  },
-  'Simple To-Do': {
-    primary: 'from-green-500 to-emerald-600',
-    secondary: 'from-green-100 to-emerald-200',
-    accent: 'from-green-50 to-emerald-100',
-    text: 'text-green-700',
-    border: 'border-green-200'
-  },
-  'Family Chores': {
-    primary: 'from-purple-500 to-purple-600',
-    secondary: 'from-purple-100 to-purple-200',
-    accent: 'from-purple-50 to-purple-100',
-    text: 'text-purple-700',
-    border: 'border-purple-200'
-  },
-  'Weekly Cleaning': {
-    primary: 'from-teal-500 to-cyan-600',
-    secondary: 'from-teal-100 to-cyan-200',
-    accent: 'from-teal-50 to-cyan-100',
-    text: 'text-teal-700',
-    border: 'border-teal-200'
-  },
-  'Meal Planning': {
-    primary: 'from-orange-500 to-amber-600',
-    secondary: 'from-orange-100 to-amber-200',
-    accent: 'from-orange-50 to-amber-100',
-    text: 'text-orange-700',
-    border: 'border-orange-200'
-  },
-  'Home Maintenance': {
-    primary: 'from-slate-500 to-gray-600',
-    secondary: 'from-slate-100 to-gray-200',
-    accent: 'from-slate-50 to-gray-100',
-    text: 'text-slate-700',
-    border: 'border-slate-200'
-  },
-  'School Projects': {
-    primary: 'from-indigo-500 to-blue-600',
-    secondary: 'from-indigo-100 to-blue-200',
-    accent: 'from-indigo-50 to-blue-100',
-    text: 'text-indigo-700',
-    border: 'border-indigo-200'
-  },
-  'Kids Activities': {
-    primary: 'from-pink-500 to-rose-600',
-    secondary: 'from-pink-100 to-rose-200',
-    accent: 'from-pink-50 to-rose-100',
-    text: 'text-pink-700',
-    border: 'border-pink-200'
-  },
-  'Reading Goals': {
-    primary: 'from-violet-500 to-purple-600',
-    secondary: 'from-violet-100 to-purple-200',
-    accent: 'from-violet-50 to-purple-100',
-    text: 'text-violet-700',
-    border: 'border-violet-200'
-  },
-  'Family Health': {
-    primary: 'from-red-500 to-red-600',
-    secondary: 'from-red-100 to-red-200',
-    accent: 'from-red-50 to-red-100',
-    text: 'text-red-700',
-    border: 'border-red-200'
-  },
-  'Fitness Goals': {
-    primary: 'from-emerald-500 to-green-600',
-    secondary: 'from-emerald-100 to-green-200',
-    accent: 'from-emerald-50 to-green-100',
-    text: 'text-emerald-700',
-    border: 'border-emerald-200'
-  },
-  'Birthday Planning': {
-    primary: 'from-yellow-500 to-orange-600',
-    secondary: 'from-yellow-100 to-orange-200',
-    accent: 'from-yellow-50 to-orange-100',
-    text: 'text-yellow-700',
-    border: 'border-yellow-200'
-  },
-  'Holiday Planning': {
-    primary: 'from-red-500 to-green-600',
-    secondary: 'from-red-100 to-green-200',
-    accent: 'from-red-50 to-green-100',
-    text: 'text-red-700',
-    border: 'border-red-200'
-  },
-  'Vacation Planning': {
-    primary: 'from-sky-500 to-blue-600',
-    secondary: 'from-sky-100 to-blue-200',
-    accent: 'from-sky-50 to-blue-100',
-    text: 'text-sky-700',
-    border: 'border-sky-200'
-  },
-  'Family Budget': {
-    primary: 'from-green-500 to-emerald-600',
-    secondary: 'from-green-100 to-emerald-200',
-    accent: 'from-green-50 to-emerald-100',
-    text: 'text-green-700',
-    border: 'border-green-200'
-  },
-  'Garden Planning': {
-    primary: 'from-lime-500 to-green-600',
-    secondary: 'from-lime-100 to-green-200',
-    accent: 'from-lime-50 to-green-100',
-    text: 'text-lime-700',
-    border: 'border-lime-200'
-  }
-};
-
-// Get template gradient or default
-const getTemplateGradient = (templateName: string) => {
-  return TEMPLATE_GRADIENTS[templateName as keyof typeof TEMPLATE_GRADIENTS] || TEMPLATE_GRADIENTS['Basic Kanban'];
-};
-
 /**
  * Enhanced Task Card with Gamification
  */
 interface EnhancedTaskCardProps extends TaskCardProps {
-  templateGradient?: typeof TEMPLATE_GRADIENTS[keyof typeof TEMPLATE_GRADIENTS];
+  templateGradient?: { primary: string; secondary: string; accent: string; text: string; border: string };
 }
 
 const TaskCard: React.FC<EnhancedTaskCardProps> = ({
@@ -240,7 +113,6 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
   onEdit,
   onDelete,
   onView,
-  gamificationStyle,
   enableAnimations = true,
   showPriorityGlow = true,
   showStatusIndicator = true
@@ -261,7 +133,6 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
 
   const cardRef = useRef<HTMLDivElement>(null);
   const isActive = isDragging || isSortableDragging;
-  const stylePreset = gamificationStyle || TASK_STYLE_PRESETS.gradient;
 
   // Priority configuration
   const priorityConfig = {
@@ -500,167 +371,7 @@ const SortableColumn: React.FC<SortableColumnProps> = ({ id, ...props }) => {
   );
 };
 
-const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
-  column,
-  tasks,
-  onCreateTask,
-  enableDropPreview = true,
-  templateName = 'Basic Kanban',
-  onTaskDelete
-}) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `column-${column.id}`,
-  });
 
-  const templateGradient = getTemplateGradient(templateName);
-  const taskIds = tasks.map(task => task.id);
-
-  // Get column icon based on status and template
-  const getColumnIcon = () => {
-    const iconMap = {
-      [TaskItemStatus.NotStarted]: Rocket,
-      [TaskItemStatus.Pending]: Clock,
-      [TaskItemStatus.InProgress]: Zap,
-      [TaskItemStatus.OnHold]: Pause,
-      [TaskItemStatus.Completed]: Trophy,
-      [TaskItemStatus.Cancelled]: X,
-    };
-    return iconMap[column.status] || Target;
-  };
-
-  const ColumnIcon = getColumnIcon();
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "group relative h-full transition-all duration-300",
-        isOver && "scale-[1.02]"
-      )}
-    >
-      {/* Enhanced Card with Gamification Styling */}
-      <Card className={cn(
-        "h-full overflow-hidden border-0 shadow-xl transition-all duration-300",
-        `bg-gradient-to-br ${templateGradient.accent} backdrop-blur-sm`,
-        "hover:shadow-2xl hover:scale-[1.01]",
-        isOver && "ring-2 ring-emerald-400 shadow-2xl scale-[1.02]"
-      )}>
-        {/* Gradient accent bar */}
-        <div className={cn(
-          "absolute top-0 left-0 w-full h-1.5 rounded-t-xl",
-          `bg-gradient-to-r ${templateGradient.primary}`
-        )} />
-        
-        {/* Column Header */}
-        <CardHeader className="pb-3 relative">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {/* Column Icon with Glow Effect */}
-              <div className={cn(
-                "p-3 rounded-xl shadow-lg transition-all duration-300",
-                `bg-gradient-to-br ${templateGradient.primary} text-white`,
-                "group-hover:shadow-xl group-hover:scale-110"
-              )}>
-                <ColumnIcon className="h-6 w-6" />
-              </div>
-              
-              <div>
-                <h3 className={cn(
-                  "text-lg font-bold",
-                  `bg-gradient-to-r ${templateGradient.primary} bg-clip-text text-transparent`
-                )}>
-                  {column.name}
-                </h3>
-                <Badge 
-                  variant="secondary" 
-                  className={cn(
-                    "text-xs font-medium",
-                    `bg-gradient-to-r ${templateGradient.secondary} ${templateGradient.text} ${templateGradient.border}`
-                  )}
-                >
-                  {tasks.length} quest{tasks.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Add Quest Button */}
-            <Button
-              onClick={onCreateTask}
-              size="sm"
-              className={cn(
-                "opacity-0 group-hover:opacity-100 transition-all duration-300",
-                `bg-gradient-to-r ${templateGradient.primary} hover:shadow-lg hover:scale-105`,
-                "text-white border-0"
-              )}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-
-        {/* Tasks Container */}
-        <CardContent className="flex-1 pt-0">
-          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3 min-h-[200px]">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  gamificationStyle={TASK_STYLE_PRESETS.gradient}
-                  enableAnimations={true}
-                  showPriorityGlow={true}
-                  showStatusIndicator={false}
-                  onDelete={onTaskDelete}
-                />
-              ))}
-              
-              {/* Enhanced Empty State */}
-              {tasks.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className={cn(
-                    "p-4 rounded-full mb-4 shadow-lg",
-                    `bg-gradient-to-br ${templateGradient.secondary} backdrop-blur-sm`
-                  )}>
-                    <ColumnIcon className={cn("w-8 h-8", templateGradient.text)} />
-                  </div>
-                  <h4 className={cn(
-                    "text-lg font-bold mb-2",
-                    `bg-gradient-to-r ${templateGradient.primary} bg-clip-text text-transparent`
-                  )}>
-                    No quests yet
-                  </h4>
-                  <p className="text-sm text-slate-600 mb-4 max-w-[200px]">
-                    Add your first quest to get started on this epic journey!
-                  </p>
-                  <Button
-                    onClick={onCreateTask}
-                    size="sm"
-                    className={cn(
-                      `bg-gradient-to-r ${templateGradient.primary} hover:shadow-lg hover:scale-105`,
-                      "text-white border-0 transition-all duration-300"
-                    )}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Quest
-                  </Button>
-                </div>
-              )}
-            </div>
-          </SortableContext>
-        </CardContent>
-
-        {/* Enhanced Drop Preview */}
-        {enableDropPreview && isOver && (
-          <div className={cn(
-            "absolute inset-0 rounded-lg pointer-events-none border-2 border-dashed",
-            "bg-gradient-to-br from-emerald-500/10 to-teal-500/10",
-            "border-emerald-400/50 animate-pulse"
-          )} />
-        )}
-      </Card>
-    </div>
-  );
-};
 
 /**
  * Main Kanban Board Component
@@ -690,8 +401,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   });
 
   // Family member tracking
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ displayName?: string; email?: string } | null>(null);
+  const [familyMembers, setFamilyMembers] = useState<{ id?: number; user?: { displayName?: string; email?: string } }[]>([]);
   const [activeColumn, setActiveColumn] = useState<BoardColumnDTO | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
 
@@ -705,7 +416,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   // Batch selection state
   const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
-  const [showBatchActions, setShowBatchActions] = useState(false);
+
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -775,11 +486,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   }, [boardId, router]);
 
-  useEffect(() => {
-    loadBoardData();
-    loadFamilyData();
-  }, [loadBoardData]);
-
   // Load family data for member tracking
   const loadFamilyData = useCallback(async () => {
     try {
@@ -804,6 +510,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       setFamilyMembers([]);
     }
   }, []);
+
+  useEffect(() => {
+    loadBoardData();
+    loadFamilyData();
+  }, [loadBoardData, loadFamilyData]);
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
@@ -1354,7 +1065,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   // Handle column update (placeholder - will use existing board update mechanisms)
-  const handleColumnUpdate = async (columnId: number, updates: { name?: string; color?: string }) => {
+  const handleColumnUpdate = async () => {
     try {
       // For now, just reload the board data
       // In a full implementation, this would call a specific column update API
@@ -1367,7 +1078,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   // Handle column delete (placeholder - will use existing board update mechanisms)
-  const handleColumnDelete = async (columnId: number) => {
+  const handleColumnDelete = async () => {
     try {
       // For now, just reload the board data
       // In a full implementation, this would call a specific column delete API
@@ -1427,7 +1138,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       console.error('Batch delete failed:', error);
       toast.error('Failed to delete some tasks');
     }
-  }, [selectedTasks]);
+  }, [selectedTasks, loadBoardData]);
 
   const handleBatchMove = useCallback(async (targetStatus: TaskItemStatus) => {
     if (selectedTasks.size === 0) return;
@@ -1445,7 +1156,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       console.error('Batch move failed:', error);
       toast.error('Failed to move some tasks');
     }
-  }, [selectedTasks]);
+  }, [selectedTasks, loadBoardData]);
 
   // Loading state
   if (loading) {

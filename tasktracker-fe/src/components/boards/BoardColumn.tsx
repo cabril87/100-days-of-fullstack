@@ -18,7 +18,6 @@ import { BoardColumnProps } from '../../lib/types/board';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { ScrollArea } from '../ui/scroll-area';
 import { Input } from '../ui/input';
 import { ColorPicker } from '../ui/ColorPicker';
 import { 
@@ -53,7 +52,7 @@ import {
 } from '../ui/context-menu';
 import { toast } from 'sonner';
 import CookieStorage from '@/lib/utils/cookieStorage';
-import { BoardService } from '@/lib/services/boardService';
+
 
 // Extended props for the enhanced column
 interface EnhancedBoardColumnProps extends BoardColumnProps {
@@ -375,7 +374,7 @@ export const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
                     <div className="h-full p-4 space-y-3 min-h-[300px]">
                       {/* Sortable task list */}
                       <div className="space-y-3">
-                        {tasks.map((task, index) => (
+                        {tasks.map((task) => (
                           <div key={`task-${task.id}`} className="relative">
                             <TaskCard
                               task={task}

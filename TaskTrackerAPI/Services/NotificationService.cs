@@ -17,29 +17,36 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace TaskTrackerAPI.Services;
 
+/// <summary>
+/// Service for managing notifications
+/// </summary>
 public class NotificationService : INotificationService
 {
     private readonly INotificationRepository _notificationRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUnifiedRealTimeService _unifiedRealTimeService;
     private readonly IMapper _mapper;
+    private readonly ILogger<NotificationService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly INotificationRealTimeService _realTimeService;
 
     public NotificationService(
         INotificationRepository notificationRepository,
         IUserRepository userRepository,
+        IUnifiedRealTimeService unifiedRealTimeService,
         IMapper mapper,
-        IServiceProvider serviceProvider,
-        INotificationRealTimeService realTimeService)
+        ILogger<NotificationService> logger,
+        IServiceProvider serviceProvider)
     {
-        _notificationRepository = notificationRepository;
-        _userRepository = userRepository;
-        _mapper = mapper;
-        _serviceProvider = serviceProvider;
-        _realTimeService = realTimeService;
+        _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _unifiedRealTimeService = unifiedRealTimeService ?? throw new ArgumentNullException(nameof(unifiedRealTimeService));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     public async Task<IEnumerable<NotificationDTO>> GetAllNotificationsAsync(int userId)
@@ -92,11 +99,12 @@ public class NotificationService : INotificationService
         NotificationDTO result = _mapper.Map<NotificationDTO>(notification);
         
         // Send real-time notification
-        await _realTimeService.SendNotificationToUserAsync(targetUserId, result);
+        await _unifiedRealTimeService.SendNotificationToUserAsync(targetUserId, result);
         
         // Update unread count
         int unreadCount = await _notificationRepository.GetUnreadNotificationCountAsync(targetUserId);
-        await _realTimeService.UpdateNotificationCountAsync(targetUserId, unreadCount);
+        NotificationCountsDTO counts = new NotificationCountsDTO { UnreadCount = unreadCount };
+        await _unifiedRealTimeService.SendNotificationCountUpdateAsync(targetUserId, counts);
         
         return result;
     }
@@ -116,20 +124,12 @@ public class NotificationService : INotificationService
             
         NotificationDTO notificationDto = _mapper.Map<NotificationDTO>(notification);
         
-        // Send notification action result
-        var result = new NotificationActionResultDTO
-        {
-            NotificationId = notificationId,
-            Action = "mark_read",
-            Success = true,
-            Message = "Notification marked as read"
-        };
-        
-        await _realTimeService.SendActionResultToUserAsync(userId, result);
+        await _unifiedRealTimeService.SendNotificationUpdateToUserAsync(userId, notificationId, true);
         
         // Update unread count
         int unreadCount = await _notificationRepository.GetUnreadNotificationCountAsync(userId);
-        await _realTimeService.UpdateNotificationCountAsync(userId, unreadCount);
+        NotificationCountsDTO counts = new NotificationCountsDTO { UnreadCount = unreadCount };
+        await _unifiedRealTimeService.SendNotificationCountUpdateAsync(userId, counts);
         
         return notificationDto;
     }
@@ -138,20 +138,9 @@ public class NotificationService : INotificationService
     {
         int count = await _notificationRepository.MarkAllNotificationsAsReadAsync(userId);
         
-        // Send notification action result
-        var result = new NotificationActionResultDTO
-        {
-            NotificationId = 0,
-            Action = "mark_all_read",
-            Success = true,
-            Message = $"{count} notifications marked as read",
-            Data = new { Count = count }
-        };
-        
-        await _realTimeService.SendActionResultToUserAsync(userId, result);
-        
         // Update unread count (should be 0)
-        await _realTimeService.UpdateNotificationCountAsync(userId, 0);
+        NotificationCountsDTO counts = new NotificationCountsDTO { UnreadCount = 0 };
+        await _unifiedRealTimeService.SendNotificationCountUpdateAsync(userId, counts);
         
         return count;
     }
@@ -169,20 +158,10 @@ public class NotificationService : INotificationService
         {
             await _notificationRepository.DeleteNotificationAsync(notification);
             
-            // Send notification action result
-            var result = new NotificationActionResultDTO
-            {
-                NotificationId = notificationId,
-                Action = "delete",
-                Success = true,
-                Message = "Notification deleted"
-            };
-            
-            await _realTimeService.SendActionResultToUserAsync(userId, result);
-            
             // Update unread count
             int unreadCount = await _notificationRepository.GetUnreadNotificationCountAsync(userId);
-            await _realTimeService.UpdateNotificationCountAsync(userId, unreadCount);
+            NotificationCountsDTO counts = new NotificationCountsDTO { UnreadCount = unreadCount };
+            await _unifiedRealTimeService.SendNotificationCountUpdateAsync(userId, counts);
         }
     }
 
@@ -190,19 +169,9 @@ public class NotificationService : INotificationService
     {
         await _notificationRepository.DeleteAllNotificationsAsync(userId);
         
-        // Send notification action result
-        var result = new NotificationActionResultDTO
-        {
-            NotificationId = 0,
-            Action = "delete_all",
-            Success = true,
-            Message = "All notifications deleted"
-        };
-        
-        await _realTimeService.SendActionResultToUserAsync(userId, result);
-        
         // Update unread count (should be 0)
-        await _realTimeService.UpdateNotificationCountAsync(userId, 0);
+        NotificationCountsDTO counts = new NotificationCountsDTO { UnreadCount = 0 };
+        await _unifiedRealTimeService.SendNotificationCountUpdateAsync(userId, counts);
     }
 
     public async Task<NotificationCountDTO> GetNotificationCountsAsync(int userId)
@@ -228,7 +197,7 @@ public class NotificationService : INotificationService
             Title = "Task Deadline Reminder",
             Message = message,
             NotificationType = "TaskDue",
-            Type = Models.NotificationType.TaskDue,
+            Type = _mapper.Map<NotificationTypeDTO>(NotificationType.TaskDue),
             IsImportant = true,
             RelatedEntityId = taskId,
             RelatedEntityType = "Task"

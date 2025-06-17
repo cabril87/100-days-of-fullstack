@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Analytics;
 using TaskTrackerAPI.Services.Interfaces;
 using System.Linq;
 using TaskTrackerAPI.Controllers.V2;
@@ -401,12 +402,12 @@ public class TaskTemplatesController : BaseApiController
 
     // POST: api/v1/tasktemplates/{id}/usage
     [HttpPost("{id}/usage")]
-    public async Task<ActionResult<TemplateUsageAnalyticsDTO>> RecordTemplateUsage(int id, [FromBody] RecordUsageDTO usageDto)
+    public async Task<ActionResult<TemplateUsageRecordDTO>> RecordTemplateUsage(int id, [FromBody] RecordUsageDTO usageDto)
     {
         try
         {
             int userId = GetUserId();
-            TemplateUsageAnalyticsDTO analytics = await _templateService.RecordTemplateUsageAsync(
+            TemplateUsageRecordDTO analytics = await _templateService.RecordTemplateUsageAsync(
                 id, userId, usageDto.Success, usageDto.CompletionTimeMinutes);
             
             return Ok(analytics);

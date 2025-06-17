@@ -2,6 +2,9 @@
 
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
 import FamilyTaskDashboard from '@/components/family/FamilyTaskDashboard';
+import KidDashboard from '@/components/dashboard/KidDashboard';
+import TeenDashboard from '@/components/dashboard/TeenDashboard';
+
 import { Trophy, Target, Clock, Star, Plus, CheckCircle, Users, Activity, TrendingUp, AlertTriangle, Crown, Sparkles, Flame, Timer, UserPlus, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -20,6 +23,15 @@ import { FamilyDTO, DashboardStats, FamilyActivityItem, UserProgress, DashboardC
 import { Task, FamilyTaskItemDTO } from '@/lib/types/task';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { FamilyTaskStats } from '@/lib/types/family-task';
+import { FamilyMemberAgeGroup } from '@/lib/types/auth';
+// ✨ NEW: Import real-time dashboard widgets
+import { 
+  LivePointsWidget, 
+  RecentAchievements, 
+  FamilyActivityStream, 
+  StreakCounter,
+  NotificationStream 
+} from '@/components/dashboard/widgets';
 
 export default function Dashboard({ user, initialData }: DashboardContentProps) {
   const router = useRouter();
@@ -41,6 +53,9 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
   const [familyTasks, setFamilyTasks] = useState<FamilyTaskItemDTO[]>([]);
   const [familyTaskStats, setFamilyTaskStats] = useState<FamilyTaskStats | null>(null);
   const [activeTab, setActiveTab] = useState<'individual' | 'family'>('individual');
+  
+  // ✨ NEW: Permission request state - temporarily disabled
+  const [permissionModalOpen] = useState(false);
 
   // Utility function to safely get priority display
   const getPriorityDisplay = (priority: string | number | undefined | null): string => {
@@ -145,6 +160,8 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
       console.error('Failed to refresh stats after task creation:', error);
     }
   }, []);
+
+
 
   // ✨ NEW: Load family tasks and stats
   const loadFamilyTasks = useCallback(async () => {
@@ -291,8 +308,18 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
           
           activityData = activityDataResult;
 
-          // ✨ NEW: Load family tasks and collaboration data
-          await loadFamilyTasks();
+          // ✨ NEW: Load family tasks and collaboration data inline to avoid circular dependency
+          try {
+            const [tasks, stats] = await Promise.all([
+              taskService.getFamilyTasks(currentFamily.id),
+              taskService.getEnhancedFamilyTaskStats(currentFamily.id)
+            ]);
+
+            setFamilyTasks(tasks);
+            setFamilyTaskStats(stats);
+          } catch (familyTaskError) {
+            console.warn('Failed to load family tasks:', familyTaskError);
+          }
         } catch (error) {
           console.warn('Failed to load some family data:', error);
           // If family activity fails with 401, it means user doesn't have permission
@@ -337,11 +364,11 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
     } finally {
       // Loading complete
     }
-  }, [user, currentFamily, loadFamilyTasks]);
+  }, [user, currentFamily?.id]); // Remove loadFamilyTasks dependency
 
   useEffect(() => {
     loadAdditionalData();
-  }, [loadAdditionalData]);
+  }, [loadAdditionalData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen bg-background">
@@ -849,6 +876,82 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
         </div>
       )}
 
+        {/* ✨ NEW: Real-Time Dashboard Widgets Section */}
+        <div className="space-y-6">
+          {/* Section Header */}
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              🔴 Live Dashboard
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Real-time updates powered by SignalR • Watch your progress come alive!
+            </p>
+          </div>
+
+          {/* Real-Time Widgets Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            {/* Live Points Widget */}
+            <LivePointsWidget 
+              userId={user?.id || 0} 
+              className="col-span-1"
+            />
+
+            {/* Streak Counter Widget */}
+            <StreakCounter 
+              userId={user?.id || 0} 
+              className="col-span-1"
+            />
+
+            {/* Recent Achievements Widget */}
+            <RecentAchievements 
+              userId={user?.id || 0} 
+              maxDisplay={3}
+              className="col-span-1"
+            />
+
+            {/* Family Activity Stream Widget */}
+            <FamilyActivityStream 
+              userId={user?.id || 0}
+              familyId={currentFamily?.id}
+              maxDisplay={4}
+              className="col-span-1"
+            />
+
+            {/* Notification Stream Widget */}
+            <NotificationStream 
+              maxDisplay={4}
+              className="col-span-1"
+            />
+          </div>
+
+          {/* Real-Time Features Info */}
+          <Card className="bg-gradient-to-r from-green-50 via-blue-50 to-purple-50 dark:from-green-900/10 dark:via-blue-900/10 dark:to-purple-900/10 border-2 border-dashed border-green-300 dark:border-green-600">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-1">
+                    🚀 Real-Time Experience Active!
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">
+                    Your dashboard updates instantly when you or family members complete tasks, earn achievements, or reach milestones. 
+                    No refresh needed!
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    Live Connected
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">SignalR Enabled</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Error Alert */}
         {error && (
           <Alert className="border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
@@ -1221,17 +1324,68 @@ export default function Dashboard({ user, initialData }: DashboardContentProps) 
         )}
 
         {/* Task Creation Modal */}
-                    {user && (
-                      <TaskCreationModal 
-                        user={user}
-                        family={currentFamily}
-                        onTaskCreated={handleTaskCreated}
+        {user && (
+          <TaskCreationModal 
+            user={user}
+            family={currentFamily}
+            onTaskCreated={handleTaskCreated}
             isOpen={isTaskModalOpen}
             onOpenChange={setIsTaskModalOpen}
             editingTask={null}
           />
         )}
+
+        {/* Permission Request Modal - temporarily disabled */}
+        {permissionModalOpen && (
+          <div>Permission modal placeholder</div>
+        )}
       </div>
     </div>
   );
+}
+
+// ✨ NEW: Age-based Dashboard Wrapper Component
+export function AgeDashboard({ user, initialData }: DashboardContentProps) {
+  // Handle task completion for all age groups
+  const handleTaskComplete = useCallback((taskId: number) => {
+    // This will be handled by the individual dashboard components
+    console.log('Task completed:', taskId);
+  }, []);
+
+  // Handle permission requests
+  const handlePermissionRequest = useCallback((action: string, description: string) => {
+    console.log('Permission requested:', action, description);
+    // TODO: Implement actual permission request logic
+  }, []);
+
+  // Route to age-appropriate dashboard
+  if (!user) {
+    return <Dashboard user={user} initialData={initialData} />;
+  }
+
+  switch (user.ageGroup) {
+    case FamilyMemberAgeGroup.Child:
+      return (
+        <KidDashboard
+          user={user}
+          initialData={initialData}
+          onTaskComplete={handleTaskComplete}
+          onRequestPermission={handlePermissionRequest}
+        />
+      );
+    
+    case FamilyMemberAgeGroup.Teen:
+      return (
+        <TeenDashboard
+          user={user}
+          initialData={initialData}
+          onTaskComplete={handleTaskComplete}
+          onRequestPermission={handlePermissionRequest}
+        />
+      );
+    
+    case FamilyMemberAgeGroup.Adult:
+    default:
+      return <Dashboard user={user} initialData={initialData} />;
+  }
 } 

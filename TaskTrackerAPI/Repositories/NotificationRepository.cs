@@ -187,7 +187,7 @@ public class NotificationRepository : INotificationRepository
             query = query.Where(n => n.IsImportant == filter.IsImportant.Value);
 
         if (filter.Type.HasValue)
-            query = query.Where(n => n.Type == filter.Type.Value);
+            query = query.Where(n => n.Type.ToString() == filter.Type.Value.ToString());
 
         if (!string.IsNullOrEmpty(filter.RelatedEntityType))
             query = query.Where(n => n.RelatedEntityType == filter.RelatedEntityType);
