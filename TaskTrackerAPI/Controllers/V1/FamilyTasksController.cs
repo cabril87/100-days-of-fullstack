@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Family;
+using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -119,7 +120,7 @@ namespace TaskTrackerAPI.Controllers.V1
         }
 
         [HttpPost("assign")]
-        public async Task<ActionResult<FamilyTaskItemDTO>> AssignTaskToFamilyMember(int familyId, [FromBody] FlexibleTaskAssignmentDTO assignmentDto)
+        public async Task<ActionResult<FamilyTaskItemDTO>> AssignTaskToFamilyMember(int familyId, [FromBody] CreateTaskAssignmentDTO assignmentDto)
         {
             try
             {
@@ -137,25 +138,19 @@ namespace TaskTrackerAPI.Controllers.V1
                     return Unauthorized(ApiResponse<object>.ErrorResponse("You don't have permission to assign tasks in this family"));
                 }
                 
-                // Handle possible string user ID by converting to int
+                // Handle user ID conversion to int
                 int assignToUserIdInt;
-                if (assignmentDto.AssignToUserId is string)
+                try
                 {
-                    string userIdStr = assignmentDto.AssignToUserId.ToString();
-                    if (!int.TryParse(userIdStr, out assignToUserIdInt))
-                    {
-                        // Simplified logging to avoid dynamic dispatch issues
-                        _logger.LogError("Invalid assignToUserId format");
-                        return BadRequest(ApiResponse<object>.BadRequestResponse("Invalid user ID format"));
-                    }
+                    assignToUserIdInt = assignmentDto.AssignedToUserId;
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Safely convert JsonElement or numeric types to int
-                    assignToUserIdInt = SafeConvertToInt(assignmentDto.AssignToUserId);
+                    _logger.LogError(ex, "Invalid assignToUserId format");
+                        return BadRequest(ApiResponse<object>.BadRequestResponse("Invalid user ID format"));
                 }
                 
-                // Check if the assigned user is a child (under 13)
+                // Check if the assigned user exists
                 User? assignedUser = await _userRepository.GetByIdAsync(assignToUserIdInt);
                 if (assignedUser == null)
                 {
@@ -179,14 +174,15 @@ namespace TaskTrackerAPI.Controllers.V1
                 }
                 
                 // Create modified DTO with corrected user ID
-                FlexibleTaskAssignmentDTO correctedDto = new FlexibleTaskAssignmentDTO
+                CreateTaskAssignmentDTO correctedDto = new CreateTaskAssignmentDTO
                 {
                     TaskId = SafeConvertToInt(assignmentDto.TaskId),
-                    AssignToUserId = familyMember.User?.Id ?? assignToUserIdInt,
+                    AssignedToUserId = familyMember.User?.Id ?? assignToUserIdInt,
                     RequiresApproval = assignmentDto.RequiresApproval,
-                    // Ensure these fields are explicitly set to pass validation
-                    UserId = familyMember.User?.Id ?? assignToUserIdInt,
-                    MemberId = familyMember.Id
+                    Notes = assignmentDto.Notes,
+                    FamilyId = familyId,
+                    FamilyMemberId = familyMember.Id,
+                    AssignmentType = TaskAssignmentType.FamilyMember
                 };
                 
                 FamilyTaskItemDTO? task = await _taskSharingService.AssignTaskToFamilyMemberAsync(

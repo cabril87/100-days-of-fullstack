@@ -388,12 +388,16 @@ export class ApiClient {
     if (contentType && contentType.includes('application/json')) {
       const jsonResponse = await response.json();
       
+      console.log('🔍 ApiClient handleResponse: Raw JSON response:', jsonResponse);
+      
       // Check if response has the API wrapper format with data property
       if (jsonResponse && typeof jsonResponse === 'object' && 'data' in jsonResponse && 'success' in jsonResponse) {
+        console.log('✅ ApiClient handleResponse: Extracting data from wrapper:', jsonResponse.data);
         // Extract the data from the API wrapper
         return jsonResponse.data as T;
       }
       
+      console.log('⚠️ ApiClient handleResponse: No wrapper detected, returning raw response');
       // Return the response as-is if it's not in the wrapper format
       return jsonResponse as T;
     }
@@ -475,7 +479,9 @@ export class ApiClient {
           headers: Object.fromEntries(response.headers.entries())
         });
         
-        return this.handleResponse<T>(response);
+        const result = await this.handleResponse<T>(response);
+        console.log('📦 ApiClient POST parsed result:', result);
+        return result;
       })
     );
   }

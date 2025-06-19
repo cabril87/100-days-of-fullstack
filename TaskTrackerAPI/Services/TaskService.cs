@@ -11,6 +11,7 @@
 using AutoMapper;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Repositories.Interfaces;
 using TaskTrackerAPI.Services.Interfaces;
@@ -20,6 +21,7 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using TaskAssignmentDTO = TaskTrackerAPI.DTOs.Tasks.TaskAssignmentDTO;
 
 namespace TaskTrackerAPI.Services
 {
@@ -522,6 +524,9 @@ namespace TaskTrackerAPI.Services
                 // Then handle gamification
                 try
                 {
+                    // ✨ ENTERPRISE: Enhanced Real-Time Gamification Integration
+                    _logger.LogInformation("🎮 Processing enhanced gamification for task completion - Task: {TaskId}, User: {UserId}", taskId, userId);
+                    
                     // Calculate and award points for task completion
                     int pointsAwarded = await _gamificationService.CalculateTaskCompletionPointsAsync(
                         userId, 
@@ -538,19 +543,59 @@ namespace TaskTrackerAPI.Services
                             "task_completion",
                             $"Completed task: {task.Title}", 
                             taskId);
+                            
+                        // ✨ NEW: Send enhanced real-time points notification with task context
+                        await _unifiedRealTimeService.SendPointsEarnedAsync(
+                            userId, 
+                            pointsAwarded, 
+                            $"Task completed: {task.Title}", 
+                            taskId);
                     }
                     
                     // Update user streak for task completion
                     await _gamificationService.UpdateStreakAsync(userId);
                     
+                    // ✨ NEW: Process task-specific achievements with real-time unlocks
+                    await _gamificationService.ProcessTaskCompletionAchievementsAsync(userId, taskId, new Dictionary<string, object>
+                    {
+                        ["taskTitle"] = task.Title,
+                        ["taskPriority"] = task.Priority ?? "Medium",
+                        ["taskDueDate"] = task.DueDate ?? DateTime.UtcNow,
+                        ["taskCategory"] = task.Category?.Name ?? "General",
+                        ["pointsEarned"] = pointsAwarded,
+                        ["completionTime"] = DateTime.UtcNow
+                    });
+                    
                     // Process any challenge progress related to task completion
                     await _gamificationService.ProcessChallengeProgressAsync(userId, "task_completion", taskId);
+                    
+                    // ✨ NEW: Family-wide task completion notification
+                    if (task.FamilyId.HasValue)
+                    {
+                        await NotifyFamilyTaskCompletionAsync(task.FamilyId.Value, userId, task, pointsAwarded);
+                    }
+                    
+                    // ✨ NEW: Enhanced real-time task completion event
+                    await _unifiedRealTimeService.NotifyTaskCompletedAsync(userId, new TaskCompletionEventDTO
+                    {
+                        TaskId = taskId,
+                        TaskTitle = task.Title,
+                        CompletedBy = $"User {userId}", // Would be enhanced with actual user name
+                        CompletedByUserId = userId,
+                        PointsEarned = pointsAwarded,
+                        CompletionTime = DateTime.UtcNow,
+                        FamilyId = task.FamilyId,
+                        Category = task.Category?.Name ?? "General",
+                        Priority = task.Priority ?? "Medium"
+                    });
+                    
+                    _logger.LogInformation("🎉 Enhanced gamification processing completed - Points: {Points}, Task: {TaskTitle}", pointsAwarded, task.Title);
                     
                 }
                 catch (Exception ex)
                 {
                     // Log the error but don't fail the task update
-                    _logger.LogError(ex, "Error processing gamification for task completion");
+                    _logger.LogError(ex, "❌ Error processing enhanced gamification for task completion - Task: {TaskId}", taskId);
                 }
             }
             // If task is being uncompleted (was completed, now isn't), clear completion data
@@ -863,6 +908,55 @@ namespace TaskTrackerAPI.Services
                 return false;
                 
             return await _checklistItemRepository.DeleteChecklistItemAsync(itemId);
+        }
+        
+        // ✨ NEW: Enhanced family task completion notification method
+        private async Task NotifyFamilyTaskCompletionAsync(int familyId, int completedByUserId, TaskItem task, int pointsEarned)
+        {
+            try
+            {
+                _logger.LogInformation("👨‍👩‍👧‍👦 Sending family task completion notification - Family: {FamilyId}, Task: {TaskTitle}", familyId, task.Title);
+                
+                // Create family activity event
+                FamilyActivityEventDTO familyActivityEvent = new FamilyActivityEventDTO
+                {
+                    FamilyId = familyId,
+                    UserId = completedByUserId,
+                    ActivityType = "task_completed",
+                    Description = $"completed task: {task.Title}",
+                    PointsEarned = pointsEarned,
+                    Timestamp = DateTime.UtcNow,
+                    RelatedEntityId = task.Id,
+                    RelatedEntityType = "task",
+                    Priority = task.Priority ?? "Medium",
+                    Category = task.Category?.Name ?? "General"
+                };
+                
+                // Send to family activity stream
+                await _unifiedRealTimeService.SendFamilyActivityAsync(familyId, familyActivityEvent);
+                
+                // Send family milestone check if significant points earned
+                if (pointsEarned >= 25)
+                {
+                    await _unifiedRealTimeService.SendFamilyMilestoneAsync(familyId, new FamilyMilestoneEventDTO
+                    {
+                        FamilyId = familyId,
+                        MilestoneType = "high_value_task_completion",
+                        Title = "High Value Task Completed! 🏆",
+                        Description = $"Great work! {pointsEarned} points earned for completing: {task.Title}",
+                        PointsEarned = pointsEarned,
+                        AchievedByUserId = completedByUserId,
+                        Timestamp = DateTime.UtcNow
+                    });
+                }
+                
+                _logger.LogInformation("✅ Family task completion notification sent successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to send family task completion notification - Family: {FamilyId}", familyId);
+                // Don't throw - family notifications shouldn't break task completion
+            }
         }
     }
 }

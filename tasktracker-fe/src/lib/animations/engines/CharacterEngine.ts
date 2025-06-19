@@ -11,7 +11,8 @@ import {
   AnimationSystemConfig,
   AnimationQuality,
   Vector2D,
-  AnimationConfig
+  AnimationConfig,
+  CharacterType
 } from '@/lib/types/animations';
 
 export interface Character {
@@ -166,7 +167,7 @@ export class CharacterEngine {
     this.container?.appendChild(tempElement);
     
     // Force layout calculation
-    tempElement.offsetHeight;
+    void tempElement.offsetHeight;
     
     // Remove temp element
     if (tempElement.parentNode) {
@@ -411,7 +412,7 @@ export class CharacterEngine {
     }
   }
 
-  private getCharacterTypeFromAnimation(animationType: string): any {
+  private getCharacterTypeFromAnimation(animationType: string): CharacterType {
     if (animationType.includes('family')) return 'family';
     if (animationType.includes('child')) return 'child';
     if (animationType.includes('achievement')) return 'hero';

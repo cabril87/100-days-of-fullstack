@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,18 @@ import {
 } from 'lucide-react';
 import { SimpleDashboardProps } from '@/lib/types/component-props';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
+import { taskService } from '@/lib/services/taskService';
+import { familyInvitationService } from '@/lib/services/familyInvitationService';
+import { Task } from '@/lib/types/task';
+import { FamilyDTO } from '@/lib/types';
 
 export default function SimpleDashboard({ user, initialData, onTaskCreated }: SimpleDashboardProps) {
   const router = useRouter();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-
-  const dashboardStats = initialData?.stats || {
+  
+  // Client-side state for dynamic data loading
+  const [recentTasks, setRecentTasks] = useState<Task[]>(initialData?.recentTasks || []);
+  const [dashboardStats, setDashboardStats] = useState(initialData?.stats || {
     tasksCompleted: 0,
     activeGoals: 0,
     focusTime: 0,
@@ -26,10 +32,112 @@ export default function SimpleDashboard({ user, initialData, onTaskCreated }: Si
     familyTasks: 0,
     familyPoints: 0,
     totalFamilies: 0
-  };
+  });
+  const [currentFamily, setCurrentFamily] = useState<FamilyDTO | null>(initialData?.family || null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const recentTasks = initialData?.recentTasks || [];
-  const currentFamily = initialData?.family || null;
+  const userId = user?.id;
+
+  // Load recent tasks from API
+  const loadRecentTasks = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      console.log('📋 SimpleDashboard: Loading recent tasks...');
+      const tasks = await taskService.getRecentTasks(10);
+      
+      console.log(`✅ SimpleDashboard: Loaded ${tasks.length} recent tasks:`, tasks.map(t => ({ 
+        id: t.id, 
+        title: t.title, 
+        completed: t.isCompleted 
+      })));
+      
+      setRecentTasks(tasks);
+    } catch (error) {
+      console.error('SimpleDashboard: Failed to load recent tasks:', error);
+    }
+  }, [userId]);
+
+  // Load dashboard stats from API
+  const loadDashboardStats = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      console.log('📊 SimpleDashboard: Loading dashboard stats...');
+      
+      // Load basic task stats
+      const tasks = await taskService.getRecentTasks(100); // Get more tasks to calculate stats
+      const completedTasks = tasks.filter(task => task.isCompleted);
+      
+      // Calculate basic stats from tasks
+      const stats = {
+        tasksCompleted: completedTasks.length,
+        activeGoals: tasks.filter(task => !task.isCompleted).length,
+        focusTime: 0, // TODO: Implement focus time tracking
+        totalPoints: completedTasks.reduce((sum, task) => sum + (task.pointsValue || 10), 0),
+        streakDays: 0, // TODO: Implement streak calculation
+        familyMembers: currentFamily ? 1 : 0,
+        familyTasks: tasks.filter(task => task.familyId).length,
+        familyPoints: 0, // TODO: Calculate family points
+        totalFamilies: currentFamily ? 1 : 0
+      };
+      
+      console.log('✅ SimpleDashboard: Calculated stats:', stats);
+      setDashboardStats(stats);
+    } catch (error) {
+      console.error('SimpleDashboard: Failed to load dashboard stats:', error);
+    }
+  }, [userId, currentFamily]);
+
+  // Load user's family data
+  const loadFamilyData = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      console.log('👨‍👩‍👧‍👦 SimpleDashboard: Loading family data...');
+      const families = await familyInvitationService.getAllFamilies();
+      
+      if (families && families.length > 0) {
+        const family = families[0]; // Use first family
+        console.log('✅ SimpleDashboard: Found family:', family.name);
+        setCurrentFamily(family);
+      }
+    } catch (error) {
+      console.error('SimpleDashboard: Failed to load family data:', error);
+    }
+  }, [userId]);
+
+  // Load all dashboard data
+  const loadDashboardData = useCallback(async () => {
+    if (!userId || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      console.log('🔄 SimpleDashboard: Loading dashboard data...');
+      
+      // Load data concurrently for better performance
+      await Promise.all([
+        loadRecentTasks(),
+        loadFamilyData()
+      ]);
+      
+      // Load stats after family data is loaded
+      await loadDashboardStats();
+      
+      console.log('✅ SimpleDashboard: Dashboard data loaded successfully');
+    } catch (error) {
+      console.error('SimpleDashboard: Failed to load dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, isLoading, loadRecentTasks, loadFamilyData, loadDashboardStats]);
+
+  // Load data on component mount
+  useEffect(() => {
+    if (userId) {
+      loadDashboardData();
+    }
+  }, [userId, loadDashboardData]);
 
   // Gamification calculations
   const calculateLevel = (points: number) => Math.floor((points || 0) / 100) + 1;
@@ -56,8 +164,10 @@ export default function SimpleDashboard({ user, initialData, onTaskCreated }: Si
 
   const handleTaskCreated = useCallback(() => {
     setIsTaskModalOpen(false);
+    // Reload dashboard data when task is created
+    loadDashboardData();
     onTaskCreated?.();
-  }, [onTaskCreated]);
+  }, [loadDashboardData, onTaskCreated]);
 
   return (
     <div className="space-y-6">

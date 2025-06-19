@@ -170,6 +170,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<SystemMaintenanceNotification> SystemMaintenanceNotifications { get; set; } = null!;
     public DbSet<SystemOptimizationRecommendation> SystemOptimizationRecommendations { get; set; } = null!;
 
+    // Search entities
+    public DbSet<SavedSearch> SavedSearches { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured && _configuration != null)

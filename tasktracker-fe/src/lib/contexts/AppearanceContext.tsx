@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { AppearanceFormData } from '@/lib/types/forms';
 import { soundService } from '@/lib/services/soundService';
-import { spriteAnimationService } from '@/lib/services/spriteAnimationService';
+import { AnimationType, spriteAnimationService } from '@/lib/services/spriteAnimationService';
 
 interface AppearanceContextType {
   // Settings
@@ -312,7 +312,11 @@ export function AppearanceProvider({ children }: AppearanceProviderProps) {
     
     console.log('🎯 Playing animation at position:', animationPosition);
     
-    spriteAnimationService.playAnimation(animationType as any, animationPosition);
+    spriteAnimationService.playEnhancedAnimation({
+      type: animationType as AnimationType,
+      position: animationPosition,
+      duration: 2000
+    });
   }, [settings.animations.spriteAnimations, settings.animations.characterAnimations, settings.animations.enableAnimations]);
 
   const contextValue: AppearanceContextType = {

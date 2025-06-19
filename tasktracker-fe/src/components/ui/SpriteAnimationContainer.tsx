@@ -41,7 +41,7 @@ export function SpriteAnimationContainer({
         mountedRef.current = false;
       }
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     spriteAnimationService.setEnabled(enabled);

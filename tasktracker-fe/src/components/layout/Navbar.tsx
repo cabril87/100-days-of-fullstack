@@ -8,6 +8,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { GlobalSearchTrigger } from '@/components/search/GlobalSearchTrigger';
 import { 
   LogOut, Settings, User, Crown, Star, 
   Home, CheckSquare, Users, Trophy, 
@@ -239,9 +240,15 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
               {/* Authenticated Navigation */}
               {navigationMode === 'authenticated' && isAuthenticated && user && (
                 <div className="flex items-center space-x-3 lg:space-x-4">
-                  {/* Future components - commented out */}
-                  {/* <GlobalSearch /> */}
+                  {/* Global Search */}
+                  <GlobalSearchTrigger 
+                    variant="input-style" 
+                    size="sm" 
+                    className="max-w-64"
+                  />
+                  <div className="flex items-center space-x-2">
                   <ThemeToggle />
+                  </div>
                   
                   {/* Notification Icon with Badge */}
                   <div className="relative">
@@ -263,6 +270,7 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                     </Link>
                   </div>
                   
+                  <div className="flex items-center space-x-2">
                   {shouldShowSidebar && (
                     <Button
                       variant="ghost"
@@ -280,6 +288,8 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                       </svg>
                     </Button>
                   )}
+                  </div>
+                  
                   
                   {/* User Profile Dropdown */}
                   <div className="relative" ref={profileMenuRef}>
@@ -377,6 +387,12 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
             {/* Mobile menu button */}
             <div className="md:hidden flex items-center space-x-2">
               <ThemeToggle />
+              {isAuthenticated && user && (
+                <GlobalSearchTrigger 
+                  variant="icon-only" 
+                  size="sm"
+                />
+              )}
               <button
                 onClick={toggleMenu}
                 className="p-2 rounded-xl backdrop-blur-sm border border-gray-600 bg-gray-800/80 transition-all duration-300 shadow-sm hover:shadow-md text-gray-300"
@@ -432,6 +448,16 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                 {/* Quick Actions */}
                 <div className="px-4 py-3 border-b border-gray-600 bg-gray-800/50">
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Quick Actions</div>
+                  
+                  {/* Mobile Search */}
+                  <div className="mb-3">
+                    <GlobalSearchTrigger 
+                      variant="button" 
+                      size="sm" 
+                      className="w-full"
+                    />
+                  </div>
+                  
                   <div className="flex gap-2">
                     <Button
                       size="sm"

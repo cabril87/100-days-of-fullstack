@@ -11,7 +11,9 @@ import {
   AnimationSystemConfig,
   AnimationQuality,
   Vector2D,
-  AnimationConfig
+  AnimationConfig,
+  ColorConfig,
+  ParticleType
 } from '@/lib/types/animations';
 
 interface Particle {
@@ -301,14 +303,15 @@ export class ParticleEngine {
     
     // Apply gravity if configured
     if (this.config && 'gravity' in this.config) {
-      particle.velocity.y += (this.config as any).gravity * deltaTime;
+      const configWithGravity = this.config as AnimationSystemConfig & { gravity: number };
+      particle.velocity.y += configWithGravity.gravity * deltaTime;
     }
     
     // Apply friction if configured
     if (this.config && 'friction' in this.config) {
-      const friction = (this.config as any).friction;
-      particle.velocity.x *= (1 - friction * deltaTime);
-      particle.velocity.y *= (1 - friction * deltaTime);
+      const configWithFriction = this.config as AnimationSystemConfig & { friction: number };
+      particle.velocity.x *= (1 - configWithFriction.friction * deltaTime);
+      particle.velocity.y *= (1 - configWithFriction.friction * deltaTime);
     }
     
     // Update position
@@ -432,7 +435,7 @@ export class ParticleEngine {
     }
   }
 
-  private getParticleColor(colorConfig: any): string {
+  private getParticleColor(colorConfig: ColorConfig): string {
     if (colorConfig.hex) {
       return colorConfig.hex;
     }
@@ -450,7 +453,7 @@ export class ParticleEngine {
     return '#FFD700'; // Default gold
   }
 
-  private interpolateColor(start: any, end: any, progress: number): string {
+  private interpolateColor(start: ColorConfig, end: ColorConfig, progress: number): string {
     // Simple color interpolation
     if (start.hex && end.hex) {
       return this.interpolateHexColor(start.hex, end.hex, progress);
@@ -481,7 +484,7 @@ export class ParticleEngine {
     } : null;
   }
 
-  private getParticleTypeFromAnimation(animationType: string): any {
+  private getParticleTypeFromAnimation(animationType: string): ParticleType {
     if (animationType.includes('confetti')) return 'confetti';
     if (animationType.includes('star')) return 'stars';
     if (animationType.includes('sparkle')) return 'sparkles';

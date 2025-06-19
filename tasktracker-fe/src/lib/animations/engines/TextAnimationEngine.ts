@@ -10,7 +10,6 @@ import {
   TextAnimationConfig, 
   AnimationSystemConfig,
   AnimationQuality,
-  Vector2D 
 } from '@/lib/types/animations';
 
 export interface TextAnimation {
@@ -132,7 +131,7 @@ export class TextAnimationEngine {
     this.container?.appendChild(tempElement);
     
     // Force layout calculation
-    tempElement.offsetHeight;
+    void tempElement.offsetHeight;
     
     // Remove temp element
     if (tempElement.parentNode) {
@@ -363,7 +362,10 @@ export class TextAnimationEngine {
 
   private adjustAnimationQuality(animation: TextAnimation, quality: AnimationQuality): void {
     const element = animation.element;
-    const style = element.style as any;
+    const style = element.style as CSSStyleDeclaration & { 
+      fontSmooth?: string; 
+      webkitFontSmoothing?: string; 
+    };
     
     switch (quality) {
       case 'low':

@@ -8,6 +8,7 @@ import { AppearanceProvider } from '@/lib/contexts/AppearanceContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { SpriteAnimationContainer } from '@/components/ui/SpriteAnimationContainer';
+import { GlobalSearchModalWrapper } from '@/components/search/GlobalSearchTrigger';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -86,6 +87,7 @@ export default function RootLayout({
                     {children}
                   </AppLayout>
                   <SpriteAnimationContainer />
+                  <GlobalSearchModalWrapper />
                 </ToastProvider>
               </SidebarProvider>
             </AuthProvider>

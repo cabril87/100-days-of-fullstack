@@ -14,82 +14,90 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TaskTrackerAPI.DTOs.Tasks
 {
-    
-    /// Data transfer object for task assignments
-    
+    /// <summary>
+    /// Flexible DTO for task assignments - handles both individual and family assignments
+    /// </summary>
     public class TaskAssignmentDTO
     {
-        
         /// Unique identifier for the assignment
-        
         public int Id { get; set; }
 
-        
         /// Task ID being assigned
-        
         [Required]
         public int TaskId { get; set; }
 
-        
         /// User ID the task is assigned to
-        
         [Required]
         public int AssignedToUserId { get; set; }
 
-        
         /// User ID of who assigned the task
-        
         [Required]
         public int AssignedByUserId { get; set; }
 
-        
         /// Date when the task was assigned
-        
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
-        
         /// Notes about the assignment
-        
-        [StringLength(200, ErrorMessage = "Notes cannot exceed 200 characters")]
+        [StringLength(1000)]
         public string? Notes { get; set; }
 
-        
         /// Whether the assignment has been accepted
-        
         public bool IsAccepted { get; set; } = false;
 
-        
         /// Date when the assignment was accepted
-        
         public DateTime? AcceptedAt { get; set; }
-    }
 
-    
-    /// DTO for creating a task assignment
-    
-    public class CreateTaskAssignmentDTO
-    {
+        // ✨ Enhanced properties for family collaboration
+        public int? FamilyId { get; set; }
+        public int? FamilyMemberId { get; set; } // For family member assignments
+        public string? AssignedToUserName { get; set; }
+        public string? AssignedByUserName { get; set; }
+        public string? TaskTitle { get; set; }
+        public string? TaskDescription { get; set; }
+        public DateTime? TaskDueDate { get; set; }
+        public string? TaskPriority { get; set; }
+        public bool RequiresApproval { get; set; }
+        public int? ApprovedByUserId { get; set; }
+        public DateTime? ApprovedAt { get; set; }
         
-        /// Task ID to assign
+        [StringLength(500)]
+        public string? ApprovalNotes { get; set; }
         
-        [Required]
-        public int TaskId { get; set; }
-
+        // ✨ Assignment type for flexibility
+        public TaskAssignmentType AssignmentType { get; set; } = TaskAssignmentType.Individual;
         
-        /// User ID to assign the task to
-        
-        [Required]
-        public int AssignedToUserId { get; set; }
-
-        
-        /// Optional notes about the assignment
-        
-        [StringLength(200)]
-        public string? Notes { get; set; }
+        // ✨ Status tracking
+        public TaskAssignmentStatus Status { get; set; } = TaskAssignmentStatus.Pending;
     }
 
     /// <summary>
-    /// DTO for batch assignment of tasks
+    /// DTO for creating task assignments
+    /// </summary>
+    public class CreateTaskAssignmentDTO
+    {
+        /// Task ID to assign
+        [Required]
+        public int TaskId { get; set; }
+
+        /// User ID to assign the task to
+        [Required]
+        public int AssignedToUserId { get; set; }
+
+        /// Optional notes about the assignment
+        [StringLength(1000)]
+        public string? Notes { get; set; }
+        
+        public bool RequiresApproval { get; set; } = false;
+        
+        // ✨ Family context (optional)
+        public int? FamilyId { get; set; }
+        public int? FamilyMemberId { get; set; }
+        
+        public TaskAssignmentType AssignmentType { get; set; } = TaskAssignmentType.Individual;
+    }
+
+    /// <summary>
+    /// DTO for batch task assignments
     /// </summary>
     public class BatchAssignmentRequestDTO
     {
@@ -108,7 +116,38 @@ namespace TaskTrackerAPI.DTOs.Tasks
         /// <summary>
         /// Optional notes about the batch assignment
         /// </summary>
-        [StringLength(200)]
+        [StringLength(1000)]
         public string? Notes { get; set; }
+        
+        public bool RequiresApproval { get; set; } = false;
+        
+        // ✨ Family context (optional)
+        public int? FamilyId { get; set; }
+        public int? FamilyMemberId { get; set; }
+        
+        public TaskAssignmentType AssignmentType { get; set; } = TaskAssignmentType.Individual;
+    }
+
+    /// <summary>
+    /// Types of task assignments
+    /// </summary>
+    public enum TaskAssignmentType
+    {
+        Individual = 0,
+        FamilyMember = 1,
+        FamilyGroup = 2
+    }
+
+    /// <summary>
+    /// Status of task assignments
+    /// </summary>
+    public enum TaskAssignmentStatus
+    {
+        Pending = 0,
+        Accepted = 1,
+        Declined = 2,
+        Completed = 3,
+        Approved = 4,
+        Rejected = 5
     }
 } 

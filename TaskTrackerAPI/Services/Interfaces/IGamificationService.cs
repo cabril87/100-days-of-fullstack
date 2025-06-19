@@ -90,5 +90,8 @@ namespace TaskTrackerAPI.Services.Interfaces
         
         // Achievement Processing
         Task ProcessAchievementUnlocksAsync(int userId, string activityType, int relatedEntityId = 0, Dictionary<string, object>? additionalData = null);
+        
+        // ✨ NEW: Enhanced task completion achievement processing
+        Task ProcessTaskCompletionAchievementsAsync(int userId, int taskId, Dictionary<string, object> taskData);
     }
 } 

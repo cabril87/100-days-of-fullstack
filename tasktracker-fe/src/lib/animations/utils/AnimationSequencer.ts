@@ -6,7 +6,7 @@
  * Enterprise sequencing system for complex animation workflows
  */
 
-import { AnimationSequence } from '@/lib/types/animations';
+import { AnimationConfig, AnimationSequence, TextAnimationConfig } from '@/lib/types/animations';
 
 interface SequenceCallbacks {
   onAnimationStart?: (animationId: string, type: string) => void;
@@ -16,7 +16,7 @@ interface SequenceCallbacks {
 }
 
 export class AnimationSequencer {
-  private activeSequences = new Map<string, any>();
+  private activeSequences = new Map<string, AnimationSequence & { status: 'playing' | 'paused' | 'stopped' }>();
   private queuedSequences: AnimationSequence[] = [];
   private sequenceId = 0;
 
@@ -85,7 +85,7 @@ export class AnimationSequencer {
     }
   }
 
-  private async playAnimation(animConfig: any): Promise<void> {
+  private async playAnimation(animConfig: AnimationConfig | TextAnimationConfig): Promise<void> {
     return new Promise((resolve) => {
       // Create animation element
       const element = document.createElement('div');
@@ -114,7 +114,7 @@ export class AnimationSequencer {
     });
   }
 
-  private applyAnimationToElement(element: HTMLElement, config: any): void {
+  private applyAnimationToElement(element: HTMLElement, config: AnimationConfig | TextAnimationConfig): void {
     const duration = config.duration;
     const easing = config.easing || 'ease-out';
     
@@ -152,7 +152,7 @@ export class AnimationSequencer {
     }
   }
 
-  private createConfettiExplosion(container: HTMLElement, config: any): void {
+  private createConfettiExplosion(container: HTMLElement, config: AnimationConfig | TextAnimationConfig): void {
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3'];
     const particleCount = 20;
     

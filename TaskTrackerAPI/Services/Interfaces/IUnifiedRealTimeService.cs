@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Models;
 
 namespace TaskTrackerAPI.Services.Interfaces;
@@ -113,6 +114,11 @@ public interface IUnifiedRealTimeService
     /// </summary>
     Task NotifyTaskConflictAsync(int userId, TaskConflictDTO conflict);
 
+    /// <summary>
+    /// ✨ NEW: Enhanced task completion notification with comprehensive gamification data
+    /// </summary>
+    Task NotifyTaskCompletedAsync(int userId, TaskCompletionEventDTO completionEvent);
+
     #endregion
 
     #region Board Real-Time Events
@@ -155,6 +161,20 @@ public interface IUnifiedRealTimeService
     /// Send marketplace analytics update
     /// </summary>
     Task SendMarketplaceAnalyticsUpdateAsync(object analyticsData);
+
+    #endregion
+
+    #region Family Real-Time Events
+
+    /// <summary>
+    /// ✨ NEW: Send family activity event to all family members
+    /// </summary>
+    Task SendFamilyActivityAsync(int familyId, FamilyActivityEventDTO activityEvent);
+
+    /// <summary>
+    /// ✨ NEW: Send family milestone celebration to all family members
+    /// </summary>
+    Task SendFamilyMilestoneAsync(int familyId, FamilyMilestoneEventDTO milestoneEvent);
 
     #endregion
 } 

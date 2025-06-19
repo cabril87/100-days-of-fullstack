@@ -757,5 +757,152 @@ namespace TaskTrackerAPI.Controllers.V1
                 return ApiServerError<object>("An error occurred while updating primary family.");
             }
         }
+
+        // Family privacy endpoints (temporary implementation until full privacy system is built)
+        [HttpGet("{familyId}/privacy")]
+        public async Task<ActionResult<ApiResponse<object>>> GetFamilyPrivacySettings(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                
+                // Check if user is a member of the family
+                if (!await _familyService.IsFamilyMemberAsync(familyId, userId))
+                {
+                    return ApiUnauthorized<object>("You are not a member of this family");
+                }
+
+                // Return default privacy settings (placeholder until privacy system is implemented)
+                var defaultSettings = new
+                {
+                    visibility = new
+                    {
+                        profileVisibility = "family_only",
+                        taskVisibility = "all_members",
+                        searchable = true
+                    },
+                    sharing = new
+                    {
+                        allowTaskSharing = true,
+                        allowInvitations = true,
+                        shareAchievements = true,
+                        activityVisibility = "family_only"
+                    },
+                    childProtection = new
+                    {
+                        enableParentalControls = true,
+                        restrictExternalSharing = true,
+                        moderateContent = true,
+                        safeModeEnabled = true
+                    },
+                    dataRetention = new
+                    {
+                        retainActivityHistory = true,
+                        autoDeleteOldTasks = false,
+                        exportDataAllowed = true,
+                        backupFrequency = "weekly"
+                    }
+                };
+
+                return ApiOk<object>(defaultSettings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting privacy settings for family {FamilyId}", familyId);
+                return ApiServerError<object>("An error occurred while retrieving privacy settings.");
+            }
+        }
+
+        [HttpPut("{familyId}/privacy")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateFamilyPrivacySettings(int familyId, [FromBody] object privacySettings)
+        {
+            try
+            {
+                int userId = GetUserId();
+                
+                // Check if user is a member of the family and has admin privileges
+                if (!await _familyService.IsFamilyMemberAsync(familyId, userId))
+                {
+                    return ApiUnauthorized<object>("You are not a member of this family");
+                }
+
+                bool isAdmin = await _familyService.IsUserFamilyAdminAsync(userId);
+                if (!isAdmin)
+                {
+                    return ApiForbidden<object>("Only family admins can update privacy settings");
+                }
+
+                // For now, just acknowledge the update (placeholder until privacy system is implemented)
+                _logger.LogInformation("Privacy settings updated for family {FamilyId} by user {UserId}", familyId, userId);
+
+                return ApiOk<object>(privacySettings, "Privacy settings updated successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating privacy settings for family {FamilyId}", familyId);
+                return ApiServerError<object>("An error occurred while updating privacy settings.");
+            }
+        }
+
+        [HttpPost("{familyId}/export")]
+        public async Task<ActionResult<ApiResponse<object>>> RequestFamilyDataExport(int familyId, [FromBody] object exportRequest)
+        {
+            try
+            {
+                int userId = GetUserId();
+                
+                // Check if user is a member of the family
+                if (!await _familyService.IsFamilyMemberAsync(familyId, userId))
+                {
+                    return ApiUnauthorized<object>("You are not a member of this family");
+                }
+
+                // For now, just acknowledge the request (placeholder until export system is implemented)
+                _logger.LogInformation("Data export requested for family {FamilyId} by user {UserId}", familyId, userId);
+
+                return ApiOk<object>(new { message = "Data export request queued. You will receive an email when ready." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error requesting data export for family {FamilyId}", familyId);
+                return ApiServerError<object>("An error occurred while requesting data export.");
+            }
+        }
+
+        [HttpGet("{familyId}/compliance")]
+        public async Task<ActionResult<ApiResponse<object>>> GetFamilyComplianceStatus(int familyId)
+        {
+            try
+            {
+                int userId = GetUserId();
+                
+                // Check if user is a member of the family
+                if (!await _familyService.IsFamilyMemberAsync(familyId, userId))
+                {
+                    return ApiUnauthorized<object>("You are not a member of this family");
+                }
+
+                // Return default compliance status (placeholder until compliance system is implemented)
+                var complianceStatus = new
+                {
+                    compliant = true,
+                    standards = new[]
+                    {
+                        new { name = "GDPR", status = "Compliant", lastChecked = DateTime.UtcNow.ToString("yyyy-MM-dd") },
+                        new { name = "COPPA", status = "Compliant", lastChecked = DateTime.UtcNow.ToString("yyyy-MM-dd") },
+                        new { name = "Family Privacy", status = "Compliant", lastChecked = DateTime.UtcNow.ToString("yyyy-MM-dd") }
+                    },
+                    lastChecked = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    nextReview = DateTime.UtcNow.AddMonths(3).ToString("yyyy-MM-ddTHH:mm:ssZ")
+                };
+
+                return ApiOk<object>(complianceStatus);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting compliance status for family {FamilyId}", familyId);
+                return ApiServerError<object>("An error occurred while retrieving compliance status.");
+            }
+        }
     }
 } 

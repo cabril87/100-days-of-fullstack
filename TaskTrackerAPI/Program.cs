@@ -391,6 +391,11 @@ public class Program
         builder.Services.AddScoped<IBackgroundServiceStatusRepository, BackgroundServiceStatusRepository>();
         // IBackgroundServiceStatusService functionality moved to IUnifiedAnalyticsService
 
+        // Register Search repositories and services
+        builder.Services.AddScoped<ISavedSearchRepository, SavedSearchRepository>();
+        builder.Services.AddScoped<ISavedSearchService, SavedSearchService>();
+        builder.Services.AddScoped<IUnifiedSearchService, UnifiedSearchService>();
+
         // Add response compression
         builder.Services.AddResponseCompression(options =>
         {

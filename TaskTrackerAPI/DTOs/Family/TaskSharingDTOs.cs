@@ -14,29 +14,6 @@ using System.ComponentModel.DataAnnotations;
 namespace TaskTrackerAPI.DTOs.Family
 {
     /// <summary>
-    /// DTO for task assignment to a family member
-    /// </summary>
-    public class TaskAssignmentDTO
-    {
-        /// <summary>
-        /// ID of the task to assign
-        /// </summary>
-        [Required]
-        public int TaskId { get; set; }
-
-        /// <summary>
-        /// ID of the user to assign the task to
-        /// </summary>
-        [Required]
-        public int AssignToUserId { get; set; }
-
-        /// <summary>
-        /// Whether the task requires approval when completed
-        /// </summary>
-        public bool RequiresApproval { get; set; } = false;
-    }
-
-    /// <summary>
     /// DTO for approving a completed task
     /// </summary>
     public class TaskApprovalDTO

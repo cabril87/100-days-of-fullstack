@@ -20,9 +20,17 @@ import {
   Vector2D,
   AnimationType,
   TextAnimationStyle,
-  ParticleType,
-  CharacterType
+  CharacterType,
+  ParticleType
 } from '@/lib/types/animations';
+
+interface PerformanceWithMemory extends Performance {
+  memory: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
 
 /**
  * Enterprise Animation System - Complete Implementation
@@ -38,13 +46,13 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
   private animationId = 0;
   
   // Active animations tracking
-  private activeAnimations = new Map<string, any>();
+  private activeAnimations = new Map<string, TextAnimationInstance | ParticleSystemInstance | CharacterInstance>();
   private activeTextAnimations = new Map<string, TextAnimationInstance>();
   private activeParticleSystems = new Map<string, ParticleSystemInstance>();
   private activeCharacters = new Map<string, CharacterInstance>();
   
   // Event system
-  private eventListeners = new Map<string, Function[]>();
+  private eventListeners = new Map<string, Array<(event: AnimationEvent) => void>>();
   
   // Performance monitoring
   private frameRate = 60;
@@ -234,16 +242,20 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
    */
   public pause(animationId: string): void {
     const animation = this.getAnimationById(animationId);
-    if (animation && animation.pause) {
+    if (animation) {
+      if ('pause' in animation && typeof animation.pause === 'function') {
       animation.pause();
+      }
       this.emit('pause', { animationId, timestamp: Date.now() });
     }
   }
 
   public resume(animationId: string): void {
     const animation = this.getAnimationById(animationId);
-    if (animation && animation.resume) {
+    if (animation) {
+      if ('resume' in animation && typeof animation.resume === 'function') {
       animation.resume();
+      }
       this.emit('resume', { animationId, timestamp: Date.now() });
     }
   }
@@ -251,8 +263,12 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
   public stop(animationId: string): void {
     const animation = this.getAnimationById(animationId);
     if (animation) {
-      if (animation.stop) animation.stop();
-      if (animation.destroy) animation.destroy();
+      if ('stop' in animation && typeof animation.stop === 'function') {
+        animation.stop();
+      }
+      if ('destroy' in animation && typeof animation.destroy === 'function') {
+        animation.destroy();
+      }
       
       // Remove from appropriate collection
       this.activeAnimations.delete(animationId);
@@ -408,25 +424,72 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
   }
 
   private async playSingleAnimation(config: AnimationConfig, animationId: string): Promise<string> {
-    // Create appropriate animation based on type
-    if (config.type.startsWith('text-')) {
+    // Enterprise type-safe animation routing with explicit type handling
+    if (this.isTextAnimationType(config.type)) {
       const textConfig: TextAnimationConfig = {
-        ...config,
-        type: config.type.replace('text-', '') as TextAnimationStyle,
+        type: this.mapToTextAnimationStyle(config.type),
         text: 'Animation Text',
+        position: config.position,
+        duration: config.duration,
+        easing: config.easing,
         fontSize: 24,
-        fontWeight: 600
+        fontWeight: 600,
+        color: config.color,
+        delay: config.delay,
+        autoDestroy: config.autoDestroy,
+        onStart: config.onStart,
+        onComplete: config.onComplete
       };
       return this.playText(textConfig);
+    }
+    
+    if (this.isParticleAnimationType(config.type)) {
+      const particleConfig: ParticleConfig = {
+        type: this.mapToParticleType(config.type),
+        count: 50,
+        lifetime: config.duration,
+        velocity: {
+          initial: { x: 0, y: -100 },
+          variation: { x: 50, y: 50 }
+        },
+        size: {
+          start: 4,
+          end: 1
+        },
+        color: {
+          start: config.color || { hex: '#FF6B6B' }
+        }
+      };
+      return this.createParticleSystem(particleConfig);
+    }
+    
+    if (this.isCharacterAnimationType(config.type)) {
+      const characterConfig: CharacterConfig = {
+        type: this.mapToCharacterType(config.type),
+        size: 32,
+        position: config.position,
+        color: config.color
+      };
+      return this.createCharacter(characterConfig);
     }
     
     // Handle other animation types
     const element = this.createAnimationElement(config);
     this.container!.appendChild(element);
     
-    this.activeAnimations.set(animationId, {
+    // Create a simplified animation instance for basic animations
+    const animationInstance = {
+      id: animationId,
       element,
-      config,
+      config: config as unknown as TextAnimationConfig,
+      isPlaying: true,
+      play: async () => {},
+      pause: () => {
+        element.style.animationPlayState = 'paused';
+      },
+      resume: () => {
+        element.style.animationPlayState = 'running';
+      },
       stop: () => {
         element.style.animation = 'none';
       },
@@ -434,8 +497,28 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
         if (element.parentNode) {
           element.parentNode.removeChild(element);
         }
+      },
+      setQuality: (quality: AnimationQuality) => {
+        // Enterprise quality adjustment implementation
+        switch (quality) {
+          case 'low':
+            element.style.willChange = 'auto';
+            break;
+          case 'medium':
+            element.style.willChange = 'transform';
+            break;
+          case 'high':
+          case 'ultra':
+            element.style.willChange = 'transform, opacity';
+            element.style.transform += ' translateZ(0)'; // Hardware acceleration
+            break;
+          default:
+            element.style.willChange = 'auto';
+        }
       }
-    });
+    } as TextAnimationInstance;
+    
+    this.activeAnimations.set(animationId, animationInstance);
     
     // Apply animation
     this.applyAnimationToElement(element, config);
@@ -453,12 +536,12 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
   private async playSequence(sequence: AnimationSequence, sequenceId: string): Promise<string> {
     if (sequence.simultaneousAnimations) {
       // Play all animations at once
-      const promises = sequence.animations.map(anim => this.playSingleAnimation(anim, this.generateId()));
+      const promises = sequence.animations.map(anim => this.playSingleAnimation(anim as AnimationConfig, this.generateId()));
       await Promise.all(promises);
     } else {
       // Play animations sequentially
       for (const anim of sequence.animations) {
-        await this.playSingleAnimation(anim, this.generateId());
+        await this.playSingleAnimation(anim as AnimationConfig, this.generateId());
       }
     }
     
@@ -860,11 +943,11 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
     return characterMap[type] || '😊';
   }
 
-  private getAnimationById(animationId: string): any {
-    return this.activeAnimations.get(animationId) ||
-           this.activeTextAnimations.get(animationId) ||
+  private getAnimationById(animationId: string): TextAnimationInstance | ParticleSystemInstance | CharacterInstance | null {
+    return this.activeTextAnimations.get(animationId) ||
            this.activeParticleSystems.get(animationId) ||
-           this.activeCharacters.get(animationId);
+           this.activeCharacters.get(animationId) ||
+           null;
   }
 
   private async preloadTextAnimation(config: TextAnimationConfig): Promise<void> {
@@ -874,7 +957,8 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
     tempElement.style.top = '-9999px';
     
     this.container?.appendChild(tempElement);
-    tempElement.offsetHeight; // Force layout
+    // Force layout calculation for proper text measurement
+    tempElement.getBoundingClientRect();
     
     if (tempElement.parentNode) {
       tempElement.parentNode.removeChild(tempElement);
@@ -907,7 +991,7 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
       
       // Update memory usage
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        const memory = (performance as PerformanceWithMemory).memory;
         this.memoryUsage = memory.usedJSHeapSize / 1024 / 1024;
       }
       
@@ -940,7 +1024,7 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
       case 'high':
       case 'ultra':
         element.style.textRendering = 'optimizeLegibility';
-        element.style.webkitFontSmoothing = 'antialiased';
+        (element.style as unknown as { webkitFontSmoothing: string }).webkitFontSmoothing = 'antialiased';
         break;
     }
   }
@@ -997,13 +1081,67 @@ export class EnterpriseAnimationSystem implements IAnimationManager {
     return `anim_${++this.animationId}_${Date.now()}`;
   }
 
-  private emit(event: string, data: any): void {
+  // Enterprise type checking and mapping methods
+  private isTextAnimationType(type: AnimationType): boolean {
+    const textTypes: AnimationType[] = [
+      'text-typewriter', 'text-reveal', 'text-highlight', 'text-counter'
+    ];
+    return textTypes.includes(type) || type.startsWith('text-');
+  }
+
+  private isParticleAnimationType(type: AnimationType): boolean {
+    const particleTypes: AnimationType[] = [
+      'confetti-explosion', 'star-burst', 'celebration-fireworks', 
+      'particle-trail', 'energy-wave', 'success-ripple'
+    ];
+    return particleTypes.includes(type) || type.includes('particle') || type.includes('confetti');
+  }
+
+  private isCharacterAnimationType(type: AnimationType): boolean {
+    const characterTypes: AnimationType[] = [
+      'family-notification', 'member-joined', 'collaboration-success'
+    ];
+    return characterTypes.includes(type) || type.includes('character');
+  }
+
+  private mapToTextAnimationStyle(type: AnimationType): TextAnimationStyle {
+    const mappings: Record<string, TextAnimationStyle> = {
+      'text-typewriter': 'typewriter',
+      'text-reveal': 'fade-in',
+      'text-highlight': 'highlight',
+      'text-counter': 'counter'
+    };
+    return mappings[type] || 'fade-in';
+  }
+
+  private mapToParticleType(type: AnimationType): ParticleType {
+    const mappings: Record<string, ParticleType> = {
+      'confetti-explosion': 'confetti',
+      'star-burst': 'stars',
+      'celebration-fireworks': 'fireworks',
+      'particle-trail': 'sparkles',
+      'energy-wave': 'energy',
+      'success-ripple': 'success'
+    };
+    return mappings[type] || 'confetti';
+  }
+
+  private mapToCharacterType(type: AnimationType): CharacterType {
+    const mappings: Record<string, CharacterType> = {
+      'family-notification': 'family',
+      'member-joined': 'family',
+      'collaboration-success': 'hero'
+    };
+    return mappings[type] || 'hero';
+  }
+
+  private emit(event: string, data: Record<string, unknown>): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       const animationEvent: AnimationEvent = {
-        type: event as any,
-        animationId: data.animationId || 'system',
-        timestamp: data.timestamp || Date.now(),
+        type: event as AnimationEvent['type'],
+        animationId: (data.animationId as string) || 'system',
+        timestamp: (data.timestamp as number) || Date.now(),
         data,
         metrics: this.config.enablePerformanceMonitoring ? this.getMetrics() : undefined
       };

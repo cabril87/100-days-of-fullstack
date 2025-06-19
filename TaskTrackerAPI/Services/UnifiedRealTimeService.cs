@@ -17,6 +17,7 @@ using TaskTrackerAPI.DTOs.Boards;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.DTOs.Notifications;
 using TaskTrackerAPI.DTOs.Tasks;
+using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.DTOs.Templates;
 using TaskTrackerAPI.Hubs;
 using TaskTrackerAPI.Models;
@@ -649,13 +650,78 @@ public class UnifiedRealTimeService : IUnifiedRealTimeService
         try
         {
             await _unifiedHubContext.Clients.All
-                .SendAsync("ReceiveMarketplaceAnalytics", analyticsData);
+                .SendAsync("ReceiveMarketplaceAnalyticsUpdate", analyticsData);
 
-            _logger.LogInformation("Marketplace analytics update sent");
+            _logger.LogInformation("Marketplace analytics update sent to all connected users");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send marketplace analytics update");
+        }
+    }
+
+    /// <summary>
+    /// ✨ NEW: Enhanced task completion notification with comprehensive gamification data
+    /// </summary>
+    public async Task NotifyTaskCompletedAsync(int userId, TaskCompletionEventDTO completionEvent)
+    {
+        try
+        {
+            // Send to the user who completed the task
+            await _unifiedHubContext.Clients.User(userId.ToString())
+                .SendAsync("ReceiveTaskCompletionEvent", completionEvent);
+
+            // If it's a family task, send to all family members
+            if (completionEvent.FamilyId.HasValue)
+            {
+                await _unifiedHubContext.Clients.Group($"Family_{completionEvent.FamilyId}")
+                    .SendAsync("ReceiveFamilyTaskCompletion", completionEvent);
+            }
+
+            _logger.LogInformation("🎉 Enhanced task completion event sent - Task: {TaskTitle}, User: {UserId}, Points: {Points}", 
+                completionEvent.TaskTitle, userId, completionEvent.PointsEarned);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Failed to send enhanced task completion event to user {UserId}", userId);
+        }
+    }
+
+    /// <summary>
+    /// ✨ NEW: Send family activity event to all family members
+    /// </summary>
+    public async Task SendFamilyActivityAsync(int familyId, FamilyActivityEventDTO activityEvent)
+    {
+        try
+        {
+            await _unifiedHubContext.Clients.Group($"Family_{familyId}")
+                .SendAsync("ReceiveFamilyActivity", activityEvent);
+
+            _logger.LogInformation("👨‍👩‍👧‍👦 Family activity event sent - Family: {FamilyId}, Activity: {ActivityType}", 
+                familyId, activityEvent.ActivityType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Failed to send family activity event to family {FamilyId}", familyId);
+        }
+    }
+
+    /// <summary>
+    /// ✨ NEW: Send family milestone celebration to all family members
+    /// </summary>
+    public async Task SendFamilyMilestoneAsync(int familyId, FamilyMilestoneEventDTO milestoneEvent)
+    {
+        try
+        {
+            await _unifiedHubContext.Clients.Group($"Family_{familyId}")
+                .SendAsync("ReceiveFamilyMilestone", milestoneEvent);
+
+            _logger.LogInformation("🏆 Family milestone event sent - Family: {FamilyId}, Milestone: {MilestoneType}", 
+                familyId, milestoneEvent.MilestoneType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Failed to send family milestone event to family {FamilyId}", familyId);
         }
     }
 

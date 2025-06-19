@@ -28,7 +28,6 @@ import {
   Minimize2,
   Star,
   Play,
-  Pause,
   RotateCw,
   Heart,
   Smile
@@ -38,23 +37,20 @@ import { useAppearanceSettings } from '@/lib/contexts/AppearanceContext';
 import { appearanceSettingsSchema } from '@/lib/schemas/settings';
 import { AppearanceFormData } from '@/lib/types/forms';
 import { AppearanceSettingsContentProps } from '@/lib/types/settings';
-import { soundService } from '@/lib/services/soundService';
-import { spriteAnimationService, AnimationType } from '@/lib/services/spriteAnimationService';
+import { spriteAnimationService } from '@/lib/services/spriteAnimationService';
 
 // AppearanceFormData is imported from lib/types/forms
 
 // AppearanceSettingsContentProps is imported from lib/types/settings
 
 export default function AppearanceSettingsContent({ }: AppearanceSettingsContentProps) {
-  const { mode, setMode } = useTheme();
+  const { setMode } = useTheme();
   const { 
     settings, 
     updateSettings, 
     resetSettings, 
     playTestSound, 
     getAvailableSounds,
-    playTestAnimation,
-    getAvailableAnimations,
     shouldAnimate,
     getAnimationClass,
     isLoading: contextLoading 
@@ -714,7 +710,7 @@ export default function AppearanceSettingsContent({ }: AppearanceSettingsContent
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      spriteAnimationService.setQuality(quality as any);
+                                      spriteAnimationService.setQuality(quality as 'low' | 'medium' | 'high' | 'ultra');
                                       playTestSound('buttonClick');
                                     }}
                                     className="text-xs py-1 px-2 h-7"

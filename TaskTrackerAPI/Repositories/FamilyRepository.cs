@@ -375,7 +375,7 @@ public class FamilyRepository : IFamilyRepository
         }
 
         // Check age restrictions - children cannot become family owners
-        if (newOwnerMember.User.AgeGroup == FamilyMemberAgeGroup.Child)
+        if (newOwnerMember.User?.AgeGroup == FamilyMemberAgeGroup.Child)
         {
             return false;
         }
@@ -480,9 +480,9 @@ public class FamilyRepository : IFamilyRepository
         {
             User? user = await _context.Users
                 .Include(u => u.PrimaryFamily)
-                    .ThenInclude(f => f.Members)
+                    .ThenInclude(f => f!.Members)
                         .ThenInclude(m => m.Role)
-                            .ThenInclude(r => r.Permissions)
+                            .ThenInclude(r => r!.Permissions)
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             return user?.PrimaryFamily;
@@ -507,7 +507,7 @@ public class FamilyRepository : IFamilyRepository
             }
 
             // Verify family exists and user is a member
-            var isMember = await IsMemberAsync(familyId, userId);
+            bool isMember = await IsMemberAsync(familyId, userId);
             if (!isMember)
             {
                 _logger.LogWarning("User {UserId} is not a member of family {FamilyId}", userId, familyId);

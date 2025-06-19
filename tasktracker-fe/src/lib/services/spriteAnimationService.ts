@@ -6,6 +6,14 @@
  * High-performance, enterprise-grade sprite animations with smooth effects
  */
 
+interface PerformanceWithMemory extends Performance {
+  memory: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
 /**
  * Comprehensive animation types for enterprise use
  */
@@ -151,7 +159,7 @@ class EnterpriseAnimationService {
   private animationId = 0;
   
   // Event listeners
-  private eventListeners = new Map<string, Function[]>();
+  private eventListeners = new Map<string, Array<(data: Record<string, unknown>) => void>>();
   
   // Quality settings
   private qualitySettings = {
@@ -411,7 +419,7 @@ class EnterpriseAnimationService {
       
       // Update memory usage
       if ('memory' in performance) {
-        const memory = (performance as any).memory;
+        const memory = (performance as PerformanceWithMemory).memory;
         this.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // MB
       }
       

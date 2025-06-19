@@ -8,8 +8,8 @@
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { spriteAnimationService, AnimationType, AnimationConfig, TextAnimationConfig, AnimationMetrics } from '@/lib/services/spriteAnimationService';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { spriteAnimationService, AnimationConfig, TextAnimationConfig, AnimationMetrics } from '@/lib/services/spriteAnimationService';
 
 interface EnterpriseAnimationContainerProps {
   enabled?: boolean;
@@ -86,7 +86,7 @@ export const EnterpriseAnimationContainer: React.FC<EnterpriseAnimationContainer
   }, [showMetrics, isInitialized]);
 
   // Animation testing functions for development
-  const testAnimations = {
+  const testAnimations = useMemo(() => ({
     achievementUnlock: () => {
       const position = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
       spriteAnimationService.playEnhancedAnimation({
@@ -164,15 +164,15 @@ export const EnterpriseAnimationContainer: React.FC<EnterpriseAnimationContainer
         onComplete: () => onAnimationComplete?.('energy-test')
       });
     }
-  };
+  }), [onAnimationComplete, onAnimationStart]);
 
   // Expose testing functions globally in debug mode
   useEffect(() => {
     if (debugMode && typeof window !== 'undefined') {
-      (window as any).testAnimations = testAnimations;
+      (window as unknown as { testAnimations: typeof testAnimations }).testAnimations = testAnimations;
       console.log('🎮 Animation testing functions available at window.testAnimations');
     }
-  }, [debugMode]);
+  }, [debugMode, testAnimations]);
 
   return (
     <>

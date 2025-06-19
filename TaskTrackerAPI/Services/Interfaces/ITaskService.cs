@@ -15,6 +15,7 @@ using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Tags;
 using TaskTrackerAPI.DTOs.Tasks;
 using TaskTrackerAPI.Models;
+using TaskAssignmentDTO = TaskTrackerAPI.DTOs.Tasks.TaskAssignmentDTO;
 
 namespace TaskTrackerAPI.Services.Interfaces
 {

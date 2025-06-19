@@ -381,7 +381,7 @@ export interface AnimationEvent {
   type: 'start' | 'update' | 'complete' | 'error' | 'performance-warning';
   animationId: string;
   timestamp: number;
-  data?: any;
+  data?: Record<string, unknown>;
   metrics?: Partial<AnimationMetrics>;
 }
 
@@ -437,26 +437,3 @@ export interface PredefinedSequences {
   COLLABORATION_WIN: AnimationSequence;
 }
 
-/**
- * Export all types for easy importing
- */
-export type {
-  AnimationType,
-  CharacterType,
-  AnimationEasing,
-  AnimationQuality,
-  TextAnimationStyle,
-  ParticleType,
-  Vector2D,
-  ColorConfig,
-  AnimationConfig,
-  TextAnimationConfig,
-  ParticleConfig,
-  CharacterConfig,
-  AnimationSequence,
-  AnimationMetrics,
-  AnimationSystemConfig,
-  AnimationEvent,
-  IAnimationManager,
-  PredefinedSequences
-}; 

@@ -8,6 +8,14 @@
 
 import { AnimationMetrics } from '@/lib/types/animations';
 
+interface PerformanceWithMemory extends Performance {
+  memory: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
 export class PerformanceMonitor {
   private isRunning = false;
   private startTime = 0;
@@ -101,14 +109,14 @@ export class PerformanceMonitor {
   
   private updateMemoryUsage(): void {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as PerformanceWithMemory).memory;
       this.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
     }
   }
   
   private getMemoryUsage(): number {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as PerformanceWithMemory).memory;
       return memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
     }
     return 0;

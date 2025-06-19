@@ -2121,43 +2121,19 @@ namespace TaskTrackerAPI.Services
             if (familyTaskCount >= 25) await CheckAndUnlockSingleAchievement(userId, 64); // Family Champion
         }
 
-        private async Task CheckSeasonalTaskAchievements(int userId) 
+        private async Task CheckSeasonalTaskAchievements(int userId, DateTime completionTime)
         {
-            DateTime now = DateTime.UtcNow;
+            int month = completionTime.Month;
             
-            // Seasonal specific achievements
-            if (now.Month == 3) // March - Spring Cleaning
+            // Use existing method for seasonal achievements
+            await CheckSeasonalMilestones(userId, month);
+            
+            // Check for holiday-specific achievements
+            if (month == 12) // December
             {
-                int organizationTasks = await _gamificationRepository.GetTaskCountByCategoryAndDateAsync(userId, "organization", new DateTime(now.Year, 3, 1), new DateTime(now.Year, 4, 1));
-                if (organizationTasks >= 5)
-                {
-                    await CheckAndUnlockSingleAchievement(userId, 85); // Spring Cleaner
-                }
-            }
-
-            if (now.Month >= 6 && now.Month <= 8) // Summer months
-            {
-                DateTime summerStart = new DateTime(now.Year, 6, 1);
-                DateTime summerEnd = new DateTime(now.Year, 9, 1);
-                
-                int summerTasks = await _gamificationRepository.GetPointTransactionCountByTypeAndDateAsync(userId, "task_completion", summerStart, summerEnd);
-                if (summerTasks >= 30)
-                {
-                    await CheckAndUnlockSingleAchievement(userId, 86); // Summer Warrior
-                }
-            }
-
-            if (now.Month >= 12 || now.Month <= 2) // Winter months
-            {
-                int winterYear = now.Month == 12 ? now.Year : now.Year - 1;
-                DateTime winterStart = new DateTime(winterYear, 12, 1);
-                DateTime winterEnd = new DateTime(winterYear + 1, 3, 1);
-                
-                int winterTasks = await _gamificationRepository.GetPointTransactionCountByTypeAndDateAsync(userId, "task_completion", winterStart, winterEnd);
-                if (winterTasks >= 25)
-                {
-                    await CheckAndUnlockSingleAchievement(userId, 87); // Winter Champion
-                }
+                int decemberTasks = await _gamificationRepository.GetPointTransactionCountByTypeAndDateAsync(
+                    userId, "task_completion", new DateTime(completionTime.Year, 12, 1), new DateTime(completionTime.Year + 1, 1, 1));
+                if (decemberTasks >= 15) await CheckAndUnlockSingleAchievement(userId, 87); // Holiday Hero
             }
         }
 
@@ -2446,30 +2422,30 @@ namespace TaskTrackerAPI.Services
             try
             {
                 // Remove all point transactions
-                var pointTransactions = await _gamificationRepository.GetAllUserPointTransactionsAsync(userId);
+                List<PointTransaction> pointTransactions = await _gamificationRepository.GetAllUserPointTransactionsAsync(userId);
                 _gamificationRepository.RemoveRangePointTransactions(pointTransactions);
 
                 // Remove all user achievements
-                var userAchievements = await _gamificationRepository.GetAllUserAchievementsAsync(userId);
+                List<UserAchievement> userAchievements = await _gamificationRepository.GetAllUserAchievementsAsync(userId);
                 _gamificationRepository.RemoveRangeUserAchievements(userAchievements);
 
                 // Remove all user badges
-                var userBadges = await _gamificationRepository.GetAllUserBadgesAsync(userId);
+                List<UserBadge> userBadges = await _gamificationRepository.GetAllUserBadgesAsync(userId);
                 _gamificationRepository.RemoveRangeUserBadges(userBadges);
 
                 // Remove all user rewards
-                var userRewards = await _gamificationRepository.GetAllUserRewardsAsync(userId);
+                List<UserReward> userRewards = await _gamificationRepository.GetAllUserRewardsAsync(userId);
                 _gamificationRepository.RemoveRangeUserRewards(userRewards);
 
                 // Remove all challenge progress
-                var challengeProgresses = await _gamificationRepository.GetAllUserChallengeProgressesAsync(userId);
+                List<ChallengeProgress> challengeProgresses = await _gamificationRepository.GetAllUserChallengeProgressesAsync(userId);
                 foreach (var progress in challengeProgresses)
                 {
                     _gamificationRepository.RemoveChallengeProgress(progress);
                 }
 
                 // Remove all user challenges
-                var userChallenges = await _gamificationRepository.GetAllUserChallengesAsync(userId);
+                List<UserChallenge> userChallenges = await _gamificationRepository.GetAllUserChallengesAsync(userId);
                 _gamificationRepository.RemoveRangeUserChallenges(userChallenges);
 
                 // Reset user progress to initial state
@@ -2533,17 +2509,17 @@ namespace TaskTrackerAPI.Services
         /// </summary>
         public async Task<GamificationResetStatsDTO> GetResetStatsAsync(int userId)
         {
-            var pointTransactionCount = await _gamificationRepository.GetTotalPointTransactionCountAsync(userId);
+            int pointTransactionCount = await _gamificationRepository.GetTotalPointTransactionCountAsync(userId);
 
-            var achievementCount = await _gamificationRepository.GetTotalUserAchievementCountAsync(userId);
+            int achievementCount = await _gamificationRepository.GetTotalUserAchievementCountAsync(userId);
 
-            var badgeCount = await _gamificationRepository.GetTotalUserBadgeCountAsync(userId);
+            int badgeCount = await _gamificationRepository.GetTotalUserBadgeCountAsync(userId);
 
-            var rewardCount = await _gamificationRepository.GetTotalUserRewardCountAsync(userId);
+            int rewardCount = await _gamificationRepository.GetTotalUserRewardCountAsync(userId);
 
-            var challengeCount = await _gamificationRepository.GetTotalChallengeProgressCountAsync(userId);
+            int challengeCount = await _gamificationRepository.GetTotalChallengeProgressCountAsync(userId);
 
-            var userProgress = await _gamificationRepository.GetUserProgressAsync(userId);
+            UserProgress? userProgress = await _gamificationRepository.GetUserProgressAsync(userId);
 
             return new GamificationResetStatsDTO
             {
@@ -2600,7 +2576,7 @@ namespace TaskTrackerAPI.Services
             }
 
             // Add the new character class to unlocked list
-            var updatedUnlocked = currentUnlocked.ToList();
+            List<string> updatedUnlocked = currentUnlocked.ToList();
             updatedUnlocked.Add(characterClass);
             userProgress.UnlockedCharacters = string.Join(",", updatedUnlocked);
             userProgress.UpdatedAt = DateTime.UtcNow;
@@ -2703,6 +2679,73 @@ namespace TaskTrackerAPI.Services
             }
         }
 
+        #endregion
+        
+        #region ✨ Enhanced Task Completion Achievement Processing
+
+        /// <summary>
+        /// ✨ NEW: Enhanced task completion achievement processing with comprehensive context
+        /// </summary>
+        public async Task ProcessTaskCompletionAchievementsAsync(int userId, int taskId, Dictionary<string, object> taskData)
+        {
+            try
+            {
+                _logger.LogInformation("🏆 Processing enhanced task completion achievements - User: {UserId}, Task: {TaskId}", userId, taskId);
+                
+                // Extract task context data
+                string taskTitle = taskData.GetValueOrDefault("taskTitle", "Unknown Task").ToString() ?? "Unknown Task";
+                string taskPriority = taskData.GetValueOrDefault("taskPriority", "Medium").ToString() ?? "Medium";
+                string taskCategory = taskData.GetValueOrDefault("taskCategory", "General").ToString() ?? "General";
+                int pointsEarned = Convert.ToInt32(taskData.GetValueOrDefault("pointsEarned", 0));
+                DateTime completionTime = (DateTime)(taskData.GetValueOrDefault("completionTime", DateTime.UtcNow));
+                
+                // Use existing achievement processing method
+                await ProcessAchievementUnlocksAsync(userId, "task_completion", taskId, taskData);
+                
+                // Check for milestone achievements (10th, 50th, 100th task, etc.)
+                int totalCompletedTasks = await _gamificationRepository.GetPointTransactionCountByTypeAsync(userId, "task_completion");
+                await CheckTaskMilestoneAchievements(userId, totalCompletedTasks);
+                
+                // Check for high-value task achievements
+                if (pointsEarned >= 25)
+                {
+                    await CheckHighValueTaskAchievements(userId, pointsEarned);
+                }
+                
+                _logger.LogInformation("✅ Enhanced task completion achievement processing completed - User: {UserId}, Achievements checked", userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error processing enhanced task completion achievements - User: {UserId}, Task: {TaskId}", userId, taskId);
+                // Don't throw - achievement processing shouldn't break task completion
+            }
+        }
+        
+        /// <summary>
+        /// Check for task milestone achievements (10th, 50th, 100th task, etc.)
+        /// </summary>
+        private async Task CheckTaskMilestoneAchievements(int userId, int totalCompletedTasks)
+        {
+            // Major milestones
+            if (totalCompletedTasks == 10) await CheckAndUnlockSingleAchievement(userId, 34); // Dedicated
+            if (totalCompletedTasks == 50) await CheckAndUnlockSingleAchievement(userId, 51); // Achiever
+            if (totalCompletedTasks == 100) await CheckAndUnlockSingleAchievement(userId, 52); // Centurion
+            if (totalCompletedTasks == 250) await CheckAndUnlockSingleAchievement(userId, 101); // Elite
+            if (totalCompletedTasks == 500) await CheckAndUnlockSingleAchievement(userId, 102); // Master
+            if (totalCompletedTasks == 1000) await CheckAndUnlockSingleAchievement(userId, 103); // Legend
+        }
+        
+        /// <summary>
+        /// Check for high-value task achievements
+        /// </summary>
+        private async Task CheckHighValueTaskAchievements(int userId, int pointsEarned)
+        {
+            // Simplified implementation - check for high-value task achievements
+            if (pointsEarned >= 25) await CheckAndUnlockSingleAchievement(userId, 45); // High Achiever
+            if (pointsEarned >= 50) await CheckAndUnlockSingleAchievement(userId, 89); // Perfectionist
+            if (pointsEarned >= 75) await CheckAndUnlockSingleAchievement(userId, 75); // Excellence
+        }
+        
         #endregion
     }
 } 
