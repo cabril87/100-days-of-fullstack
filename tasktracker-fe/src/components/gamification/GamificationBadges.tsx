@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Star, Award, Flame, Trophy } from 'lucide-react';
-import { GamificationBadgesProps } from '@/lib/types';
+import { GamificationBadgesProps } from '@/lib/types/ui';
 
 // Skeleton version for loading states
 export function GamificationBadgesSkeleton() {

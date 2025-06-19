@@ -16,6 +16,10 @@ import {
   SecurityAlert,
   TrustedDeviceInfo
 } from './enhanced-auth';
+import { ReactNode } from 'react';
+import { DashboardProps } from './widget-props';
+import { UserFamilyWithPrimary } from './family-invitation';
+import { BoardColumnDTO } from './board';
 
 // Page Content Component Props
 export interface FamiliesContentProps {
@@ -89,18 +93,30 @@ export interface MFAStatusCardContainerProps {
 }
 
 export interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
+  requireAuth?: boolean;
+  requireMFA?: boolean;
   requiredRole?: string;
+  redirectTo?: string;
 }
 
 // ===== LAYOUT COMPONENT PROPS =====
 export interface NavbarProps {
-  user: User | null;
-  onLogout: () => void;
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    avatar?: string;
+  };
+  onMenuClick?: () => void;
+  showMenuButton?: boolean;
+  className?: string;
 }
 
 export interface SidebarProps {
-  user: User | null;
+  isOpen: boolean;
+  onClose: () => void;
+  className?: string;
 }
 
 // ===== UI COMPONENT PROPS =====
@@ -581,4 +597,197 @@ export interface DataTableProps<T = unknown> {
 
 // === EXPORT ALL TYPES ===
 
-export * from './family-invitation'; 
+export * from './family-invitation';
+
+// ================================
+// LANDING PAGE PROPS
+// ================================
+
+export interface StageLandingPageProps {
+  stage: 'development' | 'alpha' | 'beta' | 'staging' | 'production';
+}
+
+// ================================
+// FAMILY COMPONENT PROPS
+// ================================
+
+export interface PrimaryFamilySelectorProps {
+  families: UserFamilyWithPrimary[];
+  onSelectPrimary: (familyId: number) => Promise<void>;
+  isLoading?: boolean;
+  className?: string;
+  showRoleInfo?: boolean;
+}
+
+export interface PrimaryFamilyBadgeProps {
+  familyName: string;
+  className?: string;
+  variant?: 'default' | 'compact';
+}
+
+// ================================
+// DASHBOARD COMPONENT PROPS
+// ================================
+
+export interface SimpleDashboardProps extends DashboardProps {
+  onTaskCreated?: () => void;
+}
+
+export interface TeenDashboardProps extends DashboardProps {
+  onTaskCreated?: () => void;
+}
+
+export interface KidDashboardProps extends DashboardProps {
+  onTaskCreated?: () => void;
+}
+
+export interface PermissionRequestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onRequest: (permission: string, reason: string) => void;
+  permissionType: 'notification' | 'camera' | 'microphone' | 'location';
+}
+
+// ================================
+// BOARD COMPONENT PROPS
+// ================================
+
+export interface QuestSelectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onQuestSelect: (questId: number) => void;
+  availableQuests: Array<{
+    id: number;
+    title: string;
+    description: string;
+    difficulty: string;
+    estimatedTime: string;
+    rewards: number;
+  }>;
+}
+
+export interface DuplicateTaskInfo {
+  id: number;
+  title: string;
+  boardName: string;
+  columnName: string;
+}
+
+export interface EnhancedTemplate {
+  name: string;
+  description: string;
+  category: 'basic' | 'family' | 'education' | 'health' | 'events' | 'financial' | 'seasonal';
+  tags: string[];
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  estimatedSetupTime?: string;
+  recommendedFor: string[];
+  isPopular?: boolean;
+}
+
+export interface ColumnFormData extends BoardColumnDTO {
+  tempId?: string;
+}
+
+export interface CustomColumn {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  isDefault: boolean;
+}
+
+export interface EnhancedTaskCardProps {
+  task: {
+    id: number;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    priority?: number;
+    assigneeId?: number;
+    tags?: string[];
+    isCompleted: boolean;
+  };
+  onEdit?: (taskId: number) => void;
+  onDelete?: (taskId: number) => void;
+  onComplete?: (taskId: number) => void;
+  className?: string;
+}
+
+export interface EnhancedBoardColumnProps {
+  column: {
+    id: number;
+    name: string;
+    color: string;
+    order: number;
+    boardId: number;
+  };
+  tasks: Array<{
+    id: number;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    priority?: number;
+    assigneeId?: number;
+    columnId: number;
+  }>;
+  onTaskMove?: (taskId: number, newColumnId: number) => void;
+  onTaskCreate?: (columnId: number) => void;
+  className?: string;
+}
+
+export interface SortableColumnProps extends EnhancedBoardColumnProps {
+  isDragging?: boolean;
+  dragOverlay?: boolean;
+}
+
+export interface EnhancedSortableColumnItemProps {
+  column: {
+    id: number;
+    name: string;
+    color: string;
+    order: number;
+  };
+  onEdit: (column: ColumnFormData) => void;
+  onDelete: (columnId: number) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
+  index: number;
+  isEditing: boolean;
+  editingColumn: ColumnFormData | null;
+  setEditingColumn: (column: ColumnFormData | null) => void;
+}
+
+// ================================
+// FORM DATA TYPES
+// ================================
+
+export type EditBoardFormData = {
+  name: string;
+  description?: string;
+  isPublic: boolean;
+  templateId?: number;
+};
+
+export type ColumnEditFormData = {
+  id?: number;
+  name: string;
+  color: string;
+  order: number;
+};
+
+export type CreateTaskFormData = {
+  title: string;
+  description?: string;
+  dueDate?: Date;
+  priority?: number;
+  assigneeId?: number;
+  tags?: string[];
+  columnId: number;
+  boardId: number;
+};
+
+export type CreateCustomBoardFormData = {
+  name: string;
+  description?: string;
+  isPublic: boolean;
+  columns: CustomColumn[];
+}; 

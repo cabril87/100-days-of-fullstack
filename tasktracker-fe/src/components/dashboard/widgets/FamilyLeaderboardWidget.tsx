@@ -8,7 +8,7 @@
  * Enterprise-style family leaderboard with engaging animations and family-friendly competition
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import {
   TrendingUp, 
   TrendingDown, 
   Minus,
-  Users,
   Target,
   Calendar,
   Award,
@@ -29,34 +28,11 @@ import {
   Medal,
   Zap
 } from 'lucide-react';
-import { EnterpriseGamificationWidgetProps } from '@/lib/types/enterprise-gamification';
-
-interface LeaderboardMember {
-  userId: number;
-  memberName: string;
-  ageGroup: 'child' | 'teen' | 'adult';
-  score: number;
-  rank: number;
-  previousRank?: number;
-  trend: 'up' | 'down' | 'same';
-  avatar?: string;
-  badge?: string;
-  weeklyGrowth: number;
-  achievements: number;
-  streak: number;
-}
-
-interface FamilyLeaderboardWidgetProps extends EnterpriseGamificationWidgetProps {
-  familyMembers?: LeaderboardMember[];
-  currentUserId?: number;
-  showTrends?: boolean;
-  showAchievements?: boolean;
-  enableCelebrations?: boolean;
-}
+import type { 
+  FamilyLeaderboardWidgetProps 
+} from '@/lib/types/widgets';
 
 export function FamilyLeaderboardWidget({
-  familyId,
-  userId,
   familyMembers = [],
   currentUserId,
   className = '',
@@ -64,13 +40,12 @@ export function FamilyLeaderboardWidget({
   showTrends = true,
   showAchievements = true,
   enableCelebrations = true,
-  theme = 'colorful',
   animationsEnabled = true,
   realTimeUpdates = true
 }: FamilyLeaderboardWidgetProps) {
   const [activeTab, setActiveTab] = useState<'weekly' | 'monthly' | 'all_time'>('weekly');
   const [celebratingMember, setCelebratingMember] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   // Use actual data from props - no mock data
   const displayMembers = familyMembers || [];
@@ -185,7 +160,7 @@ export function FamilyLeaderboardWidget({
 
       <CardContent className="space-y-4">
         {!isCompact && (
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'weekly' | 'monthly' | 'all_time')}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="weekly" className="text-xs">
                 <Calendar className="h-3 w-3 mr-1" />
@@ -202,7 +177,7 @@ export function FamilyLeaderboardWidget({
             </TabsList>
 
             <TabsContent value={activeTab} className="space-y-3 mt-4">
-              {displayMembers.map((member, index) => {
+              {displayMembers.map((member) => {
                 const rankStyle = getRankStyle(member.rank);
                 const isCurrentUser = member.userId === currentUserId;
                 const isCelebrating = celebratingMember === member.userId;

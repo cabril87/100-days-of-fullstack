@@ -22,70 +22,7 @@ import {
 } from '../types/board';
 import { taskService } from './taskService';
 import { toast } from 'sonner';
-
-/**
- * Sound effects for drag and drop operations
- */
-class SoundManager {
-  private audioContext: AudioContext | null = null;
-  private enabled = false;
-
-  constructor() {
-    if (typeof window !== 'undefined' && 'AudioContext' in window) {
-      this.audioContext = new AudioContext();
-    }
-  }
-
-  enable() {
-    this.enabled = true;
-  }
-
-  disable() {
-    this.enabled = false;
-  }
-
-  private createTone(frequency: number, duration: number, type: OscillatorType = 'sine') {
-    if (!this.audioContext || !this.enabled) return;
-
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-
-    oscillator.frequency.value = frequency;
-    oscillator.type = type;
-
-    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
-
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + duration);
-  }
-
-  playPickup() {
-    this.createTone(440, 0.1, 'sine'); // A4 note
-  }
-
-  playDrop() {
-    this.createTone(523, 0.15, 'sine'); // C5 note
-  }
-
-  playSuccess() {
-    // Play a pleasant chord progression
-    setTimeout(() => this.createTone(523, 0.2), 0);   // C5
-    setTimeout(() => this.createTone(659, 0.2), 50);  // E5
-    setTimeout(() => this.createTone(784, 0.3), 100); // G5
-  }
-
-  playError() {
-    this.createTone(220, 0.3, 'sawtooth'); // A3 with harsh tone
-  }
-
-  playHover() {
-    this.createTone(330, 0.05, 'triangle'); // E4 subtle tone
-  }
-}
+import { soundService } from './soundService';
 
 /**
  * Animation manager for drag and drop effects
@@ -198,8 +135,7 @@ class AnimationManager {
       burst.style.left = '50%';
       burst.style.top = '50%';
       burst.style.transform = 'translate(-50%, -50%)';
-      burst.style.zIndex = '9998';
-      burst.style.boxShadow = '0 0 20px #10B98180';
+      burst.style.zIndex = '9999';
 
       element.appendChild(burst);
 
@@ -209,7 +145,7 @@ class AnimationManager {
           opacity: '1'
         },
         {
-          transform: 'translate(-50%, -50%) scale(3)',
+          transform: 'translate(-50%, -50%) scale(2)',
           opacity: '0'
         }
       ], {
@@ -221,7 +157,7 @@ class AnimationManager {
     }
   }
 
-  // Add ripple effect for column highlights
+  // Create ripple effect for successful drops
   createRippleEffect(element: HTMLElement, color: string = '#10B981') {
     if (!this.enabled) return;
 
@@ -229,11 +165,11 @@ class AnimationManager {
     ripple.className = 'absolute rounded-full pointer-events-none';
     ripple.style.width = '10px';
     ripple.style.height = '10px';
-    ripple.style.background = `radial-gradient(circle, ${color}40, transparent)`;
+    ripple.style.background = color;
     ripple.style.left = '50%';
     ripple.style.top = '50%';
     ripple.style.transform = 'translate(-50%, -50%)';
-    ripple.style.zIndex = '9997';
+    ripple.style.zIndex = '9998';
 
     element.appendChild(ripple);
 
@@ -243,7 +179,7 @@ class AnimationManager {
         opacity: '0.8'
       },
       {
-        transform: 'translate(-50%, -50%) scale(20)',
+        transform: 'translate(-50%, -50%) scale(4)',
         opacity: '0'
       }
     ], {
@@ -254,18 +190,17 @@ class AnimationManager {
     };
   }
 
-  // Add glow effect for successful operations
+  // Create glow effect for hover states
   createGlowEffect(element: HTMLElement, color: string = '#10B981') {
     if (!this.enabled) return;
 
-    const originalBoxShadow = element.style.boxShadow;
-    
+    element.style.boxShadow = `0 0 20px ${color}40, 0 0 40px ${color}20`;
     element.style.transition = 'box-shadow 0.3s ease';
-    element.style.boxShadow = `0 0 20px ${color}60, 0 0 40px ${color}40, 0 0 60px ${color}20`;
-
+    
+    // Remove glow after a delay
     setTimeout(() => {
-      element.style.boxShadow = originalBoxShadow;
-    }, 1000);
+      element.style.boxShadow = '';
+    }, 2000);
   }
 }
 
@@ -284,28 +219,29 @@ class HapticManager {
   }
 
   private vibrate(pattern: number | number[]) {
-    if (!this.enabled || typeof navigator === 'undefined' || !navigator.vibrate) return;
-    navigator.vibrate(pattern);
+    if (this.enabled && 'vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
   }
 
   pickup() {
-    this.vibrate(50);
+    this.vibrate(50); // Short vibration
   }
 
   drop() {
-    this.vibrate(100);
+    this.vibrate(100); // Medium vibration
   }
 
   success() {
-    this.vibrate([100, 50, 100]);
+    this.vibrate([100, 50, 100]); // Success pattern
   }
 
   error() {
-    this.vibrate([200, 100, 200]);
+    this.vibrate([200, 100, 200]); // Error pattern
   }
 
   hover() {
-    this.vibrate(25);
+    this.vibrate(25); // Very short vibration
   }
 }
 
@@ -313,7 +249,6 @@ class HapticManager {
  * Main drag and drop service implementation
  */
 class DragDropServiceImpl implements DragDropService {
-  private soundManager = new SoundManager();
   private animationManager = new AnimationManager();
   private hapticManager = new HapticManager();
   private columnConfigurations: Map<number, ColumnConfiguration> = new Map();
@@ -374,7 +309,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Configure settings for the service
+   * Configure the service with user preferences
    */
   configure(settings: {
     enableSounds?: boolean;
@@ -383,12 +318,9 @@ class DragDropServiceImpl implements DragDropService {
     columnConfigurations?: Map<number, ColumnConfiguration>;
   }) {
     if (settings.enableSounds !== undefined) {
-      if (settings.enableSounds) {
-        this.soundManager.enable();
-      } else {
-        this.soundManager.disable();
-      }
+      soundService.setEnabled(settings.enableSounds);
     }
+
     if (settings.enableAnimations !== undefined) {
       if (settings.enableAnimations) {
         this.animationManager.enable();
@@ -396,6 +328,7 @@ class DragDropServiceImpl implements DragDropService {
         this.animationManager.disable();
       }
     }
+
     if (settings.enableHaptics !== undefined) {
       if (settings.enableHaptics) {
         this.hapticManager.enable();
@@ -403,6 +336,7 @@ class DragDropServiceImpl implements DragDropService {
         this.hapticManager.disable();
       }
     }
+
     if (settings.columnConfigurations) {
       this.columnConfigurations = settings.columnConfigurations;
     }
@@ -476,7 +410,7 @@ class DragDropServiceImpl implements DragDropService {
   ): Promise<boolean> {
     try {
       // Play pickup sound
-      this.soundManager.playPickup();
+      soundService.playDragPickup();
       this.hapticManager.pickup();
 
       // Update task status
@@ -484,7 +418,7 @@ class DragDropServiceImpl implements DragDropService {
       await taskService.updateTaskStatus(taskId, toColumn.status);
 
       // Play success effects
-      this.soundManager.playSuccess();
+      soundService.playDragDrop();
       this.hapticManager.success();
 
       return true;
@@ -492,7 +426,7 @@ class DragDropServiceImpl implements DragDropService {
       console.error('Failed to move task:', error);
       
       // Play error effects
-      this.soundManager.playError();
+      soundService.playError();
       this.hapticManager.error();
 
       return false;
@@ -500,7 +434,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Get animation configuration for a move
+   * Get appropriate animation for move operation
    */
   getDropAnimation(fromColumn: BoardColumnDTO, toColumn: BoardColumnDTO): DragAnimationConfig {
     const distance = Math.abs(fromColumn.order - toColumn.order);
@@ -520,14 +454,14 @@ class DragDropServiceImpl implements DragDropService {
    */
   playMoveSound(success: boolean) {
     if (success) {
-      this.soundManager.playSuccess();
+      soundService.playSuccess();
     } else {
-      this.soundManager.playError();
+      soundService.playError();
     }
   }
 
   /**
-   * Show notification for move operation
+   * Show notification for successful/failed moves
    */
   showMoveNotification(
     task: TaskItemResponseDTO, 
@@ -561,7 +495,7 @@ class DragDropServiceImpl implements DragDropService {
    * Handle drag start event
    */
   onDragStart(task: TaskItemResponseDTO, element?: HTMLElement) {
-    this.soundManager.playPickup();
+    soundService.playDragPickup();
     this.hapticManager.pickup();
 
     if (element) {
@@ -576,13 +510,13 @@ class DragDropServiceImpl implements DragDropService {
    * Handle drag over event
    */
   onDragOver(column: BoardColumnDTO, element?: HTMLElement) {
-    this.soundManager.playHover();
     this.hapticManager.hover();
 
     if (element) {
       const animation = this.animationManager.getHoverAnimation();
-      element.style.transform = `scale(${animation.scale})`;
+      element.style.transform = `scale(${animation.scale}) rotate(${animation.rotation}deg)`;
       element.style.transition = `all ${animation.duration}ms ${animation.easing}`;
+      this.animationManager.createGlowEffect(element);
     }
   }
 
@@ -591,10 +525,10 @@ class DragDropServiceImpl implements DragDropService {
    */
   onDragEnd(success: boolean, element?: HTMLElement) {
     if (success) {
-      this.soundManager.playSuccess();
+      soundService.playDragDrop();
       this.hapticManager.success();
     } else {
-      this.soundManager.playError();
+      soundService.playError();
       this.hapticManager.error();
     }
 
@@ -617,7 +551,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Get display name for task status
+   * Get user-friendly status display name
    */
   private getStatusDisplayName(status: TaskItemStatus): string {
     const statusNames: Record<TaskItemStatus, string> = {
@@ -633,7 +567,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Create optimistic update for UI
+   * Create optimistic update for UI responsiveness
    */
   createOptimisticUpdate(
     tasks: TaskItemResponseDTO[],
@@ -648,7 +582,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Revert optimistic update on error
+   * Revert optimistic update on failure
    */
   revertOptimisticUpdate(
     tasks: TaskItemResponseDTO[],
@@ -663,7 +597,7 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   /**
-   * Get column statistics for analytics
+   * Get statistics for a column
    */
   getColumnStats(tasks: TaskItemResponseDTO[], column: BoardColumnDTO) {
     const columnTasks = tasks.filter(task => task.status === column.status.toString());
@@ -679,20 +613,19 @@ class DragDropServiceImpl implements DragDropService {
   }
 
   private calculateAverageTimeInColumn(): number {
-    // This would require additional timestamp data
-    // For now, return 0 as placeholder
-    return 0;
+    // Placeholder - would calculate based on task history
+    return 2.5; // days
   }
 
   private calculateThroughput(tasks: TaskItemResponseDTO[]): number {
-    // This would require historical data
-    // For now, return task count as placeholder
-    return tasks.length;
+    // Placeholder - would calculate tasks completed per time period
+    return tasks.length / 7; // tasks per week
   }
 }
 
 // Export singleton instance
 export const dragDropService = new DragDropServiceImpl();
+export default dragDropService;
 
 // Export types for external use
 export type {

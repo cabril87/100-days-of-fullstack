@@ -27,8 +27,19 @@ import {
 } from 'lucide-react';
 import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectionManagerStub';
-import { FamilyActivityItem } from '@/lib/types/celebrations';
-import { FamilyActivityStreamProps } from '@/lib/types/widget-props';
+import type { 
+  BackendGamificationEventDTO,
+  BackendTaskCompletionEventDTO
+} from '@/lib/types/backend-signalr-events';
+import { 
+  parseGamificationEvent,
+  parseTaskCompletionEvent
+} from '@/lib/types/backend-signalr-events';
+import type { 
+  FamilyActivityItem, 
+  FamilyActivityStreamProps,
+  FamilyActivityApiResponse
+} from '@/lib/types/activity';
 
 export function FamilyActivityStream({ 
   userId, 
@@ -52,45 +63,59 @@ export function FamilyActivityStream({
     setActivities(prev => [activity, ...prev.slice(0, maxDisplay - 1)]);
   }, [maxDisplay]);
 
-  // ✨ Use stub when shared connection is provided to prevent duplicate connections
+  // ✅ FIXED: Always call hooks unconditionally (React Rules of Hooks)
   const shouldUseLocalConnection = sharedIsConnected === undefined;
-  const localConnection = shouldUseLocalConnection 
-    ? useSignalRConnectionManager('family-activity-stream', {
-        onTaskCompleted: (event: any) => {
-          addActivity({
-            type: 'task_completed',
-            userId: event.userId,
-            userName: `User ${event.userId}`, // Use user ID since userName is not available
-            title: 'Task Completed',
-            description: `Completed a task and earned ${event.pointsEarned} points`,
-            points: event.pointsEarned,
-            timestamp: new Date(event.timestamp)
-          });
-        },
-        onAchievementUnlocked: (event: any) => {
-          addActivity({
-            type: 'achievement_unlocked',
-            userId: event.userId,
-            userName: `User ${event.userId}`, // Use user ID since userName is not available
-            title: 'Achievement Unlocked',
-            description: `Unlocked "${event.achievementName}" achievement`,
-            points: event.points,
-            timestamp: new Date(event.timestamp)
-          });
-        },
-        onPointsEarned: (event: any) => {
-          addActivity({
-            type: 'points_earned',
-            userId: event.userId,
-            userName: `User ${event.userId}`,
-            title: 'Points Earned',
-            description: `Earned ${event.points} points for ${event.reason}`,
-            points: event.points,
-            timestamp: new Date(event.timestamp)
-          });
-        }
-      })
-    : useSignalRConnectionManagerStub();
+  
+  // Always call both hooks, but only use the appropriate one
+  const realConnection = useSignalRConnectionManager('family-activity-stream', {
+    // Backend gamification events - matches ReceiveGamificationEvent
+    onReceiveGamificationEvent: (event: BackendGamificationEventDTO) => {
+      const parsedEvents = parseGamificationEvent(event);
+      
+      if (parsedEvents.pointsEarned) {
+        addActivity({
+          type: 'points_earned',
+          userId: parsedEvents.pointsEarned.userId,
+          userName: `User ${parsedEvents.pointsEarned.userId}`,
+          title: 'Points Earned',
+          description: `Earned ${parsedEvents.pointsEarned.points} points for ${parsedEvents.pointsEarned.reason}`,
+          points: parsedEvents.pointsEarned.points,
+          timestamp: parsedEvents.pointsEarned.timestamp
+        });
+      }
+      
+      if (parsedEvents.achievementUnlocked) {
+        addActivity({
+          type: 'achievement_unlocked',
+          userId: parsedEvents.achievementUnlocked.userId,
+          userName: `User ${parsedEvents.achievementUnlocked.userId}`,
+          title: 'Achievement Unlocked',
+          description: `Unlocked "${parsedEvents.achievementUnlocked.achievementName}" achievement`,
+          points: parsedEvents.achievementUnlocked.points,
+          timestamp: parsedEvents.achievementUnlocked.timestamp
+        });
+      }
+    },
+    
+    // Backend task completion events - matches ReceiveTaskCompletionEvent
+    onReceiveTaskCompletionEvent: (event: BackendTaskCompletionEventDTO) => {
+      const taskEvent = parseTaskCompletionEvent(event);
+      addActivity({
+        type: 'task_completed',
+        userId: taskEvent.completedByUserId,
+        userName: taskEvent.completedBy,
+        title: 'Task Completed',
+        description: `Completed "${taskEvent.taskTitle}" and earned ${taskEvent.pointsEarned} points`,
+        points: taskEvent.pointsEarned,
+        timestamp: taskEvent.completionTime
+      });
+    }
+  });
+  
+  const stubConnection = useSignalRConnectionManagerStub();
+  
+  // Choose which connection to use
+  const localConnection = shouldUseLocalConnection ? realConnection : stubConnection;
   
   const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localConnection.isConnected;
 
@@ -117,7 +142,7 @@ export function FamilyActivityStream({
             ? activityData 
             : activityData?.result || activityData?.data || [];
           
-          const transformedActivities: FamilyActivityItem[] = activityArray.map((item: { id?: string; activityType?: string; userId: number; userName?: string; userAvatar?: string; title?: string; description?: string; points?: number; timestamp?: string; familyId?: number }) => ({
+          const transformedActivities: FamilyActivityItem[] = activityArray.map((item: FamilyActivityApiResponse) => ({
             id: item.id || `activity-${Date.now()}-${Math.random()}`,
             type: item.activityType || 'task_completed',
             userId: item.userId,

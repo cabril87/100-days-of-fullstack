@@ -250,6 +250,8 @@ export const appearanceSettingsSchema = z.object({
     reducedMotion: z.boolean(),
     animationSpeed: z.enum(['slow', 'normal', 'fast']),
     particleEffects: z.boolean(),
+    spriteAnimations: z.boolean(),
+    characterAnimations: z.boolean(),
   }),
   accessibility: z.object({
     highContrast: z.boolean(),

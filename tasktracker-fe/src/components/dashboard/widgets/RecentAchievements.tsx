@@ -13,42 +13,40 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trophy, Star, Sparkles, Calendar, ArrowRight } from 'lucide-react';
-import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
-import { useGamificationEventsStub } from '@/lib/hooks/useGamificationEventsStub';
+import { 
+  Trophy, 
+  Star, 
+  Zap, 
+  Calendar,
+  TrendingUp
+} from 'lucide-react';
 import { RecentAchievementsProps } from '@/lib/types/widget-props';
 
 export function RecentAchievements({ 
   userId, 
-  maxDisplay = 5, 
+  maxDisplay = 3,
   className = '',
-  isConnected: sharedIsConnected,
-  gamificationData: sharedGamificationData
+  isConnected = false,
+  gamificationData
 }: RecentAchievementsProps) {
-  // ✨ Use stub when shared data is provided to prevent duplicate connections
-  const shouldUseLocalData = sharedIsConnected === undefined;
-  const localGamificationData = shouldUseLocalData 
-    ? useGamificationEvents(userId) 
-    : useGamificationEventsStub();
-  const gamificationData = sharedGamificationData || localGamificationData;
-  
+  // Use shared gamification data (always provided from Dashboard)
   const {
-    recentAchievements,
-    totalAchievements,
-    isLoading,
-    isConnected: localIsConnected,
-    activeCelebrations
-  } = gamificationData;
+    totalAchievements = 0,
+    recentAchievements = [],
+    isLoading = false
+  } = gamificationData || {};
 
-  // ✨ Use shared connection status if provided
-  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localIsConnected;
+  // Use shared connection status
+  const connectionStatus = isConnected;
 
   // Animation state for new achievements
   const [celebratingAchievements, setCelebratingAchievements] = useState<Set<number>>(new Set());
 
   // Handle new achievement celebrations
   useEffect(() => {
-    const achievementCelebrations = activeCelebrations.filter(c => c.type === 'achievement');
+    const achievementCelebrations = recentAchievements.filter(achievement => 
+      new Date(achievement.timestamp).getTime() > Date.now() - 60000 // Last minute
+    );
     
     achievementCelebrations.forEach(celebration => {
       // Use timestamp as unique ID for animation
@@ -64,7 +62,7 @@ export function RecentAchievements({
         });
       }, 3000);
     });
-  }, [activeCelebrations]);
+  }, [recentAchievements]);
 
   // Format achievement date
   const formatDate = (timestamp: Date) => {
@@ -114,7 +112,7 @@ export function RecentAchievements({
           </div>
           Recent Achievements
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
+          <div className={`w-2 h-2 rounded-full ${connectionStatus ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
         <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300 border-purple-300 dark:border-purple-600">
           {totalAchievements || 0} Total
@@ -172,7 +170,7 @@ export function RecentAchievements({
                 {/* Celebration Sparkles */}
                 {isCelebrating && (
                   <div className="absolute top-1 right-1">
-                    <Sparkles className="h-4 w-4 text-yellow-500 animate-pulse" />
+                    <Zap className="h-4 w-4 text-yellow-500 animate-pulse" />
                   </div>
                 )}
 
@@ -225,7 +223,7 @@ export function RecentAchievements({
               }}
             >
               View All {totalAchievements} Achievements
-              <ArrowRight className="h-3 w-3" />
+              <TrendingUp className="h-3 w-3" />
             </Button>
           )}
 
@@ -239,7 +237,7 @@ export function RecentAchievements({
           )}
 
           {/* Connection Status */}
-          {!isConnected && !isLoading && (
+          {!connectionStatus && !isLoading && (
             <div className="text-xs text-amber-600 dark:text-amber-400 text-center py-2">
               ⚠️ Offline - New achievements will appear when reconnected
             </div>

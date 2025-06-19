@@ -5,10 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Eye, Zap, Smartphone, Monitor } from 'lucide-react';
 import { DashboardProps } from '@/lib/types/widget-props';
+import { DashboardMode } from '@/lib/types/ui-components';
 import Dashboard from './Dashboard';
 import SimpleDashboard from './SimpleDashboard';
-
-type DashboardMode = 'simple' | 'advanced';
 
 export default function DashboardModeWrapper({ user, initialData }: DashboardProps) {
   const [dashboardMode, setDashboardMode] = useState<DashboardMode>('simple');

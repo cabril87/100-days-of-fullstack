@@ -3,33 +3,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { notificationService } from '@/lib/services/notificationService';
-import { NotificationDTO, NotificationFilterDTO } from '@/lib/types/notifications';
+import { NotificationDTO } from '@/lib/types/notifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { 
   Bell, 
   Search, 
-  Filter, 
   CheckCircle2, 
   Trash2, 
   RefreshCw,
-  Star,
   Trophy,
   Users,
   AlertTriangle,
   Info,
   Calendar,
-  Clock,
-  X
+  Clock
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationsPage = () => {
-  const { unreadCount, refreshCount } = useNotifications();
+  const { refreshCount } = useNotifications();
   const [notifications, setNotifications] = useState<NotificationDTO[]>([]);
   const [filteredNotifications, setFilteredNotifications] = useState<NotificationDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);

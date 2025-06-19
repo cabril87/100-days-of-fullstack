@@ -339,6 +339,29 @@ export class EnhancedFamilyService {
     return await response.json();
   }
 
+  async requestFamilyDataExport(
+    familyId: number, 
+    format: 'json' | 'csv' | 'pdf' | 'xml' = 'json',
+    scope: 'all' | 'personal' | 'family' | 'tasks' | 'achievements' = 'all'
+  ): Promise<{ message: string }> {
+    const token = localStorage.getItem('accessToken');
+    const response = await fetch(`${API_BASE_URL}/v1/families/${familyId}/export`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ format, scope }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to request family data export');
+    }
+
+    return await response.json();
+  }
+
   // === FAMILY ANALYTICS & INSIGHTS ===
 
   async getFamilyCompositionAnalysis(familyId: number): Promise<CompositionChange> {

@@ -25,7 +25,8 @@ import {
   Zap
 } from 'lucide-react';
 import { ProfileHeaderSkeleton, ProfileFormSkeleton } from '@/components/ui/skeletons/settings-profile-skeletons';
-import { User as UserType, UserProfileUpdateDTO, FamilyMemberAgeGroup, ProfileSettingsContentProps } from '@/lib/types';
+import { User as UserType, UserProfileUpdateDTO, FamilyMemberAgeGroup } from '@/lib/types/auth';
+import { ProfileSettingsContentProps } from '@/lib/types/settings';
 import { ProfileUpdateFormData } from '@/lib/types/forms';
 import { profileUpdateSchema } from '@/lib/schemas/auth';
 

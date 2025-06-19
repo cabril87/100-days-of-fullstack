@@ -54,7 +54,6 @@ import ErrorModal from '@/components/ui/ErrorModal';
 import ConfirmationModal from '@/components/ui/confirmation-modal';
 import CompletionModal from '@/components/ui/completion-modal';
 import { useTaskCompletion } from '@/components/ui/ToastProvider';
-import TaskCompletionService from '@/lib/services/TaskCompletionService';
 import { TasksPageContentProps, Task, TaskStats, TaskItemStatus } from '@/lib/types/task';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { taskService } from '@/lib/services/taskService';
@@ -68,7 +67,6 @@ import { parseBackendDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 export default function TasksPageContent({ user, initialData }: TasksPageContentProps) {
   const router = useRouter();
   const { celebrateTaskCompletion } = useTaskCompletion();
-  const taskCompletionService = TaskCompletionService.getInstance();
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks || []);
   const [stats, setStats] = useState<TaskStats>(initialData.stats);
   const [isLoading, setIsLoading] = useState(false);
@@ -382,24 +380,16 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
 
       console.log('🎉 Starting enhanced task completion for:', taskToComplete.title);
 
-      // Use the enhanced TaskCompletionService for real-time celebrations
-      const completionResult = await taskCompletionService.completeTaskWithCelebration(
-        taskId,
-        user?.id || 0,
-        taskToComplete.familyId
-      );
-
-      if (!completionResult.success) {
-        throw new Error(completionResult.error || 'Task completion failed');
-      }
+      // Complete the task using taskService
+      const updatedTask = await taskService.completeTask(taskId);
 
       // Update local task state
       setTasks(prev => prev.map(task =>
-        task.id === taskId ? { ...task, isCompleted: true, status: 'Completed' } : task
+        task.id === taskId ? updatedTask : task
       ));
 
-      // Update stats with actual earned points
-      const pointsEarned = completionResult.pointsEarned || 0;
+      // Calculate estimated points earned (from task points value)
+      const pointsEarned = taskToComplete.pointsValue || 10; // Default 10 points
       const newTotalPoints = (stats.totalPoints || 0) + pointsEarned;
 
       setStats(prev => ({
@@ -410,35 +400,30 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         streakDays: (prev.streakDays || 0) + 1
       }));
 
-      // 🎉 Trigger enhanced real-time celebrations
+      // 🎉 Trigger task completion celebration
       celebrateTaskCompletion({
         taskTitle: taskToComplete.title,
         pointsEarned,
-        achievementsUnlocked: completionResult.achievementsUnlocked || [],
-        levelUp: completionResult.levelUp
+        achievementsUnlocked: [],
+        levelUp: undefined
       });
 
-      // Legacy completion modal for backwards compatibility
-      const achievementNames = (completionResult.achievementsUnlocked || []).map(a => a.name || a.title || 'New Achievement');
-      if (completionResult.levelUp) {
-        achievementNames.push('Level Up!');
-      }
-
-      if (achievementNames.length > 0 || pointsEarned >= 25) {
+      // Show completion modal for significant points
+      if (pointsEarned >= 25) {
         setCompletionModal({
           isOpen: true,
           taskTitle: taskToComplete.title,
           xpEarned: pointsEarned,
-          newLevel: completionResult.levelUp?.newLevel,
-          achievements: achievementNames,
+          newLevel: undefined,
+          achievements: [],
           streakDays: (stats.streakDays || 0) + 1
         });
       }
 
-      console.log('🎉 Enhanced task completion successful:', {
+      console.log('🎉 Task completion successful:', {
+        taskId,
         pointsEarned,
-        achievementsCount: completionResult.achievementsUnlocked?.length || 0,
-        levelUp: !!completionResult.levelUp
+        title: taskToComplete.title
       });
 
     } catch (error) {

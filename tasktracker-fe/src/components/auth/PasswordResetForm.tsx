@@ -360,35 +360,60 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
   // Step 1: Password Reset Request
   const renderRequestStep = () => (
-    <div className="space-y-4">
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
-          <KeyRound className="h-8 w-8 text-white" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/25 transform hover:scale-105 transition-all duration-300">
+          <KeyRound className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-500 rounded-2xl blur-xl opacity-30 -z-10"></div>
         </div>
-        <h2 className="text-2xl font-bold text-white">Reset Your Password</h2>
-        <p className="text-gray-400">
+        <h2 className="text-xl sm:text-2xl font-bold">
+          <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+            Reset Your Password
+          </span>
+        </h2>
+        <p className="text-gray-400 text-sm sm:text-base">
           Enter your email address and we&apos;ll help you reset your password securely.
         </p>
+        
+        {/* Enterprise gamification badges */}
+        <div className="flex justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 px-2">
+          <div className="group flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-700/30 rounded-full px-2 sm:px-4 py-1 sm:py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+            <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 group-hover:rotate-12 transition-transform duration-300" />
+            <span className="text-xs sm:text-sm font-medium text-gray-300">Secure Reset</span>
+          </div>
+          <div className="group flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-purple-900/20 to-indigo-900/20 border border-purple-700/30 rounded-full px-2 sm:px-4 py-1 sm:py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+            <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500 group-hover:rotate-12 transition-transform duration-300" />
+            <span className="text-xs sm:text-sm font-medium text-gray-300">Fast Recovery</span>
+          </div>
+        </div>
         </div>
 
       <Form {...requestForm}>
-        <form onSubmit={requestForm.handleSubmit(handlePasswordResetRequest)} className="space-y-4">
+        <form onSubmit={requestForm.handleSubmit(handlePasswordResetRequest)} className="space-y-3 sm:space-y-4">
           <FormField
             control={requestForm.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-300 font-medium">Email Address</FormLabel>
+              <FormItem className="space-y-2 sm:space-y-3">
+                <FormLabel className="text-gray-300 font-semibold text-sm sm:text-base flex items-center gap-2 sm:gap-3">
+                  <div className="p-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+                    <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                  </div>
+                  Email Address
+                </FormLabel>
                 <FormControl>
+                  <div className="relative group">
                   <Input 
                     {...field} 
                     type="email"
                     placeholder="Enter your email address"
                     disabled={flowState.isLoading}
-                    className="bg-gray-700 border-gray-600 focus:border-blue-400 transition-colors text-white"
+                      className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-2 border-gray-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl text-white font-medium group-hover:border-blue-300"
                   />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  </div>
                 </FormControl>
-                <FormMessage />
+                <FormMessage className="text-red-400 text-xs sm:text-sm font-medium" />
               </FormItem>
             )}
           />
@@ -462,19 +487,21 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
           <Button 
             type="submit" 
-            className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            className="relative w-full h-12 sm:h-14 lg:h-16 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white font-bold text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-blue-500/25 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none overflow-hidden group"
             disabled={flowState.isLoading}
           >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             {flowState.isLoading ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Sending Reset Link...
-              </>
+              <div className="flex items-center justify-center gap-2 sm:gap-3 relative z-10">
+                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                <span className="text-sm sm:text-base">Sending Reset Link...</span>
+              </div>
             ) : (
-              <>
-                <Mail className="mr-2 h-4 w-4" />
-                Send Reset Link
-              </>
+              <div className="flex items-center justify-center gap-2 sm:gap-3 relative z-10">
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="text-sm sm:text-base">Send Reset Link</span>
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 group-hover:animate-pulse" />
+              </div>
             )}
               </Button>
         </form>
@@ -484,13 +511,18 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
   // Step 2: Email Verification
   const renderVerificationStep = () => (
-    <div className="space-y-4">
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto">
-          <Mail className="h-8 w-8 text-white" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-500 via-emerald-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-green-500/25 transform hover:scale-105 transition-all duration-300">
+          <Mail className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500 via-emerald-500 to-blue-600 rounded-2xl blur-xl opacity-30 -z-10"></div>
         </div>
-        <h2 className="text-2xl font-bold text-white">Check Your Email</h2>
-        <p className="text-gray-400">
+        <h2 className="text-xl sm:text-2xl font-bold">
+          <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-blue-400 bg-clip-text text-transparent">
+            Check Your Email
+          </span>
+        </h2>
+        <p className="text-gray-400 text-sm sm:text-base">
           We&apos;ve sent a password reset link to <strong className="text-white">{flowState.email}</strong>
         </p>
       </div>
@@ -512,17 +544,17 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         </AlertDescription>
       </Alert>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <Button 
           variant="outline" 
           onClick={() => handlePasswordResetRequest(requestForm.getValues())}
           disabled={flowState.isLoading}
-          className="flex-1"
+          className="flex-1 h-10 sm:h-12 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm"
         >
           {flowState.isLoading ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
           ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
+            <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
           )}
           Resend Email
         </Button>
@@ -530,7 +562,7 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         <Button 
           variant="ghost" 
           onClick={() => router.push('/auth/login')}
-          className="flex-1"
+          className="flex-1 h-10 sm:h-12 bg-white/5 hover:bg-white/10 backdrop-blur-sm text-gray-300 hover:text-white border-white/20 hover:border-white/30 text-xs sm:text-sm"
         >
           Back to Login
         </Button>
@@ -540,13 +572,18 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
   // Step 3: Set New Password
   const renderResetStep = () => (
-    <div className="space-y-4">
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto">
-          <Lock className="h-8 w-8 text-white" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-purple-500/25 transform hover:scale-105 transition-all duration-300">
+          <Lock className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl blur-xl opacity-30 -z-10"></div>
         </div>
-        <h2 className="text-2xl font-bold text-white">Create New Password</h2>
-        <p className="text-gray-400">
+        <h2 className="text-xl sm:text-2xl font-bold">
+          <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+            Create New Password
+          </span>
+        </h2>
+        <p className="text-gray-400 text-sm sm:text-base">
           Choose a strong password that you haven&apos;t used before.
         </p>
       </div>
@@ -667,14 +704,19 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
 
   // Step 4: Success
   const renderSuccessStep = () => (
-    <div className="space-y-4 text-center">
-      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto">
-        <CheckCircle2 className="h-8 w-8 text-white" />
+    <div className="space-y-3 sm:space-y-4 text-center">
+      <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-green-500/25 transform hover:scale-105 transition-all duration-300">
+        <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+        <div className="absolute inset-0 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-2xl blur-xl opacity-30 -z-10"></div>
       </div>
       
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-green-700">Password Reset Complete!</h2>
-        <p className="text-muted-foreground">
+      <div className="space-y-2 sm:space-y-3">
+        <h2 className="text-xl sm:text-2xl font-bold">
+          <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent">
+            Password Reset Complete!
+          </span>
+        </h2>
+        <p className="text-gray-400 text-sm sm:text-base">
           Your password has been successfully updated. You can now sign in with your new password.
         </p>
       </div>
@@ -692,19 +734,23 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
       </Alert>
 
       <Button 
-        className="w-full"
+        className="relative w-full h-12 sm:h-14 lg:h-16 bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-700 hover:via-emerald-700 hover:to-teal-700 text-white font-bold text-base sm:text-lg rounded-xl sm:rounded-2xl shadow-2xl hover:shadow-green-500/25 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden group"
         onClick={() => router.push('/auth/login')}
       >
-        <Unlock className="mr-2 h-4 w-4" />
-        Continue to Sign In
+        <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <div className="flex items-center justify-center gap-2 sm:gap-3 relative z-10">
+          <Unlock className="h-4 w-4 sm:h-5 sm:w-5 group-hover:rotate-12 transition-transform duration-300" />
+          <span className="text-sm sm:text-base">Continue to Sign In</span>
+          <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 group-hover:animate-pulse" />
+        </div>
       </Button>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex bg-gray-900">
+    <div className="min-h-screen flex bg-gray-900 overflow-hidden">
       {/* Left Side - Enterprise Gamification Content */}
-      <div className="hidden lg:flex lg:w-1/2  relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-32 left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -742,7 +788,7 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
           </h1>
           
           <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-            Enterprise-grade security for your family's digital safety and productivity journey.
+            Enterprise-grade security for your family&apos;s digital safety and productivity journey.
           </p>
           
           <div className="flex flex-col space-y-4">
@@ -767,20 +813,20 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
       </div>
 
       {/* Right Side - Password Reset Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-900">
-        <div className="space-y-6 w-full max-w-md">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-3 sm:p-4 lg:p-12 bg-gray-900 overflow-y-auto">
+        <div className="space-y-4 sm:space-y-6 w-full max-w-md my-4">
           {/* Main Password Reset Card */}
           <Card className="w-full bg-gray-800 border-gray-700 shadow-2xl">
-            <CardHeader className="space-y-1">
+            <CardHeader className="space-y-1 px-4 sm:px-6 py-4 sm:py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Trophy className="h-6 w-6 text-yellow-500" />
-                  <div className="text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
+                  <div className="text-base sm:text-lg font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                     Reset Portal
                   </div>
                 </div>
             {onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10">
                 ×
               </Button>
             )}
@@ -788,25 +834,25 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
           
                       {/* Progress indicator */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-gray-400">
+              <div className="flex items-center justify-between text-xs sm:text-sm text-gray-400">
                 <span>Progress</span>
                 <span>{getStepProgress()}%</span>
               </div>
-              <Progress value={getStepProgress()} className="h-2" />
+              <Progress value={getStepProgress()} className="h-1.5 sm:h-2" />
             </div>
           </CardHeader>
         
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
           {flowState.step === 'request' && renderRequestStep()}
           {flowState.step === 'verification' && renderVerificationStep()}
           {flowState.step === 'reset' && renderResetStep()}
           {flowState.step === 'success' && renderSuccessStep()}
             </CardContent>
 
-        <CardFooter className="flex flex-col space-y-2">
+        <CardFooter className="flex flex-col space-y-2 px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between w-full">
             {canGoBack && (
-              <Button variant="ghost" size="sm" onClick={goBack}>
+              <Button variant="ghost" size="sm" onClick={goBack} className="text-xs sm:text-sm">
                 <ArrowLeft className="h-3 w-3 mr-1" />
                 Back
               </Button>
@@ -814,7 +860,7 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
             
             <div className="flex-1" />
             
-            <Button variant="link" size="sm" asChild>
+            <Button variant="link" size="sm" asChild className="text-xs sm:text-sm">
               <Link href="/auth/login">
                 Return to Login
               </Link>
@@ -831,21 +877,21 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
         </Card>
 
           {/* Enhanced Features Showcase */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-blue-950 to-blue-900">
-              <Shield className="h-6 w-6 mx-auto mb-2 text-blue-400" />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-gradient-to-b from-blue-950 to-blue-900">
+              <Shield className="h-4 w-4 sm:h-6 sm:w-6 mx-auto mb-1 sm:mb-2 text-blue-400" />
               <div className="text-xs font-medium text-blue-300">Breach Detection</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-green-950 to-green-900">
-              <Key className="h-6 w-6 mx-auto mb-2 text-green-400" />
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-gradient-to-b from-green-950 to-green-900">
+              <Key className="h-4 w-4 sm:h-6 sm:w-6 mx-auto mb-1 sm:mb-2 text-green-400" />
               <div className="text-xs font-medium text-green-300">Strength Validation</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-purple-950 to-purple-900">
-              <HelpCircle className="h-6 w-6 mx-auto mb-2 text-purple-400" />
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-gradient-to-b from-purple-950 to-purple-900">
+              <HelpCircle className="h-4 w-4 sm:h-6 sm:w-6 mx-auto mb-1 sm:mb-2 text-purple-400" />
               <div className="text-xs font-medium text-purple-300">Security Questions</div>
             </div>
-            <div className="text-center p-3 rounded-lg bg-gradient-to-b from-orange-950 to-orange-900">
-              <Zap className="h-6 w-6 mx-auto mb-2 text-orange-400" />
+            <div className="text-center p-2 sm:p-3 rounded-lg bg-gradient-to-b from-orange-950 to-orange-900">
+              <Zap className="h-4 w-4 sm:h-6 sm:w-6 mx-auto mb-1 sm:mb-2 text-orange-400" />
               <div className="text-xs font-medium text-orange-300">Multi-Step Flow</div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { StatsCardProps } from '@/lib/types';
+import { StatsCardProps } from '@/lib/types/ui';
 
 // Skeleton version for loading states
 export function StatsCardSkeleton({ variant = 'blue' }: { variant?: StatsCardProps['variant'] }) {

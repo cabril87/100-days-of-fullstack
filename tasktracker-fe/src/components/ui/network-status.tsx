@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
-
-interface NetworkStatusProps {
-  className?: string;
-  showText?: boolean;
-}
+import { NetworkStatusProps } from '@/lib/types/ui-components';
 
 export const NetworkStatus: React.FC<NetworkStatusProps> = ({ 
   className = '',

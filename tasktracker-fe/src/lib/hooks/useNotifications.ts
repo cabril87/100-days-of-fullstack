@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { notificationService } from '@/lib/services/notificationService';
-import { useMainHubConnection } from '@/lib/hooks/useSignalRConnection';
+import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { useAuth } from '@/lib/providers/AuthProvider';
 
 export interface UseNotificationsReturn {
@@ -14,28 +14,29 @@ export const useNotifications = (): UseNotificationsReturn => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated } = useAuth();
-  const shouldConnectRef = useRef<boolean>(false);
+  const { isAuthenticated, isReady } = useAuth();
   
-  // Update connection flag when authentication changes
-  useEffect(() => {
-    shouldConnectRef.current = isAuthenticated;
-  }, [isAuthenticated]);
-
-  // Create SignalR connection with conditional handlers
-  const signalREventHandlers = isAuthenticated ? {
+  // Create stable SignalR event handlers that check authentication internally
+  const signalREventHandlers = {
     onReceiveNotification: () => {
-      // Increment count when new notification arrives
-      setUnreadCount(prev => prev + 1);
+      // Only increment count when authenticated
+      if (isAuthenticated && isReady) {
+        setUnreadCount(prev => prev + 1);
+      }
     },
-    onUnreadCountUpdated: (event: any) => {
-      // Update count when server sends updated count
-      setUnreadCount(event.unreadCount);
+    onUnreadCountUpdated: (event: { userId: number; unreadCount: number }) => {
+      // Only update count when authenticated
+      if (isAuthenticated && isReady) {
+        setUnreadCount(event.unreadCount);
+      }
     }
-  } : {};
+  };
 
-  // Only use SignalR connection when authenticated
-  const signalRConnection = useMainHubConnection(signalREventHandlers);
+  // Use the unified connection manager with stable component ID
+  const signalRConnection = useSignalRConnectionManager(
+    'notifications', 
+    signalREventHandlers
+  );
 
   // Fetch unread count from API
   const fetchUnreadCount = useCallback(async () => {
@@ -66,29 +67,20 @@ export const useNotifications = (): UseNotificationsReturn => {
 
   // Initial fetch on mount
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isReady) {
       fetchUnreadCount();
     } else {
       setUnreadCount(0);
       setError(null);
     }
-  }, [isAuthenticated, fetchUnreadCount]);
+  }, [isAuthenticated, isReady, fetchUnreadCount]);
 
-  // Listen for real-time notification count updates via SignalR
+  // Fetch count when SignalR connects (only when authenticated)
   useEffect(() => {
-    if (!signalRConnection.isConnected || !isAuthenticated) return;
-
-    // Refresh count periodically as a fallback
-    const interval = setInterval(() => {
-      if (isAuthenticated && shouldConnectRef.current) {
-        fetchUnreadCount();
-      }
-    }, 30000); // Refresh every 30 seconds
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [signalRConnection.isConnected, isAuthenticated, fetchUnreadCount]);
+    if (signalRConnection.isConnected && isAuthenticated && isReady) {
+      fetchUnreadCount();
+    }
+  }, [signalRConnection.isConnected, isAuthenticated, isReady, fetchUnreadCount]);
 
   return {
     unreadCount,

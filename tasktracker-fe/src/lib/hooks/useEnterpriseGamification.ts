@@ -8,27 +8,27 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { enterpriseGamificationService } from '@/lib/services/enterpriseGamificationService';
-import { useAuth } from '@/lib/contexts/AuthContext';
 import {
   FamilyGamificationProfile,
   FamilyMemberGamification,
   FamilyGoal,
   FamilyChallenge,
   FamilyLeaderboard,
-  LeaderboardMember
+  LeaderboardEntry
 } from '@/lib/types/enterprise-gamification';
 
 interface UseEnterpriseGamificationOptions {
+  userId?: number;
+  familyId?: number;
   autoRefresh?: boolean;
   refreshInterval?: number;
-  enableRealTime?: boolean;
 }
 
 interface EnterpriseGamificationState {
   // Profile & Members
   familyProfile: FamilyGamificationProfile | null;
   familyMembers: FamilyMemberGamification[];
-  leaderboardMembers: LeaderboardMember[];
+  leaderboardMembers: LeaderboardEntry[];
   
   // Goals & Challenges
   goals: FamilyGoal[];
@@ -51,11 +51,11 @@ interface EnterpriseGamificationState {
 }
 
 export function useEnterpriseGamification(options: UseEnterpriseGamificationOptions = {}) {
-  const { user } = useAuth();
   const {
+    userId,
+    familyId,
     autoRefresh = true,
-    refreshInterval = 30000, // 30 seconds
-    enableRealTime = true
+    refreshInterval = 30000 // 30 seconds
   } = options;
 
   const [state, setState] = useState<EnterpriseGamificationState>({
@@ -75,9 +75,6 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
 
   const mounted = useRef(true);
   const refreshTimer = useRef<NodeJS.Timeout | null>(null);
-
-  // Get family ID from user context
-  const familyId = user?.familyId;
 
   // ================================
   // DATA FETCHING FUNCTIONS
@@ -135,19 +132,17 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
     try {
       const leaderboard = await enterpriseGamificationService.getFamilyLeaderboard(familyId, type);
       if (mounted.current && leaderboard) {
-        // Convert to LeaderboardMember format
-        const leaderboardMembers: LeaderboardMember[] = leaderboard.members.map(member => ({
+        // Convert to LeaderboardEntry format
+        const leaderboardMembers: LeaderboardEntry[] = leaderboard.members.map(member => ({
           userId: member.userId,
           memberName: member.memberName,
           ageGroup: member.ageGroup,
-          score: member.totalPoints,
+          score: member.score,
           rank: member.rank,
           previousRank: member.previousRank,
           trend: member.trend,
-          badge: member.currentBadge?.icon || '🏅',
-          weeklyGrowth: member.weeklyGrowth || 0,
-          achievements: member.totalAchievements || 0,
-          streak: member.currentStreak || 0
+          badge: member.badge || '🏅',
+          avatar: member.avatar
         }));
 
         setState(prev => ({ 
@@ -295,10 +290,10 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
   }, [familyId]);
 
   const joinChallenge = useCallback(async (challengeId: string) => {
-    if (!familyId || !user?.id) return false;
+    if (!familyId || !userId) return false;
 
     try {
-      const success = await enterpriseGamificationService.joinChallenge(familyId, challengeId, user.id);
+      const success = await enterpriseGamificationService.joinChallenge(familyId, challengeId, userId);
       if (success) {
         // Refresh challenges to get updated data
         await fetchChallenges();
@@ -308,7 +303,7 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
       console.error('Failed to join challenge:', error);
       return false;
     }
-  }, [familyId, user?.id, fetchChallenges]);
+  }, [familyId, userId, fetchChallenges]);
 
   // ================================
   // EFFECTS

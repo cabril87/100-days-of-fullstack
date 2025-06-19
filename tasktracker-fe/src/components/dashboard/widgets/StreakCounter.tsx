@@ -14,32 +14,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Flame, Target, TrendingUp, Calendar, Clock, Award } from 'lucide-react';
-import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
-import { useGamificationEventsStub } from '@/lib/hooks/useGamificationEventsStub';
+import { Flame, Target } from 'lucide-react';
 import { StreakCounterProps } from '@/lib/types/widget-props';
 
 export function StreakCounter({ 
   userId, 
   className = '',
-  isConnected: sharedIsConnected,
-  gamificationData: sharedGamificationData
+  isConnected = false,
+  gamificationData
 }: StreakCounterProps) {
-  // ✨ Use stub when shared data is provided to prevent duplicate connections
-  const shouldUseLocalData = sharedIsConnected === undefined;
-  const localGamificationData = shouldUseLocalData 
-    ? useGamificationEvents(userId) 
-    : useGamificationEventsStub();
-  const gamificationData = sharedGamificationData || localGamificationData;
-  
+  // Use shared gamification data (always provided from Dashboard)
   const {
-    currentStreak,
-    isLoading,
-    isConnected: localIsConnected
-  } = gamificationData;
+    currentStreak = 0,
+    isLoading = false
+  } = gamificationData || {};
 
-  // ✨ Use shared connection status if provided
-  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localIsConnected;
+  // Use shared connection status
+  const connectionStatus = isConnected;
 
   // Animation state for streak updates
   const [isAnimating, setIsAnimating] = useState(false);
@@ -157,7 +148,7 @@ export function StreakCounter({
           </div>
           Productivity Streak
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
+          <div className={`w-2 h-2 rounded-full ${connectionStatus ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
         <Badge variant="outline" className={`text-xs bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300 border-orange-300 dark:border-orange-600`}>
           {streakInfo.status}
@@ -298,7 +289,7 @@ export function StreakCounter({
           )}
 
           {/* Connection Status */}
-          {!isConnected && !isLoading && (
+          {!connectionStatus && !isLoading && (
             <div className="text-xs text-amber-600 dark:text-amber-400 text-center py-2">
               ⚠️ Offline - Streak will sync when reconnected
             </div>

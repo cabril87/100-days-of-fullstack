@@ -103,7 +103,7 @@ export const taskFilterSchema = z.object({
 /**
  * Schema for assigning task to family member
  */
-export const taskAssignmentSchema = z.object({
+export const basicTaskAssignmentSchema = z.object({
   taskId: z.number().min(1, 'Valid task ID is required'),
   assignToUserId: z.number().min(1, 'Valid user ID is required'),
   requiresApproval: z.boolean().default(false)

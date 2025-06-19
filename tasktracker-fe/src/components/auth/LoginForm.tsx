@@ -20,7 +20,6 @@ import {
   EyeOff,
   LogIn,
   Clock,
-  Sparkles,
   Trophy,
   Shield,
   Monitor,
@@ -720,9 +719,9 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-900">
+    <div className="min-h-screen flex bg-gray-900 overflow-hidden">
       {/* Left Side - Enterprise Gamification Content */}
-      <div className="hidden lg:flex lg:w-1/2  relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-32 left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -786,57 +785,57 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 lg:p-12 bg-gray-900">
-        <Card className="w-full max-w-lg bg-gray-800 border-gray-700 shadow-2xl">
-          <CardHeader className="text-center pb-8 pt-10 px-6">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-3 sm:p-4 lg:p-12 bg-gray-900 overflow-y-auto">
+        <Card className="w-full max-w-lg bg-gray-800 border-gray-700 shadow-2xl my-4">
+          <CardHeader className="text-center pb-4 sm:pb-6 pt-6 sm:pt-8 px-4 sm:px-6">
             {/* Sleek icon with glow effect */}
-            <div className="flex justify-center mb-6">
+            <div className="flex justify-center mb-4 sm:mb-6">
               <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/25 transform hover:scale-105 transition-all duration-300">
-                  <LogIn className="h-10 w-10 text-white" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/25 transform hover:scale-105 transition-all duration-300">
+                  <LogIn className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-indigo-500 rounded-2xl blur-xl opacity-30 -z-10"></div>
               </div>
             </div>
 
             {/* Refined typography */}
-            <CardTitle className="text-3xl font-bold mb-3">
+            <CardTitle className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">
               <span className="bg-gradient-to-r from-purple-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
                 Welcome Back
               </span>
             </CardTitle>
             
-            <CardDescription className="text-gray-400 text-lg mb-6">
+            <CardDescription className="text-gray-400 text-base sm:text-lg mb-4 sm:mb-6">
               Continue your family productivity journey
             </CardDescription>
 
             {/* Enterprise gamification badges */}
-            <div className="flex justify-center gap-3 mb-4">
-              <div className="group flex items-center gap-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                <Star className="h-4 w-4 text-amber-500 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="text-sm font-medium text-gray-300">Level Up</span>
+            <div className="flex justify-center gap-2 sm:gap-3 mb-3 sm:mb-4 px-2">
+              <div className="group flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-full px-2 sm:px-4 py-1 sm:py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Star className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="text-xs sm:text-sm font-medium text-gray-300">Level Up</span>
               </div>
-              <div className="group flex items-center gap-2 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-700/30 rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                <Shield className="h-4 w-4 text-blue-500 group-hover:rotate-12 transition-transform duration-300" />
-                <span className="text-sm font-medium text-gray-300">Secure</span>
+              <div className="group flex items-center gap-1 sm:gap-2 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 border border-blue-700/30 rounded-full px-2 sm:px-4 py-1 sm:py-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500 group-hover:rotate-12 transition-transform duration-300" />
+                <span className="text-xs sm:text-sm font-medium text-gray-300">Secure</span>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+          <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-4 lg:px-6">
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'unlock')}>
               <TabsList className="grid w-full grid-cols-2 bg-gray-700">
-                <TabsTrigger value="login" className="flex items-center gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white">
-                  <LogIn className="h-4 w-4" />
+                <TabsTrigger value="login" className="flex items-center gap-1 sm:gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white text-xs sm:text-sm py-2">
+                  <LogIn className="h-3 w-3 sm:h-4 sm:w-4" />
                   Sign In
                 </TabsTrigger>
-                <TabsTrigger value="unlock" disabled={!lockoutInfo} className="flex items-center gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white">
-                  <Unlock className="h-4 w-4" />
+                <TabsTrigger value="unlock" disabled={!lockoutInfo} className="flex items-center gap-1 sm:gap-2 text-gray-300 data-[state=active]:bg-gray-600 data-[state=active]:text-white text-xs sm:text-sm py-2">
+                  <Unlock className="h-3 w-3 sm:h-4 sm:w-4" />
                   Unlock Account
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login" className="space-y-4">
+              <TabsContent value="login" className="space-y-3 sm:space-y-4">
                 {/* Device Recognition Status */}
                 {showDeviceRecognition && <DeviceRecognitionDisplay />}
 
@@ -845,15 +844,15 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
 
                 {/* Login Form */}
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
                     <FormField
                       control={form.control}
                       name="emailOrUsername"
                       render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel className="text-gray-300 font-semibold text-base flex items-center gap-3">
+                        <FormItem className="space-y-2 sm:space-y-3">
+                          <FormLabel className="text-gray-300 font-semibold text-sm sm:text-base flex items-center gap-2 sm:gap-3">
                             <div className="p-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
-                              <User className="h-4 w-4 text-white" />
+                              <User className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                             </div>
                             Email or Username
                           </FormLabel>
@@ -865,12 +864,12 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                                 placeholder="Enter your email or username"
                                 autoComplete="username"
                                 disabled={isLoading}
-                                className="h-14 text-lg bg-gray-700 border-2 border-gray-600 focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl text-white font-medium group-hover:border-purple-300"
+                                className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-2 border-gray-600 focus:border-purple-400 focus:ring-4 focus:ring-purple-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl text-white font-medium group-hover:border-purple-300"
                               />
                               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                             </div>
                           </FormControl>
-                          <FormMessage className="text-red-400 text-sm font-medium" />
+                          <FormMessage className="text-red-400 text-xs sm:text-sm font-medium" />
                         </FormItem>
                       )}
                     />
@@ -879,10 +878,10 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                       control={form.control}
                       name="password"
                       render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel className="text-gray-300 font-semibold text-base flex items-center gap-3">
+                        <FormItem className="space-y-2 sm:space-y-3">
+                          <FormLabel className="text-gray-300 font-semibold text-sm sm:text-base flex items-center gap-2 sm:gap-3">
                             <div className="p-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
-                              <Lock className="h-4 w-4 text-white" />
+                              <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                             </div>
                             Password
                           </FormLabel>
@@ -894,7 +893,7 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                                 placeholder="Enter your password"
                                 autoComplete="current-password"
                                 disabled={isLoading}
-                                className="h-14 text-lg bg-gray-700 border-2 border-gray-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl pr-14 text-white font-medium group-hover:border-blue-300"
+                                className="h-12 sm:h-14 text-base sm:text-lg bg-gray-700 border-2 border-gray-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 transition-all duration-300 rounded-xl shadow-lg hover:shadow-xl pr-12 sm:pr-14 text-white font-medium group-hover:border-blue-300"
                                 onChange={(e) => {
                                   field.onChange(e);
                                   handlePasswordChange(e.target.value);
@@ -904,20 +903,20 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 hover:bg-blue-900/50 rounded-lg transition-all duration-200 hover:scale-110"
+                                className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-10 sm:w-10 hover:bg-blue-900/50 rounded-lg transition-all duration-200 hover:scale-110"
                                 onClick={() => setShowPassword(!showPassword)}
                                 disabled={isLoading}
                               >
                                 {showPassword ? (
-                                  <EyeOff className="h-4 w-4 text-gray-400 hover:text-blue-400 transition-colors" />
+                                  <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 hover:text-blue-400 transition-colors" />
                                 ) : (
-                                  <Eye className="h-4 w-4 text-gray-400 hover:text-blue-400 transition-colors" />
+                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400 hover:text-blue-400 transition-colors" />
                                 )}
                               </Button>
                               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                             </div>
                           </FormControl>
-                          <FormMessage className="text-red-400 text-sm font-medium" />
+                          <FormMessage className="text-red-400 text-xs sm:text-sm font-medium" />
 
                           {/* Real-time password strength indicator */}
                           {field.value && field.value.length > 0 && (
@@ -986,8 +985,8 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                     {/* Error Message */}
                     {errorMessage && (
                       <Alert className="border-red-800 bg-red-950/50 shadow-lg">
-                        <AlertTriangle className="h-4 w-4 text-red-400" />
-                        <AlertDescription className="text-red-200 font-medium text-sm">
+                        <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
+                        <AlertDescription className="text-red-200 font-medium text-xs sm:text-sm">
                           {errorMessage}
                         </AlertDescription>
                       </Alert>
@@ -995,18 +994,18 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
 
                     <Button
                       type="submit"
-                      className="w-full h-14 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold text-lg rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group"
+                      className="w-full h-12 sm:h-14 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 text-white font-bold text-base sm:text-lg rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group"
                       disabled={isLoading || isCheckingDevice}
                     >
                       {isLoading ? (
-                        <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span className="font-semibold">Signing In...</span>
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span className="font-semibold text-sm sm:text-base">Signing In...</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <LogIn className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
-                          <span className="font-semibold">Sign In</span>
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <LogIn className="h-4 w-4 sm:h-5 sm:w-5 group-hover:rotate-12 transition-transform duration-300" />
+                          <span className="font-semibold text-sm sm:text-base">Sign In</span>
                         </div>
                       )}
                     </Button>
@@ -1014,17 +1013,17 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                 </Form>
               </TabsContent>
 
-              <TabsContent value="unlock" className="space-y-4">
+              <TabsContent value="unlock" className="space-y-3 sm:space-y-4">
                 <AccountLockoutDisplay />
               </TabsContent>
             </Tabs>
           </CardContent>
 
-          <CardFooter className="flex flex-col space-y-4 pt-6">
-            <div className="flex items-center justify-between w-full text-sm">
+          <CardFooter className="flex flex-col space-y-3 sm:space-y-4 pt-4 sm:pt-6 px-3 sm:px-4 lg:px-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-2 sm:gap-0">
               <Link
                 href="/auth/forgot-password"
-                className="text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
+                className="text-xs sm:text-sm text-purple-400 hover:text-purple-300 hover:underline transition-colors"
               >
                 Forgot password?
               </Link>
@@ -1032,14 +1031,14 @@ export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowSecurityInfo(!showSecurityInfo)}
-                className="text-gray-400 hover:text-gray-300"
+                className="text-gray-400 hover:text-gray-300 text-xs sm:text-sm"
               >
                 <Shield className="h-3 w-3 mr-1" />
                 Security Info
               </Button>
             </div>
 
-            <div className="text-center text-sm text-gray-400">
+            <div className="text-center text-xs sm:text-sm text-gray-400">
               Don&apos;t have an account?{' '}
               <Link
                 href="/auth/register"

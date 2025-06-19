@@ -3,27 +3,25 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Trophy, Star, Target, Flame, Wifi, WifiOff } from 'lucide-react';
-import { GamificationContentProps } from '@/lib/types/component-props';
-import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
+import { Star, Trophy, Flame, Target, Wifi, WifiOff } from 'lucide-react';
+import { UseGamificationEventsReturn } from '@/lib/types/gamification';
 
-export default function GamificationContent({ user }: GamificationContentProps) {
-  // Connect to real-time gamification system
+interface GamificationProps {
+  user: { id: number; username: string; email: string };
+  gamificationData: UseGamificationEventsReturn;
+  isConnected: boolean;
+}
+
+export default function Gamification({ gamificationData, isConnected }: GamificationProps) {
   const {
-    currentPoints,
-    currentLevel,
-    currentStreak,
-    totalAchievements,
-    totalBadges,
-    isLoading,
-    isConnected,
-    activeCelebrations,
-    recentAchievements,
-    hasRecentActivity,
-    dismissCelebration,
-    refreshGamificationData
-  } = useGamificationEvents(user.id);
+    currentPoints = 0,
+    currentLevel = 1,
+    currentStreak = 0,
+    totalAchievements = 0,
+    totalBadges = 0,
+    recentAchievements = [],
+    isLoading = false
+  } = gamificationData;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -56,72 +54,15 @@ export default function GamificationContent({ user }: GamificationContentProps) 
           <Badge 
             variant="secondary" 
             className="text-lg px-3 py-1 transition-all duration-300"
-            data-points-counter="true"
           >
             ⭐ {isLoading ? '...' : currentPoints.toLocaleString()} Points
           </Badge>
-          {/* Refresh button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={refreshGamificationData}
-            disabled={isLoading}
-          >
-            {isLoading ? '⟳' : '↻'} Refresh
-          </Button>
         </div>
       </div>
 
-      {/* Achievement Celebrations */}
-      {activeCelebrations.length > 0 && (
-        <div className="space-y-2">
-          {activeCelebrations.map((celebration) => (
-            <div
-              key={celebration.id}
-              className={`
-                relative p-4 rounded-lg border-2 animate-in slide-in-from-top-2 duration-300
-                ${celebration.priority === 'high' 
-                  ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300 dark:from-yellow-900/20 dark:to-orange-900/20 dark:border-yellow-600' 
-                  : celebration.priority === 'medium'
-                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300 dark:from-blue-900/20 dark:to-purple-900/20 dark:border-blue-600'
-                  : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-600'
-                }
-              `}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
-                    {celebration.title}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {celebration.message}
-                  </p>
-                </div>
-                <button
-                  onClick={() => dismissCelebration(celebration.id)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
-                >
-                  ×
-                </button>
-              </div>
-              {celebration.points && (
-                <div className="mt-2">
-                  <Badge variant="secondary" className="text-sm">
-                    +{celebration.points} points
-                  </Badge>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Achievements Card - Now shows REAL data from backend */}
-        <Card 
-          className="border-dashed border-2 border-yellow-300 dark:border-yellow-600 transition-all duration-300 hover:scale-105"
-          data-gamification="true"
-        >
+        {/* Achievements Card */}
+        <Card className="border-dashed border-2 border-yellow-300 dark:border-yellow-600 transition-all duration-300 hover:scale-105">
           <CardHeader className="text-center">
             <Trophy className="h-8 w-8 mx-auto text-yellow-500" />
             <CardTitle className="text-xl">Achievements</CardTitle>
@@ -149,7 +90,7 @@ export default function GamificationContent({ user }: GamificationContentProps) 
           </CardContent>
         </Card>
 
-        {/* Points Card - Enhanced with level display */}
+        {/* Points Card */}
         <Card className="border-dashed border-2 border-blue-300 dark:border-blue-600 transition-all duration-300 hover:scale-105">
           <CardHeader className="text-center">
             <Star className="h-8 w-8 mx-auto text-blue-500" />
@@ -173,7 +114,7 @@ export default function GamificationContent({ user }: GamificationContentProps) 
           </CardContent>
         </Card>
 
-        {/* Streak Card - New card showing productivity streak */}
+        {/* Streak Card */}
         <Card className="border-dashed border-2 border-orange-300 dark:border-orange-600 transition-all duration-300 hover:scale-105">
           <CardHeader className="text-center">
             <Flame className="h-8 w-8 mx-auto text-orange-500" />
@@ -202,7 +143,7 @@ export default function GamificationContent({ user }: GamificationContentProps) 
           </CardContent>
         </Card>
 
-        {/* Badges Card - Shows badge collection */}
+        {/* Badges Card */}
         <Card className="border-dashed border-2 border-purple-300 dark:border-purple-600 transition-all duration-300 hover:scale-105">
           <CardHeader className="text-center">
             <Target className="h-8 w-8 mx-auto text-purple-500" />
@@ -221,50 +162,23 @@ export default function GamificationContent({ user }: GamificationContentProps) 
             <p className="text-sm text-gray-500">
               {totalBadges === 1 ? 'Badge Earned' : 'Badges Earned'}
             </p>
-            {hasRecentActivity && (
-              <div className="mt-2">
-                <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-900/20">
-                  🎖️ Active
-                </Badge>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Coming Soon Section */}
-      <Card className="border-dashed border-2 border-gray-300 dark:border-gray-600">
+      {/* Status Section */}
+      <Card className="border-dashed border-2 border-green-300 dark:border-green-600">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl">
-            🚧 Coming Soon
+            {isConnected ? '🚀 Real-Time Active' : '⚠️ Offline Mode'}
           </CardTitle>
           <CardDescription className="text-lg">
-            Gamification features are currently under development
+            {isConnected 
+              ? 'Your gamification data updates in real-time!'
+              : 'Connect to see live updates'
+            }
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-lg">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-              Planned Features:
-            </h3>
-            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <li>• Points system for task completion</li>
-              <li>• Achievement badges and rewards</li>
-              <li>• Daily and weekly challenges</li>
-              <li>• Leaderboards and competitions</li>
-              <li>• Level progression system</li>
-              <li>• Customizable rewards and incentives</li>
-            </ul>
-          </div>
-          
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            This page will display live gamification data when the features are implemented.
-          </p>
-          
-          <Button variant="outline" className="mt-4">
-            View Roadmap
-          </Button>
-        </CardContent>
       </Card>
     </div>
   );

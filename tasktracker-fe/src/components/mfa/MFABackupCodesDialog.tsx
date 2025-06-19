@@ -97,13 +97,17 @@ export function MFABackupCodesDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-2xl border-2 border-purple-200 dark:border-purple-800">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-purple-900 dark:text-purple-100">
-                        <Key className="h-5 w-5" />
-                        MFA Backup Codes
+            <DialogContent className="sm:max-w-2xl border-2 border-purple-200 dark:border-purple-800 max-h-[90vh] overflow-y-auto mx-4">
+                <DialogHeader className="pb-2 sm:pb-4">
+                    <DialogTitle className="flex items-center gap-2 sm:gap-3 text-purple-900 dark:text-purple-100 text-base sm:text-lg">
+                        <div className="p-1 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg">
+                            <Key className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+                        </div>
+                        <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent font-bold">
+                            MFA Backup Codes
+                        </span>
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                         Use these codes to access your account if you lose your authenticator device
                     </DialogDescription>
                 </DialogHeader>

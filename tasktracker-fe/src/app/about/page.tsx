@@ -1,7 +1,7 @@
 import { PublicPagePattern } from '@/lib/auth/auth-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Target, Heart, Zap, Award, Globe } from 'lucide-react';
+import { Users, Target, Heart, Zap, Globe } from 'lucide-react';
 
 // Force dynamic rendering for proper authentication detection
 export const dynamic = 'force-dynamic';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function AboutPage() {
   // Allow access regardless of auth state
   await PublicPagePattern();
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -19,7 +19,7 @@ export default async function AboutPage() {
             About TaskTracker
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            We're on a mission to transform how families manage tasks and achieve goals together. 
+            We&apos;re on a mission to transform how families manage tasks and achieve goals together.
             Through gamification and collaboration, we make productivity fun and rewarding.
           </p>
         </div>
@@ -34,8 +34,8 @@ export default async function AboutPage() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-lg text-gray-700 dark:text-gray-300">
-              To empower families worldwide to achieve their goals together through innovative, 
-              gamified task management that turns everyday productivity into an engaging, 
+              To empower families worldwide to achieve their goals together through innovative,
+              gamified task management that turns everyday productivity into an engaging,
               collaborative experience.
             </p>
           </CardContent>
@@ -56,7 +56,7 @@ export default async function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 dark:text-gray-300">
-                  We believe that families are stronger when they work together. 
+                  We believe that families are stronger when they work together.
                   Our platform is designed to bring families closer through shared goals and achievements.
                 </p>
               </CardContent>
@@ -71,7 +71,7 @@ export default async function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Productivity shouldn't be a chore. We make task management enjoyable 
+                  Productivity shouldn&apos;t be a chore. We make task management enjoyable
                   with intuitive design and rewarding gamification elements.
                 </p>
               </CardContent>
@@ -86,7 +86,7 @@ export default async function AboutPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 dark:text-gray-300">
-                  We continuously evolve our platform with cutting-edge features, 
+                  We continuously evolve our platform with cutting-edge features,
                   AI-driven insights, and user-requested improvements.
                 </p>
               </CardContent>
@@ -102,21 +102,21 @@ export default async function AboutPage() {
           <CardContent className="prose dark:prose-invert max-w-none">
             <div className="text-gray-700 dark:text-gray-300 space-y-4">
               <p>
-                TaskTracker was born from a simple observation: traditional task management tools 
-                were built for individuals, not families. As busy parents and professionals, 
-                our founders struggled to coordinate household responsibilities, track children's 
+                TaskTracker was born from a simple observation: traditional task management tools
+                were built for individuals, not families. As busy parents and professionals,
+                our founders struggled to coordinate household responsibilities, track children&apos;s
                 chores, and maintain family goals.
               </p>
               <p>
-                Founded in 2024 in Raleigh, NC, we set out to create something different. 
-                We combined the engagement of gaming with the practicality of task management, 
-                creating a platform where completing chores earns points, family challenges 
+                Founded in 2024 in Raleigh, NC, we set out to create something different.
+                We combined the engagement of gaming with the practicality of task management,
+                creating a platform where completing chores earns points, family challenges
                 bring everyone together, and achievements celebrate both individual and collective success.
               </p>
               <p>
-                Today, thousands of families use TaskTracker to stay organized, motivated, 
-                and connected. From single parents managing busy schedules to large families 
-                coordinating complex routines, our platform adapts to every family's unique needs.
+                Today, thousands of families use TaskTracker to stay organized, motivated,
+                and connected. From single parents managing busy schedules to large families
+                coordinating complex routines, our platform adapts to every family&apos;s unique needs.
               </p>
             </div>
           </CardContent>
@@ -162,7 +162,7 @@ export default async function AboutPage() {
                   <Badge variant="outline">Full-Stack Developer</Badge>
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mx-auto mb-4 flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">TT</span>
@@ -173,7 +173,7 @@ export default async function AboutPage() {
                   <Badge variant="outline">Join Us!</Badge>
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
                   <Globe className="h-8 w-8 text-white" />
@@ -195,17 +195,17 @@ export default async function AboutPage() {
               Want to Learn More?
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              We'd love to hear from you! Reach out with questions, feedback, or just to say hello.
+              We&apos;d love to hear from you! Reach out with questions, feedback, or just to say hello.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a 
-                href="/contact" 
+              <a
+                href="/contact"
                 className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all"
               >
                 Contact Us
               </a>
-              <a 
-                href="/support" 
+              <a
+                href="/support"
                 className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
               >
                 Get Support

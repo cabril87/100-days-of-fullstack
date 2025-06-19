@@ -6,10 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Rocket, Users, Zap, Trophy, CheckCircle, Clock, 
-  Mail, Github, MessageCircle, ArrowRight, Star,
-  Code, TestTube, Bug, Sparkles, Shield, Target,
-  Award, TrendingUp, Gamepad2, Crown, Gem, Flame,
-  BarChart3, Calendar, Bell, Smartphone, Globe,
+  Mail, Github, MessageCircle, ArrowRight,
+  Code, TestTube, Sparkles, Shield, Target,
+  Award, TrendingUp, Gamepad2, Crown,
+  BarChart3, Calendar, Globe,
   Lock, Eye, Heart, Lightbulb, Compass, Briefcase
 } from 'lucide-react';
 import Link from 'next/link';
@@ -25,7 +25,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
         return {
           title: 'TaskTracker Enterprise',
           subtitle: 'In Active Development',
-          description: 'Building the future of family productivity with transparency. We\'re creating enterprise-grade task management with revolutionary gamification, and we want to show you exactly what we\'ve built and what\'s coming next.',
+          description: 'Building the future of family productivity with transparency. We&apos;re creating enterprise-grade task management with revolutionary gamification, and we want to show you exactly what we&apos;ve built and what&apos;s coming next.',
           progress: 75, // HONEST: Actually 75% complete based on analysis
           badgeColor: 'bg-gradient-to-r from-orange-500 to-red-500',
           icon: Code,
@@ -43,12 +43,12 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           cta: 'Try Live Demo',
           allowSignup: true
         };
-      
+
       case 'alpha':
         return {
           title: 'TaskTracker Enterprise Alpha',
           subtitle: 'Live Alpha Testing',
-          description: 'Experience what we\'ve actually built! Our alpha showcases 175+ working achievements, real-time family collaboration, and enterprise-grade task management. Help us refine the experience before our official launch.',
+          description: 'Experience what we&apos;ve actually built! Our alpha showcases 175+ working achievements, real-time family collaboration, and enterprise-grade task management. Help us refine the experience before our official launch.',
           progress: 80,
           badgeColor: 'bg-gradient-to-r from-blue-500 to-cyan-500',
           icon: TestTube,
@@ -64,12 +64,12 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           cta: 'Start Alpha Testing',
           allowSignup: true
         };
-      
+
       case 'beta':
         return {
           title: 'TaskTracker Enterprise Beta',
           subtitle: 'Feature-Complete Beta',
-          description: 'Join families using our production-ready platform! All core features are live including 225+ rewards, real-time collaboration, and enterprise security. We\'re adding the final polish and advanced AI features.',
+          description: 'Join families using our production-ready platform! All core features are live including 225+ rewards, real-time collaboration, and enterprise security. We&apos;re adding the final polish and advanced AI features.',
           progress: 90,
           badgeColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
           icon: Rocket,
@@ -85,12 +85,12 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           cta: 'Join Beta Program',
           allowSignup: true
         };
-      
+
       case 'staging':
         return {
           title: 'TaskTracker Enterprise',
           subtitle: 'Pre-Launch Ready',
-          description: 'We\'re production-ready! All major features are complete and tested. Final preparations include AI model training, SOC 2 certification completion, and native app store submissions.',
+          description: 'We&apos;re production-ready! All major features are complete and tested. Final preparations include AI model training, SOC 2 certification completion, and native app store submissions.',
           progress: 95,
           badgeColor: 'bg-gradient-to-r from-green-500 to-emerald-500',
           icon: Sparkles,
@@ -106,7 +106,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           cta: 'Secure Launch Access',
           allowSignup: true
         };
-      
+
       default: // production
         return {
           title: 'TaskTracker Enterprise',
@@ -171,7 +171,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent mb-6">
             {config.title}
           </h1>
-          
+
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
             {config.description}
           </p>
@@ -191,7 +191,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
               <p className="text-sm text-gray-500 mt-2">{config.timeline}</p>
             </div>
           )}
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {config.allowSignup ? (
               <Link href="/auth/register">
@@ -207,7 +207,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 {config.cta}
               </Button>
             )}
-            
+
             <Link href="/dashboard">
               <Button variant="outline" size="lg" className="font-bold px-8 py-4 rounded-2xl text-lg border-2">
                 <Eye className="mr-3 h-6 w-6" />
@@ -225,13 +225,13 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
             {stage === 'development' ? 'What We\'ve Built vs Our Goals' : 'Feature Status & Roadmap'}
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            {stage === 'development' 
+            {stage === 'development'
               ? 'Transparent development progress - see exactly what works now and what we\'re building next'
               : 'Track our progress as we build the ultimate family task management platform'
             }
           </p>
         </div>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {config.features.map((feature, index) => (
             <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
@@ -240,7 +240,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                   <CardTitle className="text-lg font-semibold">{feature.name}</CardTitle>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(feature.status)}
-                    <Badge 
+                    <Badge
                       variant={feature.status === 'completed' ? 'default' : feature.status === 'in-progress' ? 'secondary' : 'outline'}
                       className="text-xs"
                     >
@@ -272,25 +272,25 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
             </CardHeader>
             <CardContent className="text-center space-y-4">
               <p className="text-lg text-gray-700 dark:text-gray-300">
-                We believe in honest development. Instead of overpromising, we want to show you exactly what we've accomplished:
+                We believe in honest development. Instead of overpromising, we want to show you exactly what we&apos;ve accomplished:
               </p>
               <div className="grid md:grid-cols-3 gap-6 mt-8">
                 <div className="text-center">
                   <div className="text-3xl font-bold text-green-600 mb-2">175+</div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Working Achievements<br/>(not 500, but growing!)</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Working Achievements<br />(not 500, but growing!)</p>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-blue-600 mb-2">48+</div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Mobile-Responsive Pages<br/>(ready for families now)</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Mobile-Responsive Pages<br />(ready for families now)</p>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-purple-600 mb-2">2</div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Optimized SignalR Hubs<br/>(enterprise real-time architecture)</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Optimized SignalR Hubs<br />(enterprise real-time architecture)</p>
                 </div>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-6">
-                Our roadmap includes SOC 2 certification, true AI predictions, and native mobile apps. 
-                We'll earn these claims through development, not marketing.
+                Our roadmap includes SOC 2 certification, true AI predictions, and native mobile apps.
+                We&apos;ll earn these claims through development, not marketing.
               </p>
             </CardContent>
           </Card>
@@ -302,13 +302,13 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
         <div className="container mx-auto px-6 py-16">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Try What's Working Right Now
+              Try What&apos;s Working Right Now
             </h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              Don't take our word for it - experience the live platform
+              Don&apos;t take our word for it - experience the live platform
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="text-center hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
@@ -392,7 +392,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
               Clear goals and timelines for upcoming features
             </p>
           </div>
-          
+
           <div className="space-y-6">
             <Card className="border-l-4 border-l-yellow-500">
               <CardHeader>
@@ -458,13 +458,13 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
             {stage === 'development' ? 'What Makes Us Different' : 'Revolutionary Features Coming Soon'}
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300">
-            {stage === 'development' 
+            {stage === 'development'
               ? 'Experience the perfect fusion of enterprise productivity and family gamification'
               : 'Experience the perfect fusion of enterprise productivity and gamification innovation'
             }
           </p>
         </div>
-        
+
         <div className="grid lg:grid-cols-3 gap-8">
           <Card className="text-center hover:shadow-xl transition-all duration-300 transform hover:scale-105">
             <CardHeader>
@@ -477,7 +477,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                {stage === 'development' 
+                {stage === 'development'
                   ? 'Currently: 175+ working achievements with real-time celebrations. Goal: 500+ unique rewards with social competition features.'
                   : 'Revolutionary achievement system with 500+ unique rewards, dynamic leaderboards, family tournaments, and social competition that makes productivity addictive.'
                 }
@@ -580,7 +580,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 : 'Connect with forward-thinking families, get exclusive updates, provide valuable feedback, and help shape the future of family productivity'
               }
             </p>
-            
+
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
                 <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-90" />
@@ -594,7 +594,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                   }
                 </p>
               </div>
-              
+
               <div>
                 <Mail className="h-12 w-12 mx-auto mb-4 opacity-90" />
                 <h3 className="text-lg font-semibold mb-2">Insider Newsletter</h3>
@@ -605,7 +605,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                   }
                 </p>
               </div>
-              
+
               <div>
                 <Github className="h-12 w-12 mx-auto mb-4 opacity-90" />
                 <h3 className="text-lg font-semibold mb-2">
@@ -619,7 +619,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
               <Button size="lg" variant="secondary" className="bg-white text-purple-600 hover:bg-gray-100">
                 <MessageCircle className="mr-2 h-5 w-5" />
@@ -640,7 +640,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
             {stage === 'development' ? 'Current Development Stats' : 'Trusted by Families Worldwide'}
           </h2>
-          
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="text-4xl font-bold text-purple-600 mb-2">
@@ -650,7 +650,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 {stage === 'development' ? 'Working Achievements' : 'Active Families'}
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">
                 {stage === 'development' ? '48+' : '2.5M+'}
@@ -659,7 +659,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 {stage === 'development' ? 'Mobile Pages Ready' : 'Tasks Completed'}
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-4xl font-bold text-green-600 mb-2">
                 {stage === 'development' ? '16' : '15M+'}
@@ -668,7 +668,7 @@ export function StageLandingPage({ stage }: StageLandingPageProps) {
                 {stage === 'development' ? 'Board Templates' : 'Points Earned'}
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="text-4xl font-bold text-yellow-600 mb-2">
                 {stage === 'development' ? '75%' : '99.9%'}

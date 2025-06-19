@@ -2,12 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils/utils';
-
-interface SpinnerProps {
-  className?: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg';
-  color?: 'primary' | 'secondary' | 'white';
-}
+import { SpinnerProps } from '@/lib/types/ui-components';
 
 export function Spinner({ className, size = 'md', color = 'primary' }: SpinnerProps) {
   const sizeClasses = {

@@ -75,9 +75,9 @@ export class ActivityService {
       const result = await apiClient.get<UserProgressApiResponse>('/v1/gamification/progress');
       
       // Transform backend UserProgressDTO to our frontend UserProgress type
-      if (result && result.data) {
-        const backendProgress = result.data;
-        const totalExperience = backendProgress.totalPoints || 0;
+      if (result) {
+        const backendProgress = result;
+        const totalExperience = backendProgress.totalPointsEarned || backendProgress.currentPoints || 0;
         const pointsToNext = backendProgress.pointsToNextLevel || 100;
         
         return {

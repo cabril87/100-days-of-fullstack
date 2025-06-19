@@ -4,8 +4,10 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from "@/lib/providers/ThemeProvider";
 import { SidebarProvider } from '@/lib/providers/SidebarContext';
 import { AuthProvider } from '@/lib/providers/AuthProvider';
+import { AppearanceProvider } from '@/lib/contexts/AppearanceContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { SpriteAnimationContainer } from '@/components/ui/SpriteAnimationContainer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -76,15 +78,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
-            <SidebarProvider>
-              <ToastProvider>
-                <AppLayout>
-                  {children}
-                </AppLayout>
-              </ToastProvider>
-            </SidebarProvider>
-          </AuthProvider>
+          <AppearanceProvider>
+            <AuthProvider>
+              <SidebarProvider>
+                <ToastProvider>
+                  <AppLayout>
+                    {children}
+                  </AppLayout>
+                  <SpriteAnimationContainer />
+                </ToastProvider>
+              </SidebarProvider>
+            </AuthProvider>
+          </AppearanceProvider>
         </ThemeProvider>
       </body>
     </html>

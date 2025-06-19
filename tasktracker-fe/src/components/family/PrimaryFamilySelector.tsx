@@ -15,21 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Check, Loader2, Users, Crown } from 'lucide-react';
-import { UserFamilyWithPrimary } from '@/lib/types/family-invitation';
+import { PrimaryFamilySelectorProps } from '@/lib/types/component-props';
 import { cn } from '@/lib/utils/utils';
-
-interface PrimaryFamilySelectorProps {
-  families: UserFamilyWithPrimary[];
-  currentPrimaryFamilyId?: number;
-  onSelectPrimary: (familyId: number) => Promise<void>;
-  isLoading?: boolean;
-  className?: string;
-  showRoleInfo?: boolean;
-}
 
 export function PrimaryFamilySelector({
   families,
-  currentPrimaryFamilyId,
   onSelectPrimary,
   isLoading = false,
   className,

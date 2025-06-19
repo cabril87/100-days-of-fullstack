@@ -8,7 +8,9 @@
  * Comprehensive prop type definitions for all dashboard widgets
  */
 
-import { SharedGamificationProps, SharedConnectionProps } from './gamification';
+import { 
+  UseGamificationEventsReturn,
+} from './gamification';
 import { User } from './auth';
 import { FamilyDTO } from './family-invitation';
 import { Task } from './task';
@@ -33,6 +35,19 @@ export interface DashboardInitialData {
   stats: DashboardStats;
   family: FamilyDTO | null;
   recentTasks: Task[];
+}
+
+// ================================
+// SHARED PROPS FOR CONSISTENCY
+// ================================
+
+export interface SharedGamificationProps {
+  isConnected: boolean;
+  gamificationData: UseGamificationEventsReturn;
+}
+
+export interface SharedConnectionProps {
+  isConnected: boolean;
 }
 
 // ================================
@@ -74,14 +89,4 @@ export interface NotificationStreamProps extends SharedConnectionProps {
 export interface DashboardProps {
   user: User | null;
   initialData?: DashboardInitialData;
-}
-
-// ================================
-// RE-EXPORT SHARED TYPES
-// ================================
-
-export type {
-  UseGamificationEventsReturn,
-  SharedGamificationProps,
-  SharedConnectionProps
-} from './gamification'; 
+} 

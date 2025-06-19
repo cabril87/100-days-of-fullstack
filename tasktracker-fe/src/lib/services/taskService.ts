@@ -590,8 +590,8 @@ export class TaskService {
    */
   async getEnhancedFamilyTaskStats(familyId: number): Promise<FamilyTaskStats> {
     try {
-      // Use the TaskItems statistics endpoint since family-specific stats endpoint doesn't exist
-      const result = await apiClient.get<ApiResponse<FamilyTaskStats>>(`/v1/taskitems/statistics`);
+      // Use family-specific statistics endpoint
+      const result = await apiClient.get<ApiResponse<FamilyTaskStats>>(`/v1/family/${familyId}/stats`);
       return result?.data || {
         totalTasks: 0,
         completedTasks: 0,
@@ -604,16 +604,32 @@ export class TaskService {
       };
     } catch (error) {
       console.error('Failed to fetch enhanced family task stats:', error);
-      return {
-        totalTasks: 0,
-        completedTasks: 0,
-        overdueTasks: 0,
-        weeklyProgress: 0,
-        familyScore: 0,
-        memberStats: [],
-        recentAchievements: [],
-        sharedGoals: []
-      };
+      // Fallback to general statistics if family-specific endpoint fails
+      try {
+        const fallbackResult = await apiClient.get<ApiResponse<FamilyTaskStats>>(`/v1/taskitems/statistics`);
+        return fallbackResult?.data || {
+          totalTasks: 0,
+          completedTasks: 0,
+          overdueTasks: 0,
+          weeklyProgress: 0,
+          familyScore: 0,
+          memberStats: [],
+          recentAchievements: [],
+          sharedGoals: []
+        };
+      } catch (fallbackError) {
+        console.error('Failed to fetch fallback task stats:', fallbackError);
+        return {
+          totalTasks: 0,
+          completedTasks: 0,
+          overdueTasks: 0,
+          weeklyProgress: 0,
+          familyScore: 0,
+          memberStats: [],
+          recentAchievements: [],
+          sharedGoals: []
+        };
+      }
     }
   }
 

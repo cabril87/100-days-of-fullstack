@@ -14,33 +14,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Star, TrendingUp, Zap, Crown } from 'lucide-react';
-import { useGamificationEvents } from '@/lib/hooks/useGamificationEvents';
-import { useGamificationEventsStub } from '@/lib/hooks/useGamificationEventsStub';
 import { LivePointsWidgetProps } from '@/lib/types/widget-props';
 
 export function LivePointsWidget({ 
   userId, 
   className = '',
-  isConnected: sharedIsConnected,
-  gamificationData: sharedGamificationData
+  isConnected = false,
+  gamificationData
 }: LivePointsWidgetProps) {
-  // ✨ Use stub when shared data is provided to prevent duplicate connections
-  const shouldUseLocalData = sharedIsConnected === undefined;
-  const localGamificationData = shouldUseLocalData 
-    ? useGamificationEvents(userId) 
-    : useGamificationEventsStub();
-  const gamificationData = sharedGamificationData || localGamificationData;
-  
+  // Use shared gamification data (always provided from Dashboard)
   const {
-    currentPoints,
-    currentLevel,
-    isLoading,
-    isConnected: localIsConnected,
-    recentPointsEarned
-  } = gamificationData;
+    currentPoints = 0,
+    currentLevel = 1,
+    isLoading = false,
+    recentPointsEarned = []
+  } = gamificationData || {};
 
-  // ✨ Use shared connection status if provided
-  const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localIsConnected;
+  // Use shared connection status
+  const connectionStatus = isConnected;
 
   // Animation state
   const [isAnimating, setIsAnimating] = useState(false);
@@ -73,7 +64,7 @@ export function LivePointsWidget({
           </div>
           Points & Level
           {/* Real-time connection indicator */}
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
+          <div className={`w-2 h-2 rounded-full ${connectionStatus ? 'bg-green-500 animate-pulse' : 'bg-red-400 animate-pulse'}`} />
         </CardTitle>
         <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300 border-yellow-300 dark:border-yellow-600">
           Level {isLoading ? '...' : currentLevel}
@@ -197,7 +188,7 @@ export function LivePointsWidget({
           )}
 
           {/* Connection Status */}
-          {!isConnected && !isLoading && (
+          {!connectionStatus && !isLoading && (
             <div className="text-xs text-amber-600 dark:text-amber-400 text-center py-2">
               ⚠️ Offline - Points will sync when reconnected
             </div>

@@ -270,51 +270,65 @@ export function MFAStatusCard({
   const securityInfo = getSecurityLevel();
 
   return (
-    <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-purple-900 dark:text-purple-100">
-              <Shield className="h-5 w-5" />
-              Two-Factor Authentication
+    <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 shadow-xl overflow-hidden">
+      <CardHeader className="pb-2 sm:pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="flex items-center gap-2 sm:gap-3 text-purple-900 dark:text-purple-100 text-base sm:text-lg">
+              <div className="p-1 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg">
+                <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
+              <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent font-bold">
+                <span className="hidden sm:inline">Two-Factor Authentication</span>
+                <span className="sm:hidden">2FA</span>
+              </span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
               Add an extra layer of security to your account
             </CardDescription>
           </div>
-          <Badge className={`flex items-center gap-1 ${securityInfo.color}`}>
+          <Badge className={`flex items-center gap-1 text-xs sm:text-sm px-2 py-1 rounded-lg shadow-lg ${securityInfo.color}`}>
             {securityInfo.icon}
-            {securityInfo.level}
+            <span className="hidden sm:inline">{securityInfo.level}</span>
+            <span className="sm:hidden">{securityInfo.level.split(' ')[0]}</span>
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {/* Status Information */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
+        <div className="space-y-2 sm:space-y-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {status.isEnabled ? (
-              <Check className="h-5 w-5 text-green-600" />
+              <div className="p-1 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+                <Check className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
             ) : (
-              <X className="h-5 w-5 text-red-600" />
+              <div className="p-1 bg-gradient-to-r from-red-500 to-pink-500 rounded-lg">
+                <X className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
             )}
-            <span className="text-sm font-medium">
+            <span className="text-xs sm:text-sm font-medium">
               MFA is {status.isEnabled ? 'enabled' : 'disabled'}
             </span>
           </div>
           
           {status.setupDate && (
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Setup {formatSetupDate(status.setupDate)}
               </span>
             </div>
           )}
           
           {status.isEnabled && (
-            <div className="flex items-center gap-3">
-              <Key className="h-5 w-5 text-gray-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1 bg-gradient-to-r from-amber-500 to-yellow-500 rounded-lg">
+                <Key className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 {status.backupCodesRemaining} backup codes remaining
               </span>
             </div>
@@ -323,9 +337,9 @@ export function MFAStatusCard({
 
         {/* Backup Codes Warning */}
         {status.isEnabled && status.backupCodesRemaining <= 2 && (
-          <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
+          <Alert variant="default" className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 shadow-lg">
+            <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200 text-xs sm:text-sm">
               {status.backupCodesRemaining === 0 
                 ? 'You have no backup codes left. Generate new ones immediately.'
                 : `You only have ${status.backupCodesRemaining} backup codes left. Consider generating new ones.`
@@ -335,42 +349,46 @@ export function MFAStatusCard({
         )}
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 pt-2 sm:pt-4">
           {!status.isEnabled ? (
             <Button
               onClick={onSetup}
-              className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
+              className="relative bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:via-indigo-700 hover:to-blue-700 text-white font-bold text-sm sm:text-base rounded-xl shadow-xl hover:shadow-purple-500/25 transform hover:scale-105 transition-all duration-300 overflow-hidden group flex items-center gap-2 px-4 py-2 h-10 sm:h-12"
             >
-              <Shield className="h-4 w-4" />
-              Setup MFA
+              <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <Shield className="h-3 w-3 sm:h-4 sm:w-4 relative z-10" />
+              <span className="relative z-10">Setup MFA</span>
             </Button>
           ) : (
             <>
               <Button
                 onClick={onViewBackupCodes}
                 variant="outline"
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 sm:gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm h-10 sm:h-12"
               >
-                <Key className="h-4 w-4" />
-                View Backup Codes
+                <Key className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">View Backup Codes</span>
+                <span className="sm:hidden">View Codes</span>
               </Button>
               
               <Button
                 onClick={onRegenerateBackupCodes}
                 variant="outline"
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 sm:gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/30 hover:border-white/50 shadow-lg hover:shadow-xl transition-all duration-200 text-xs sm:text-sm h-10 sm:h-12"
               >
-                <RefreshCw className="h-4 w-4" />
-                Generate New Codes
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Generate New Codes</span>
+                <span className="sm:hidden">New Codes</span>
               </Button>
               
               <Button
                 onClick={onDisable}
                 variant="outline"
-                className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 flex items-center gap-2"
+                className="text-red-400 hover:text-red-300 border-red-400/30 hover:border-red-300/50 bg-red-500/10 hover:bg-red-500/20 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm h-10 sm:h-12"
               >
-                <X className="h-4 w-4" />
-                Disable MFA
+                <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Disable MFA</span>
+                <span className="sm:hidden">Disable</span>
               </Button>
             </>
           )}
@@ -378,11 +396,11 @@ export function MFAStatusCard({
 
         {/* Security Tips */}
         {!status.isEnabled && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 sm:p-4 shadow-lg">
+            <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2 text-sm sm:text-base">
               Why enable MFA?
             </h4>
-            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+            <ul className="text-xs sm:text-sm text-blue-800 dark:text-blue-200 space-y-1">
               <li>• Protects your account even if your password is compromised</li>
               <li>• Required for accessing sensitive family management features</li>
               <li>• Recommended by security experts worldwide</li>

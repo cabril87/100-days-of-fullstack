@@ -6,7 +6,7 @@
  * Comprehensive family-friendly gamification system with enterprise-level features
  */
 
-import { ReactNode } from 'react';
+
 
 // ================================
 // FAMILY GAMIFICATION CORE
@@ -461,7 +461,7 @@ export interface WidgetConfiguration {
   position: { x: number; y: number };
   size: { width: number; height: number };
   isVisible: boolean;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   permissions: WidgetPermissions;
 }
 
@@ -502,7 +502,7 @@ export interface GamificationEventPayload {
   eventType: 'achievement_unlocked' | 'level_up' | 'streak_updated' | 'challenge_completed' | 'goal_achieved';
   userId: number;
   familyId: number;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   timestamp: Date;
   shouldNotifyFamily: boolean;
   celebrationLevel: 'minimal' | 'normal' | 'festive';

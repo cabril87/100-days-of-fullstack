@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService, AuthServiceError } from '../services/authService';
 import { familyInvitationService } from '../services/familyInvitationService';
@@ -15,19 +15,31 @@ import {
 } from '../types/auth';
 import { shouldSkipInitialAuth } from '../utils/authUtils';
 
-// Auth Reducer Types
+// Enhanced Auth Reducer Types for Enterprise State Management
 type AuthAction =
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_INITIALIZING'; payload: boolean }
   | { type: 'SET_USER'; payload: { user: User; accessToken: string; refreshToken: string } }
   | { type: 'UPDATE_USER'; payload: User }
   | { type: 'UPDATE_TOKENS'; payload: { accessToken: string; refreshToken: string } }
   | { type: 'CLEAR_AUTH' }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_INITIALIZED'; payload: boolean };
 
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+// Enhanced AuthState with proper initialization tracking
+interface EnhancedAuthState extends AuthState {
+  isInitializing: boolean;
+  isInitialized: boolean;
+}
+
+const authReducer = (state: EnhancedAuthState, action: AuthAction): EnhancedAuthState => {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
+    case 'SET_INITIALIZING':
+      return { ...state, isInitializing: action.payload };
+    case 'SET_INITIALIZED':
+      return { ...state, isInitialized: action.payload, isInitializing: false };
     case 'SET_USER':
       return {
         ...state,
@@ -36,6 +48,8 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         refreshToken: action.payload.refreshToken,
         isAuthenticated: true,
         isLoading: false,
+        isInitializing: false,
+        isInitialized: true,
       };
     case 'UPDATE_USER':
       return { ...state, user: action.payload };
@@ -52,21 +66,33 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         refreshToken: null,
         isLoading: false,
         isAuthenticated: false,
+        isInitializing: false,
+        isInitialized: true, // Important: still initialized, just not authenticated
       };
     default:
       return state;
   }
 };
 
-const initialState: AuthState = {
+const initialState: EnhancedAuthState = {
   user: null,
   accessToken: null,
   refreshToken: null,
   isLoading: true,
   isAuthenticated: false,
+  isInitializing: true,
+  isInitialized: false,
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Enhanced AuthContextType with initialization status
+interface EnhancedAuthContextType extends Omit<AuthContextType, 'isLoading'> {
+  isLoading: boolean;
+  isInitializing: boolean;
+  isInitialized: boolean;
+  isReady: boolean; // Helper for components to know when auth is fully ready
+}
+
+const AuthContext = createContext<EnhancedAuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -76,7 +102,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const router = useRouter();
   const pathname = usePathname();
-  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const initializationAttempted = useRef(false);
+  const mountedRef = useRef(true);
+
+  // Helper to determine if auth is ready for other systems (like SignalR)
+  const isReady = state.isInitialized && !state.isInitializing;
 
   // Legacy token cleanup helper (for transitioning from localStorage to cookies)
   const clearTokens = (): void => {
@@ -202,68 +232,91 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Enterprise-grade auth initialization with proper state management
+  const initializeAuth = useCallback(async (): Promise<void> => {
+    if (initializationAttempted.current || !mountedRef.current) {
+      return;
+    }
+
+    initializationAttempted.current = true;
+    dispatch({ type: 'SET_INITIALIZING', payload: true });
+
+    try {
+      console.log(`🔐 Initializing auth for page: ${pathname}`);
+      
+      // Try to get current user from HTTP-only cookie session
+      const user = await authService.getCurrentUser();
+      
+      if (!mountedRef.current) return; // Component unmounted during async operation
+      
+      // Check if user is family admin
+      const isFamilyAdmin = await familyInvitationService.isUserFamilyAdmin().catch(() => false);
+      
+      if (!mountedRef.current) return; // Component unmounted during async operation
+      
+      const userWithFamilyStatus = {
+        ...user,
+        isFamilyAdmin
+      };
+      
+      console.log('✅ Auth initialization successful:', userWithFamilyStatus.email);
+      dispatch({
+        type: 'SET_USER',
+        payload: { 
+          user: userWithFamilyStatus, 
+          accessToken: 'cookie-based', // Placeholder
+          refreshToken: 'cookie-based' // Placeholder
+        },
+      });
+      
+    } catch (err) {
+      if (!mountedRef.current) return; // Component unmounted during async operation
+      
+      // Check if it's a 401 error (no valid session) - this is expected when not logged in
+      if (err instanceof AuthServiceError && err.status === 401) {
+        console.log('🔐 No authentication session found - user not logged in');
+      } else {
+        console.error('❌ Cookie-based auth initialization failed:', err);
+      }
+      
+      // No valid cookie session, mark as initialized but not authenticated
+      dispatch({ type: 'CLEAR_AUTH' });
+      
+      // Clean up any legacy localStorage tokens
+      clearTokens();
+    } finally {
+      if (mountedRef.current) {
+        dispatch({ type: 'SET_INITIALIZED', payload: true });
+      }
+    }
+  }, [pathname]);
+
   // Initialize auth state on mount - Using cookie-based authentication
   useEffect(() => {
-    // Only initialize auth once globally, not per pathname change
-    if (hasInitialized) {
-      return; // Already initialized, don't run again
-    }
+    mountedRef.current = true;
 
     // Skip auth initialization on first load of pure public pages
     if (shouldSkipInitialAuth(pathname)) {
       console.log(`🔓 Skipping initial auth for public page: ${pathname}`);
-        dispatch({ type: 'SET_LOADING', payload: false });
-      setHasInitialized(true);
-        return;
-      }
+      dispatch({ type: 'CLEAR_AUTH' });
+      return;
+    }
 
-    const initializeAuth = async (): Promise<void> => {
-      try {
-        console.log(`🔐 Initializing auth for page: ${pathname}`);
-        // Try to get current user from HTTP-only cookie session
-        const user = await authService.getCurrentUser();
-        
-        // Check if user is family admin
-        const isFamilyAdmin = await familyInvitationService.isUserFamilyAdmin().catch(() => false);
-        const userWithFamilyStatus = {
-          ...user,
-          isFamilyAdmin
-        };
-        
-        dispatch({
-          type: 'SET_USER',
-          payload: { 
-            user: userWithFamilyStatus, 
-            accessToken: 'cookie-based', // Placeholder
-            refreshToken: 'cookie-based' // Placeholder
-          },
-        });
-        setHasInitialized(true);
-      } catch (err) {
-        // Check if it's a 401 error (no valid session) - this is expected when not logged in
-        if (err instanceof AuthServiceError && err.status === 401) {
-          console.log('🔐 No authentication session found - user not logged in');
-        } else {
-          console.error('❌ Cookie-based auth initialization failed:', err);
-        }
-        
-        // No valid cookie session, user needs to login
-          dispatch({ type: 'SET_LOADING', payload: false });
-        
-        // Clean up any legacy localStorage tokens
-        clearTokens();
-        setHasInitialized(true);
-      }
+    // Only initialize if not already attempted
+    if (!initializationAttempted.current) {
+      initializeAuth();
+    }
+
+    return () => {
+      mountedRef.current = false;
     };
-
-    initializeAuth();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitialized]); // Intentionally exclude pathname to prevent re-initialization on navigation
+  }, [pathname, initializeAuth]);
 
   return (
     <AuthContext.Provider
       value={{
         ...state,
+        isReady,
         login,
         register,
         logout,
@@ -278,7 +331,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = (): EnhancedAuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

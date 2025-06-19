@@ -20,9 +20,7 @@ import {
   FamilyRelationshipType,
   getRelationshipDisplayName,
   PrimaryFamilyStatusDTO,
-  SetPrimaryFamilyRequest,
-  UserFamilyWithPrimary,
-  PrimaryFamilyChangeNotification
+  UserFamilyWithPrimary
 } from '../types/family-invitation';
 import { FamilyMemberAgeGroup } from '../types/auth';
 import { apiClient } from '../config/api-client';
@@ -42,6 +40,25 @@ export class FamilyInvitationApiError extends Error {
 
 // Family Invitation Service Class
 export class FamilyInvitationService {
+  // Cache for preventing duplicate API calls
+  private primaryFamilyPromise: Promise<FamilyDTO | null> | null = null;
+  private allFamiliesPromise: Promise<FamilyDTO[]> | null = null;
+  private familyRelationshipsPromise: Promise<UserFamilyRelationships> | null = null;
+  private cacheTimestamp = 0;
+  private readonly CACHE_DURATION = 30000; // 30 seconds
+
+  // Clear cache when it's stale
+  private isCacheValid(): boolean {
+    return Date.now() - this.cacheTimestamp < this.CACHE_DURATION;
+  }
+
+  private clearCache(): void {
+    this.primaryFamilyPromise = null;
+    this.allFamiliesPromise = null;
+    this.familyRelationshipsPromise = null;
+    this.cacheTimestamp = 0;
+  }
+
   // === FAMILY OPERATIONS ===
 
   /**
@@ -49,7 +66,20 @@ export class FamilyInvitationService {
    */
   async getAllFamilies(): Promise<FamilyDTO[]> {
     try {
-      return await apiClient.get<FamilyDTO[]>('/v1/family');
+      if (this.allFamiliesPromise && this.isCacheValid()) {
+        return await this.allFamiliesPromise;
+      }
+      
+      this.allFamiliesPromise = apiClient.get<FamilyDTO[]>('/v1/family').then(result => {
+        this.cacheTimestamp = Date.now();
+        return result;
+      }).catch(error => {
+        // Clear failed promise from cache
+        this.allFamiliesPromise = null;
+        throw error;
+      });
+      
+      return await this.allFamiliesPromise;
     } catch (error) {
       console.error('Failed to fetch families:', error);
       return [];
@@ -93,7 +123,9 @@ export class FamilyInvitationService {
    */
   async createFamily(familyData: FamilyCreateDTO): Promise<FamilyDTO> {
     try {
-      return await apiClient.post<FamilyDTO>('/v1/family', familyData);
+      const result = await apiClient.post<FamilyDTO>('/v1/family', familyData);
+      this.clearCache(); // Clear cache after family creation
+      return result;
     } catch (error) {
       console.error('Failed to create family:', error);
       throw error;
@@ -130,6 +162,7 @@ export class FamilyInvitationService {
   async leaveFamily(familyId: number): Promise<void> {
     try {
       await apiClient.post<void>(`/v1/family/${familyId}/leave`);
+      this.clearCache(); // Clear cache after leaving family
     } catch (error) {
       console.error('Failed to leave family:', error);
       throw error;
@@ -343,7 +376,20 @@ export class FamilyInvitationService {
    */
   async getUserFamilyRelationships(): Promise<UserFamilyRelationships> {
     try {
-      return await apiClient.get<UserFamilyRelationships>('/v1/family/user-relationships');
+      if (this.familyRelationshipsPromise && this.isCacheValid()) {
+        return await this.familyRelationshipsPromise;
+      }
+      
+      this.familyRelationshipsPromise = apiClient.get<UserFamilyRelationships>('/v1/family/user-relationships').then(result => {
+        this.cacheTimestamp = Date.now();
+        return result;
+      }).catch(error => {
+        // Clear failed promise from cache
+        this.familyRelationshipsPromise = null;
+        throw error;
+      });
+      
+      return await this.familyRelationshipsPromise;
     } catch (error) {
       console.error('Failed to fetch user family relationships:', error);
       throw error;
@@ -1083,13 +1129,33 @@ export class FamilyInvitationService {
    */
   async getPrimaryFamily(): Promise<FamilyDTO | null> {
     try {
-      return await apiClient.get<FamilyDTO>('/v1/family/primary');
-    } catch (error: any) {
-      if (error?.status === 404) {
-        // No primary family set - this is normal
-        console.debug('User has no primary family set yet');
+      if (this.primaryFamilyPromise && this.isCacheValid()) {
+        return await this.primaryFamilyPromise;
+      }
+      
+      this.primaryFamilyPromise = apiClient.get<FamilyDTO>('/v1/family/primary').then(result => {
+        this.cacheTimestamp = Date.now();
+        return result;
+      }).catch(error => {
+        // Clear failed promise from cache only for non-404 errors
+        if ((error as { statusCode?: number })?.statusCode !== 404) {
+          this.primaryFamilyPromise = null;
+        } else {
+          // Cache null result for 404s to prevent repeated failed requests
+          this.primaryFamilyPromise = Promise.resolve(null);
+          this.cacheTimestamp = Date.now();
+        }
+        throw error;
+      });
+      
+      return await this.primaryFamilyPromise;
+    } catch (error: unknown) {
+      if ((error as { statusCode?: number })?.statusCode === 404) {
+        // No primary family set - this is normal for new users
+        // Don't log this as it's expected behavior
         return null;
       }
+      // Only log unexpected errors (non-404)
       console.error('Failed to fetch primary family:', error);
       throw error;
     }
@@ -1102,6 +1168,7 @@ export class FamilyInvitationService {
     try {
       const result = await apiClient.post<FamilyDTO>(`/v1/family/${familyId}/set-primary`);
       console.log(`Successfully set family ${familyId} as primary family`);
+      this.clearCache();
       return result;
     } catch (error) {
       console.error('Failed to set primary family:', error);
@@ -1116,6 +1183,7 @@ export class FamilyInvitationService {
     try {
       await apiClient.put<void>(`/v1/family/primary/${familyId}`);
       console.log(`Successfully updated primary family to ${familyId}`);
+      this.clearCache();
       return true;
     } catch (error) {
       console.error('Failed to update primary family:', error);
@@ -1130,7 +1198,7 @@ export class FamilyInvitationService {
     try {
       const [allFamilies, primaryFamily] = await Promise.all([
         this.getAllFamilies(),
-        this.getPrimaryFamily()
+        this.getPrimaryFamily().catch(() => null) // Handle 404 gracefully
       ]);
 
       return allFamilies.map(family => ({
@@ -1141,7 +1209,8 @@ export class FamilyInvitationService {
         canSetAsPrimary: true // TODO: Add actual permission check
       }));
     } catch (error) {
-      console.error('Failed to fetch families with primary indication:', error);
+      // Only log unexpected errors (not 404 for no primary family)
+      console.debug('Could not fetch families with primary indication (normal for new users):', error);
       return [];
     }
   }
@@ -1152,8 +1221,8 @@ export class FamilyInvitationService {
   async getPrimaryFamilyStatus(): Promise<PrimaryFamilyStatusDTO> {
     try {
       const [primaryFamily, allFamilies] = await Promise.all([
-        this.getPrimaryFamily(),
-        this.getAllFamilies()
+        this.getPrimaryFamily().catch(() => null), // Handle 404 gracefully
+        this.getAllFamilies().catch(() => []) // Handle potential errors
       ]);
 
       return {
@@ -1163,7 +1232,8 @@ export class FamilyInvitationService {
         canSetPrimary: allFamilies.length > 0
       };
     } catch (error) {
-      console.error('Failed to get primary family status:', error);
+      // Only log unexpected errors (not 404 for primary family)
+      console.debug('Could not get primary family status (normal for new users):', error);
       return {
         hasPrimaryFamily: false,
         primaryFamily: null,

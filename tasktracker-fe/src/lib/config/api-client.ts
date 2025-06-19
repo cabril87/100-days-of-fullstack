@@ -3,6 +3,8 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
+import type { ApiErrorDetails, HttpErrorDetails } from '@/lib/types/api-client';
+
 // ================================
 // API CONFIGURATION
 // ================================
@@ -176,40 +178,128 @@ const getCsrfTokenFromCookie = (): string | null => {
   return null;
 };
 
-// Request timeout wrapper
+// ================================
+// CACHING SYSTEM FOR DUPLICATE API CALLS
+// ================================
+
+interface CacheEntry<T> {
+  data: Promise<T>;
+  timestamp: number;
+}
+
+class ApiCache {
+  private cache = new Map<string, CacheEntry<unknown>>();
+  private readonly CACHE_TTL = 5000; // 5 seconds
+
+  get<T>(key: string): Promise<T> | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    // Check if cache is still valid
+    if (Date.now() - entry.timestamp > this.CACHE_TTL) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data as Promise<T>;
+  }
+
+  set<T>(key: string, promise: Promise<T>): Promise<T> {
+    this.cache.set(key, {
+      data: promise,
+      timestamp: Date.now()
+    });
+    
+    // Clean up cache entry when promise resolves/rejects
+    promise.finally(() => {
+      setTimeout(() => this.cache.delete(key), this.CACHE_TTL);
+    });
+    
+    return promise;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+const apiCache = new ApiCache();
+
+// ================================
+// UTILITY FUNCTIONS (WITH CACHE)
+// ================================
+
+// Check if this is an expected 404 for family endpoints
+const isExpectedFamilyError = (url: string, error: ApiErrorDetails): boolean => {
+  const statusCode = error?.statusCode || error?.status;
+  if (statusCode !== 404) return false;
+
+  const hasExpectedUrl = url.includes('/family/primary') ||
+         url.includes('/family/relationships') ||
+         url.includes('/family/stats');
+         
+  const hasExpectedMessage = Boolean(error?.message?.includes('No primary family') ||
+         error?.message?.includes('not found') ||
+         error?.message?.includes('No family found'));
+         
+  return hasExpectedUrl || hasExpectedMessage;
+};
+
 export const withTimeout = <T>(
   promise: Promise<T>, 
   timeoutMs: number = API_CONFIG.TIMEOUT
 ): Promise<T> => {
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Request timeout')), timeoutMs);
-  });
-  
-  return Promise.race([promise, timeoutPromise]);
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
 };
 
-// Retry utility with exponential backoff
 export const withRetry = async <T>(
   fn: () => Promise<T>,
   maxAttempts: number = API_CONFIG.RETRY_ATTEMPTS,
   baseDelay: number = API_CONFIG.RETRY_DELAY
 ): Promise<T> => {
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
       
-      if (attempt === maxAttempts) break;
-      
-      // Exponential backoff with jitter
-      const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      // Only log unexpected errors on final attempt
+      if (attempt === maxAttempts) {
+        const errorDetails = error as HttpErrorDetails;
+        const url = errorDetails?.url || 'unknown';
+        
+        // Don't log expected family 404 errors
+        if (!isExpectedFamilyError(url, errorDetails as ApiErrorDetails)) {
+          console.error(`❌ API Request failed after ${maxAttempts} attempts:`, {
+            url,
+            status: errorDetails?.statusCode || errorDetails?.status,
+            message: errorDetails?.message,
+            attempt,
+            maxAttempts
+          });
+        }
+      }
+
+      // Don't retry on client errors (400-499) except for 429 (rate limit)
+      const statusCode = (error as HttpErrorDetails)?.statusCode || (error as HttpErrorDetails)?.status;
+      if (statusCode && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+        break;
+      }
+
+      if (attempt < maxAttempts) {
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
   }
-  
+
   throw lastError!;
 };
 
@@ -269,10 +359,25 @@ export class ApiClient {
         // Ignore JSON parsing errors
       }
       
-      // Log 404s as debug instead of error (common for new users)
-      if (response.status === 404) {
+      // Check if this is an expected 404 for family-related endpoints
+      const isExpected404 = response.status === 404 && 
+        (response.url.includes('/family/primary') || 
+         response.url.includes('/family/relationships') ||
+         response.url.includes('/family/stats') ||
+         errorData?.message?.includes('No primary family') ||
+         errorData?.message?.includes('not found') ||
+         errorData?.message?.includes('No family found'));
+      
+      // Only log errors that aren't expected 404s for primary family
+      if (isExpected404) {
+        // Suppress expected 404s completely in development to reduce noise
+        if (process.env.NODE_ENV !== 'development') {
+          console.debug(`🔍 Expected 404: ${response.url.split('?')[0]} - ${errorData?.message || 'Resource not found'}`);
+        }
+      } else if (response.status === 404) {
         console.debug(`🔍 Resource not found [404]: ${response.url.split('?')[0]}`);
       } else {
+        // Only log non-404 errors and non-expected errors
         console.error(`❌ API Error [${response.status}]: ${response.url}`, errorData);
       }
       
@@ -298,12 +403,21 @@ export class ApiClient {
   }
   
   async get<T>(endpoint: string, headers?: HeadersInit): Promise<T> {
+    // Create cache key for duplicate request prevention
+    const cacheKey = `GET:${endpoint}:${JSON.stringify(headers || {})}`;
+    
+    // Check if request is already in progress
+    const cached = apiCache.get<T>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    
     // Add cache-busting timestamp to prevent stale data issues
     const separator = endpoint.includes('?') ? '&' : '?';
     const cacheBuster = `_t=${Date.now()}`;
     const url = `${this.baseUrl}${endpoint}${separator}${cacheBuster}`;
     
-    return withTimeout(
+    const requestPromise = withTimeout(
       withRetry(async () => {
         const response = await fetch(url, {
           method: 'GET',
@@ -318,8 +432,17 @@ export class ApiClient {
         });
         
         return this.handleResponse<T>(response);
+      }).catch(error => {
+        // Add URL context to error for better logging
+        if (error && typeof error === 'object') {
+          (error as Record<string, unknown>).url = url;
+        }
+        throw error;
       })
     );
+    
+    // Cache the promise to prevent duplicate requests
+    return apiCache.set(cacheKey, requestPromise);
   }
   
   async post<T>(endpoint: string, body?: unknown, headers?: HeadersInit): Promise<T> {

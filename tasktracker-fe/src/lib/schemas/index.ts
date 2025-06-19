@@ -12,6 +12,7 @@ export * from './family-invitation';
 
 // Parental control schemas
 export * from './parental-control';
+export * from './task-assignment';
 
 // Settings & security schemas
 export * from './settings';
@@ -29,4 +30,7 @@ export * from './board';
 export * from './smart-relationship';
 
 // Customer support schemas
-export * from './customer-support'; 
+export * from './customer-support';
+
+// Enterprise celebrations schemas
+export * from './enterprise-celebrations'; 

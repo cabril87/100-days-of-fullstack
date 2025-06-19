@@ -6,6 +6,11 @@
 import { User } from './auth';
 import { FamilyDTO } from './family-invitation';
 import { Task, TaskStats } from './task';
+import { 
+  UseGamificationEventsReturn,
+  Achievement,
+  Badge
+} from './gamification';
 
 export interface DashboardStats {
   tasksCompleted: number;
@@ -49,16 +54,6 @@ export interface UserProgress {
   achievements: Achievement[];
 }
 
-export interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  iconUrl?: string;
-  pointsRewarded: number;
-  unlockedAt: Date;
-  category: 'productivity' | 'family' | 'consistency' | 'milestone';
-}
-
 // Backend API interfaces for activity service
 export interface BackendActivityItem {
   id: number;
@@ -81,6 +76,112 @@ export interface BackendUserProgress {
 }
 
 export interface UserProgressApiResponse {
-  success: boolean;
-  data: BackendUserProgress;
+  totalPointsEarned?: number;
+  currentPoints?: number;
+  currentLevel?: number;
+  currentStreak?: number;
+  pointsToNextLevel?: number;
+  longestStreak?: number;
+  lastActivityDate?: string;
+  joinedAt?: string;
+  updatedAt?: string;
+}
+
+export interface AchievementApiResponse {
+  id?: number;
+  achievementId?: number;
+  name?: string;
+  achievementName?: string;
+  description?: string;
+  category?: string;
+  pointValue?: number;
+  points?: number;
+  iconUrl?: string;
+  difficulty?: string;
+  unlockedAt?: string;
+  createdAt?: string;
+  isCompleted?: boolean;
+}
+
+export interface BadgeApiResponse {
+  id?: number;
+  badgeId?: number;
+  name?: string;
+  badgeName?: string;
+  description?: string;
+  iconUrl?: string;
+  rarity?: string;
+  pointValue?: number;
+  points?: number;
+  earnedAt?: string;
+  createdAt?: string;
+  isDisplayed?: boolean;
+}
+
+export interface RecentAchievementEvent {
+  achievementId: number;
+  achievementName: string;
+  points: number;
+  timestamp: Date;
+  userId: number;
+}
+
+// ================================
+// DASHBOARD CONNECTION TYPES
+// ================================
+
+export interface DashboardConnectionsProps {
+  userId?: number;
+  enableLogging?: boolean;
+}
+
+export interface ConnectionHealthMetrics {
+  totalConnections: number;
+  totalDisconnections: number;
+  avgConnectionTime: number;
+  uptime: number;
+}
+
+export interface ConnectionHealth {
+  isHealthy: boolean;
+  quality: 'excellent' | 'good' | 'fair' | 'degraded' | 'poor';
+  consecutiveFailures: number;
+  lastError: string | null;
+  metrics: ConnectionHealthMetrics;
+}
+
+export interface DashboardConnectionsReturn {
+  // Connection states
+  isConnected: boolean;
+  signalRStatus: string;
+  
+  // ✨ ENTERPRISE: Advanced connection analytics
+  connectionHealth: ConnectionHealth;
+  
+  // Gamification data - now fully compatible with UseGamificationEventsReturn
+  gamificationData: DashboardGamificationState;
+  
+  // Connection methods
+  refreshGamificationData: () => Promise<void>;
+  reconnect: () => Promise<void>;
+}
+
+// Updated to implement UseGamificationEventsReturn for full compatibility
+export interface DashboardGamificationState extends UseGamificationEventsReturn {
+  // Additional dashboard-specific properties
+  unlockedAchievements: Achievement[]; // Now correctly typed as Achievement[]
+  earnedBadges: Badge[]; // Now correctly typed as Badge[]
+  
+  // Dashboard-specific recent events (separate from inherited recentAchievements)
+  dashboardRecentAchievements?: RecentAchievementEvent[];
+  
+  // API Response data (for internal use)
+  rawAchievements?: AchievementApiResponse[];
+  rawBadges?: BadgeApiResponse[];
+}
+
+// Utility type for transforming API responses to proper types
+export interface ApiResponseTransformer {
+  transformAchievement: (apiResponse: AchievementApiResponse) => Achievement;
+  transformBadge: (apiResponse: BadgeApiResponse) => Badge;
 } 

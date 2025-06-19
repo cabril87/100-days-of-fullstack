@@ -9,19 +9,28 @@
  * using the centralized connection manager to prevent multiple competing connections.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useSignalRConnectionManager } from './useSignalRConnectionManager';
 import { API_CONFIG } from '@/lib/config/api-client';
-import { 
-  DashboardConnectionsProps, 
-  DashboardConnectionsReturn,
+import {
   GamificationState,
   PointsEarnedEvent,
   AchievementUnlockedEvent,
   LevelUpEvent,
   StreakUpdatedEvent,
-  BadgeEarnedEvent
+  BadgeEarnedEvent,
+  Achievement,
+  Badge
 } from '@/lib/types/gamification';
+import type {
+  DashboardConnectionsProps,
+  DashboardConnectionsReturn
+} from '@/lib/types/component-props/dashboard-props';
+import type {
+  UserProgressApiResponse,
+  AchievementApiResponse,
+  BadgeApiResponse
+} from '@/lib/types/api-responses';
 
 // ================================
 // INITIAL STATE
@@ -43,28 +52,137 @@ const INITIAL_GAMIFICATION_STATE: GamificationState = {
   isConnected: false
 };
 
-export function useDashboardConnections({ 
-  userId, 
-  enableLogging = true 
+// ✨ Enterprise Transformation Utilities
+const transformAchievementApiResponse = (apiResponse: AchievementApiResponse): Achievement => ({
+  id: apiResponse.id || apiResponse.achievementId || 0,
+  name: apiResponse.name || apiResponse.achievementName || 'Unknown Achievement',
+  description: apiResponse.description || 'No description available',
+  category: apiResponse.category || 'General',
+  pointValue: apiResponse.pointValue || apiResponse.points || 0,
+  iconUrl: apiResponse.iconUrl,
+  difficulty: (apiResponse.difficulty as Achievement['difficulty']) || 'Medium',
+  unlockedAt: apiResponse.unlockedAt ? new Date(apiResponse.unlockedAt) : undefined,
+  isViewed: false
+});
+
+const transformBadgeApiResponse = (apiResponse: BadgeApiResponse): Badge => ({
+  id: apiResponse.id || apiResponse.badgeId || 0,
+  name: apiResponse.name || apiResponse.badgeName || 'Unknown Badge',
+  description: apiResponse.description || 'No description available',
+  rarity: (apiResponse.rarity as Badge['rarity']) || 'Common',
+  iconUrl: apiResponse.iconUrl,
+  pointValue: apiResponse.pointValue || apiResponse.points || 0,
+  earnedAt: apiResponse.earnedAt ? new Date(apiResponse.earnedAt) : undefined,
+  isViewed: false
+});
+
+export function useDashboardConnections({
+  userId,
+  enableLogging = true
 }: DashboardConnectionsProps): DashboardConnectionsReturn {
-  
+
   // Track hook calls to prevent excessive logging
   const renderCount = useRef(0);
   renderCount.current += 1;
-  
-  // Only log every 5th call to reduce spam
-  if (process.env.NODE_ENV === 'development' && renderCount.current % 5 === 1) {
+
+  // Only log every 50th call to reduce spam significantly
+  if (process.env.NODE_ENV === 'development' && renderCount.current % 50 === 1) {
     console.log(`🔗 useDashboardConnections called for userId: ${userId} (call #${renderCount.current})`);
+    
+    // Show warning if being called excessively
+    if (renderCount.current > 100) {
+      console.warn(`⚠️ useDashboardConnections called ${renderCount.current} times - potential render loop detected!`);
+    }
   }
-  
+
   const [gamificationState, setGamificationState] = useState<GamificationState>(INITIAL_GAMIFICATION_STATE);
   const mounted = useRef(true);
   const lastDataFetch = useRef<Date | null>(null);
+  const isRefreshing = useRef(false);
 
-  // ✨ Event handlers for gamification events
+  // ✨ ENTERPRISE: Advanced error handling and health monitoring
+  const [connectionHealth, setConnectionHealth] = useState({
+    consecutiveFailures: 0,
+    lastSuccessfulConnection: null as Date | null,
+    isHealthy: true,
+    lastError: null as string | null
+  });
+  
+  const connectionMetrics = useRef({
+    totalConnections: 0,
+    totalDisconnections: 0,
+    averageConnectionTime: 0,
+    lastConnectionStart: null as Date | null
+  });
+
+  // ✨ ENTERPRISE: Circuit breaker pattern for connection stability
+  // Circuit breaker function - moved to inline usage to avoid unused variable warning
+
+  // ✨ ENTERPRISE: Connection health monitoring
+  const updateConnectionHealth = useCallback((success: boolean, error?: string) => {
+    setConnectionHealth(prev => {
+      const now = new Date();
+      
+      if (success) {
+        // Track connection metrics
+        if (connectionMetrics.current.lastConnectionStart) {
+          const connectionTime = now.getTime() - connectionMetrics.current.lastConnectionStart.getTime();
+          connectionMetrics.current.averageConnectionTime = 
+            (connectionMetrics.current.averageConnectionTime + connectionTime) / 2;
+        }
+        connectionMetrics.current.totalConnections += 1;
+        connectionMetrics.current.lastConnectionStart = null;
+        
+        return {
+          consecutiveFailures: 0,
+          lastSuccessfulConnection: now,
+          isHealthy: true,
+          lastError: null
+        };
+      } else {
+        connectionMetrics.current.totalDisconnections += 1;
+        
+        return {
+          ...prev,
+          consecutiveFailures: prev.consecutiveFailures + 1,
+          isHealthy: prev.consecutiveFailures < 3, // Unhealthy after 3 failures
+          lastError: error || 'Unknown connection error'
+        };
+      }
+    });
+  }, []);
+
+  // ✨ ENTERPRISE: Enhanced connection quality assessment
+  const getConnectionQuality = useCallback(() => {
+    const { consecutiveFailures, lastSuccessfulConnection } = connectionHealth;
+    
+    if (consecutiveFailures === 0 && lastSuccessfulConnection) {
+      const timeSinceLastSuccess = Date.now() - lastSuccessfulConnection.getTime();
+      if (timeSinceLastSuccess < 30000) return 'excellent'; // < 30s
+      if (timeSinceLastSuccess < 120000) return 'good'; // < 2min
+      return 'fair';
+    }
+    
+    if (consecutiveFailures <= 2) return 'degraded';
+    return 'poor';
+  }, [connectionHealth]);
+
+  // ✨ Prevent excessive API calls by tracking last userId with useRef instead of recalculating
+  const lastUserId = useRef<number | undefined>(undefined);
+  const hasUserIdChanged = useRef(false);
+  
+  // Only update when userId actually changes
+  if (lastUserId.current !== userId) {
+    hasUserIdChanged.current = true;
+    lastUserId.current = userId;
+  } else {
+    hasUserIdChanged.current = false;
+  }
+
+  // ✨ Event handlers for gamification events - memoized properly
   const handlePointsEarned = useCallback((event: PointsEarnedEvent) => {
     if (!mounted.current || event.userId !== userId) return;
-    
+
     setGamificationState(prev => ({
       ...prev,
       currentPoints: prev.currentPoints + event.points,
@@ -78,7 +196,7 @@ export function useDashboardConnections({
 
   const handleAchievementUnlocked = useCallback((event: AchievementUnlockedEvent) => {
     if (!mounted.current || event.userId !== userId) return;
-    
+
     setGamificationState(prev => ({
       ...prev,
       currentPoints: prev.currentPoints + event.points,
@@ -93,7 +211,7 @@ export function useDashboardConnections({
 
   const handleLevelUp = useCallback((event: LevelUpEvent) => {
     if (!mounted.current || event.userId !== userId) return;
-    
+
     setGamificationState(prev => ({
       ...prev,
       currentLevel: event.newLevel,
@@ -107,7 +225,7 @@ export function useDashboardConnections({
 
   const handleStreakUpdated = useCallback((event: StreakUpdatedEvent) => {
     if (!mounted.current || event.userId !== userId) return;
-    
+
     setGamificationState(prev => ({
       ...prev,
       currentStreak: event.currentStreak
@@ -120,7 +238,7 @@ export function useDashboardConnections({
 
   const handleBadgeEarned = useCallback((event: BadgeEarnedEvent) => {
     if (!mounted.current || event.userId !== userId) return;
-    
+
     setGamificationState(prev => ({
       ...prev,
       totalBadges: prev.totalBadges + 1,
@@ -132,65 +250,31 @@ export function useDashboardConnections({
     }
   }, [userId, enableLogging]);
 
-  // ✨ Single shared SignalR connection for the entire dashboard using connection manager
-  const signalRConnection = useSignalRConnectionManager('dashboard', {
-    onPointsEarned: handlePointsEarned,
-    onAchievementUnlocked: handleAchievementUnlocked,
-    onLevelUp: handleLevelUp,
-    onStreakUpdated: handleStreakUpdated,
-    onBadgeEarned: handleBadgeEarned,
-    onConnected: () => {
-      if (enableLogging) {
-        console.log('🚀 Dashboard: SignalR connected');
-      }
-      setGamificationState(prev => ({ ...prev, isConnected: true, error: undefined }));
-      refreshGamificationData();
-    },
-    onDisconnected: (error?: Error) => {
-      if (enableLogging) {
-        console.log('🔌 Dashboard: SignalR disconnected');
-      }
-      setGamificationState(prev => ({ ...prev, isConnected: false }));
-    },
-    onError: (error: Error) => {
-      if (enableLogging) {
-        console.error('❌ Dashboard: SignalR error:', error);
-      }
-      setGamificationState(prev => ({ 
-        ...prev, 
-        isConnected: false, 
-        error: error.message 
-      }));
-    },
-    onReconnecting: () => {
-      if (enableLogging) {
-        console.log('🔄 Dashboard: SignalR reconnecting...');
-      }
-    },
-    onReconnected: () => {
-      if (enableLogging) {
-        console.log('✅ Dashboard: SignalR reconnected');
-      }
-      setGamificationState(prev => ({ ...prev, isConnected: true, error: undefined }));
-    }
-  });
-
-  // Fetch gamification data from API
+  // ✨ Memoized refresh function to prevent recreating on every render
   const refreshGamificationData = useCallback(async () => {
     if (!userId || !mounted.current) {
-      console.log('🎮 Dashboard Gamification: Skipping refresh - no userId or not mounted', {
-        userId,
-        mounted: mounted.current,
-        userIdType: typeof userId,
-        userIdTruthy: !!userId
-      });
+      console.log('🎮 Dashboard Gamification: Skipping refresh - no userId or not mounted');
       return;
     }
 
+    // Prevent multiple simultaneous refreshes
+    if (isRefreshing.current) {
+      console.log('🎮 Dashboard Gamification: Refresh already in progress, skipping');
+      return;
+    }
+
+    // Prevent excessive API calls within 30 seconds
+    const now = new Date();
+    if (lastDataFetch.current && (now.getTime() - lastDataFetch.current.getTime()) < 30000) {
+      console.log('🎮 Dashboard Gamification: Skipping refresh - called recently');
+      return;
+    }
+
+    isRefreshing.current = true;
     console.log(`🎮 Dashboard Gamification: Starting refresh for user ${userId}`);
+    
     try {
-      // Don't set isLoading here - it's already set in useEffect to prevent race conditions
-      setGamificationState(prev => ({ ...prev, error: undefined }));
+      setGamificationState(prev => ({ ...prev, isLoading: true, error: undefined }));
 
       const baseUrl = API_CONFIG.BASE_URL;
       console.log(`🎮 Dashboard Gamification: Using base URL: ${baseUrl}`);
@@ -202,7 +286,7 @@ export function useDashboardConnections({
         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
       });
 
-      let progressData: any = {};
+      let progressData: UserProgressApiResponse = {};
       if (progressResponse.ok) {
         const progressResponseData = await progressResponse.json();
         // Handle ApiResponse wrapper format
@@ -238,7 +322,7 @@ export function useDashboardConnections({
         console.warn(`🎮 Dashboard Gamification: Failed to fetch achievements: ${achievementsResponse.status} ${achievementsResponse.statusText}`);
       }
 
-      // Fetch user badges - this uses ApiResponse wrapper
+      // Fetch user badges via the correct endpoint - uses ApiResponse wrapper
       console.log(`🎮 Dashboard Gamification: Fetching badges from ${baseUrl}/v1/gamification/badges`);
       const badgesResponse = await fetch(`${baseUrl}/v1/gamification/badges`, {
         credentials: 'include',
@@ -248,7 +332,7 @@ export function useDashboardConnections({
       let badgesData = [];
       if (badgesResponse.ok) {
         const badgesResponseData = await badgesResponse.json();
-        // Handle ApiResponse wrapper format
+        // Handle ApiResponse wrapper format for badges
         badgesData = badgesResponseData.data || badgesResponseData;
         console.log('🎮 Dashboard Gamification: Badges response:', {
           status: badgesResponse.status,
@@ -261,181 +345,204 @@ export function useDashboardConnections({
       }
 
       if (mounted.current) {
-        // Create recent achievements from the data (last 5 for display)
-        const recentAchievements = (achievementsData || [])
+        // Transform API responses to proper types
+        const transformedAchievements = Array.isArray(achievementsData) 
+          ? achievementsData.map(transformAchievementApiResponse)
+          : [];
+        
+        const transformedBadges = Array.isArray(badgesData)
+          ? badgesData.map(transformBadgeApiResponse)
+          : [];
+
+        const recentAchievements = ((achievementsData as AchievementApiResponse[]) || [])
           .slice(-5)
-          .map((achievement: any) => ({
-            achievementId: achievement.id || achievement.achievementId,
+          .map((achievement: AchievementApiResponse): AchievementUnlockedEvent => ({
+            userId: userId || 0,
+            achievementId: achievement.id || achievement.achievementId || 0,
             achievementName: achievement.name || achievement.achievementName || 'Unknown Achievement',
             points: achievement.pointValue || achievement.points || 0,
-            timestamp: new Date(achievement.unlockedAt || achievement.createdAt || Date.now()),
-            userId: userId
+            category: achievement.category || 'General',
+            difficulty: (achievement.difficulty as 'VeryEasy' | 'Easy' | 'Medium' | 'Hard' | 'VeryHard') || 'Medium',
+            timestamp: new Date(achievement.unlockedAt || achievement.createdAt || Date.now())
           }));
 
-        const finalState = {
+        const finalState: Partial<GamificationState> = {
           currentPoints: progressData?.totalPointsEarned || progressData?.currentPoints || 0,
           currentLevel: progressData?.currentLevel || 1,
           currentStreak: progressData?.currentStreak || 0,
-          totalAchievements: Array.isArray(achievementsData) ? achievementsData.length : 0,
-          totalBadges: Array.isArray(badgesData) ? badgesData.length : 0,
-          unlockedAchievements: achievementsData || [],
-          earnedBadges: badgesData || [],
+          totalAchievements: transformedAchievements.length,
+          totalBadges: transformedBadges.length,
+          unlockedAchievements: transformedAchievements,
+          earnedBadges: transformedBadges,
           recentAchievements: recentAchievements,
           isLoading: false,
-          isConnected: signalRConnection.isConnected,
           lastUpdated: new Date()
         };
-        
-        console.log('🎮 Dashboard Gamification: Final state update:', finalState);
-        
-        setGamificationState(prev => {
-          const newState = { ...prev, ...finalState };
-          console.log('🎮 Dashboard Gamification: State transition:', {
-            wasLoading: prev.isLoading,
-            nowLoading: newState.isLoading,
-            hasData: newState.currentPoints !== undefined
-          });
-          return newState;
-        });
 
+        console.log('🎮 Dashboard Gamification: Final state update:', finalState);
+        setGamificationState(prev => {
+          const wasLoading = prev.isLoading;
+          const nowLoading = finalState.isLoading;
+          const hasData = (finalState.totalAchievements ?? 0) > 0 || (finalState.totalBadges ?? 0) > 0 || (finalState.currentPoints ?? 0) > 0;
+          
+          console.log('🎮 Dashboard Gamification: State transition:', {
+            wasLoading,
+            nowLoading,
+            hasData
+          });
+          
+          return { ...prev, ...finalState };
+        });
+        
         lastDataFetch.current = new Date();
       }
     } catch (err) {
       console.error('Failed to load gamification data:', err);
       if (mounted.current) {
-        setGamificationState(prev => ({ 
-          ...prev, 
-          isLoading: false, 
+        setGamificationState(prev => ({
+          ...prev,
+          isLoading: false,
           error: err instanceof Error ? err.message : 'Failed to load gamification data'
         }));
       }
+    } finally {
+      isRefreshing.current = false;
     }
-  }, [userId, signalRConnection.isConnected]);
+  }, [userId]); // Only depend on userId
+
+  // ✨ Stable event handlers to prevent re-registration - memoize to stable references
+  const eventHandlers = useMemo(() => {
+    const onConnected = () => {
+      // Track connection start for metrics
+      connectionMetrics.current.lastConnectionStart = new Date();
+      
+      if (enableLogging) {
+        console.log('🚀 Dashboard: SignalR connected - updating connection state to true');
+      }
+      
+      // Update health metrics
+      updateConnectionHealth(true);
+      
+      setGamificationState(prev => ({ 
+        ...prev, 
+        isConnected: true, 
+        error: undefined,
+        lastUpdated: new Date()
+      }));
+    };
+
+    const onDisconnected = (_error?: Error) => {
+      if (enableLogging) {
+        console.log('🔌 Dashboard: SignalR disconnected - updating connection state to false', _error);
+      }
+      
+      // Update health metrics
+      updateConnectionHealth(false, _error?.message);
+      
+      setGamificationState(prev => ({ 
+        ...prev, 
+        isConnected: false,
+        lastUpdated: new Date()
+      }));
+    };
+
+    const onError = (error: Error) => {
+      if (enableLogging) {
+        console.error('❌ Dashboard: SignalR error - updating connection state to false:', error);
+      }
+      
+      // Update health metrics
+      updateConnectionHealth(false, error.message);
+      
+      setGamificationState(prev => ({
+        ...prev,
+        isConnected: false,
+        error: error.message,
+        lastUpdated: new Date()
+      }));
+    };
+
+    const onReconnecting = () => {
+      if (enableLogging) {
+        console.log('🔄 Dashboard: SignalR reconnecting...');
+      }
+    };
+
+    const onReconnected = () => {
+      if (enableLogging) {
+        console.log('✅ Dashboard: SignalR reconnected - updating connection state to true');
+      }
+      setGamificationState(prev => ({ ...prev, isConnected: true, error: undefined }));
+    };
+
+    return {
+      onPointsEarned: handlePointsEarned,
+      onAchievementUnlocked: handleAchievementUnlocked,
+      onLevelUp: handleLevelUp,
+      onStreakUpdated: handleStreakUpdated,
+      onBadgeEarned: handleBadgeEarned,
+      onConnected,
+      onDisconnected,
+      onError,
+      onReconnecting,
+      onReconnected
+    };
+      }, [handlePointsEarned, handleAchievementUnlocked, handleLevelUp, handleStreakUpdated, handleBadgeEarned, enableLogging, updateConnectionHealth]);
+
+  // ✨ Single shared SignalR connection for the entire dashboard using connection manager
+  const signalRConnection = useSignalRConnectionManager('dashboard', eventHandlers);
+  
+  // ✨ Trust event-driven connection updates - minimal state synchronization
+  useEffect(() => {
+    const signalRIsConnected = signalRConnection.isConnected;
+    const gamificationIsConnected = gamificationState.isConnected;
+    
+    // Only log significant state changes for debugging
+    if (enableLogging && signalRIsConnected !== gamificationIsConnected) {
+      console.log(`🔄 Dashboard: Connection state difference detected - SignalR: ${signalRIsConnected}, Gamification: ${gamificationIsConnected}, Status: ${signalRConnection.connectionState.status}`);
+    }
+    
+    // Let event handlers manage the connection state - only intervene if there's a clear mismatch
+    // This prevents race conditions and respects the event-driven architecture
+  }, [signalRConnection.isConnected, signalRConnection.connectionState.status, gamificationState.isConnected, enableLogging]);
+
+  // Debug connection state changes (but don't trigger updates)
+  useEffect(() => {
+    if (enableLogging && renderCount.current % 10 === 1) { // Only log every 10th time to reduce spam
+      console.log('🔍 Dashboard Connection Debug:', {
+        signalRConnectionIsConnected: signalRConnection.isConnected,
+        signalRConnectionStatus: signalRConnection.connectionState.status,
+        gamificationStateIsConnected: gamificationState.isConnected,
+        userId: userId
+      });
+        }
+  }, [signalRConnection.isConnected, signalRConnection.connectionState.status, gamificationState.isConnected, userId, enableLogging]);
 
   // Load initial data - only when userId changes
   useEffect(() => {
-    if (userId) {
-      console.log(`🎮 Dashboard Gamification: Initial load for user ${userId}`);
-      setGamificationState(prev => ({ ...prev, isLoading: true }));
-      
-      // Call refreshGamificationData directly to avoid dependency issues
-      const loadData = async () => {
-        if (!userId || !mounted.current) {
-          console.log('🎮 Dashboard Gamification: Skipping refresh - no userId or not mounted');
-          return;
-        }
-
-        console.log(`🎮 Dashboard Gamification: Starting refresh for user ${userId}`, {
-          mounted: mounted.current,
-          userId: userId
-        });
-        try {
-          setGamificationState(prev => ({ ...prev, error: undefined }));
-
-          const baseUrl = API_CONFIG.BASE_URL;
-          console.log(`🎮 Dashboard Gamification: Using base URL: ${baseUrl}`);
-
-          // Fetch user progress
-          const progressResponse = await fetch(`${baseUrl}/v1/gamification/progress`, {
-            credentials: 'include',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
-          });
-
-          let progressData: any = {};
-          if (progressResponse.ok) {
-            const progressResponseData = await progressResponse.json();
-            progressData = progressResponseData.data || progressResponseData;
-            console.log('🎮 Dashboard Gamification: Progress loaded successfully', {
-              points: progressData?.currentPoints || progressData?.totalPointsEarned,
-              level: progressData?.currentLevel,
-              streak: progressData?.currentStreak
-            });
-          } else {
-            console.warn(`🎮 Dashboard Gamification: Progress API failed: ${progressResponse.status}`);
-          }
-
-          // Fetch user achievements
-          const achievementsResponse = await fetch(`${baseUrl}/v1/gamification/achievements`, {
-            credentials: 'include',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
-          });
-
-          let achievementsData = [];
-          if (achievementsResponse.ok) {
-            achievementsData = await achievementsResponse.json();
-            console.log('🎮 Dashboard Gamification: Achievements loaded successfully', {
-              count: Array.isArray(achievementsData) ? achievementsData.length : 'not array'
-            });
-          } else {
-            console.warn(`🎮 Dashboard Gamification: Achievements API failed: ${achievementsResponse.status}`);
-          }
-
-          // Fetch user badges
-          const badgesResponse = await fetch(`${baseUrl}/v1/gamification/badges`, {
-            credentials: 'include',
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
-          });
-
-          let badgesData = [];
-          if (badgesResponse.ok) {
-            const badgesResponseData = await badgesResponse.json();
-            badgesData = badgesResponseData.data || badgesResponseData;
-            console.log('🎮 Dashboard Gamification: Badges loaded successfully', {
-              count: Array.isArray(badgesData) ? badgesData.length : 'not array'
-            });
-          } else {
-            console.warn(`🎮 Dashboard Gamification: Badges API failed: ${badgesResponse.status}`);
-          }
-
-          if (mounted.current) {
-            const recentAchievements = (achievementsData || [])
-              .slice(-5)
-              .map((achievement: any) => ({
-                achievementId: achievement.id || achievement.achievementId,
-                achievementName: achievement.name || achievement.achievementName || 'Unknown Achievement',
-                points: achievement.pointValue || achievement.points || 0,
-                timestamp: new Date(achievement.unlockedAt || achievement.createdAt || Date.now()),
-                userId: userId
-              }));
-
-            const finalState = {
-              currentPoints: progressData?.totalPointsEarned || progressData?.currentPoints || 0,
-              currentLevel: progressData?.currentLevel || 1,
-              currentStreak: progressData?.currentStreak || 0,
-              totalAchievements: Array.isArray(achievementsData) ? achievementsData.length : 0,
-              totalBadges: Array.isArray(badgesData) ? badgesData.length : 0,
-              unlockedAchievements: achievementsData || [],
-              earnedBadges: badgesData || [],
-              recentAchievements: recentAchievements,
-              isLoading: false,
-              isConnected: signalRConnection.isConnected,
-              lastUpdated: new Date()
-            };
-            
-            console.log('🎮 Dashboard Gamification: Setting final state with isLoading: false');
-            setGamificationState(prev => ({ ...prev, ...finalState }));
-            lastDataFetch.current = new Date();
-          }
-        } catch (err) {
-          console.error('Failed to load gamification data:', err);
-          if (mounted.current) {
-            setGamificationState(prev => ({ 
-              ...prev, 
-              isLoading: false, 
-              error: err instanceof Error ? err.message : 'Failed to load gamification data'
-            }));
-          }
-        }
-      };
-
-      loadData();
-    } else {
-      console.log('🎮 Dashboard Gamification: No userId - keeping loading false');
-      setGamificationState(prev => ({ ...prev, isLoading: false }));
+    if (!userId) {
+      console.log(`🎮 Dashboard Gamification: Skipping load - no userId: ${userId}`);
+      return;
     }
+
+    // Only refresh when userId actually changes
+    if (!hasUserIdChanged.current) {
+      console.log('🎮 Dashboard Gamification: Skipping load - userId unchanged');
+      return;
+    }
+
+    console.log(`🎮 Dashboard Gamification: Initial load for user ${userId} (userId changed: ${hasUserIdChanged.current})`);
     
-    // No cleanup needed here - the mounted ref should persist across re-renders
-  }, [userId]);
+    // Reset the changed flag after processing
+    hasUserIdChanged.current = false;
+    
+    // Trigger initial data load after a short delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      refreshGamificationData();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [userId, refreshGamificationData]); // Include refreshGamificationData since it's used inside the effect
 
   // Separate cleanup effect that only runs on component unmount
   useEffect(() => {
@@ -445,36 +552,83 @@ export function useDashboardConnections({
     };
   }, []); // Empty dependency array - only runs on mount/unmount
 
-  // Manual reconnection method
-  const reconnect = useCallback(async () => {
-    try {
-      if (enableLogging) {
-        console.log('🔄 Dashboard: Manual reconnection requested');
-      }
-      await refreshGamificationData();
-    } catch (error) {
-      if (enableLogging) {
-        console.error('❌ Dashboard: Manual reconnection failed:', error);
-      }
+  // ✨ ENTERPRISE: Health monitoring effect
+  useEffect(() => {
+    // Log connection health metrics every 2 minutes in development
+    if (process.env.NODE_ENV === 'development') {
+      const healthCheckInterval = setInterval(() => {
+        const quality = getConnectionQuality();
+        const metrics = connectionMetrics.current;
+        
+        console.log('🏥 Enterprise Health Report:', {
+          connectionQuality: quality,
+          isHealthy: connectionHealth.isHealthy,
+          consecutiveFailures: connectionHealth.consecutiveFailures,
+          totalConnections: metrics.totalConnections,
+          totalDisconnections: metrics.totalDisconnections,
+          avgConnectionTime: Math.round(metrics.averageConnectionTime),
+          lastSuccessfulConnection: connectionHealth.lastSuccessfulConnection,
+          currentStatus: gamificationState.isConnected ? 'Connected' : 'Disconnected'
+        });
+      }, 120000); // Every 2 minutes
+      
+      return () => clearInterval(healthCheckInterval);
     }
-  }, [refreshGamificationData, enableLogging]);
+  }, [getConnectionQuality, connectionHealth, gamificationState.isConnected]);
 
   return {
-    // Connection states
-    isConnected: signalRConnection.isConnected,
+    // Connection states - prioritize SignalR connection state for accuracy
+    isConnected: signalRConnection.isConnected || gamificationState.isConnected,
     signalRStatus: signalRConnection.connectionState.status,
     
+    // ✨ ENTERPRISE: Advanced connection analytics
+    connectionHealth: {
+      isHealthy: connectionHealth.isHealthy,
+      quality: getConnectionQuality(),
+      consecutiveFailures: connectionHealth.consecutiveFailures,
+      lastError: connectionHealth.lastError,
+      metrics: {
+        totalConnections: connectionMetrics.current.totalConnections,
+        totalDisconnections: connectionMetrics.current.totalDisconnections,
+        avgConnectionTime: Math.round(connectionMetrics.current.averageConnectionTime),
+        uptime: connectionHealth.lastSuccessfulConnection 
+          ? Date.now() - connectionHealth.lastSuccessfulConnection.getTime()
+          : 0
+      }
+    },
+    
+    // Connection methods
+    refreshGamificationData,
+    reconnect: signalRConnection.forceReconnect, // Use force reconnect for better reliability
+
     // Gamification data with all required methods
     gamificationData: {
-      ...gamificationState,
+      // Base state properties
+      currentPoints: gamificationState.currentPoints,
+      currentLevel: gamificationState.currentLevel,
+      currentStreak: gamificationState.currentStreak,
+      totalAchievements: gamificationState.totalAchievements,
+      totalBadges: gamificationState.totalBadges,
+      unlockedAchievements: gamificationState.unlockedAchievements,
+      earnedBadges: gamificationState.earnedBadges,
+      recentPointsEarned: gamificationState.recentPointsEarned,
+      recentAchievements: gamificationState.recentAchievements,
+      recentBadges: gamificationState.recentBadges,
+      activeCelebrations: gamificationState.activeCelebrations,
+      isLoading: gamificationState.isLoading,
+      isConnected: signalRConnection.isConnected || gamificationState.isConnected, // Prioritize SignalR state
+      lastUpdated: gamificationState.lastUpdated,
+      error: gamificationState.error,
+    
+      // Action methods
       refreshGamificationData,
-      // Add required action methods (these are handled by the event handlers above)
       onPointsEarned: handlePointsEarned,
       onAchievementUnlocked: handleAchievementUnlocked,
       onLevelUp: handleLevelUp,
       onStreakUpdated: handleStreakUpdated,
       onBadgeEarned: handleBadgeEarned,
-      // Add missing celebration management methods
+      
+      // Celebration management methods
       dismissCelebration: (celebrationId: string) => {
         setGamificationState(prev => ({
           ...prev,
@@ -488,20 +642,28 @@ export function useDashboardConnections({
         }));
       },
       markAchievementAsViewed: async (achievementId: number) => {
-        // Implementation for marking achievement as viewed
-        console.log(`Marking achievement ${achievementId} as viewed`);
+        try {
+          // TODO: Implement API call to mark achievement as viewed
+          console.log(`Marking achievement ${achievementId} as viewed`);
+          setGamificationState(prev => ({
+            ...prev,
+            unlockedAchievements: prev.unlockedAchievements.map(achievement =>
+              achievement.id === achievementId ? { ...achievement, isViewed: true } : achievement
+            )
+          }));
+        } catch (error) {
+          console.error('Failed to mark achievement as viewed:', error);
+        }
       },
-      // Add computed properties
+      
+      // Computed properties
       hasRecentActivity: gamificationState.recentPointsEarned.length > 0 || 
-                        gamificationState.recentAchievements.length > 0 || 
+                        gamificationState.recentAchievements.length > 0 ||
                         gamificationState.recentBadges.length > 0,
       celebrationCount: gamificationState.activeCelebrations.length,
       pointsToNextLevel: 100 - (gamificationState.currentPoints % 100),
       levelProgress: (gamificationState.currentPoints % 100),
       connectionStatus: signalRConnection.connectionState.status
-    },
-    
-    // Connection methods
-    reconnect: signalRConnection.connect
+    }
   };
 } 

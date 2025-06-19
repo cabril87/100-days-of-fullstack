@@ -31,8 +31,8 @@ interface TeenDashboardProps extends DashboardContentProps {
 }
 
 export default function TeenDashboard({ user, initialData, onTaskComplete, onRequestPermission }: TeenDashboardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialData.recentTasks || []);
-  const [points, setPoints] = useState(initialData.stats.totalPoints || 0);
+  const [tasks, setTasks] = useState<Task[]>(initialData?.recentTasks || []);
+  const [points, setPoints] = useState(initialData?.stats?.totalPoints || 0);
   const [completedToday, setCompletedToday] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'goals' | 'social'>('overview');
   const [weeklyGoal] = useState(10); // Default weekly goal
@@ -46,7 +46,7 @@ export default function TeenDashboard({ user, initialData, onTaskComplete, onReq
     const achievements = [];
     if (completedToday >= 5) achievements.push({ icon: '🔥', title: 'Daily Streak', color: 'bg-orange-100 text-orange-800' });
     if (points >= 200) achievements.push({ icon: '⚡', title: 'Power User', color: 'bg-blue-100 text-blue-800' });
-    if (initialData.stats.streakDays >= 7) achievements.push({ icon: '💪', title: 'Week Warrior', color: 'bg-purple-100 text-purple-800' });
+    if ((initialData?.stats?.streakDays || 0) >= 7) achievements.push({ icon: '💪', title: 'Week Warrior', color: 'bg-purple-100 text-purple-800' });
     if (points >= 500) achievements.push({ icon: '🏆', title: 'Legend', color: 'bg-amber-100 text-amber-800' });
     if (completedToday >= 8) achievements.push({ icon: '🎯', title: 'Focus Master', color: 'bg-green-100 text-green-800' });
     return achievements;
@@ -191,7 +191,7 @@ export default function TeenDashboard({ user, initialData, onTaskComplete, onReq
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <Flame className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold">{initialData.stats.streakDays}</div>
+                    <div className="text-2xl font-bold">{initialData?.stats?.streakDays || 0}</div>
                     <div className="text-sm text-gray-600">Streak</div>
                   </div>
                 </CardContent>

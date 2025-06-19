@@ -2,14 +2,7 @@
 
 import React from 'react';
 import { useTheme } from '@/lib/providers/ThemeProvider';
-
-interface DecorativeLinesProps {
-  position?: 'top' | 'bottom' | 'both';
-  variant?: 'primary' | 'secondary' | 'gamification' | 'theme-adaptive';
-  animate?: boolean;
-  className?: string;
-  thickness?: 'thin' | 'normal' | 'thick';
-}
+import { DecorativeLinesProps } from '@/lib/types/ui-components';
 
 export function DecorativeLines({ 
   position = 'both', 

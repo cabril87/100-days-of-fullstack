@@ -13,18 +13,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   Bell, 
   CheckCircle, 
   X, 
-  Calendar, 
   Clock, 
   Info,
   AlertTriangle,
   Trophy,
   Users,
-  Zap,
   Star,
   Crown,
   Sparkles,
@@ -33,23 +30,17 @@ import {
 import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectionManagerStub';
 import { NotificationStreamProps } from '@/lib/types/widget-props';
+import type { 
+  BackendGamificationEventDTO,
+  BackendTaskCompletionEventDTO
+} from '@/lib/types/backend-signalr-events';
+import { 
+  parseGamificationEvent,
+  parseTaskCompletionEvent
+} from '@/lib/types/backend-signalr-events';
+import type { NotificationItem } from '@/lib/types/activity';
 
-// Enhanced NotificationItem with gamification properties
-interface NotificationItem {
-  id: string;
-  type: 'success' | 'warning' | 'achievement' | 'task' | 'family' | 'info' | 'celebration' | 'milestone';
-  title: string;
-  message: string;
-  timestamp: Date;
-  isRead: boolean;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  actionUrl?: string;
-  actionText?: string;
-  points?: number;
-  celebrationLevel?: 'common' | 'rare' | 'epic' | 'legendary';
-  autoHide?: boolean;
-  requiresAction?: boolean;
-}
+// Using NotificationItem from activity types
 
 export function NotificationStream({ 
   maxDisplay = 5, 
@@ -65,58 +56,83 @@ export function NotificationStream({
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // SignalR connection for real-time notifications
-  const localConnection = shouldUseLocalConnection 
-    ? useSignalRConnectionManager('notification-stream', {
-        onAchievementUnlocked: (event: any) => {
-          addNotification({
-            id: `achievement-${event.achievementId}-${Date.now()}`,
-            type: 'achievement',
-            title: '🏆 Achievement Unlocked!',
-            message: `You've earned "${event.achievementName}" (+${event.points} points)`,
-            timestamp: new Date(event.timestamp),
-            isRead: false,
-            priority: 'high',
-            points: event.points,
-            celebrationLevel: event.points >= 100 ? 'legendary' : event.points >= 50 ? 'epic' : event.points >= 25 ? 'rare' : 'common',
-            autoHide: false,
-            requiresAction: false
-          });
-        },
-        onTaskCompleted: (event: any) => {
-          addNotification({
-            id: `task-${event.taskId}-${Date.now()}`,
-            type: 'success',
-            title: '✅ Task Completed!',
-            message: `Great job! You earned ${event.pointsEarned} points`,
-            timestamp: new Date(event.timestamp),
-            isRead: false,
-            priority: 'medium',
-            points: event.pointsEarned,
-            autoHide: true,
-            requiresAction: false
-          });
-        },
-        onStreakUpdated: (event: any) => {
-          if (event.newStreak > event.previousStreak) {
-            addNotification({
-              id: `streak-${event.newStreak}-${Date.now()}`,
-              type: 'milestone',
-              title: '🔥 Streak Updated!',
-              message: `Amazing! You're on a ${event.newStreak}-day productivity streak`,
-              timestamp: new Date(event.timestamp),
-              isRead: false,
-              priority: event.newStreak % 7 === 0 ? 'high' : 'medium',
-              celebrationLevel: event.newStreak >= 30 ? 'legendary' : event.newStreak >= 14 ? 'epic' : 'rare',
-              autoHide: false,
-              requiresAction: false
-            });
-          }
-        }
-      })
-    : useSignalRConnectionManagerStub();
+  // ✅ FIXED: Always call hooks unconditionally (React Rules of Hooks)
+  
+  // Always call both hooks, but only use the appropriate one
+  const realConnection = useSignalRConnectionManager('notification-stream', {
+    // Backend gamification events - matches ReceiveGamificationEvent
+    onReceiveGamificationEvent: (event: BackendGamificationEventDTO) => {
+      const parsedEvents = parseGamificationEvent(event);
+      
+      if (parsedEvents.achievementUnlocked) {
+        addNotification({
+          id: `achievement-${parsedEvents.achievementUnlocked.achievementId}-${Date.now()}`,
+          type: 'achievement',
+          title: '🏆 Achievement Unlocked!',
+          message: `You've earned "${parsedEvents.achievementUnlocked.achievementName}" (+${parsedEvents.achievementUnlocked.points} points)`,
+          timestamp: parsedEvents.achievementUnlocked.timestamp,
+          isRead: false,
+          priority: 'high',
+          points: parsedEvents.achievementUnlocked.points,
+          celebrationLevel: parsedEvents.achievementUnlocked.points >= 100 ? 'legendary' : 
+                           parsedEvents.achievementUnlocked.points >= 50 ? 'epic' : 
+                           parsedEvents.achievementUnlocked.points >= 25 ? 'rare' : 'common',
+          autoHide: false,
+          requiresAction: false
+        });
+      }
+      
+      if (parsedEvents.streakUpdated && parsedEvents.streakUpdated.currentStreak > parsedEvents.streakUpdated.previousStreak) {
+        addNotification({
+          id: `streak-${parsedEvents.streakUpdated.currentStreak}-${Date.now()}`,
+          type: 'milestone',
+          title: '🔥 Streak Updated!',
+          message: `Amazing! You're on a ${parsedEvents.streakUpdated.currentStreak}-day productivity streak`,
+          timestamp: parsedEvents.streakUpdated.timestamp,
+          isRead: false,
+          priority: parsedEvents.streakUpdated.currentStreak % 7 === 0 ? 'high' : 'medium',
+          celebrationLevel: parsedEvents.streakUpdated.currentStreak >= 30 ? 'legendary' : 
+                           parsedEvents.streakUpdated.currentStreak >= 14 ? 'epic' : 'rare',
+          autoHide: false,
+          requiresAction: false
+        });
+      }
+    },
+    
+    // Backend task completion events - matches ReceiveTaskCompletionEvent
+    onReceiveTaskCompletionEvent: (event: BackendTaskCompletionEventDTO) => {
+      const taskEvent = parseTaskCompletionEvent(event);
+      addNotification({
+        id: `task-${taskEvent.taskId}-${Date.now()}`,
+        type: 'success',
+        title: '✅ Task Completed!',
+        message: `Great job! You earned ${taskEvent.pointsEarned} points`,
+        timestamp: taskEvent.completionTime,
+        isRead: false,
+        priority: 'medium',
+        points: taskEvent.pointsEarned,
+        autoHide: true,
+        requiresAction: false
+      });
+    }
+  });
+  
+  const stubConnection = useSignalRConnectionManagerStub();
+  
+  // Choose which connection to use
+  const localConnection = shouldUseLocalConnection ? realConnection : stubConnection;
   
   const isConnected = sharedIsConnected !== undefined ? sharedIsConnected : localConnection.isConnected;
+
+  // Remove notification
+  const removeNotification = useCallback((notificationId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    setCelebratingNotifications(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notificationId);
+      return newSet;
+    });
+  }, []);
 
   // Add notification with celebration effects
   const addNotification = useCallback((notification: NotificationItem) => {
@@ -150,17 +166,7 @@ export function NotificationStream({
         removeNotification(notification.id);
       }, 5000);
     }
-  }, [maxDisplay]);
-
-  // Remove notification
-  const removeNotification = useCallback((notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    setCelebratingNotifications(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(notificationId);
-      return newSet;
-    });
-  }, []);
+  }, [maxDisplay, removeNotification]);
 
   // Mark notification as read
   const markAsRead = useCallback((notificationId: string) => {

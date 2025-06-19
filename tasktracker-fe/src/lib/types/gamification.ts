@@ -1,15 +1,15 @@
 'use client';
 
+
 /*
- * Copyright (c) 2025 Carlos Abril Jr
- * All rights reserved.
- * 
- * Gamification Types
- * Comprehensive type definitions for the gamification system
- */
+* Copyright (c) 2025 Carlos Abril Jr
+* All rights reserved.
+* 
+* Gamification Type Definitions
+* Comprehensive type system for the real-time gamification features
+*/
 
-import { HubConnectionStatus } from '@/lib/types/signalr';
-
+import { HubConnectionStatus } from "./signalr";
 // ================================
 // BASE GAMIFICATION ENTITIES
 // ================================

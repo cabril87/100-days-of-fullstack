@@ -11,95 +11,36 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Target, 
   Users, 
-  Calendar, 
   Clock,
   Star,
   Trophy,
   CheckCircle,
   AlertCircle,
-  Timer,
-  Sparkles,
-  TrendingUp,
-  Flag,
-  Award
+  Sparkles
 } from 'lucide-react';
-import { EnterpriseGamificationWidgetProps } from '@/lib/types/enterprise-gamification';
-
-interface FamilyGoal {
-  id: string;
-  title: string;
-  description: string;
-  targetValue: number;
-  currentValue: number;
-  unit: string;
-  type: 'individual' | 'collaborative' | 'family';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: Date;
-  status: 'active' | 'completed' | 'paused' | 'cancelled';
-  participantNames?: string[];
-  completionPercentage: number;
-  timeRemaining?: string;
-  rewards: Array<{
-    type: string;
-    value: number | string;
-    description: string;
-    icon: string;
-  }>;
-}
-
-interface FamilyChallenge {
-  id: string;
-  title: string;
-  description: string;
-  type: 'weekly' | 'monthly' | 'seasonal' | 'custom';
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
-  icon: string;
-  targetPoints: number;
-  currentProgress: number;
-  status: 'upcoming' | 'active' | 'completed' | 'failed';
-  isOptional: boolean;
-  participantNames?: string[];
-  progressPercentage: number;
-  timeRemaining?: string;
-  rewards: Array<{
-    type: string;
-    value: number | string;
-    description: string;
-    icon: string;
-  }>;
-}
-
-interface FamilyGoalsWidgetProps extends EnterpriseGamificationWidgetProps {
-  goals?: FamilyGoal[];
-  challenges?: FamilyChallenge[];
-  showRewards?: boolean;
-  showProgress?: boolean;
-  enableInteraction?: boolean;
-}
+import type { 
+  FamilyGoalsWidgetProps 
+} from '@/lib/types/widgets';
 
 export function FamilyGoalsWidget({
-  familyId,
-  userId,
   goals = [],
   challenges = [],
   className = '',
   isCompact = false,
   showRewards = true,
   showProgress = true,
-  enableInteraction = true,
-  theme = 'colorful',
   animationsEnabled = true,
   realTimeUpdates = true
 }: FamilyGoalsWidgetProps) {
   const [activeTab, setActiveTab] = useState<'goals' | 'challenges'>('goals');
-  const [celebratingItem, setCelebratingItem] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [celebratingItem] = useState<string | null>(null);
+  const [isLoading] = useState(false);
 
   // Use actual data from props - no mock data
   const displayGoals = goals || [];
@@ -190,7 +131,7 @@ export function FamilyGoalsWidget({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+        <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'goals' | 'challenges')}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="goals" className="text-xs">
               <Target className="h-3 w-3 mr-1" />

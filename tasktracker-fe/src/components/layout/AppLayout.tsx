@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/providers/AuthProvider';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
-import { AppLayoutProps } from '@/lib/types';
+import { AppLayoutProps } from '@/lib/types/ui';
 import { shouldShowSidebar } from '@/lib/utils/authUtils';
 
 export function AppLayout({ children }: AppLayoutProps) {

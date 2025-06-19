@@ -7,15 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle, Target, Plus, Crown, Sparkles, 
-  Trophy, Star, Flame, Activity, Timer
+  Trophy, Flame, Activity
 } from 'lucide-react';
-import { DashboardProps } from '@/lib/types/widget-props';
-import { Task } from '@/lib/types/task';
+import { SimpleDashboardProps } from '@/lib/types/component-props';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
-
-interface SimpleDashboardProps extends DashboardProps {
-  onTaskCreated?: () => void;
-}
 
 export default function SimpleDashboard({ user, initialData, onTaskCreated }: SimpleDashboardProps) {
   const router = useRouter();

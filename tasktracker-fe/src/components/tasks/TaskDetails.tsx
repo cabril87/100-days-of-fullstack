@@ -139,6 +139,10 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
       if (onTaskUpdated) {
         onTaskUpdated(updatedTask);
       }
+      
+      // 🎵 Play task completion sound
+      const { soundService } = await import('@/lib/services/soundService');
+      soundService.playTaskComplete();
     } catch (error) {
       console.error('Failed to complete task:', error);
     }

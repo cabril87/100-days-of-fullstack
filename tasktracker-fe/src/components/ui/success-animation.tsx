@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, AlertTriangle, Loader2 } from 'lucide-react';
-
-interface AnimatedStateProps {
-  state: 'loading' | 'success' | 'error' | 'warning';
-  title: string;
-  message?: string;
-  onRetry?: () => void;
-  autoHide?: boolean;
-  duration?: number;
-  className?: string;
-}
+import { AnimatedStateProps } from '@/lib/types/ui-components';
 
 export const AnimatedState: React.FC<AnimatedStateProps> = ({
   state,

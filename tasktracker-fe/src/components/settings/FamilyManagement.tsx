@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -47,6 +47,7 @@ import {
   UserFamilyWithPrimary,
   PrimaryFamilyStatusDTO
 } from '@/lib/types/family-invitation';
+
 import { 
   familyCreateSchema,
   invitationSchema,
@@ -55,15 +56,23 @@ import {
 } from '@/lib/schemas/family-invitation';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { SmartInvitationWizard } from '@/components/family/SmartInvitationWizard';
-import PrimaryFamilySelector from '@/components/family/PrimaryFamilySelector';
-import PrimaryFamilyBadge from '@/components/family/PrimaryFamilyBadge';
+import FamilyPrivacyDashboard from '@/components/family/FamilyPrivacyDashboard';
+// Family components available for future use
+// import PrimaryFamilySelector from '@/components/family/PrimaryFamilySelector';
+// import PrimaryFamilyBadge from '@/components/family/PrimaryFamilyBadge';
 import { FamilyManagementContentProps } from '@/lib/types/settings';
+import { useAuth } from '@/lib/providers/AuthProvider';
+import { useAuthDebug } from '@/lib/hooks/useAuthMonitor';
 
 // FamilyManagementContentProps is imported from lib/types/settings
 
 export default function FamilyManagementContent({ user }: FamilyManagementContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const auth = useAuth(); // Get auth context for debugging
+  
+  // Enterprise authentication monitoring (development only)
+  useAuthDebug();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -109,8 +118,8 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
   const [familyRelationships, setFamilyRelationships] = useState<UserFamilyRelationships | null>(null);
   
   // Primary family state
-  const [primaryFamilyStatus, setPrimaryFamilyStatus] = useState<PrimaryFamilyStatusDTO | null>(null);
-  const [familiesWithPrimary, setFamiliesWithPrimary] = useState<UserFamilyWithPrimary[]>([]);
+  const [, setPrimaryFamilyStatus] = useState<PrimaryFamilyStatusDTO | null>(null);
+  const [, setFamiliesWithPrimary] = useState<UserFamilyWithPrimary[]>([]);
 
   // Forms
   const familyCreateForm = useForm<FamilyFormData>({
@@ -141,7 +150,10 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
 
   // Load family data
   const loadFamilyData = useCallback(async () => {
-    if (!user) return;
+    const currentUser = user || auth.user;
+    if (!currentUser) {
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -167,10 +179,28 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
       let selectedFamily: FamilyDTO | null = null;
       
       try {
-        const [primaryStatus, familiesWithPrimary] = await Promise.all([
-          familyInvitationService.getPrimaryFamilyStatus(),
-          familyInvitationService.getAllFamiliesWithPrimary()
-        ]);
+        // Load primary family data with proper error handling - use single call optimized approach
+        const primaryStatus = await familyInvitationService.getPrimaryFamilyStatus().catch(error => {
+          // Only log non-404 errors for primary family status
+          if (!error.message?.includes('404') && !error.message?.includes('No primary family')) {
+            console.debug('No primary family status available:', error.message);
+          }
+          return {
+            hasPrimaryFamily: false,
+            primaryFamily: null,
+            allFamilies: uniqueFamilies,
+            canSetPrimary: uniqueFamilies.length > 0
+          };
+        });
+        
+        // Map families to include primary indication (avoid duplicate API call)
+        const familiesWithPrimary = uniqueFamilies.map(family => ({
+          ...family,
+          isPrimary: primaryStatus.primaryFamily?.id === family.id,
+          memberRole: 'Member', // TODO: Get actual role from family members
+          joinedAt: family.createdAt, // TODO: Get actual join date
+          canSetAsPrimary: true // TODO: Add actual permission check
+        }));
         
         setPrimaryFamilyStatus(primaryStatus);
         setFamiliesWithPrimary(familiesWithPrimary);
@@ -191,22 +221,38 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
         // Final fallback: use first available family
         if (!selectedFamily && uniqueFamilies.length > 0) {
           selectedFamily = uniqueFamilies[0];
+          
+          // Auto-set as primary for any user who has families but no primary
+          try {
+            await familyInvitationService.setPrimaryFamily(selectedFamily.id);
+            console.log(`Auto-set "${selectedFamily.name}" as primary family (user had ${uniqueFamilies.length} families but no primary)`);
+            setMessage({ 
+              type: 'success', 
+              text: `Set "${selectedFamily.name}" as your primary family. You can change this in the overview.` 
+            });
+          } catch (error) {
+            console.warn('Could not auto-set primary family:', error);
+            setMessage({ 
+              type: 'error', 
+              text: 'You have multiple families but no primary family set. Please select one manually.' 
+            });
+          }
         }
         
         setFamilyData(selectedFamily);
       } catch (error) {
-        console.error('Failed to load primary family data:', error);
+        console.debug('Using fallback family loading due to primary family issues:', error);
         
         // Fallback to original logic
-      let currentFamily: FamilyDTO | null = null;
-      try {
-        currentFamily = await familyInvitationService.getUserFamily();
-      } catch {
-        console.debug('User has no current family yet (normal for new users)');
-      }
-      
+        let currentFamily: FamilyDTO | null = null;
+        try {
+          currentFamily = await familyInvitationService.getUserFamily();
+        } catch {
+          console.debug('User has no current family yet (normal for new users)');
+        }
+        
         selectedFamily = currentFamily || (uniqueFamilies.length > 0 ? uniqueFamilies[0] : null);
-      setFamilyData(selectedFamily);
+        setFamilyData(selectedFamily);
       }
 
       // Load age-based permissions from API
@@ -260,13 +306,30 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, auth.user]); // Include user and auth.user since they're used inside
+
+  // Add loading state tracking to prevent multiple simultaneous loads
+  const isLoadingRef = useRef(false);
+  const loadFamilyDataThrottled = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('🔄 Family data load already in progress, skipping duplicate call');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    try {
+      await loadFamilyData();
+    } finally {
+      isLoadingRef.current = false;
+    }
+  }, [loadFamilyData]);
 
   useEffect(() => {
-    if (user) {
-      loadFamilyData();
+    // Only load family data when authentication is fully ready and user is available
+    if (auth.isReady && (user || auth.user)) {
+      loadFamilyDataThrottled();
     }
-  }, [user, loadFamilyData]);
+  }, [user?.id, auth.user?.id, auth.isReady, loadFamilyDataThrottled, user, auth.user]);
 
   // Manual refresh handler
   const refreshFamilyData = async () => {
@@ -372,31 +435,6 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
     }
   };
 
-  // Set primary family handler
-  const handleSetPrimaryFamily = async (familyId: number) => {
-    setIsSubmitting(true);
-    setMessage(null);
-
-    try {
-      const primaryFamily = await familyInvitationService.setPrimaryFamily(familyId);
-      setMessage({ 
-        type: 'success', 
-        text: `Successfully set '${primaryFamily.name}' as your primary family!` 
-      });
-      
-      // Reload family data to reflect changes
-      await loadFamilyData();
-    } catch (error) {
-      console.error('Failed to set primary family:', error);
-      setMessage({ 
-        type: 'error', 
-        text: error instanceof Error ? error.message : 'Failed to set primary family' 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Helper function to get user role in a specific family
   const getUserRoleInFamily = (family: FamilyDTO): string => {
     if (!familyRelationships) return 'Member';
@@ -414,8 +452,8 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
     return 'Member';
   };
 
-  // Loading skeleton
-  if (!user || isLoading) {
+  // Loading skeleton - wait for auth to be ready and family data to load
+  if (!auth.isReady || (!user && !auth.user) || isLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <Card>
@@ -466,8 +504,11 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
 
   // Check if user has permission to access family management
   const hasAccessPermission = () => {
+    const currentUser = user || auth.user;
+    if (!currentUser) return false;
+    
     // Children (age group 0) are blocked from family management
-    const isChild = user?.ageGroup === 0;
+    const isChild = currentUser.ageGroup === 0;
     if (isChild) return false;
     
     // Global admins always have access
@@ -665,6 +706,21 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
         </Card>
       )}
 
+      {/* Choose Primary Family Alert - Show if user has multiple families but no primary */}
+      {allFamilies.length > 1 && !familyData && (
+        <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/20">
+          <Crown className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800 dark:text-orange-200">
+            <div className="space-y-2">
+              <div className="font-medium">Choose Your Primary Family</div>
+              <div className="text-sm">
+                You belong to {allFamilies.length} families but haven&apos;t set a primary family yet. Your primary family appears first in the dashboard and receives notifications. Click &quot;Manage&quot; on any family below to set it as primary.
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* My Families List */}
       <Card>
         <CardHeader>
@@ -753,6 +809,32 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        {!isSelected && allFamilies.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await familyInvitationService.setPrimaryFamily(family.id);
+                                setMessage({ 
+                                  type: 'success', 
+                                  text: `Set "${family.name}" as your primary family!` 
+                                });
+                                await loadFamilyData(); // Refresh to show changes
+                              } catch {
+                                setMessage({ 
+                                  type: 'error', 
+                                  text: 'Failed to set primary family. Please try again.' 
+                                });
+                              }
+                            }}
+                            className="flex items-center gap-1"
+                          >
+                            <Crown className="h-3 w-3" />
+                            Set Primary
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant={isSelected ? "default" : "outline"}
@@ -802,10 +884,11 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
           
           <CardContent>
             <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="members">Members</TabsTrigger>
                 <TabsTrigger value="invitations">Invitations</TabsTrigger>
+                <TabsTrigger value="privacy">Privacy</TabsTrigger>
                 <TabsTrigger value="ownership">Pass the Baton</TabsTrigger>
               </TabsList>
 
@@ -1092,6 +1175,42 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Privacy Tab */}
+              <TabsContent value="privacy" className="space-y-6">
+                {familyData ? (
+                  <FamilyPrivacyDashboard
+                    familyId={familyData.id}
+                    isAdmin={isFamilyAdmin}
+                    onSettingsChanged={() => {
+                      setMessage({ type: 'success', text: 'Privacy settings updated successfully!' });
+                    }}
+                    showChildProtection={true}
+                    allowExport={true}
+                  />
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center py-12">
+                        <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                          No Family Selected
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+                          Create or join a family first to access privacy settings. Family privacy controls help you manage who can see your family&apos;s information and activities.
+                        </p>
+                        <Button
+                          onClick={() => handleTabChange('overview')}
+                          className="flex items-center gap-2"
+                        >
+                          <Home className="h-4 w-4" />
+                          Go to Overview
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* Pass the Baton (Ownership Transfer) Tab */}

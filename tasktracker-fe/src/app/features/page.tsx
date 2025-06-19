@@ -1,11 +1,10 @@
 import { PublicPagePattern } from '@/lib/auth/auth-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   CheckCircle, Users, Zap, Trophy, Calendar, 
   BarChart3, Bell, Shield, Smartphone, Cloud,
-  Target, Star, Gift, Medal, Crown, 
+  Target, Star, Gift, Crown, 
   Gamepad2, TrendingUp, Clock, MapPin
 } from 'lucide-react';
 import Link from 'next/link';
@@ -296,7 +295,7 @@ export default async function FeaturesPage() {
             </div>
             <CardTitle className="text-2xl">Security & Privacy First</CardTitle>
             <CardDescription>
-              Your family's data is protected with enterprise-grade security
+              Your family&apos;s data is protected with enterprise-grade security
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -351,7 +350,7 @@ export default async function FeaturesPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold">Smart Notifications</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">Context-aware alerts that don't overwhelm</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Context-aware alerts that don&apos;t overwhelm</p>
                 </div>
               </div>
               

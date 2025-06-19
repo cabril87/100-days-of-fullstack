@@ -28,8 +28,8 @@ interface KidDashboardProps extends DashboardContentProps {
 }
 
 export default function KidDashboard({ user, initialData, onTaskComplete, onRequestPermission }: KidDashboardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialData.recentTasks || []);
-  const [stars, setStars] = useState(initialData.stats.totalPoints || 0);
+  const [tasks, setTasks] = useState<Task[]>(initialData?.recentTasks || []);
+  const [stars, setStars] = useState(initialData?.stats?.totalPoints || 0);
   const [completedToday, setCompletedToday] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
   const [currentTimeOfDay, setCurrentTimeOfDay] = useState<'morning' | 'afternoon' | 'evening'>('morning');
@@ -51,7 +51,7 @@ export default function KidDashboard({ user, initialData, onTaskComplete, onRequ
     const achievements = [];
     if (completedToday >= 3) achievements.push({ icon: '⭐', title: 'Daily Star!', color: 'bg-yellow-100 text-yellow-800' });
     if (stars >= 100) achievements.push({ icon: '🏆', title: 'Trophy Winner!', color: 'bg-amber-100 text-amber-800' });
-    if (initialData.stats.streakDays >= 3) achievements.push({ icon: '🔥', title: 'Streak Hero!', color: 'bg-red-100 text-red-800' });
+    if ((initialData?.stats?.streakDays || 0) >= 3) achievements.push({ icon: '🔥', title: 'Streak Hero!', color: 'bg-red-100 text-red-800' });
     if (stars >= 200) achievements.push({ icon: '👑', title: 'Star Champion!', color: 'bg-purple-100 text-purple-800' });
     if (completedToday >= 5) achievements.push({ icon: '💫', title: 'Super Helper!', color: 'bg-blue-100 text-blue-800' });
     return achievements;
@@ -211,7 +211,7 @@ export default function KidDashboard({ user, initialData, onTaskComplete, onRequ
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <Crown className="h-12 w-12 text-purple-500 mx-auto fill-current" />
-                <div className="text-3xl font-bold text-purple-700">{initialData.stats.streakDays}</div>
+                <div className="text-3xl font-bold text-purple-700">{initialData?.stats?.streakDays || 0}</div>
                 <div className="text-purple-600 font-medium">Day Streak! 🔥</div>
               </div>
             </CardContent>

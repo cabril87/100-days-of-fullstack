@@ -6,7 +6,7 @@
  * Comprehensive type definitions for real-time communication between frontend and backend
  */
 
-import { HubConnection, HttpTransportType } from '@microsoft/signalr';
+import { HttpTransportType } from '@microsoft/signalr';
 
 // ================================
 // CONNECTION STATE MANAGEMENT
@@ -299,7 +299,7 @@ export interface SignalREventHandlers {
   onTaskDeleted?: (event: TaskDeletedEvent) => void;
   onTaskMoved?: (event: TaskMovedEvent) => void;
   onTaskCompleted?: (event: TaskCompletedEvent) => void;
-  
+    
   // Board handlers
   onUserJoinedBoard?: (event: UserJoinedBoardEvent) => void;
   onUserLeftBoard?: (event: UserLeftBoardEvent) => void;
@@ -419,88 +419,7 @@ export interface CalendarHubEvents {
   FocusSessionEnded: { userId: number; sessionId: number; completed: boolean };
 }
 
-// Real-time event types for family task management
-export interface TaskCompletionEventData {
-  taskId: number;
-  taskTitle: string;
-  completedBy: string;
-  completedByUserId: number;
-  pointsEarned: number;
-  achievementUnlocked?: string;
-  completionTime: string;
-  familyId: number;
-}
-
-export interface AchievementUnlockedEventData {
-  achievementId: string;
-  achievementName: string;
-  achievementDescription: string;
-  unlockedBy: string;
-  unlockedByUserId: number;
-  pointsEarned: number;
-  badgeUrl?: string;
-  unlockedAt: string;
-  familyId: number;
-}
-
-export interface FamilyActivityEventData {
-  activityId: string;
-  activityType: 'task_completed' | 'achievement_unlocked' | 'family_milestone' | 'challenge_started';
-  title: string;
-  description: string;
-  initiatedBy: string;
-  initiatedByUserId: number;
-  timestamp: string;
-  familyId: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface FamilyMilestoneEventData {
-  milestoneId: string;
-  milestoneName: string;
-  description: string;
-  achievedBy: string[];
-  totalPoints: number;
-  achievedAt: string;
-  familyId: number;
-  celebrationMessage?: string;
-}
-
-export interface ChallengeProgressEventData {
-  challengeId: string;
-  challengeName: string;
-  progressBy: string;
-  progressByUserId: number;
-  currentProgress: number;
-  totalRequired: number;
-  progressPercentage: number;
-  isCompleted: boolean;
-  familyId: number;
-  updatedAt: string;
-}
-
-export interface RewardRedeemedEventData {
-  rewardId: string;
-  rewardName: string;
-  pointsCost: number;
-  redeemedBy: string;
-  redeemedByUserId: number;
-  redeemedAt: string;
-  familyId: number;
-}
-
-export interface FamilyNotificationEventData {
-  notificationId: string;
-  type: 'info' | 'success' | 'warning' | 'celebration';
-  title: string;
-  message: string;
-  targetUsers?: number[];
-  familyId: number;
-  createdAt: string;
-  priority: 'low' | 'medium' | 'high';
-  actionUrl?: string;
-  actionText?: string;
-}
+// Legacy event types removed - use types from family-events.ts and backend-signalr-events.ts
 
 // Generic SignalR event handler types
 export type SignalREventHandler<T = unknown> = (data: T) => void;
@@ -526,74 +445,4 @@ export interface SignalRConfiguration {
   headers?: Record<string, string>;
 }
 
-// Hub method signatures
-export interface FamilyTaskHubMethods {
-  // Client-to-server methods
-  JoinFamilyGroup: (familyId: number) => Promise<void>;
-  LeaveFamilyGroup: (familyId: number) => Promise<void>;
-  
-  // Server-to-client event names
-  TaskCompleted: SignalREventHandler<TaskCompletionEventData>;
-  AchievementUnlocked: SignalREventHandler<AchievementUnlockedEventData>;
-  FamilyActivity: SignalREventHandler<FamilyActivityEventData>;
-  FamilyMilestone: SignalREventHandler<FamilyMilestoneEventData>;
-  ChallengeProgress: SignalREventHandler<ChallengeProgressEventData>;
-  RewardRedeemed: SignalREventHandler<RewardRedeemedEventData>;
-  FamilyNotification: SignalREventHandler<FamilyNotificationEventData>;
-  
-  // Connection lifecycle events
-  UserConnected: SignalREventHandler<{ userId: number; familyId: number; }>;
-  UserDisconnected: SignalREventHandler<{ userId: number; familyId: number; }>;
-}
 
-export interface NotificationHubMethods {
-  // Client-to-server methods
-  JoinNotificationGroup: (userId: number) => Promise<void>;
-  LeaveNotificationGroup: (userId: number) => Promise<void>;
-  MarkNotificationAsRead: (notificationId: string) => Promise<void>;
-  
-  // Server-to-client event names
-  NewNotification: SignalREventHandler<FamilyNotificationEventData>;
-  NotificationRead: SignalREventHandler<{ notificationId: string; userId: number; }>;
-  BulkNotifications: SignalREventHandler<FamilyNotificationEventData[]>;
-}
-
-// Combined hub interface for type safety
-export interface AppHubConnection extends HubConnection {
-  // Family Task Hub methods
-  invoke(methodName: 'JoinFamilyGroup', familyId: number): Promise<void>;
-  invoke(methodName: 'LeaveFamilyGroup', familyId: number): Promise<void>;
-  
-  // Notification Hub methods
-  invoke(methodName: 'JoinNotificationGroup', userId: number): Promise<void>;
-  invoke(methodName: 'LeaveNotificationGroup', userId: number): Promise<void>;
-  invoke(methodName: 'MarkNotificationAsRead', notificationId: string): Promise<void>;
-  
-  // Event listeners
-  on(eventName: 'TaskCompleted', handler: SignalREventHandler<TaskCompletionEventData>): void;
-  on(eventName: 'AchievementUnlocked', handler: SignalREventHandler<AchievementUnlockedEventData>): void;
-  on(eventName: 'FamilyActivity', handler: SignalREventHandler<FamilyActivityEventData>): void;
-  on(eventName: 'FamilyMilestone', handler: SignalREventHandler<FamilyMilestoneEventData>): void;
-  on(eventName: 'ChallengeProgress', handler: SignalREventHandler<ChallengeProgressEventData>): void;
-  on(eventName: 'RewardRedeemed', handler: SignalREventHandler<RewardRedeemedEventData>): void;
-  on(eventName: 'FamilyNotification', handler: SignalREventHandler<FamilyNotificationEventData>): void;
-  on(eventName: 'NewNotification', handler: SignalREventHandler<FamilyNotificationEventData>): void;
-  on(eventName: 'NotificationRead', handler: SignalREventHandler<{ notificationId: string; userId: number; }>): void;
-  on(eventName: 'BulkNotifications', handler: SignalREventHandler<FamilyNotificationEventData[]>): void;
-  on(eventName: 'UserConnected', handler: SignalREventHandler<{ userId: number; familyId: number; }>): void;
-  on(eventName: 'UserDisconnected', handler: SignalREventHandler<{ userId: number; familyId: number; }>): void;
-  
-  // Remove listeners
-  off(eventName: string, handler?: SignalREventHandler<unknown>): void;
-}
-
-// Hook return type for useSignalRConnection
-export interface UseSignalRConnectionReturn {
-  connection: AppHubConnection | null;
-  connectionState: SignalRConnectionState;
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
-  reconnect: () => Promise<void>;
-  joinFamilyGroup: (familyId: number) => Promise<void>;
-  leaveFamilyGroup: (familyId: number) => Promise<void>;
-} 

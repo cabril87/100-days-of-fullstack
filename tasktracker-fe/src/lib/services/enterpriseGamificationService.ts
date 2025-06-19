@@ -236,7 +236,7 @@ export class EnterpriseGamificationService {
   async updateMemberPreferences(
     userId: number, 
     familyId: number, 
-    preferences: Partial<any>
+    preferences: Record<string, unknown>
   ): Promise<boolean> {
     try {
       await this.apiClient.put(
@@ -255,7 +255,7 @@ export class EnterpriseGamificationService {
    */
   async updateFamilySettings(
     familyId: number, 
-    settings: Partial<any>
+    settings: Record<string, unknown>
   ): Promise<boolean> {
     try {
       await this.apiClient.put(
