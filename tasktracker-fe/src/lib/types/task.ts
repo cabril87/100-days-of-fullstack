@@ -5,6 +5,7 @@
 
 import { User } from './auth';
 import { FamilyDTO, FamilyMemberDTO } from './family-invitation';
+import { BoardColumnDTO } from './board';
 
 // Export enum types for board components
 export enum TaskPriority {
@@ -21,6 +22,41 @@ export enum TaskItemStatus {
   Pending = 3,
   Completed = 4,
   Cancelled = 5
+}
+
+/**
+ * Task Filter Interface for Enterprise Task Manager
+ */
+export interface TaskFilter {
+  id: string;
+  type: 'status' | 'priority' | 'assignee' | 'dueDate' | 'tags' | 'category' | 'custom';
+  label: string;
+  value: string | number | string[] | Date;
+  operator?: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'between' | 'in';
+  isActive: boolean;
+}
+
+/**
+ * Enterprise Task Manager View Modes
+ */
+export type ViewMode = 'table' | 'kanban' | 'calendar' | 'timeline' | 'dashboard';
+export type LayoutMode = 'standard' | 'compact' | 'comfortable' | 'spacious';
+export type FilterPreset = 'all' | 'active' | 'completed' | 'overdue' | 'assigned' | 'unassigned' | 'high-priority';
+
+/**
+ * Task Manager State Interface
+ */
+export interface TaskManagerState {
+  viewMode: ViewMode;
+  layoutMode: LayoutMode;
+  selectedTasks: Set<number>;
+  filters: TaskFilter[];
+  sortColumn: string;
+  sortDirection: 'asc' | 'desc';
+  searchQuery: string;
+  filterPreset: FilterPreset;
+  showCompletedTasks: boolean;
+  groupBy: 'none' | 'status' | 'priority' | 'assignee' | 'dueDate';
 }
 
 /**
@@ -86,6 +122,7 @@ export interface Task {
   id: number;
   title: string;
   description?: string;
+  status: TaskItemStatus;
   isCompleted: boolean;
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   dueDate?: Date;
@@ -502,4 +539,94 @@ export interface TaskDetailData {
   error?: string;
 }
 
-export type TaskApiResponseType = ApiResponse<Task[]> | Task[] | FlexibleApiResponse; 
+export type TaskApiResponseType = ApiResponse<Task[]> | Task[] | FlexibleApiResponse;
+
+/**
+ * Enterprise Task Manager Props Interface - Following CLEAN ARCHITECTURE PRINCIPLES
+ * All component props interfaces must be in lib/types directory
+ */
+export interface EnterpriseTaskManagerProps {
+  tasks: Task[];
+  columns: BoardColumnDTO[];
+  familyMembers: FamilyMemberDTO[];
+  stats: TaskStats;
+  isLoading?: boolean;
+  enableAdvancedFeatures?: boolean;
+  enableBatchOperations?: boolean;
+  enableRealTimeSync?: boolean;
+  enableOfflineMode?: boolean;
+  enableAnalytics?: boolean;
+  onTaskCreate?: (columnId?: string) => void;
+  onTaskEdit?: (task: Task) => void;
+  onTaskDelete?: (taskId: number) => void;
+  onTaskStatusChange?: (taskId: number, status: TaskItemStatus) => void;
+  onTaskMove?: (taskId: number, fromColumn: string, toColumn: string, position: number) => void;
+  onBatchOperation?: (operation: string, taskIds: number[]) => void;
+  onExport?: (format: 'csv' | 'excel' | 'json' | 'pdf') => void;
+  onImport?: (file: File) => void;
+  onViewModeChange?: (mode: ViewMode) => void;
+  onRefresh?: () => void;
+  className?: string;
+}
+
+/**
+ * Enterprise Task Table Types
+ */
+export type ColumnKey = 'title' | 'status' | 'priority' | 'assignee' | 'dueDate' | 'xp' | 'createdAt' | 'tags';
+export type SortDirection = 'asc' | 'desc';
+
+export interface TableFilter {
+  id: string;
+  type: 'status' | 'priority' | 'assignee' | 'dueDate' | 'tags' | 'category';
+  label: string;
+  value: string | number | string[];
+  operator: 'equals' | 'contains' | 'in' | 'greaterThan' | 'lessThan';
+  isActive: boolean;
+}
+
+// Mobile Kanban types are defined in components/boards/MobileKanbanEnhancements.tsx
+// Import them from there to avoid duplication
+
+// BoardColumnDTO is imported from board types - no need to duplicate
+
+/**
+ * Type Conversion Utilities - Following CLEAN ARCHITECTURE PRINCIPLES
+ * These utilities ensure proper type safety when converting between different task representations
+ */
+
+/**
+ * Create mobile kanban columns from board columns with task counts
+ */
+export const createMobileKanbanColumns = (
+  tasks: Task[], 
+  columns: BoardColumnDTO[]
+) => {
+  return columns.map(column => ({
+    ...column,
+    taskCount: tasks.filter(task => task.status === column.status).length,
+    completionRate: 0,
+    isCollapsed: false
+  }));
+};
+
+/**
+ * Get task status from isCompleted boolean (backward compatibility)
+ */
+export const getTaskStatus = (task: { isCompleted: boolean; status?: TaskItemStatus }): TaskItemStatus => {
+  if (task.status !== undefined) {
+    return task.status;
+  }
+  return task.isCompleted ? TaskItemStatus.Completed : TaskItemStatus.NotStarted;
+};
+
+/**
+ * Convert TableFilter to TaskFilter with proper type safety
+ */
+export const tableFilterToTaskFilter = (tableFilter: TableFilter): TaskFilter => ({
+  id: `table-${tableFilter.id}`,
+  type: tableFilter.type as TaskFilter['type'],
+  label: tableFilter.label,
+  value: tableFilter.value,
+  operator: tableFilter.operator,
+  isActive: tableFilter.isActive
+}); 

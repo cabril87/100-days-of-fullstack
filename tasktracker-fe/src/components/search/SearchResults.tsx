@@ -47,6 +47,18 @@ interface SearchResultItemProps {
 }
 
 function SearchResultItem({ result, onResultClick, onActionClick }: SearchResultItemProps) {
+  const entityLabels = {
+    [SearchEntityTypeDTO.Tasks]: 'Task',
+    [SearchEntityTypeDTO.Families]: 'Family',
+    [SearchEntityTypeDTO.Achievements]: 'Achievement',
+    [SearchEntityTypeDTO.Boards]: 'Board',
+    [SearchEntityTypeDTO.Notifications]: 'Notification',
+    [SearchEntityTypeDTO.Activities]: 'Activity',
+    [SearchEntityTypeDTO.Tags]: 'Tag',
+    [SearchEntityTypeDTO.Categories]: 'Category',
+    [SearchEntityTypeDTO.Templates]: 'Template'
+  };
+
   const entityConfig = {
     [SearchEntityTypeDTO.Tasks]: {
       icon: <Target className="w-4 h-4 text-green-500" />,
@@ -83,6 +95,24 @@ function SearchResultItem({ result, onResultClick, onActionClick }: SearchResult
       bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
       borderColor: 'border-indigo-200 dark:border-indigo-700',
       actions: ['View', 'Join', 'Remind']
+    },
+    [SearchEntityTypeDTO.Tags]: {
+      icon: <Target className="w-4 h-4 text-teal-500" />,
+      bgColor: 'bg-teal-50 dark:bg-teal-900/20',
+      borderColor: 'border-teal-200 dark:border-teal-700',
+      actions: ['View', 'Filter Tasks', 'Edit']
+    },
+    [SearchEntityTypeDTO.Categories]: {
+      icon: <Activity className="w-4 h-4 text-orange-500" />,
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      borderColor: 'border-orange-200 dark:border-orange-700',
+      actions: ['View', 'Filter Tasks', 'Edit']
+    },
+    [SearchEntityTypeDTO.Templates]: {
+      icon: <Activity className="w-4 h-4 text-pink-500" />,
+      bgColor: 'bg-pink-50 dark:bg-pink-900/20',
+      borderColor: 'border-pink-200 dark:border-pink-700',
+      actions: ['View', 'Use Template', 'Edit']
     }
   };
 
@@ -116,16 +146,20 @@ function SearchResultItem({ result, onResultClick, onActionClick }: SearchResult
               {/* Title with highlighting */}
               <h3 
                 className="text-sm font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-                dangerouslySetInnerHTML={{ __html: result.Title }}
-              />
+              >
+                {result.Title || `${entityLabels[result.EntityType] || 'Item'} #${result.Id}`}
+              </h3>
 
               {/* Description with highlighting */}
               {result.Description && (
                 <p 
                   className="text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2"
-                  dangerouslySetInnerHTML={{ __html: result.Description }}
-                />
+                >
+                  {result.Description}
+                </p>
               )}
+
+
 
               {/* Metadata */}
               <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
@@ -143,11 +177,16 @@ function SearchResultItem({ result, onResultClick, onActionClick }: SearchResult
                   </div>
                 )}
 
-                {result.EntityData?.familyName ? (
+                {result.EntityData?.familyName && (
                   <Badge variant="outline" className="text-xs">
                     {String(result.EntityData.familyName)}
                   </Badge>
-                ) : null}
+                )}
+
+                {/* Entity type badge */}
+                <Badge variant="secondary" className="text-xs">
+                  {entityLabels[result.EntityType as keyof typeof entityLabels] || String(result.EntityType)}
+                </Badge>
               </div>
             </div>
           </div>
@@ -366,6 +405,7 @@ export function SearchResults({
   isLoading = false,
   executionTime = 0,
   totalCount = 0,
+  query,
   className
 }: SearchResultsProps) {
   if (!results || results.length === 0) {

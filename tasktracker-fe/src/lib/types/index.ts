@@ -140,4 +140,17 @@ export type {
   parseTaskCompletionEvent,
   parseFamilyActivityEvent,
   parseFamilyMilestoneEvent
-} from './backend-signalr-events'; 
+} from './backend-signalr-events';
+
+// ✨ NEW: Centralized Component Props (Following Clean Architecture Rules)
+// Search Component Props
+export * from './search-components';
+
+// UI Component Props
+export * from './ui-component-props';
+
+// Layout Component Props
+export * from './layout-component-props';
+
+// Board Component Props
+export * from './board-component-props'; 

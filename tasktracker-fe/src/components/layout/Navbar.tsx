@@ -14,7 +14,7 @@ import {
   Home, CheckSquare, Users, Trophy, 
   UserCog, Headphones, FileText, 
   Palette, Bell, Shield, UserPlus,
-  BarChart3, Calendar,
+  BarChart3, Calendar, Search,
   Sparkles, Plus
 } from 'lucide-react';
 import { DecorativeLines } from '@/components/ui/DecorativeLines';
@@ -246,6 +246,19 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                     size="sm" 
                     className="max-w-64"
                   />
+                  
+                  {/* Direct Search Page Link */}
+                  <Link href="/search">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="navbar-theme theme-transition hover:scale-105 text-white shadow-md bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
+                      title="Advanced Search"
+                    >
+                      <Search className="h-[1.2rem] w-[1.2rem] text-white" />
+                    </Button>
+                  </Link>
+                  
                   <div className="flex items-center space-x-2">
                   <ThemeToggle />
                   </div>
@@ -508,6 +521,14 @@ export const Navbar = React.memo(function Navbar({ onToggleSidebar, onDropdownTo
                       >
                         <Users className="w-5 h-5 mr-3 text-purple-400" />
                         <span className="font-medium">Families</span>
+                      </Link>
+                      <Link 
+                        href="/search" 
+                        className="flex items-center px-3 py-2.5 text-white hover:text-cyan-400 hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Search className="w-5 h-5 mr-3 text-cyan-400" />
+                        <span className="font-medium">Search</span>
                       </Link>
                       <Link 
                         href="/gamification" 

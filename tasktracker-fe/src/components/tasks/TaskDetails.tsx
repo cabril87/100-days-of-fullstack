@@ -11,14 +11,173 @@ import { Progress } from '@/components/ui/progress';
 import { TimeProgressBar } from '@/components/ui/TimeProgressBar';
 import { AssigneeList } from '@/components/ui/AssigneeList';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Calendar, Clock, Edit, Trash2, CheckCircle, Circle, Plus, X, Save, 
   Target, Tag, Timer, TrendingUp, ArrowLeft, Trophy, 
   Sparkles, Brain
 } from 'lucide-react';
-import TaskCreationModal from './TaskCreationModal';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { TaskDetailProps, TaskDetailData, Task } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
 import { priorityIntToString } from '@/lib/utils/priorityMapping';
+import { TaskEditFormProps } from '@/lib/types/component-props';
+import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import TaskDetailsSheetContent from './TaskDetailsSheetContent';
+
+function TaskEditForm({ task, onSave, onCancel }: TaskEditFormProps) {
+  const [editedTask, setEditedTask] = useState<Task>(task);
+
+  useEffect(() => {
+    setEditedTask(task);
+  }, [task]);
+
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toISOString().slice(0, 16); // Format for datetime-local input
+  };
+
+  const handleSave = () => {
+    onSave(editedTask);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Edit Form */}
+      <div className="space-y-4">
+        {/* Title */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Quest Title
+          </label>
+          <Input
+            value={editedTask.title}
+            onChange={(e) => setEditedTask(prev => ({ ...prev, title: e.target.value }))}
+            className="text-lg font-medium"
+            placeholder="Enter quest title..."
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Description
+          </label>
+          <Textarea
+            value={editedTask.description || ''}
+            onChange={(e) => setEditedTask(prev => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            placeholder="Enter quest description..."
+          />
+        </div>
+
+        {/* Priority and Due Date Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Priority
+            </label>
+            <Select
+              value={editedTask.priority || 'Medium'}
+              onValueChange={(value: 'Low' | 'Medium' | 'High' | 'Urgent') => 
+                setEditedTask(prev => ({ ...prev, priority: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Low">Low Priority</SelectItem>
+                <SelectItem value="Medium">Medium Priority</SelectItem>
+                <SelectItem value="High">High Priority</SelectItem>
+                <SelectItem value="Urgent">Urgent Priority</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Due Date
+            </label>
+            <Input
+              type="datetime-local"
+              value={formatDate(editedTask.dueDate)}
+              onChange={(e) => setEditedTask(prev => ({ 
+                ...prev, 
+                dueDate: e.target.value ? new Date(e.target.value) : undefined 
+              }))}
+            />
+          </div>
+        </div>
+
+        {/* Points and Time Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              XP Points
+            </label>
+            <Input
+              type="number"
+              min="1"
+              max="1000"
+              value={editedTask.pointsValue || 10}
+              onChange={(e) => setEditedTask(prev => ({ 
+                ...prev, 
+                pointsValue: parseInt(e.target.value) || 10 
+              }))}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Estimated Time (minutes)
+            </label>
+            <Input
+              type="number"
+              min="1"
+              max="1440"
+              value={editedTask.estimatedTimeMinutes || 30}
+              onChange={(e) => setEditedTask(prev => ({ 
+                ...prev, 
+                estimatedTimeMinutes: parseInt(e.target.value) || 30 
+              }))}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <Button
+          onClick={handleSave}
+          className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+        >
+          <Save className="h-4 w-4 mr-2" />
+          Save Changes
+        </Button>
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          className="px-6"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted }: TaskDetailProps) {
   const router = useRouter();
@@ -32,8 +191,15 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
   });
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [progressNotes, setProgressNotes] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showEditSheet, setShowEditSheet] = useState(false);
+  const [isEditingInSheet, setIsEditingInSheet] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
+
+  // Load family members (simplified - in real app would come from context/props)
+  useEffect(() => {
+    // For now, just use empty array - in real app this would come from family context
+    setFamilyMembers([]);
+  }, []);
 
   // Load task details
   const loadTaskDetails = useCallback(async () => {
@@ -102,18 +268,37 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
 
   // Task actions
   const handleEditTask = () => {
-    setEditingTask(taskDetail.task);
-    setIsEditing(true);
+    setShowEditSheet(true);
+    setIsEditingInSheet(true);
   };
 
-  const handleTaskUpdated = (updatedTask?: Task) => {
-    if (updatedTask) {
-      setTaskDetail(prev => ({ ...prev, task: updatedTask }));
-      setIsEditing(false);
-      setEditingTask(null);
+  const handleCancelEdit = () => {
+    setShowEditSheet(false);
+    setIsEditingInSheet(false);
+  };
+
+  const handleSaveEdit = async (updatedTask: Task) => {
+    try {
+      const savedTask = await taskService.updateTask(updatedTask.id, {
+        title: updatedTask.title,
+        description: updatedTask.description,
+        priority: updatedTask.priority,
+        dueDate: updatedTask.dueDate ? updatedTask.dueDate.toString() : undefined,
+        estimatedTimeMinutes: updatedTask.estimatedTimeMinutes,
+        pointsValue: updatedTask.pointsValue,
+        assignedToUserId: updatedTask.assignedToUserId,
+        version: updatedTask.version || 1
+      });
+      
+      setTaskDetail(prev => ({ ...prev, task: savedTask }));
+      setShowEditSheet(false);
+      setIsEditingInSheet(false);
+      
       if (onTaskUpdated) {
-        onTaskUpdated(updatedTask);
+        onTaskUpdated(savedTask);
       }
+    } catch (error) {
+      console.error('Failed to update task:', error);
     }
   };
 
@@ -797,15 +982,40 @@ export default function TaskDetails({ taskId, user, onTaskUpdated, onTaskDeleted
           </CardContent>
         </Card>
 
-        {/* Edit Task Modal */}
-        <TaskCreationModal
-          user={user}
-          family={null}
-          onTaskCreated={handleTaskUpdated}
-          isOpen={isEditing}
-          onOpenChange={setIsEditing}
-          editingTask={editingTask}
-        />
+        {/* Task Edit Sheet */}
+        <Sheet open={showEditSheet} onOpenChange={setShowEditSheet}>
+          <SheetContent className="w-full sm:max-w-2xl bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl overflow-y-auto">
+            <SheetHeader className="pb-6 border-b border-gray-200 dark:border-gray-700 mb-8">
+              <SheetTitle className="flex items-center gap-4 text-xl font-bold text-gray-900 dark:text-gray-100">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                  <Edit className="h-5 w-5 text-white" />
+                </div>
+                Edit Quest
+              </SheetTitle>
+              <SheetDescription className="text-gray-600 dark:text-gray-400">
+                Update quest information and settings
+              </SheetDescription>
+            </SheetHeader>
+            
+            <TaskDetailsSheetContent 
+              task={taskDetail.task}
+              isEditing={true}
+              onStartEdit={() => {}}
+              onCancelEdit={() => {
+                setShowEditSheet(false);
+                setIsEditingInSheet(false);
+              }}
+              onSaveEdit={(updatedTask: Task) => {
+                handleSaveEdit(updatedTask);
+              }}
+              onClose={() => {
+                setShowEditSheet(false);
+                setIsEditingInSheet(false);
+              }}
+              familyMembers={familyMembers}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

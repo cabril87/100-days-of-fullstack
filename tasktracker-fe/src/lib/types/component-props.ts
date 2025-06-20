@@ -66,6 +66,22 @@ export interface TaskCreationModalProps {
   showTemplateOptions?: boolean;
 }
 
+export interface TaskEditFormProps {
+  task: Task;
+  onSave: (task: Task) => void;
+  onCancel: () => void;
+}
+
+export interface TaskDetailsSheetContentProps {
+  task: Task;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: (task: Task) => void;
+  onClose: () => void;
+  familyMembers: FamilyMemberDTO[];
+}
+
 export interface SmartInvitationWizardProps {
   familyId: number;
   isOpen: boolean;

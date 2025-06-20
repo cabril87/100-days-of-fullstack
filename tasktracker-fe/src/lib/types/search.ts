@@ -49,7 +49,7 @@ export interface UnifiedSearchRequestDTO {
   EntityTypes?: SearchEntityTypeDTO[];
   DateRange?: SearchDateRangeDTO;
   FamilyId?: number;
-  Filters?: Record<string, unknown>;
+  Filters?: Record<string, string | number | boolean | string[] | number[]>;
   Sort?: SearchSortDTO;
   Pagination?: SearchPaginationDTO;
 }
@@ -83,11 +83,11 @@ export interface BackendSearchResponseDTO {
   executionTimeMs: number;
   suggestions: SearchSuggestionDTO[];
   facets: {
-    entityTypes: unknown[];
-    dateRanges: unknown[];
-    families: unknown[];
-    statuses: unknown[];
-    priorities: unknown[];
+    entityTypes: { name: string; count: number }[];
+    dateRanges: { name: string; count: number }[];
+    families: { name: string; count: number }[];
+    statuses: { name: string; count: number }[];
+    priorities: { name: string; count: number }[];
   };
   searchId?: string;
   tasks: BackendEntityResultsDTO;
@@ -102,7 +102,9 @@ export interface BackendSearchResponseDTO {
 }
 
 export interface BackendEntityResultsDTO {
-  results: SearchResultItemDTO[];
+  results: (TaskSearchResultDTO | FamilySearchResultDTO | AchievementSearchResultDTO | 
+           BoardSearchResultDTO | NotificationSearchResultDTO | ActivitySearchResultDTO |
+           TagSearchResultDTO | CategorySearchResultDTO | TemplateSearchResultDTO)[];
   totalCount: number;
   hasMore: boolean;
 }
@@ -133,14 +135,14 @@ export interface SearchResultGroupDTO {
 }
 
 export interface SearchResultItemDTO {
-  Id: number;
+  Id: string;
   EntityType: SearchEntityTypeDTO;
   Title: string;
   Description?: string;
   Url?: string;
   Highlights: SearchHighlightDTO[];
   Score: number;
-  EntityData: Record<string, unknown>;
+  EntityData: Record<string, string | number | boolean | string[] | undefined | null>;
   CreatedAt: string;
   UpdatedAt?: string;
 }
@@ -429,4 +431,132 @@ export interface MobileSearchConfig {
   compactResults: boolean;
   gestureNavigation: boolean;
   hapticFeedback: boolean;
+}
+
+// ================================
+// BACKEND ENTITY DTO INTERFACES
+// ================================
+
+export interface TaskSearchResultDTO {
+  Id: number;
+  Title: string;
+  Description?: string;
+  Status: string;
+  Priority: string;
+  DueDate?: string;
+  CreatedAt: string;
+  AssignedToUserId?: number;
+  AssignedToUserName?: string;
+  FamilyId?: number;
+  FamilyName?: string;
+  Tags: string[];
+  CategoryName?: string;
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface FamilySearchResultDTO {
+  Id: number;
+  Name: string;
+  Description?: string;
+  MemberCount: number;
+  CreatedAt: string;
+  CreatedByUserName?: string;
+  MemberNames: string[];
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface AchievementSearchResultDTO {
+  Id: number;
+  Title: string;
+  Description: string;
+  Icon?: string;
+  Points: number;
+  IsUnlocked: boolean;
+  UnlockedAt?: string;
+  CreatedAt?: string;
+  Category?: string;
+  Difficulty?: string;
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface BoardSearchResultDTO {
+  Id: number;
+  Name: string;
+  Description?: string;
+  TaskCount: number;
+  CreatedAt: string;
+  LastModifiedAt?: string;
+  FamilyId?: number;
+  FamilyName?: string;
+  Template?: string;
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface NotificationSearchResultDTO {
+  Id: number;
+  Title: string;
+  Message: string;
+  Type: string;
+  IsRead: boolean;
+  CreatedAt: string;
+  RelatedEntityId?: number;
+  RelatedEntityType?: string;
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface ActivitySearchResultDTO {
+  Id: number;
+  Description: string;
+  ActivityType: string;
+  Timestamp: string;
+  CreatedAt?: string;
+  UserId: number;
+  UserName: string;
+  FamilyId?: number;
+  FamilyName?: string;
+  RelatedEntityId?: number;
+  RelatedEntityType?: string;
+  Highlights: SearchHighlightDTO[];
+  SearchScore: number;
+}
+
+export interface TagSearchResultDTO {
+  Id?: number;
+  Name: string;
+  Title?: string;
+  Description?: string;
+  UsageCount?: number;
+  Color?: string;
+  CreatedAt?: string;
+  Highlights?: SearchHighlightDTO[];
+  SearchScore?: number;
+}
+
+export interface CategorySearchResultDTO {
+  Id: number;
+  Name: string;
+  Title?: string;
+  Description?: string;
+  TaskCount?: number;
+  Color?: string;
+  CreatedAt?: string;
+  Highlights?: SearchHighlightDTO[];
+  SearchScore?: number;
+}
+
+export interface TemplateSearchResultDTO {
+  Id: number;
+  Name: string;
+  Title?: string;
+  Description?: string;
+  Category?: string;
+  IsPublic?: boolean;
+  CreatedAt?: string;
+  Highlights?: SearchHighlightDTO[];
+  SearchScore?: number;
 } 
