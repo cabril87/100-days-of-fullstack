@@ -535,6 +535,55 @@ export class ApiClient {
     );
   }
   
+  async patch<T>(endpoint: string, body?: unknown, headers?: HeadersInit): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    
+    // Determine content type and body format
+    const mergedHeaders = { ...getAuthHeaders(), ...headers } as Record<string, string>;
+    const contentType = mergedHeaders['Content-Type'] || mergedHeaders['content-type'];
+    
+    let requestBody: string | undefined;
+    if (body !== undefined) {
+      if (contentType === 'text/plain') {
+        requestBody = String(body);
+      } else {
+        requestBody = JSON.stringify(body);
+      }
+    }
+    
+    // Debug logging for PATCH requests
+    console.log('🌐 ApiClient PATCH:', {
+      endpoint,
+      url,
+      baseUrl: this.baseUrl,
+      method: 'PATCH',
+      hasBody: !!body,
+      contentType,
+      bodyPreview: requestBody ? requestBody.substring(0, 200) : 'no body'
+    });
+    
+    return withTimeout(
+      withRetry(async () => {
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: mergedHeaders,
+          body: requestBody,
+          credentials: 'include', // Include cookies for HTTP-only cookie support
+        });
+        
+        console.log('📡 ApiClient PATCH response:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        return this.handleResponse<T>(response);
+      })
+    );
+  }
+  
   async delete<T>(endpoint: string, headers?: HeadersInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     

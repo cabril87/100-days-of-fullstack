@@ -41,22 +41,22 @@ import EnterpriseTaskManager from './EnterpriseTaskManager';
  */
 export default function TasksPageContent({ user, initialData }: TasksPageContentProps) {
   const { celebrateTaskCompletion } = useTaskCompletion();
-  
+
   // Core state
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks || []);
   const [stats, setStats] = useState<TaskStats>(initialData.stats);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Family collaboration state
   const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
   const [hasFamily, setHasFamily] = useState(false);
   const [family, setFamily] = useState<FamilyDTO | null>(null);
-  
+
   // Modal states
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  
+
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -135,7 +135,7 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
           // Load family members
           const members = await familyInvitationService.getFamilyMembers(userFamily.id);
           setFamilyMembers(members || []);
-          
+
           console.log('✅ Family data loaded:', {
             familyId: userFamily.id,
             familyName: userFamily.name,
@@ -176,13 +176,13 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
       if (!taskToComplete) return;
 
       console.log(`✅ Completing task ${taskId}: ${taskToComplete.title}`);
-      
-      const result = await taskService.completeTask(taskId);
-      
+
+      await taskService.completeTask(taskId);
+
       // Update local state
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          task.id === taskId 
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId
             ? { ...task, isCompleted: true, completedAt: new Date() }
             : task
         )
@@ -196,12 +196,12 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
       }));
 
       // Show completion modal
-        setCompletionModal({
-          isOpen: true,
-          taskTitle: taskToComplete.title,
+      setCompletionModal({
+        isOpen: true,
+        taskTitle: taskToComplete.title,
         xpEarned: taskToComplete.pointsValue || 0,
-          newLevel: undefined,
-          achievements: [],
+        newLevel: undefined,
+        achievements: [],
         streakDays: 0
       });
 
@@ -241,13 +241,13 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
     if (!deleteModal.taskId) return;
 
     try {
-    setDeleteModal(prev => ({ ...prev, isLoading: true }));
+      setDeleteModal(prev => ({ ...prev, isLoading: true }));
 
-        await taskService.deleteTask(deleteModal.taskId);
-      
+      await taskService.deleteTask(deleteModal.taskId);
+
       // Update local state
       setTasks(prevTasks => prevTasks.filter(task => task.id !== deleteModal.taskId));
-      
+
       // Update stats
       const deletedTask = tasks.find(t => t.id === deleteModal.taskId);
       if (deletedTask && deletedTask.isCompleted) {
@@ -290,18 +290,18 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
   const handleTaskCreated = (newTask?: Task) => {
     setShowTaskModal(false);
     setEditingTask(null);
-    
+
     if (newTask) {
       if (editingTask) {
         // Update existing task
-        setTasks(prevTasks => 
+        setTasks(prevTasks =>
           prevTasks.map(task => task.id === newTask.id ? newTask : task)
         );
       } else {
         // Add new task
         setTasks(prevTasks => [newTask, ...prevTasks]);
       }
-      
+
       // Refresh data to get latest stats
       loadTasks();
     }
@@ -348,23 +348,23 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
 
   // Loading state
   if (isLoading && tasks.length === 0) {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="space-y-6">
             {/* Header Skeleton */}
             <div className="bg-white dark:bg-gray-800 shadow-sm border-b rounded-lg p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
                   <div className="h-8 bg-gradient-to-r from-blue-200 to-purple-200 rounded w-48 mb-2 animate-pulse"></div>
                   <div className="h-4 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-64 animate-pulse"></div>
-            </div>
-            <div className="flex items-center gap-3">
+                </div>
+                <div className="flex items-center gap-3">
                   <div className="h-9 bg-gradient-to-r from-gray-200 to-gray-300 rounded w-24 animate-pulse"></div>
                   <div className="h-9 bg-gradient-to-r from-blue-200 to-purple-200 rounded w-32 animate-pulse"></div>
-          </div>
-        </div>
-      </div>
+                </div>
+              </div>
+            </div>
 
             {/* Content Skeleton */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
@@ -373,10 +373,10 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                   <div key={i} className="h-16 bg-gradient-to-r from-gray-100 to-gray-200 rounded animate-pulse"></div>
                 ))}
               </div>
-              </div>
-              </div>
-              </div>
-              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -397,9 +397,9 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                   <p className="text-gray-600 dark:text-gray-400 mt-1">
                     Advanced task management with collaboration
                   </p>
+                </div>
               </div>
             </div>
-          </div>
 
             {/* Error Alert */}
             <Alert variant="destructive" className="border-red-300 bg-red-50 dark:bg-red-900/20">
@@ -408,24 +408,24 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                 Failed to load task data: {error}
               </AlertDescription>
             </Alert>
-            
-                        <Button
+
+            <Button
               onClick={loadTasks}
-                            variant="outline"
+              variant="outline"
               className="w-full min-h-[44px] bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200"
-                          >
+            >
               <Rocket className="w-4 h-4 mr-2" />
               Try Again
-                          </Button>
-                      </div>
-                  </div>
-                        </div>
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   // No user state
   if (!user) {
-                                return (
+    return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Alert className="border-purple-200 bg-purple-50 dark:bg-purple-900/20">
@@ -435,11 +435,11 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
             </AlertDescription>
           </Alert>
         </div>
-                                  </div>
-                                );
+      </div>
+    );
   }
-                                
-                                return (
+
+  return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header Section */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b">
@@ -456,27 +456,27 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
                   <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                     <Users className="w-3 h-3 mr-1" />
                     Family: {family?.name || 'My Family'}
-                                    </Badge>
-                                  )}
-                                </div>
-        </div>
+                  </Badge>
+                )}
+              </div>
+            </div>
 
             {/* Quick Stats */}
             <div className="flex items-center gap-4 text-sm">
-                  <div className="text-center">
+              <div className="text-center">
                 <div className="font-bold text-lg text-blue-600">{tasks.length}</div>
                 <div className="text-gray-500">Total Tasks</div>
-                  </div>
-                  <div className="text-center">
+              </div>
+              <div className="text-center">
                 <div className="font-bold text-lg text-green-600">{stats.completedTasks || 0}</div>
                 <div className="text-gray-500">Completed</div>
-                  </div>
-                  <div className="text-center">
+              </div>
+              <div className="text-center">
                 <div className="font-bold text-lg text-purple-600">{stats.totalPoints || 0}</div>
                 <div className="text-gray-500">XP Points</div>
-                  </div>
-                </div>
               </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -491,63 +491,68 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
           onTaskCreate={handleOpenTaskModal}
           onTaskEdit={handleEditTask}
           onTaskDelete={handleDeleteTask}
+          onTaskStatusChange={(taskId, status) => {
+            if (status === TaskItemStatus.Completed) {
+              handleCompleteTask(taskId);
+            }
+          }}
           onRefresh={loadTasks}
         />
       </div>
 
-        {/* Task Creation/Edit Modal */}
-        {user && (
-          <TaskCreationModal
-            user={user}
-            family={hasFamily && familyMembers.length > 0 ? {
+      {/* Task Creation/Edit Modal */}
+      {user && (
+        <TaskCreationModal
+          user={user}
+          family={hasFamily && familyMembers.length > 0 ? {
             id: familyMembers[0]?.familyId || family?.id || 0,
             name: family?.name || 'My Family',
             description: family?.description || '',
             createdAt: family?.createdAt || new Date().toISOString(),
-              createdById: user?.id || 0,
-              memberCount: familyMembers.length
-            } : null}
-            onTaskCreated={handleTaskCreated}
-            isOpen={showTaskModal}
-            onOpenChange={handleCloseTaskModal}
-            editingTask={editingTask}
-          />
-        )}
-
-        {/* Error Modal */}
-        <ErrorModal
-          isOpen={errorModal.isOpen}
-          onOpenChange={(open) => setErrorModal(prev => ({ ...prev, isOpen: open }))}
-          title={errorModal.title}
-          message={errorModal.message}
-          details={errorModal.details}
-          type={errorModal.type}
-          showDetails={errorModal.showDetails}
+            createdById: user?.id || 0,
+            memberCount: familyMembers.length
+          } : null}
+          onTaskCreated={handleTaskCreated}
+          isOpen={showTaskModal}
+          onOpenChange={handleCloseTaskModal}
+          editingTask={editingTask}
         />
+      )}
 
-        {/* Deletion Confirmation Modal */}
-        <ConfirmationModal
-          isOpen={deleteModal.isOpen}
-          onClose={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
-          onConfirm={confirmDeleteTask}
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        onOpenChange={(open) => setErrorModal(prev => ({ ...prev, isOpen: open }))}
+        title={errorModal.title}
+        message={errorModal.message}
+        details={errorModal.details}
+        type={errorModal.type}
+        showDetails={errorModal.showDetails}
+      />
+
+      {/* Deletion Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDeleteTask}
         title="Delete Task"
         description={`Are you sure you want to delete "${deleteModal.taskTitle}"? This action cannot be undone and you'll lose any progress on this task.`}
         confirmText="Delete Task"
         cancelText="Keep Task"
-          variant="danger"
-          isLoading={deleteModal.isLoading}
-        />
+        variant="danger"
+        isLoading={deleteModal.isLoading}
+      />
 
-        {/* Completion Celebration Modal */}
-        <CompletionModal
-          isOpen={completionModal.isOpen}
-          onClose={() => setCompletionModal(prev => ({ ...prev, isOpen: false }))}
-          taskTitle={completionModal.taskTitle}
-          xpEarned={completionModal.xpEarned}
-          newLevel={completionModal.newLevel}
-          achievements={completionModal.achievements}
-          streakDays={completionModal.streakDays}
-        />
+      {/* Completion Celebration Modal */}
+      <CompletionModal
+        isOpen={completionModal.isOpen}
+        onClose={() => setCompletionModal(prev => ({ ...prev, isOpen: false }))}
+        taskTitle={completionModal.taskTitle}
+        xpEarned={completionModal.xpEarned}
+        newLevel={completionModal.newLevel}
+        achievements={completionModal.achievements}
+        streakDays={completionModal.streakDays}
+      />
     </div>
   );
 } 

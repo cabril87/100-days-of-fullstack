@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -12,40 +12,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   Plus,
   MoreHorizontal,
   GripVertical,
-  Eye,
   Edit,
   Trash2,
   Calendar,
-  Clock,
   Star,
-  User,
-  Flag,
   ChevronLeft,
   ChevronRight,
   Settings,
@@ -53,22 +28,14 @@ import {
   List,
   Maximize2,
   Minimize2,
-  RotateCcw,
-  Filter,
-  Search,
-  SortAsc,
-  SortDesc,
   Columns,
   Move,
   Copy,
   Archive,
-  BookmarkPlus,
-  Tag,
   MessageSquare,
   Paperclip,
   CheckCircle,
   Circle,
-  AlertTriangle,
   Zap,
   Target,
   Flame
@@ -77,7 +44,8 @@ import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, useSensor, use
 import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TaskItemResponseDTO, BoardColumnDTO, TaskItemStatus } from '@/lib/types/task';
+import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/task';
+import { BoardColumnDTO } from '@/lib/types/board';
 import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
 
@@ -148,8 +116,8 @@ const SortableTaskCard: React.FC<{
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const assignee = familyMembers.find(member => member.id === task.assignedToFamilyMemberId);
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.isCompleted;
+  const assignee = familyMembers.find(member => member.userId === task.assignedToUserId);
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completedAt;
   const priority = task.priority?.toLowerCase();
 
   const getPriorityColor = () => {
@@ -176,7 +144,7 @@ const SortableTaskCard: React.FC<{
       style={style}
       className={`${getPriorityColor()} border-l-4 cursor-pointer transition-all duration-200 hover:shadow-md group touch-manipulation
                  ${isDragging ? 'shadow-lg rotate-2 scale-105' : ''}
-                 ${task.isCompleted ? 'opacity-75' : ''}
+                 ${task.completedAt ? 'opacity-75' : ''}
                  ${isCompact ? 'mb-2' : 'mb-3'}
                  ${isOverdue ? 'ring-2 ring-red-200' : ''}`}
       {...attributes}
@@ -187,7 +155,7 @@ const SortableTaskCard: React.FC<{
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h4 className={`font-medium ${isCompact ? 'text-sm' : 'text-base'} truncate
-                           ${task.isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                           ${task.completedAt ? 'line-through text-gray-500' : 'text-gray-900'}`}>
               {task.title}
             </h4>
             {!isCompact && task.description && (
@@ -260,14 +228,14 @@ const SortableTaskCard: React.FC<{
           {/* Assignee */}
           {assignee && (
             <div className="flex items-center gap-1">
-              <Avatar className="h-4 w-4">
-                <AvatarFallback className="text-xs">
-                  {assignee.firstName?.[0]}{assignee.lastName?.[0]}
+              <Avatar className="h-5 w-5">
+                <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                  {assignee.user.firstName?.charAt(0) || assignee.user.username?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               {!isCompact && (
-                <span className="truncate max-w-16">
-                  {assignee.firstName}
+                <span className="text-xs text-gray-600 truncate max-w-16">
+                  {assignee.user.firstName || assignee.user.username}
                 </span>
               )}
             </div>
@@ -292,14 +260,21 @@ const SortableTaskCard: React.FC<{
               )}
               {task.subtaskCount && task.subtaskCount > 0 && (
                 <div className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" />
+                  <CheckCircle 
+                    className={`h-4 w-4 transition-colors cursor-pointer
+                               ${task.completedAt ? 'text-green-500 fill-green-100' : 'text-gray-300 hover:text-green-400'}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onQuickAction?.('toggle-complete', task.id);
+                    }}
+                  />
                   {task.completedSubtasks || 0}/{task.subtaskCount}
                 </div>
               )}
             </div>
             
             {/* Status Indicator */}
-            <div className={`w-2 h-2 rounded-full ${task.isCompleted ? 'bg-green-500' : 'bg-gray-300'}`} />
+            <div className={`w-2 h-2 rounded-full ${task.completedAt ? 'bg-green-500' : 'bg-gray-300'}`} />
           </div>
         )}
       </CardContent>
@@ -345,7 +320,7 @@ const SortableColumn: React.FC<{
     transition,
   };
 
-  const completedTasks = tasks.filter(task => task.isCompleted).length;
+  const completedTasks = tasks.filter(task => task.completedAt).length;
   const completionRate = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
   const getStatusColor = () => {
@@ -475,7 +450,7 @@ const SortableColumn: React.FC<{
 
           {/* Add Task Button */}
           <Button
-            variant="dashed"
+            variant="outline"
             className="w-full mt-3 h-12 border-2 border-dashed border-gray-300 hover:border-purple-300 hover:bg-purple-50"
             onClick={onTaskCreate}
           >
@@ -495,7 +470,7 @@ const SortableColumn: React.FC<{
             {tasks.slice(0, 3).map(task => (
               <div
                 key={task.id}
-                className={`w-full h-2 rounded ${task.isCompleted ? 'bg-green-400' : 'bg-gray-300'}`}
+                className={`w-full h-2 rounded ${task.completedAt ? 'bg-green-400' : 'bg-gray-300'}`}
               />
             ))}
             {tasks.length > 3 && (
@@ -528,11 +503,6 @@ export default function MobileKanbanEnhancements({
   tasks,
   familyMembers,
   isLoading = false,
-  enableTouchGestures = true,
-  enableColumnCollapse = true,
-  enableQuickActions = true,
-  enableBatchOperations = true,
-  enableOfflineSync = false,
   maxColumnsVisible = 3,
   onTaskMove,
   onColumnReorder,
@@ -553,6 +523,7 @@ export default function MobileKanbanEnhancements({
   const [draggedTask, setDraggedTask] = useState<MobileKanbanTask | null>(null);
   const [activeColumn, setActiveColumn] = useState<string | null>(null);
   const [isCompactMode, setIsCompactMode] = useState(false);
+  const [enableBatchOperations] = useState(true);
 
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -616,7 +587,7 @@ export default function MobileKanbanEnhancements({
   }, [tasks]);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event;
+    const { over } = event;
     
     if (!over) return;
     
@@ -706,13 +677,25 @@ export default function MobileKanbanEnhancements({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setViewMode('columns')}>
+            <DropdownMenuItem 
+              onClick={() => {
+                setViewMode('columns');
+                onViewModeChange?.('columns');
+              }}
+              className={viewMode === 'columns' ? 'bg-blue-50' : ''}
+            >
               <Columns className="h-4 w-4 mr-2" />
-              Columns
+              Columns {viewMode === 'columns' && '✓'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setViewMode('compact')}>
+            <DropdownMenuItem 
+              onClick={() => {
+                setViewMode('compact');
+                onViewModeChange?.('compact');
+              }}
+              className={viewMode === 'compact' ? 'bg-blue-50' : ''}
+            >
               <List className="h-4 w-4 mr-2" />
-              Compact
+              Compact {viewMode === 'compact' && '✓'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -745,10 +728,15 @@ export default function MobileKanbanEnhancements({
   const renderColumns = () => {
     const visibleColumns = columns.slice(0, isMobile ? maxColumnsVisible : columns.length);
     
+    // Adjust layout based on viewMode
+    const containerClass = viewMode === 'compact' 
+      ? `flex-1 flex ${columnLayout === 'scrollable' ? 'overflow-x-auto' : 'overflow-hidden'} p-2 gap-2`
+      : `flex-1 flex ${columnLayout === 'scrollable' ? 'overflow-x-auto' : 'overflow-hidden'} p-4 gap-4`;
+    
     return (
       <div
         ref={scrollContainerRef}
-        className={`flex-1 flex ${columnLayout === 'scrollable' ? 'overflow-x-auto' : 'overflow-hidden'} p-4 gap-4`}
+        className={containerClass}
       >
         <SortableContext
           items={columns.map(col => `column-${col.id}`)}
@@ -757,21 +745,29 @@ export default function MobileKanbanEnhancements({
           {visibleColumns.map(column => {
             const columnTasks = tasksByColumn[column.id.toString()] || [];
             const isCollapsed = collapsedColumns.has(column.id.toString());
+            const isActiveDropTarget = activeColumn === column.id.toString();
+            const hasBeingDraggedTask = draggedTask && columnTasks.some(task => task.id === draggedTask.id);
             
             return (
-              <SortableColumn
+              <div
                 key={column.id}
-                column={column}
-                tasks={columnTasks}
-                familyMembers={familyMembers}
-                isCompact={isCompactMode}
-                isCollapsed={isCollapsed}
-                onTaskCreate={() => onTaskCreate?.(column.id.toString())}
-                onTaskEdit={onTaskEdit}
-                onTaskDelete={onTaskDelete}
-                onColumnEdit={() => onColumnEdit?.(column)}
-                onToggleCollapse={() => toggleColumnCollapse(column.id.toString())}
-              />
+                className={`${isActiveDropTarget ? 'ring-2 ring-blue-400 ring-opacity-75' : ''} 
+                           ${hasBeingDraggedTask ? 'opacity-75' : ''} 
+                           transition-all duration-200`}
+              >
+                <SortableColumn
+                  column={column}
+                  tasks={columnTasks}
+                  familyMembers={familyMembers}
+                  isCompact={viewMode === 'compact' ? true : isCompactMode}
+                  isCollapsed={isCollapsed}
+                  onTaskCreate={() => onTaskCreate?.(column.id.toString())}
+                  onTaskEdit={onTaskEdit}
+                  onTaskDelete={onTaskDelete}
+                  onColumnEdit={() => onColumnEdit?.(column)}
+                  onToggleCollapse={() => toggleColumnCollapse(column.id.toString())}
+                />
+              </div>
             );
           })}
         </SortableContext>

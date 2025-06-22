@@ -405,7 +405,7 @@ export function SearchResults({
   isLoading = false,
   executionTime = 0,
   totalCount = 0,
-  query,
+
   className
 }: SearchResultsProps) {
   if (!results || results.length === 0) {

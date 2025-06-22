@@ -8,8 +8,6 @@ import { TimeProgressBar } from '@/components/ui/TimeProgressBar';
 import { AssigneeList } from '@/components/ui/AssigneeList';
 import {
   Calendar,
-  Flame,
-  Zap,
   Target,
   Circle
 } from 'lucide-react';
@@ -24,7 +22,7 @@ interface TaskListProps {
   onSelectTask: (taskId: number, checked: boolean) => void;
   getPriorityColor: (priority: string) => string;
   getPriorityIcon: (priority: string) => React.ReactNode;
-  getMemberAvatar: (memberId: number) => any;
+  getMemberAvatar: (memberId: number) => FamilyMemberDTO | undefined;
   formatTaskTitle: (title: string) => string;
 }
 
@@ -45,7 +43,6 @@ export default function TaskList({
   filteredTasks,
   isBatchMode,
   selectedTasks,
-  familyMembers,
   onSelectTask,
   getPriorityColor,
   getPriorityIcon,

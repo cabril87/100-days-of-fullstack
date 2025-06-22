@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -23,7 +22,6 @@ import {
   Edit
 } from 'lucide-react';
 import { Task } from '@/lib/types/task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
 import { TaskDetailsSheetContentProps } from '@/lib/types/component-props';
 
 export default function TaskDetailsSheetContent({ 
@@ -204,34 +202,155 @@ export default function TaskDetailsSheetContent({
             </div>
           </div>
 
-          {/* Team Assignment */}
-          {familyMembers && familyMembers.length > 0 && (
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                <User className="h-3 w-3 text-indigo-500" />
-                Quest Assignee
-              </label>
-              <Select
-                value={editedTask.assignedToUserId?.toString() || 'unassigned'}
-                onValueChange={(value) => setEditedTask(prev => ({ 
-                  ...prev, 
-                  assignedToUserId: value === 'unassigned' ? undefined : parseInt(value)
-                }))}
-              >
-                <SelectTrigger className="border-2 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all duration-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">🎯 Unassigned</SelectItem>
-                  {familyMembers.filter(member => member.userId).map(member => (
-                    <SelectItem key={member.userId} value={member.userId.toString()}>
-                      👤 {member.user.username}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Enhanced Family & Team Assignment */}
+          <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-900/20 dark:via-indigo-900/20 dark:to-blue-900/20 p-6 rounded-xl border border-purple-200/50 dark:border-purple-700/50">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg shadow-lg">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Quest Assignment</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Configure family and member assignment</p>
+              </div>
             </div>
-          )}
+
+            <div className="space-y-6">
+              {/* Family Context Display */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  Quest Context
+                </label>
+                <div className="flex items-center gap-4 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-700 bg-white/50 dark:bg-gray-800/50">
+                  {editedTask.familyId ? (
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg">
+                        <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                            🏠 Family Quest
+                          </span>
+                          <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full">
+                            {familyMembers.find(m => m.familyId === editedTask.familyId)?.family?.name || 'Family Task'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Shared with {familyMembers.filter(m => m.familyId === editedTask.familyId).length} family members
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                            👤 Personal Quest
+                          </span>
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+                            Individual
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Private quest for personal achievement
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Enhanced Assignee Selection */}
+              {familyMembers && familyMembers.length > 0 && (
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    Quest Assignee
+                  </label>
+                  <Select
+                    value={editedTask.assignedToUserId?.toString() || 'unassigned'}
+                    onValueChange={(value) => setEditedTask(prev => ({ 
+                      ...prev, 
+                      assignedToUserId: value === 'unassigned' ? undefined : parseInt(value)
+                    }))}
+                  >
+                    <SelectTrigger className="h-14 border-2 border-gray-200 dark:border-gray-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-all duration-200">
+                      <SelectValue>
+                        {(() => {
+                          const assignee = familyMembers.find(member => member.userId === editedTask.assignedToUserId);
+                          if (!assignee) {
+                            return (
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                  <User className="h-4 w-4 text-gray-500" />
+                                </div>
+                                <div className="text-left">
+                                  <div className="font-semibold text-gray-500">🎯 Unassigned</div>
+                                  <div className="text-xs text-gray-400">No one assigned to this quest</div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                                <User className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="text-left">
+                                <div className="font-semibold">
+                                  👤 {assignee.user.firstName || assignee.user.username}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {assignee.family?.name ? `🏠 ${assignee.family.name}` : 'Personal Assignment'}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">
+                        <div className="flex items-center gap-3 py-2">
+                          <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                            <User className="h-4 w-4 text-gray-500" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-500">🎯 Unassigned</div>
+                            <div className="text-xs text-gray-400">No one assigned</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                      {familyMembers.filter(member => member.userId).map(member => (
+                        <SelectItem key={member.userId} value={member.userId!.toString()}>
+                          <div className="flex items-center gap-3 py-2">
+                            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                              <User className="h-4 w-4 text-white" />
+                            </div>
+                            <div>
+                              <div className="font-semibold">
+                                👤 {member.user.firstName || member.user.username}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {member.family?.name ? `🏠 ${member.family.name} Member` : 'Individual User'}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Enterprise Action Buttons */}
@@ -361,20 +480,45 @@ export default function TaskDetailsSheetContent({
               <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
                 <User className="h-4 w-4 text-white" />
               </div>
-              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Quest Assignee</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Quest Assignment</span>
             </div>
-            <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
-              {task.assignedToUserName ? (
-                <div className="flex items-center gap-2">
-                  <span>👤</span>
-                  {task.assignedToUserName}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <span>🎯</span>
-                  Unassigned
-                </div>
-              )}
+            <div className="space-y-3">
+              {/* Family Context */}
+              <div className="flex items-center gap-2 text-sm">
+                {task.familyId ? (
+                  <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/50 px-3 py-1 rounded-full">
+                    <span>🏠</span>
+                    <span className="font-semibold text-purple-700 dark:text-purple-300">
+                      {familyMembers.find(m => m.familyId === task.familyId)?.family?.name || 'Family Quest'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/50 px-3 py-1 rounded-full">
+                    <span>👤</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">Personal Quest</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Assignee */}
+              <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {task.assignedToUserName ? (
+                  <div className="flex items-center gap-2">
+                    <span>👤</span>
+                    <span>{task.assignedToUserName}</span>
+                    {task.familyId && (
+                      <span className="text-sm text-gray-500 ml-2">
+                        (Family Member)
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <span>🎯</span>
+                    Unassigned
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

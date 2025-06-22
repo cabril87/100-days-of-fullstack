@@ -8,22 +8,21 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { 
-  Search, 
-  ArrowRight, 
-  Command, 
-  Clock, 
+import {
+  Search,
+  ArrowRight,
+  Command,
+  Clock,
   Star,
   Target,
   User,
@@ -35,8 +34,7 @@ import {
   Folder,
   FileText,
   X,
-  Loader2,
-  Smartphone
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useAuth } from '@/lib/providers/AuthProvider';
@@ -46,17 +44,15 @@ import {
   SearchSuggestionDTO,
   SearchResultItemDTO
 } from '@/lib/types/search';
-import { 
+import {
   GlobalSearchModalProps,
   QuickResultProps,
   RecentSearchesProps,
   SavedSearchesProps
 } from '@/lib/types';
-import { 
-  VoiceSearchButton, 
-  MobileSearchToolbar, 
-  triggerHapticFeedback,
-  useTouchGestures 
+import {
+  VoiceSearchButton,
+  triggerHapticFeedback
 } from './MobileSearchEnhancements';
 
 // GlobalSearchModalProps now imported from lib/types
@@ -631,7 +627,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                 <div className="px-4 py-8 text-center">
                   <div className="text-4xl mb-2">🔍</div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    No results found for "{query}"
+                    No results found for &ldquo;{query}&rdquo;
                   </p>
                   <Button 
                     variant="outline" 

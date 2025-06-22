@@ -6,10 +6,8 @@
  * Centralized board component interface definitions for consistent typing
  */
 
-import { ReactNode } from 'react';
 import { BoardColumnDTO } from './board';
 import { TaskItemResponseDTO } from './task';
-import { User } from './auth';
 
 // ================================
 // ENHANCED KANBAN BOARD COMPONENTS
@@ -167,7 +165,7 @@ export interface BoardSettingsProps {
       backgroundImageUrl?: string;
     };
   };
-  onSettingsUpdate: (settings: any) => void;
+  onSettingsUpdate: (settings: Record<string, unknown>) => void;
   className?: string;
 }
 
@@ -182,7 +180,7 @@ export interface BoardPermissionsProps {
     canDelete: boolean;
     canInvite: boolean;
   }>;
-  onPermissionUpdate: (userId: string, permissions: any) => void;
+  onPermissionUpdate: (userId: string, permissions: Record<string, unknown>) => void;
   onUserRemove: (userId: string) => void;
   className?: string;
 }
@@ -221,7 +219,7 @@ export interface BoardFiltersProps {
     };
     completionStatus: 'all' | 'completed' | 'incomplete';
   };
-  onFiltersChange: (filters: any) => void;
+  onFiltersChange: (filters: Record<string, unknown>) => void;
   availableAssignees: Array<{
     id: string;
     name: string;

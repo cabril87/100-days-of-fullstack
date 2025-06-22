@@ -114,7 +114,7 @@ export function useUnifiedSearch(
           Field: searchState.sortBy,
           Direction: searchState.sortDirection
         } : undefined,
-        Filters: (options.Filters || searchState.filters) as Record<string, unknown>
+        Filters: options.Filters || (searchState.filters as Record<string, string | number | boolean | string[] | number[]>)
       };
       
       console.log('🔍 useUnifiedSearch: Building search request:', {
@@ -170,7 +170,7 @@ export function useUnifiedSearch(
           Field: searchState.sortBy,
           Direction: searchState.sortDirection
         } : undefined,
-        Filters: searchState.filters as Record<string, unknown>
+        Filters: searchState.filters as Record<string, string | number | boolean | string[] | number[]>
       };
 
       const response = await searchService.performUnifiedSearch(searchRequest);

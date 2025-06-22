@@ -304,25 +304,203 @@ public class TaskItemsController : BaseApiController
         try
         {
             int userId = User.GetUserIdAsInt();
+            taskDto.Id = id; // Ensure ID matches URL parameter
             
             TaskItemDTO? updatedTask = await _taskService.UpdateTaskAsync(userId, id, taskDto);
-            
             if (updatedTask == null)
             {
-                return NotFound(ApiResponse<TaskItemDTO>.NotFoundResponse($"Task with ID {id} not found or you are not authorized to modify it"));
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
             }
             
-            return NoContent();
+            _logger.LogInformation("Task {TaskId} updated by user {UserId}", id, userId);
+            
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, "Task updated successfully"));
         }
         catch (UnauthorizedAccessException ex)
         {
-            _logger.LogWarning(ex, "User tried to update a task they don't own");
+            _logger.LogWarning(ex, "User tried to update a task with a category they don't own");
             return Forbid();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating task with ID {TaskId}", id);
-            return StatusCode(500, ApiResponse<TaskItemDTO>.ServerErrorResponse());
+            _logger.LogError(ex, "Error updating task {TaskId}", id);
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
+        }
+    }
+
+    // PATCH: api/TaskItems/5
+    [HttpPatch("{id}")]
+    [RateLimit(50, 60)] // Allow frequent updates for real-time collaboration
+    [ProducesResponseType(typeof(ApiResponse<TaskItemDTO>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+    public async Task<IActionResult> PatchTaskItem(int id, [FromBody] Dictionary<string, object> updates)
+    {
+        try
+        {
+            int userId = User.GetUserIdAsInt();
+            
+            // Get existing task
+            TaskItemDTO? existingTask = await _taskService.GetTaskByIdAsync(userId, id);
+            if (existingTask == null)
+            {
+                return NotFound(ApiResponse<object>.NotFoundResponse($"Task with ID {id} not found"));
+            }
+
+            // Store previous state for change tracking
+            TaskItemDTO previousState = _mapper.Map<TaskItemDTO>(existingTask);
+            
+            // Apply updates selectively
+            bool hasChanges = false;
+            List<string> changedProperties = new List<string>();
+
+            foreach (KeyValuePair<string, object> update in updates)
+            {
+                string propertyName = update.Key;
+                object? value = update.Value;
+
+                switch (propertyName.ToLowerInvariant())
+                {
+                    case "status":
+                        if (Enum.TryParse<TaskItemStatusDTO>(value?.ToString(), out var status) && status != existingTask.Status)
+                        {
+                            existingTask.Status = status;
+                            // Update completion timestamp based on status
+                            if (status == TaskItemStatusDTO.Completed)
+                                existingTask.CompletedAt = DateTime.UtcNow;
+                            else
+                                existingTask.CompletedAt = null;
+                            hasChanges = true;
+                            changedProperties.Add("Status");
+                        }
+                        break;
+
+                    case "priority":
+                        if (int.TryParse(value?.ToString(), out var priority) && priority != existingTask.Priority)
+                        {
+                            existingTask.Priority = priority;
+                            hasChanges = true;
+                            changedProperties.Add("Priority");
+                        }
+                        break;
+
+                    case "duedate":
+                        if (DateTime.TryParse(value?.ToString(), out var dueDate))
+                        {
+                            existingTask.DueDate = dueDate;
+                            hasChanges = true;
+                            changedProperties.Add("DueDate");
+                        }
+                        else if (value?.ToString()?.ToLowerInvariant() == "null" || string.IsNullOrEmpty(value?.ToString()))
+                        {
+                            existingTask.DueDate = null;
+                            hasChanges = true;
+                            changedProperties.Add("DueDate");
+                        }
+                        break;
+
+                    case "assignedtouserid":
+                        if (int.TryParse(value?.ToString(), out var assigneeId))
+                        {
+                            if (assigneeId != existingTask.AssignedToUserId)
+                            {
+                                existingTask.AssignedToUserId = assigneeId;
+                                // Note: AssignedToUserName will be populated by the service layer
+                                hasChanges = true;
+                                changedProperties.Add("Assignment");
+                            }
+                        }
+                        else if (value?.ToString()?.ToLowerInvariant() == "null" || string.IsNullOrEmpty(value?.ToString()))
+                        {
+                            existingTask.AssignedToUserId = null;
+                            existingTask.AssignedToUserName = null;
+                            hasChanges = true;
+                            changedProperties.Add("Assignment");
+                        }
+                        break;
+
+                    case "familyid":
+                        if (int.TryParse(value?.ToString(), out var familyId) && familyId != existingTask.FamilyId)
+                        {
+                            // Validate family access through family member service
+                            bool canAccessFamily = await _familyMemberService.IsUserMemberOfFamilyAsync(userId, familyId);
+                            if (canAccessFamily)
+                            {
+                                existingTask.FamilyId = familyId;
+                                hasChanges = true;
+                                changedProperties.Add("Family");
+                            }
+                        }
+                        else if (value?.ToString()?.ToLowerInvariant() == "null")
+                        {
+                            existingTask.FamilyId = null;
+                            hasChanges = true;
+                            changedProperties.Add("Family");
+                        }
+                        break;
+
+                    case "title":
+                        if (!string.IsNullOrEmpty(value?.ToString()) && value.ToString() != existingTask.Title)
+                        {
+                            existingTask.Title = value.ToString()!;
+                            hasChanges = true;
+                            changedProperties.Add("Title");
+                        }
+                        break;
+
+                    case "description":
+                        if (value?.ToString() != existingTask.Description)
+                        {
+                            existingTask.Description = value?.ToString();
+                            hasChanges = true;
+                            changedProperties.Add("Description");
+                        }
+                        break;
+
+                    case "pointsvalue":
+                        if (int.TryParse(value?.ToString(), out var points) && points != existingTask.PointsValue)
+                        {
+                            existingTask.PointsValue = points;
+                            hasChanges = true;
+                            changedProperties.Add("PointsValue");
+                        }
+                        break;
+
+                    default:
+                        _logger.LogWarning("Unknown property in PATCH request: {PropertyName}", propertyName);
+                        break;
+                }
+            }
+
+            if (!hasChanges)
+            {
+                return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(existingTask, "No changes detected"));
+            }
+
+            // Update task with optimistic concurrency
+            existingTask.UpdatedAt = DateTime.UtcNow;
+            TaskItemDTO? updatedTask = await _taskService.UpdateTaskAsync(userId, id, existingTask);
+            
+            if (updatedTask == null)
+            {
+                return BadRequest(ApiResponse<object>.BadRequestResponse("Failed to update task"));
+            }
+
+            _logger.LogInformation("Task {TaskId} patched by user {UserId}. Changed: {ChangedProperties}", 
+                id, userId, string.Join(", ", changedProperties));
+            
+            return Ok(ApiResponse<TaskItemDTO>.SuccessResponse(updatedTask, 
+                $"Task updated successfully. Changed: {string.Join(", ", changedProperties)}"));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User tried to patch a task they don't have access to");
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error patching task {TaskId}", id);
+            return StatusCode(500, ApiResponse<object>.ServerErrorResponse());
         }
     }
 

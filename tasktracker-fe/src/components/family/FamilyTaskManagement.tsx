@@ -1,41 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-
-
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { TimeProgressBar } from '@/components/ui/TimeProgressBar';
-import { AssigneeList } from '@/components/ui/AssigneeList';
 import { 
   Target, 
   Clock, 
-  Calendar,
-  Search,
-  Filter,
-  Plus,
-  MoreHorizontal,
   CheckCircle,
   Flame,
   Zap,
   Activity,
-  UserPlus,
-  Trash2,
-  RefreshCw,
-  Trophy,
-  Circle
 } from 'lucide-react';
 import { FamilyTaskItemDTO, Task } from '@/lib/types/task';
 import { taskService } from '@/lib/services/taskService';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
 import { FamilyTaskManagementProps } from '@/lib/types/component-props';
-
-// Import separated components
 import TaskStatsCards from './task-management/TaskStatsCards';
 import TaskManagementHeader from './task-management/TaskManagementHeader';
 import TaskFilters from './task-management/TaskFilters';

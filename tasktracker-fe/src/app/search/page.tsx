@@ -14,12 +14,10 @@ import { SearchBar } from '@/components/search/SearchBar';
 import { SearchResults } from '@/components/search/SearchResults';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   Search, 
   ArrowLeft, 
-  Filter, 
   Grid, 
   List,
   BookmarkPlus,
@@ -30,8 +28,7 @@ import { cn } from '@/lib/utils/utils';
 import {
   SearchEntityTypeDTO,
   SearchResultItemDTO,
-  SearchSuggestionDTO,
-  UnifiedSearchRequestDTO
+  SearchSuggestionDTO
 } from '@/lib/types/search';
 import { MobileSearchEnhancements } from '@/components/search/MobileSearchEnhancements';
 
@@ -41,7 +38,7 @@ import { MobileSearchEnhancements } from '@/components/search/MobileSearchEnhanc
 function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   
   // Get initial query from URL
   const initialQuery = searchParams?.get('q') || '';
@@ -52,9 +49,7 @@ function SearchContent() {
   const {
     searchState,
     search,
-    getSuggestions,
     loadMore,
-    clearResults,
     savedSearches,
     createSavedSearch
   } = useUnifiedSearch(undefined, false, 300);
@@ -120,64 +115,6 @@ function SearchContent() {
         break;
     }
   }, [router]);
-
-  const handleActionClick = useCallback((result: SearchResultItemDTO, action: string) => {
-    switch (action) {
-      case 'View':
-        handleResultClick(result);
-        break;
-      case 'Edit':
-        if (result.EntityType === SearchEntityTypeDTO.Tasks) {
-          router.push(`/tasks/${result.Id}?edit=true`);
-        } else if (result.EntityType === SearchEntityTypeDTO.Boards) {
-          router.push(`/boards/${result.Id}?edit=true`);
-        }
-        break;
-      case 'Complete':
-        if (result.EntityType === SearchEntityTypeDTO.Tasks) {
-          // Handle task completion (would need task service integration)
-          console.log('Complete task:', result.Id);
-        }
-        break;
-      case 'Open in New Tab':
-        const route = getRouteForEntity(result);
-        if (route) {
-          window.open(route, '_blank');
-        }
-        break;
-      default:
-        console.log('Action clicked:', action, 'for result:', result);
-    }
-  }, [handleResultClick, router]);
-
-  // ================================
-  // HELPER FUNCTIONS
-  // ================================
-
-  const getRouteForEntity = (result: SearchResultItemDTO): string | null => {
-    switch (result.EntityType) {
-      case SearchEntityTypeDTO.Tasks:
-        return `/tasks/${result.Id}`;
-      case SearchEntityTypeDTO.Families:
-        return `/family/${result.Id}`;
-      case SearchEntityTypeDTO.Achievements:
-        return `/gamification?achievement=${result.Id}`;
-      case SearchEntityTypeDTO.Boards:
-        return `/boards/${result.Id}`;
-      case SearchEntityTypeDTO.Notifications:
-        return `/notifications?highlight=${result.Id}`;
-      case SearchEntityTypeDTO.Activities:
-        return `/dashboard?activity=${result.Id}`;
-      case SearchEntityTypeDTO.Tags:
-        return `/tasks?tag=${encodeURIComponent(result.Title)}`;
-      case SearchEntityTypeDTO.Categories:
-        return `/tasks?category=${encodeURIComponent(result.Title)}`;
-      case SearchEntityTypeDTO.Templates:
-        return `/boards?template=${result.Id}`;
-      default:
-        return null;
-    }
-  };
 
   const handleSaveSearch = useCallback(async () => {
     if (!currentQuery.trim() || !isAuthenticated) return;
@@ -330,7 +267,7 @@ function SearchContent() {
                       Search results for
                     </span>
                     <Badge variant="secondary" className="font-medium">
-                      "{currentQuery}"
+                      &ldquo;{currentQuery}&rdquo;
                     </Badge>
                   </div>
                   

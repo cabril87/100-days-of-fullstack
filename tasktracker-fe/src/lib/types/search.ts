@@ -559,4 +559,236 @@ export interface TemplateSearchResultDTO {
   CreatedAt?: string;
   Highlights?: SearchHighlightDTO[];
   SearchScore?: number;
-} 
+}
+
+// Backend response type definitions for search service
+export interface BackendTaskSearchResult {
+  Id?: number;
+  id?: number;
+  TaskId?: number;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  Status?: string;
+  status?: string;
+  Priority?: string;
+  priority?: string;
+  DueDate?: string;
+  dueDate?: string;
+  AssignedToUserName?: string;
+  assignedToUserName?: string;
+  FamilyName?: string;
+  familyName?: string;
+  Tags?: string[];
+  tags?: string[];
+  CategoryName?: string;
+  categoryName?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  task?: BackendTaskSearchResult; // For wrapped responses
+}
+
+export interface BackendFamilySearchResult {
+  Id?: number;
+  id?: number;
+  FamilyId?: number;
+  Name?: string;
+  name?: string;
+  Description?: string;
+  description?: string;
+  MemberCount?: number;
+  memberCount?: number;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  family?: BackendFamilySearchResult; // For wrapped responses
+}
+
+export interface BackendAchievementSearchResult {
+  Id?: number;
+  id?: number;
+  AchievementId?: number;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  PointsValue?: number;
+  pointsValue?: number;
+  Category?: string;
+  category?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  achievement?: BackendAchievementSearchResult; // For wrapped responses
+}
+
+export interface BackendBoardSearchResult {
+  Id?: number;
+  id?: number;
+  BoardId?: number;
+  Name?: string;
+  name?: string;
+  Description?: string;
+  description?: string;
+  TaskCount?: number;
+  taskCount?: number;
+  FamilyName?: string;
+  familyName?: string;
+  Template?: string;
+  template?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  LastModifiedAt?: string;
+  lastModifiedAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  board?: BackendBoardSearchResult; // For wrapped responses
+}
+
+export interface BackendNotificationSearchResult {
+  Id?: number;
+  id?: number;
+  NotificationId?: number;
+  Title?: string;
+  title?: string;
+  Message?: string;
+  message?: string;
+  Type?: string;
+  type?: string;
+  IsRead?: boolean;
+  isRead?: boolean;
+  RelatedEntityId?: number;
+  relatedEntityId?: number;
+  RelatedEntityType?: string;
+  relatedEntityType?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  notification?: BackendNotificationSearchResult; // For wrapped responses
+}
+
+export interface BackendActivitySearchResult {
+  Id?: number;
+  id?: number;
+  ActivityId?: number;
+  Description?: string;
+  description?: string;
+  ActivityType?: string;
+  activityType?: string;
+  Timestamp?: string;
+  timestamp?: string;
+  UserId?: number;
+  userId?: number;
+  UserName?: string;
+  userName?: string;
+  FamilyName?: string;
+  familyName?: string;
+  RelatedEntityId?: number;
+  relatedEntityId?: number;
+  RelatedEntityType?: string;
+  relatedEntityType?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  activity?: BackendActivitySearchResult; // For wrapped responses
+}
+
+export interface BackendTagSearchResult {
+  Id?: number;
+  id?: number;
+  TagId?: number;
+  Name?: string;
+  name?: string;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  UsageCount?: number;
+  usageCount?: number;
+  Color?: string;
+  color?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  tag?: BackendTagSearchResult; // For wrapped responses
+}
+
+export interface BackendCategorySearchResult {
+  Id?: number;
+  id?: number;
+  CategoryId?: number;
+  Name?: string;
+  name?: string;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  TaskCount?: number;
+  taskCount?: number;
+  Color?: string;
+  color?: string;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  category?: BackendCategorySearchResult; // For wrapped responses
+}
+
+export interface BackendTemplateSearchResult {
+  Id?: number;
+  id?: number;
+  TemplateId?: number;
+  Name?: string;
+  name?: string;
+  Title?: string;
+  title?: string;
+  Description?: string;
+  description?: string;
+  Category?: string;
+  category?: string;
+  IsPublic?: boolean;
+  isPublic?: boolean;
+  SearchScore?: number;
+  searchScore?: number;
+  CreatedAt?: string;
+  createdAt?: string;
+  Highlights?: string[];
+  highlights?: string[];
+  template?: BackendTemplateSearchResult; // For wrapped responses
+}
+
+// Union type for all backend search results - EXPLICIT TYPES ONLY
+export type BackendSearchResult = 
+  | BackendTaskSearchResult 
+  | BackendFamilySearchResult 
+  | BackendAchievementSearchResult
+  | BackendBoardSearchResult
+  | BackendNotificationSearchResult
+  | BackendActivitySearchResult
+  | BackendTagSearchResult
+  | BackendCategorySearchResult
+  | BackendTemplateSearchResult; 

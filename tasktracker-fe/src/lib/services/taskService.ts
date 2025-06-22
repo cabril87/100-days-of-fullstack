@@ -938,6 +938,12 @@ export class TaskService {
       return false;
     }
   }
+
+  // Patch a task with specific property updates (more efficient for single property changes)
+  async patchTask(id: number, updates: Record<string, unknown>): Promise<Task> {
+    const response = await apiClient.patch<Task>(`/v1/TaskItems/${id}`, updates);
+    return response;
+  }
 }
 
 // Export singleton instance

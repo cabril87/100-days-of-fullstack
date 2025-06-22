@@ -11,11 +11,6 @@ import {
   Mic, 
   MicOff, 
   Vibrate, 
-  ChevronLeft, 
-  ChevronRight,
-  ArrowUp,
-  ArrowDown,
-  Volume2,
   VolumeX,
   Smartphone,
   Zap
@@ -23,13 +18,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/utils';
-import { SearchResultItemDTO } from '@/lib/types/search';
 import { 
   MobileSearchEnhancementsProps,
   VoiceSearchButtonProps,
   MobileSearchToolbarProps,
-  VoiceSearchHookReturn,
-  TouchGesturesHookReturn
 } from '@/lib/types';
 
 // Type definitions for Speech Recognition API
@@ -359,7 +351,7 @@ export function MobileSearchToolbar({
  */
 export function MobileSearchEnhancements({
   onVoiceSearch,
-  onGestureNavigation,
+
   enableHapticFeedback = true,
   enableVoiceSearch = true,
   enableGestureNavigation = true,

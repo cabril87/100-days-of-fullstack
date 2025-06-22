@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -24,17 +23,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
   Plus,
@@ -42,7 +31,6 @@ import {
   Filter,
   List,
   Table as TableIcon,
-  Columns,
   Settings,
   RefreshCw,
   Eye,
@@ -59,28 +47,16 @@ import {
   X,
   Sparkles,
   Download,
-  Upload,
-  Save,
-  Star,
-  Trophy,
-  Calendar,
-  Flag
-
 } from 'lucide-react';
 import { 
   Task, 
-  TaskStats, 
-  TaskItemStatus, 
-  TaskFilter,
   ViewMode,
   LayoutMode,
   FilterPreset,
   TaskManagerState,
   EnterpriseTaskManagerProps
 } from '@/lib/types/task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-import { BoardColumnDTO } from '@/lib/types/board';
-import EnterpriseTaskTable, { ColumnKey, SortDirection } from './EnterpriseTaskTable';
+import EnterpriseTaskTable from './EnterpriseTaskTable';
 import { triggerHapticFeedback } from '../search/MobileSearchEnhancements';
 import TaskDetailsSheetContent from './TaskDetailsSheetContent';
 
@@ -139,9 +115,7 @@ const FILTER_PRESETS: Record<FilterPreset, { label: string; icon: React.ReactNod
  */
 export default function EnterpriseTaskManager({
   tasks,
-  columns,
   familyMembers,
-  stats,
   isLoading = false,
   enableAdvancedFeatures = true,
   enableBatchOperations = true,
@@ -152,10 +126,8 @@ export default function EnterpriseTaskManager({
   onTaskEdit,
   onTaskDelete,
   onTaskStatusChange,
-  onTaskMove,
   onBatchOperation,
   onExport,
-  onImport,
   onViewModeChange,
   onRefresh,
   className = ''
@@ -184,6 +156,8 @@ export default function EnterpriseTaskManager({
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => {
+      if (typeof window === 'undefined') return;
+      
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       
@@ -194,13 +168,15 @@ export default function EnterpriseTaskManager({
     };
     
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+    }
   }, [state.viewMode]);
 
   // Offline detection
   useEffect(() => {
-    if (enableOfflineMode) {
+    if (enableOfflineMode && typeof window !== 'undefined') {
       const handleOnline = () => setIsOffline(false);
       const handleOffline = () => setIsOffline(true);
       
@@ -371,13 +347,50 @@ export default function EnterpriseTaskManager({
     triggerHapticFeedback('light');
   }, []);
 
+  const handleTaskUpdate = useCallback(async (taskId: number, updates: Partial<Task>) => {
+    try {
+      // Import taskService dynamically to avoid circular dependencies
+      const { taskService } = await import('@/lib/services/taskService');
+      
+      // Convert updates to the format expected by the backend
+      const updateData: Record<string, unknown> = {};
+      
+      if (updates.title !== undefined) updateData.title = updates.title;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.dueDate !== undefined) {
+        updateData.dueDate = updates.dueDate ? new Date(updates.dueDate).toISOString() : undefined;
+      }
+      if (updates.priority !== undefined) updateData.priority = updates.priority;
+      if (updates.status !== undefined) updateData.status = updates.status;
+      if (updates.isCompleted !== undefined) {
+        updateData.status = updates.isCompleted ? 'Completed' : 'NotStarted';
+      }
+      if (updates.pointsValue !== undefined) updateData.pointsValue = updates.pointsValue;
+      if (updates.assignedToUserId !== undefined) updateData.assignedToUserId = updates.assignedToUserId;
+      if (updates.categoryId !== undefined) updateData.categoryId = updates.categoryId;
+
+      console.log(`🔄 Updating task ${taskId} with data:`, updateData);
+      
+      // Update the task via the service
+      await taskService.updateTask(taskId, updateData);
+      
+      // Refresh the task list to get the latest data
+      console.log(`🔄 Calling onRefresh to reload task list after updating task ${taskId}`);
+      onRefresh?.();
+      
+      triggerHapticFeedback('success');
+      console.log(`✅ Task ${taskId} updated successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to update task ${taskId}:`, error);
+      triggerHapticFeedback('error');
+    }
+  }, [onRefresh]);
+
   const handleBatchOperationWrapper = useCallback((operation: string, taskIds: number[]) => {
     onBatchOperation?.(operation, taskIds);
     updateState({ selectedTasks: new Set() });
     triggerHapticFeedback('success');
   }, [onBatchOperation, updateState]);
-
-
 
   // Render header with navigation and actions
   const renderHeader = () => (
@@ -645,6 +658,7 @@ export default function EnterpriseTaskManager({
             }))
           })}
           onSortChange={(column, direction) => updateState({ sortColumn: column, sortDirection: direction || 'desc' })}
+          onTaskUpdate={handleTaskUpdate}
           className="border-0 shadow-none"
         />
       </TabsContent>

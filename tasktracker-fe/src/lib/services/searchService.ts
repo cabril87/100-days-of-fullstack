@@ -20,15 +20,17 @@ import {
   BackendSearchResponseDTO,
   BackendEntityResultsDTO,
   SearchResultItemDTO,
-  TaskSearchResultDTO,
-  FamilySearchResultDTO,
-  AchievementSearchResultDTO,
-  BoardSearchResultDTO,
-  NotificationSearchResultDTO,
-  ActivitySearchResultDTO,
-  TagSearchResultDTO,
-  CategorySearchResultDTO,
-  TemplateSearchResultDTO
+  BackendSearchResult,
+  BackendTaskSearchResult,
+  BackendFamilySearchResult,
+  BackendAchievementSearchResult,
+  BackendBoardSearchResult,
+  BackendNotificationSearchResult,
+  BackendActivitySearchResult,
+  BackendTagSearchResult,
+  BackendCategorySearchResult,
+  BackendTemplateSearchResult,
+  SearchHighlightDTO
 } from '@/lib/types/search';
 
 /**
@@ -104,32 +106,45 @@ class SearchService {
   /**
    * Check if response is in new backend format
    */
-  private isNewBackendFormat(response: any): boolean {
-    return response && 
+  private isNewBackendFormat(response: unknown): response is BackendSearchResponseDTO {
+    return response !== null && 
            typeof response === 'object' && 
-           Array.isArray(response.Results) &&
-           typeof response.TotalCount === 'number';
+           response !== undefined &&
+           'totalResults' in response &&
+           typeof (response as BackendSearchResponseDTO).totalResults === 'number';
   }
 
   /**
    * Check if response is in direct results format
    */
-  private isDirectResultsFormat(response: any): boolean {
-    return response && Array.isArray(response) && response.length > 0;
+  private isDirectResultsFormat(response: unknown): response is SearchResultItemDTO[] {
+    return (
+      response !== null &&
+      response !== undefined &&
+      Array.isArray(response) &&
+      response.length > 0 &&
+      response.every(item => 
+        item && 
+        typeof item === 'object' &&
+        'EntityType' in item &&
+        'Id' in item
+      )
+    );
   }
 
   /**
    * Map new backend response format
    */
-  private mapNewBackendResponse(backendResponse: any): UnifiedSearchResponseDTO {
+  private mapNewBackendResponse(backendResponse: BackendSearchResponseDTO): UnifiedSearchResponseDTO {
+    // Map from backend format to frontend format
     return {
-      Results: backendResponse.Results || [],
-      TotalCount: backendResponse.TotalCount || 0,
-      ExecutionTimeMs: backendResponse.ExecutionTimeMs || 0,
-      Suggestions: backendResponse.Suggestions || [],
-      FacetCounts: backendResponse.FacetCounts || {},
-      HasMore: backendResponse.HasMore || false,
-      SearchId: backendResponse.SearchId || ''
+      Results: [], // Will be populated by mapBackendResponseToResultGroups
+      TotalCount: backendResponse.totalResults || 0,
+      ExecutionTimeMs: backendResponse.executionTimeMs || 0,
+      Suggestions: backendResponse.suggestions || [],
+      FacetCounts: this.mapFacetCounts(backendResponse.facets),
+      HasMore: this.checkIfHasMore(backendResponse),
+      SearchId: backendResponse.searchId || ''
     };
   }
 
@@ -192,7 +207,7 @@ class SearchService {
     const entityMappings: Array<{ 
       backendKey: keyof BackendSearchResponseDTO; 
       entityType: SearchEntityTypeDTO;
-      mapper: (item: any) => SearchResultItemDTO;
+      mapper: (item: BackendSearchResult) => SearchResultItemDTO;
     }> = [
       { 
         backendKey: 'tasks', 
@@ -244,7 +259,7 @@ class SearchService {
     for (const mapping of entityMappings) {
       const entityData = backendResponse[mapping.backendKey] as BackendEntityResultsDTO;
       if (entityData && entityData.results && Array.isArray(entityData.results)) {
-        const mappedResults = entityData.results.map(mapping.mapper).filter(Boolean);
+        const mappedResults = entityData.results.map(result => mapping.mapper(result as BackendSearchResult)).filter(Boolean);
         
         if (mappedResults.length > 0) {
           results.push({
@@ -261,12 +276,95 @@ class SearchService {
   }
 
   /**
-   * Map TaskSearchResultDTO to SearchResultItemDTO
+   * Type guard for BackendTaskSearchResult
    */
-  private mapTaskResult(task: any): SearchResultItemDTO {
+  private isBackendTaskSearchResult(result: BackendSearchResult): result is BackendTaskSearchResult {
+    return 'task' in result || 'Title' in result || 'title' in result || 'TaskId' in result;
+  }
+
+  /**
+   * Type guard for BackendFamilySearchResult
+   */
+  private isBackendFamilySearchResult(result: BackendSearchResult): result is BackendFamilySearchResult {
+    return 'family' in result || 'Name' in result || 'name' in result || 'FamilyId' in result || 'MemberCount' in result;
+  }
+
+  /**
+   * Type guard for BackendAchievementSearchResult
+   */
+  private isBackendAchievementSearchResult(result: BackendSearchResult): result is BackendAchievementSearchResult {
+    return 'achievement' in result || 'AchievementId' in result || 'PointsValue' in result || 'pointsValue' in result;
+  }
+
+  /**
+   * Type guard for BackendBoardSearchResult
+   */
+  private isBackendBoardSearchResult(result: BackendSearchResult): result is BackendBoardSearchResult {
+    return 'board' in result || 'BoardId' in result || 'TaskCount' in result || 'taskCount' in result;
+  }
+
+  /**
+   * Type guard for BackendNotificationSearchResult
+   */
+  private isBackendNotificationSearchResult(result: BackendSearchResult): result is BackendNotificationSearchResult {
+    return 'notification' in result || 'NotificationId' in result || 'Message' in result || 'message' in result;
+  }
+
+  /**
+   * Type guard for BackendActivitySearchResult
+   */
+  private isBackendActivitySearchResult(result: BackendSearchResult): result is BackendActivitySearchResult {
+    return 'activity' in result || 'ActivityId' in result || 'ActivityType' in result || 'activityType' in result;
+  }
+
+  /**
+   * Type guard for BackendTagSearchResult
+   */
+  private isBackendTagSearchResult(result: BackendSearchResult): result is BackendTagSearchResult {
+    return 'tag' in result || 'TagId' in result || 'UsageCount' in result || 'usageCount' in result;
+  }
+
+  /**
+   * Type guard for BackendCategorySearchResult
+   */
+  private isBackendCategorySearchResult(result: BackendSearchResult): result is BackendCategorySearchResult {
+    return 'category' in result || 'CategoryId' in result;
+  }
+
+  /**
+   * Type guard for BackendTemplateSearchResult
+   */
+  private isBackendTemplateSearchResult(result: BackendSearchResult): result is BackendTemplateSearchResult {
+    return 'template' in result || 'TemplateId' in result || 'IsPublic' in result || 'isPublic' in result;
+  }
+
+  /**
+   * Convert string highlights to SearchHighlightDTO format
+   */
+  private mapHighlights(highlights: string[] | undefined): SearchHighlightDTO[] {
+    if (!highlights || !Array.isArray(highlights)) {
+      return [];
+    }
+    
+    return highlights.map((highlight) => ({
+      Field: 'content',
+      Fragments: [highlight],
+      StartPosition: 0,
+      EndPosition: highlight.length
+    }));
+  }
+
+  /**
+   * Map BackendTaskSearchResult to SearchResultItemDTO
+   */
+  private mapTaskResult(task: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendTaskSearchResult(task)) {
+      throw new Error('Invalid task result format');
+    }
+    
     // Handle both backend formats: direct task data or wrapped task data
-    const taskData = task.task || task;
-    const id = taskData.Id || taskData.id || taskData.TaskId || 'unknown';
+    const taskData: BackendTaskSearchResult = ('task' in task && task.task) ? task.task : task;
+    const id = taskData?.Id || taskData?.id || taskData?.TaskId || 'unknown';
     
     return {
       Id: id.toString(),
@@ -276,7 +374,7 @@ class SearchService {
       Score: taskData.SearchScore || taskData.searchScore || 0,
       UpdatedAt: taskData.CreatedAt || taskData.createdAt || new Date().toISOString(),
       CreatedAt: taskData.CreatedAt || taskData.createdAt || new Date().toISOString(),
-      Highlights: taskData.Highlights || taskData.highlights || [],
+      Highlights: this.mapHighlights(taskData?.Highlights || taskData?.highlights),
       EntityData: {
         status: taskData.Status || taskData.status,
         priority: taskData.Priority || taskData.priority,
@@ -290,10 +388,14 @@ class SearchService {
   }
 
   /**
-   * Map FamilySearchResultDTO to SearchResultItemDTO
+   * Map BackendFamilySearchResult to SearchResultItemDTO
    */
-  private mapFamilyResult(family: any): SearchResultItemDTO {
-    const familyData = family.family || family;
+  private mapFamilyResult(family: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendFamilySearchResult(family)) {
+      throw new Error('Invalid family result format');
+    }
+    
+    const familyData: BackendFamilySearchResult = ('family' in family && family.family) ? family.family : family;
     const id = familyData.Id || familyData.id || familyData.FamilyId || 'unknown';
     
     return {
@@ -304,11 +406,11 @@ class SearchService {
       Score: familyData.SearchScore || familyData.searchScore || 0,
       UpdatedAt: familyData.CreatedAt || familyData.createdAt || new Date().toISOString(),
       CreatedAt: familyData.CreatedAt || familyData.createdAt || new Date().toISOString(),
-      Highlights: familyData.Highlights || familyData.highlights || [],
+      Highlights: this.mapHighlights(familyData?.Highlights || familyData?.highlights),
       EntityData: {
         memberCount: familyData.MemberCount || familyData.memberCount,
-        memberNames: familyData.MemberNames || familyData.memberNames || [],
-        createdBy: familyData.CreatedByUserName || familyData.createdByUserName
+        memberNames: [],
+        createdBy: undefined
       }
     };
   }
@@ -316,8 +418,12 @@ class SearchService {
   /**
    * Map AchievementSearchResultDTO to SearchResultItemDTO
    */
-  private mapAchievementResult(achievement: any): SearchResultItemDTO {
-    const achievementData = achievement.achievement || achievement;
+  private mapAchievementResult(achievement: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendAchievementSearchResult(achievement)) {
+      throw new Error('Invalid achievement result format');
+    }
+    
+    const achievementData: BackendAchievementSearchResult = ('achievement' in achievement && achievement.achievement) ? achievement.achievement : achievement;
     const id = achievementData.Id || achievementData.id || achievementData.AchievementId || 'unknown';
     
     return {
@@ -326,15 +432,15 @@ class SearchService {
       Description: achievementData.Description || achievementData.description || '',
       EntityType: SearchEntityTypeDTO.Achievements,
       Score: achievementData.SearchScore || achievementData.searchScore || 0,
-      UpdatedAt: achievementData.UnlockedAt || achievementData.unlockedAt || achievementData.CreatedAt || achievementData.createdAt || new Date().toISOString(),
+      UpdatedAt: achievementData.CreatedAt || achievementData.createdAt || new Date().toISOString(),
       CreatedAt: achievementData.CreatedAt || achievementData.createdAt || new Date().toISOString(),
-      Highlights: achievementData.Highlights || achievementData.highlights || [],
+      Highlights: this.mapHighlights(achievementData?.Highlights || achievementData?.highlights),
       EntityData: {
-        points: achievementData.Points || achievementData.points,
-        isUnlocked: achievementData.IsUnlocked || achievementData.isUnlocked,
+        points: achievementData.PointsValue || achievementData.pointsValue,
+        isUnlocked: false,
         category: achievementData.Category || achievementData.category,
-        difficulty: achievementData.Difficulty || achievementData.difficulty,
-        icon: achievementData.Icon || achievementData.icon
+        difficulty: undefined,
+        icon: undefined
       }
     };
   }
@@ -342,8 +448,12 @@ class SearchService {
   /**
    * Map BoardSearchResultDTO to SearchResultItemDTO
    */
-  private mapBoardResult(board: any): SearchResultItemDTO {
-    const boardData = board.board || board;
+  private mapBoardResult(board: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendBoardSearchResult(board)) {
+      throw new Error('Invalid board result format');
+    }
+    
+    const boardData: BackendBoardSearchResult = ('board' in board && board.board) ? board.board : board;
     const id = boardData.Id || boardData.id || boardData.BoardId || 'unknown';
     
     return {
@@ -354,7 +464,7 @@ class SearchService {
       Score: boardData.SearchScore || boardData.searchScore || 0,
       UpdatedAt: boardData.LastModifiedAt || boardData.lastModifiedAt || boardData.CreatedAt || boardData.createdAt || new Date().toISOString(),
       CreatedAt: boardData.CreatedAt || boardData.createdAt || new Date().toISOString(),
-      Highlights: boardData.Highlights || boardData.highlights || [],
+      Highlights: this.mapHighlights(boardData?.Highlights || boardData?.highlights),
       EntityData: {
         taskCount: boardData.TaskCount || boardData.taskCount,
         familyName: boardData.FamilyName || boardData.familyName,
@@ -366,8 +476,12 @@ class SearchService {
   /**
    * Map NotificationSearchResultDTO to SearchResultItemDTO
    */
-  private mapNotificationResult(notification: any): SearchResultItemDTO {
-    const notificationData = notification.notification || notification;
+  private mapNotificationResult(notification: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendNotificationSearchResult(notification)) {
+      throw new Error('Invalid notification result format');
+    }
+    
+    const notificationData: BackendNotificationSearchResult = ('notification' in notification && notification.notification) ? notification.notification : notification;
     const id = notificationData.Id || notificationData.id || notificationData.NotificationId || 'unknown';
     
     return {
@@ -378,7 +492,7 @@ class SearchService {
       Score: notificationData.SearchScore || notificationData.searchScore || 0,
       UpdatedAt: notificationData.CreatedAt || notificationData.createdAt || new Date().toISOString(),
       CreatedAt: notificationData.CreatedAt || notificationData.createdAt || new Date().toISOString(),
-      Highlights: notificationData.Highlights || notificationData.highlights || [],
+      Highlights: this.mapHighlights(notificationData?.Highlights || notificationData?.highlights),
       EntityData: {
         type: notificationData.Type || notificationData.type,
         isRead: notificationData.IsRead || notificationData.isRead,
@@ -391,8 +505,12 @@ class SearchService {
   /**
    * Map ActivitySearchResultDTO to SearchResultItemDTO
    */
-  private mapActivityResult(activity: any): SearchResultItemDTO {
-    const activityData = activity.activity || activity;
+  private mapActivityResult(activity: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendActivitySearchResult(activity)) {
+      throw new Error('Invalid activity result format');
+    }
+    
+    const activityData: BackendActivitySearchResult = ('activity' in activity && activity.activity) ? activity.activity : activity;
     const id = activityData.Id || activityData.id || activityData.ActivityId || 'unknown';
     
     return {
@@ -403,7 +521,7 @@ class SearchService {
       Score: activityData.SearchScore || activityData.searchScore || 0,
       UpdatedAt: activityData.Timestamp || activityData.timestamp || activityData.CreatedAt || activityData.createdAt || new Date().toISOString(),
       CreatedAt: activityData.CreatedAt || activityData.createdAt || new Date().toISOString(),
-      Highlights: activityData.Highlights || activityData.highlights || [],
+      Highlights: this.mapHighlights(activityData?.Highlights || activityData?.highlights),
       EntityData: {
         activityType: activityData.ActivityType || activityData.activityType,
         userName: activityData.UserName || activityData.userName,
@@ -417,8 +535,12 @@ class SearchService {
   /**
    * Map Tag result to SearchResultItemDTO
    */
-  private mapTagResult(tag: any): SearchResultItemDTO {
-    const tagData = tag.tag || tag;
+  private mapTagResult(tag: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendTagSearchResult(tag)) {
+      throw new Error('Invalid tag result format');
+    }
+    
+    const tagData: BackendTagSearchResult = ('tag' in tag && tag.tag) ? tag.tag : tag;
     const id = tagData.Id || tagData.id || tagData.TagId || tagData.Name || tagData.name || 'unknown';
     
     return {
@@ -429,7 +551,7 @@ class SearchService {
       Score: tagData.SearchScore || tagData.searchScore || 0,
       UpdatedAt: tagData.CreatedAt || tagData.createdAt || new Date().toISOString(),
       CreatedAt: tagData.CreatedAt || tagData.createdAt || new Date().toISOString(),
-      Highlights: tagData.Highlights || tagData.highlights || [],
+      Highlights: this.mapHighlights(tagData?.Highlights || tagData?.highlights),
       EntityData: {
         usageCount: tagData.UsageCount || tagData.usageCount,
         color: tagData.Color || tagData.color
@@ -440,8 +562,12 @@ class SearchService {
   /**
    * Map Category result to SearchResultItemDTO
    */
-  private mapCategoryResult(category: any): SearchResultItemDTO {
-    const categoryData = category.category || category;
+  private mapCategoryResult(category: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendCategorySearchResult(category)) {
+      throw new Error('Invalid category result format');
+    }
+    
+    const categoryData: BackendCategorySearchResult = ('category' in category && category.category) ? category.category : category;
     const id = categoryData.Id || categoryData.id || categoryData.CategoryId || 'unknown';
     
     return {
@@ -452,7 +578,7 @@ class SearchService {
       Score: categoryData.SearchScore || categoryData.searchScore || 0,
       UpdatedAt: categoryData.CreatedAt || categoryData.createdAt || new Date().toISOString(),
       CreatedAt: categoryData.CreatedAt || categoryData.createdAt || new Date().toISOString(),
-      Highlights: categoryData.Highlights || categoryData.highlights || [],
+      Highlights: this.mapHighlights(categoryData?.Highlights || categoryData?.highlights),
       EntityData: {
         taskCount: categoryData.TaskCount || categoryData.taskCount,
         color: categoryData.Color || categoryData.color
@@ -463,8 +589,12 @@ class SearchService {
   /**
    * Map Template result to SearchResultItemDTO
    */
-  private mapTemplateResult(template: any): SearchResultItemDTO {
-    const templateData = template.template || template;
+  private mapTemplateResult(template: BackendSearchResult): SearchResultItemDTO {
+    if (!this.isBackendTemplateSearchResult(template)) {
+      throw new Error('Invalid template result format');
+    }
+    
+    const templateData: BackendTemplateSearchResult = ('template' in template && template.template) ? template.template : template;
     const id = templateData.Id || templateData.id || templateData.TemplateId || 'unknown';
     
     return {
@@ -475,7 +605,7 @@ class SearchService {
       Score: templateData.SearchScore || templateData.searchScore || 0,
       UpdatedAt: templateData.CreatedAt || templateData.createdAt || new Date().toISOString(),
       CreatedAt: templateData.CreatedAt || templateData.createdAt || new Date().toISOString(),
-      Highlights: templateData.Highlights || templateData.highlights || [],
+      Highlights: this.mapHighlights(templateData?.Highlights || templateData?.highlights),
       EntityData: {
         category: templateData.Category || templateData.category,
         isPublic: templateData.IsPublic || templateData.isPublic
