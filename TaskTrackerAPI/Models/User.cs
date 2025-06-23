@@ -81,6 +81,9 @@ public class User
     // Navigation property for user's achievements
     public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
 
+    // Navigation property for user's security questions
+    public virtual ICollection<SecurityQuestion> SecurityQuestions { get; set; } = new List<SecurityQuestion>();
+
     public int? PrimaryFamilyId { get; set; }
     
     [ForeignKey("PrimaryFamilyId")]

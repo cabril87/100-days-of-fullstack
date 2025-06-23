@@ -51,6 +51,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
 
+    public DbSet<SecurityQuestion> SecurityQuestions { get; set; } = null!;
+
     public DbSet<Reminder> Reminders { get; set; } = null!;
 
     public DbSet<Note> Notes { get; set; } = null!;
@@ -371,6 +373,24 @@ public class ApplicationDbContext : DbContext
             .WithMany()
             .HasForeignKey(rt => rt.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure SecurityQuestion-User relationship
+        modelBuilder.Entity<SecurityQuestion>()
+            .HasOne(sq => sq.User)
+            .WithMany()
+            .HasForeignKey(sq => sq.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure SecurityQuestion unique index (one set per user per order)
+        modelBuilder.Entity<SecurityQuestion>()
+            .HasIndex(sq => new { sq.UserId, sq.QuestionOrder })
+            .IsUnique()
+            .HasDatabaseName("IX_SecurityQuestions_UserId_QuestionOrder");
+
+        // Configure SecurityQuestion encryption comment
+        modelBuilder.Entity<SecurityQuestion>()
+            .Property(sq => sq.EncryptedAnswer)
+            .HasComment("Encrypted field - SecurityQuestions");
 
         // Fix the shadow property warnings by explicitly ignoring navigation properties
         // and setting up relationships with specific names

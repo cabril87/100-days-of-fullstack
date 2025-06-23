@@ -216,6 +216,9 @@ public class Program
         // Add password reset repository
         builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 
+        // Add security question repository
+        builder.Services.AddScoped<ISecurityQuestionRepository, SecurityQuestionRepository>();
+
         // Register AuthHelper (critical dependency)
         builder.Services.AddScoped<AuthHelper>();
 
@@ -235,6 +238,9 @@ public class Program
 
         // Add notification preference service
         builder.Services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+
+        // Add security question service
+        builder.Services.AddScoped<ISecurityQuestionService, SecurityQuestionService>();
 
         // Add family seeding service (Admin only)
         builder.Services.AddScoped<IFamilySeedingService, FamilySeedingService>();
