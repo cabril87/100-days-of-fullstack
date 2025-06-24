@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { MFASetupWizard } from '@/components/mfa/MFASetupWizard';
 import { MFAStatusCardContainer } from '@/components/mfa/MFAStatusCard';
+import { SecurityQuestionSetupForm } from '@/components/auth/SecurityQuestionSetupForm';
 import { 
   SecurityLevel,
   SecurityDashboardDTO,
@@ -729,8 +730,9 @@ function SecuritySettingsContentInner({ user, initialData }: SecuritySettingsCon
 
       {/* Security Settings Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Settings</TabsTrigger>
+          <TabsTrigger value="security-questions">Security Questions</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="devices">Devices</TabsTrigger>
           <TabsTrigger value="cookies">Privacy</TabsTrigger>
@@ -854,6 +856,21 @@ function SecuritySettingsContentInner({ user, initialData }: SecuritySettingsCon
               </Form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Security Questions */}
+        <TabsContent value="security-questions" className="space-y-6">
+          <SecurityQuestionSetupForm
+            userAgeGroup={(user?.ageGroup as unknown as 'Child' | 'Teen' | 'Adult') || 'Adult'}
+            showAgeAppropriate={true}
+            isUpdate={true}
+            onSuccess={() => {
+              setMessage({
+                type: 'success',
+                text: 'Security questions updated successfully!'
+              });
+            }}
+          />
         </TabsContent>
 
         {/* Active Sessions */}

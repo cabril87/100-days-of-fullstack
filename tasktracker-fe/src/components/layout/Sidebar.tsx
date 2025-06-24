@@ -280,6 +280,19 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                       NEW
                     </span>
                   </Link>
+                  <Link
+                    href="/calendar"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/calendar')
+                        ? 'bg-blue-500/20 border-l-4 border-blue-400 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    📅 Calendar
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      FAMILY
+                    </span>
+                  </Link>
                 </div>
               )}
             </div>

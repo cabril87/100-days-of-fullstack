@@ -120,4 +120,50 @@ public class FamilyActivityPagedResultDTO
     public bool HasPreviousPage => PageNumber > 1;
     
     public bool HasNextPage => PageNumber < TotalPages;
+}
+
+/// <summary>
+/// Data transfer object for family activity statistics
+/// </summary>
+public class FamilyActivityStatsDTO
+{
+    /// <summary>
+    /// Total number of activities in the family
+    /// </summary>
+    public int TotalActivities { get; set; } = 0;
+    
+    /// <summary>
+    /// Number of activities today
+    /// </summary>
+    public int TodayActivities { get; set; } = 0;
+    
+    /// <summary>
+    /// Number of activities this week
+    /// </summary>
+    public int WeekActivities { get; set; } = 0;
+    
+    /// <summary>
+    /// Number of activities this month
+    /// </summary>
+    public int MonthActivities { get; set; } = 0;
+    
+    /// <summary>
+    /// Most active family member
+    /// </summary>
+    public string MostActiveUser { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Most common activity type
+    /// </summary>
+    public string MostCommonActivityType { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Last activity timestamp
+    /// </summary>
+    public DateTime? LastActivityTime { get; set; }
+    
+    /// <summary>
+    /// Average activities per day over the last 30 days
+    /// </summary>
+    public double AverageActivitiesPerDay { get; set; } = 0;
 } 

@@ -229,6 +229,9 @@ public class Program
         builder.Services.AddScoped<ITagService, TagService>();
         builder.Services.AddScoped<IReminderService, ReminderService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
+        
+        // ✨ ENTERPRISE: Unified Dashboard Service - Comprehensive dashboard data aggregation
+        builder.Services.AddScoped<IUnifiedDashboardService, UnifiedDashboardService>();
 
         // Add services that exist in the project
         builder.Services.AddScoped<IFamilyService, FamilyService>();

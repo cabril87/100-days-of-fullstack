@@ -496,4 +496,232 @@ public class FamilyActivityService : IFamilyActivityService
             PageSize = pageSize
         };
     }
+
+    #region Automatic Activity Logging Methods
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogTaskCompletionAsync(
+        int familyId, 
+        int userId, 
+        int taskId, 
+        string taskTitle, 
+        int pointsEarned = 0, 
+        string? category = null)
+    {
+        try
+        {
+            Dictionary<string, object> metadata = new Dictionary<string, object>
+            {
+                ["taskId"] = taskId,
+                ["taskTitle"] = taskTitle,
+                ["pointsEarned"] = pointsEarned,
+                ["category"] = category ?? "General",
+                ["completionTime"] = DateTime.UtcNow
+            };
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = userId,
+                ActionType = FamilyActivityActionType.TaskCompleted,
+                Description = $"completed task: {taskTitle}",
+                EntityType = "task",
+                EntityId = taskId,
+                Metadata = metadata
+            };
+
+            return await LogActivityAsync(createDto, userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging task completion activity for task {TaskId} in family {FamilyId}", taskId, familyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogAchievementUnlockedAsync(
+        int familyId, 
+        int userId, 
+        string achievementName, 
+        int pointsEarned = 0, 
+        string? difficulty = null)
+    {
+        try
+        {
+            Dictionary<string, object> metadata = new Dictionary<string, object>
+            {
+                ["achievementName"] = achievementName,
+                ["pointsEarned"] = pointsEarned,
+                ["difficulty"] = difficulty ?? "Normal",
+                ["unlockedAt"] = DateTime.UtcNow
+            };
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = userId,
+                ActionType = FamilyActivityActionType.AchievementEarned,
+                Description = $"unlocked achievement: {achievementName}",
+                EntityType = "achievement",
+                Metadata = metadata
+            };
+
+            return await LogActivityAsync(createDto, userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging achievement unlock activity for {AchievementName} in family {FamilyId}", achievementName, familyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogMemberJoinedAsync(
+        int familyId, 
+        int newMemberId, 
+        int? invitedByUserId = null)
+    {
+        try
+        {
+            Dictionary<string, object> metadata = new Dictionary<string, object>
+            {
+                ["newMemberId"] = newMemberId,
+                ["invitedBy"] = invitedByUserId as object ?? DBNull.Value,
+                ["joinedAt"] = DateTime.UtcNow
+            };
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = newMemberId,
+                TargetId = invitedByUserId,
+                ActionType = FamilyActivityActionType.MemberJoined,
+                Description = invitedByUserId.HasValue ? "joined the family (invited)" : "joined the family",
+                EntityType = "family_member",
+                EntityId = newMemberId,
+                Metadata = metadata
+            };
+
+            return await LogActivityAsync(createDto, newMemberId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging member joined activity for user {UserId} in family {FamilyId}", newMemberId, familyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogStreakMilestoneAsync(
+        int familyId, 
+        int userId, 
+        int streakDays, 
+        string streakType = "task_completion")
+    {
+        try
+        {
+            Dictionary<string, object> metadata = new Dictionary<string, object>
+            {
+                ["streakDays"] = streakDays,
+                ["streakType"] = streakType,
+                ["achievedAt"] = DateTime.UtcNow
+            };
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = userId,
+                ActionType = "StreakMilestone",
+                Description = $"achieved {streakDays}-day {streakType.Replace("_", " ")} streak",
+                EntityType = "streak",
+                Metadata = metadata
+            };
+
+            return await LogActivityAsync(createDto, userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging streak milestone activity for user {UserId} in family {FamilyId}", userId, familyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogPointsEarnedAsync(
+        int familyId, 
+        int userId, 
+        int pointsEarned, 
+        string reason, 
+        string sourceType = "manual", 
+        int? sourceId = null)
+    {
+        try
+        {
+            Dictionary<string, object> metadata = new Dictionary<string, object>
+            {
+                ["pointsEarned"] = pointsEarned,
+                ["reason"] = reason,
+                ["sourceType"] = sourceType,
+                ["sourceId"] = sourceId as object ?? DBNull.Value,
+                ["earnedAt"] = DateTime.UtcNow
+            };
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = userId,
+                ActionType = "PointsEarned",
+                Description = $"earned {pointsEarned} points for {reason}",
+                EntityType = sourceType,
+                EntityId = sourceId,
+                Metadata = metadata
+            };
+
+            return await LogActivityAsync(createDto, userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging points earned activity for user {UserId} in family {FamilyId}", userId, familyId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<FamilyActivityDTO> LogFamilyMilestoneAsync(
+        int familyId, 
+        string milestoneType, 
+        string description, 
+        int? triggeredByUserId = null, 
+        Dictionary<string, object>? metadata = null)
+    {
+        try
+        {
+            Dictionary<string, object> activityMetadata = metadata ?? new Dictionary<string, object>();
+            activityMetadata["milestoneType"] = milestoneType;
+            activityMetadata["triggeredBy"] = triggeredByUserId as object ?? DBNull.Value;
+            activityMetadata["achievedAt"] = DateTime.UtcNow;
+
+            FamilyActivityCreateDTO createDto = new FamilyActivityCreateDTO
+            {
+                FamilyId = familyId,
+                ActorId = triggeredByUserId ?? 0, // System generated if no specific user
+                ActionType = "FamilyMilestone",
+                Description = description,
+                EntityType = "family_milestone",
+                Metadata = activityMetadata
+            };
+
+            // Use system user ID if no specific user triggered it
+            int actingUserId = triggeredByUserId ?? 1; // Assuming system user ID is 1
+            return await LogActivityAsync(createDto, actingUserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error logging family milestone activity for milestone {MilestoneType} in family {FamilyId}", milestoneType, familyId);
+            throw;
+        }
+    }
+
+    #endregion
 } 

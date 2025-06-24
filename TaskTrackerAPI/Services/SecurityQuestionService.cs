@@ -433,7 +433,7 @@ public class SecurityQuestionService : ISecurityQuestionService
             _logger.LogInformation("Returning {Count} age-appropriate questions for age group {AgeGroup}", 
                 questions.Count, requestDto.AgeGroup);
 
-            return questions;
+            return await Task.FromResult(questions);
         }
         catch (Exception ex)
         {
@@ -442,7 +442,7 @@ public class SecurityQuestionService : ISecurityQuestionService
         }
     }
 
-    public async Task<(bool IsValid, List<string> Errors)> ValidateSecurityQuestionSetupAsync(SecurityQuestionSetupDTO setupDto, string ageGroup)
+    public Task<(bool IsValid, List<string> Errors)> ValidateSecurityQuestionSetupAsync(SecurityQuestionSetupDTO setupDto, string ageGroup)
     {
         List<string> errors = new List<string>();
 
@@ -523,13 +523,13 @@ public class SecurityQuestionService : ISecurityQuestionService
                 }
             }
 
-            return (errors.Count == 0, errors);
+            return Task.FromResult((errors.Count == 0, errors));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error validating security question setup");
             errors.Add("An error occurred during validation");
-            return (false, errors);
+            return Task.FromResult((false, errors));
         }
     }
 

@@ -36,6 +36,7 @@ import {
   StreakCounter,
   NotificationStream
 } from '@/components/dashboard/widgets';
+import CalendarDashboardWidget from '@/components/dashboard/widgets/CalendarDashboardWidget';
 import { useDashboardConnections } from '@/lib/hooks/useDashboardConnections';
 import type { 
   DashboardProps, 
@@ -1103,6 +1104,33 @@ function Dashboard({ user, initialData }: DashboardProps) {
               // ✨ Pass shared connection data
               isConnected={isConnected}
               gamificationData={gamificationData}
+            />
+            </div>
+
+            <div className="w-full overflow-hidden">
+            <CalendarDashboardWidget
+              userId={user?.id || 0}
+              viewMode="advanced"
+              events={[]}
+              upcomingTasks={recentTasks.slice(0, 5).map(task => ({
+                ...task,
+                requiresApproval: false, // Default value for missing property
+                approvedByUserId: null,
+                assignedToFamilyMemberId: task.assignedToUserId,
+                assignedByUserId: task.userId || user?.id || 0
+              }) as unknown as FamilyTaskItemDTO)}
+              stats={{
+                totalPoints: dashboardStats.totalPoints || 0,
+                completedThisWeek: dashboardStats.tasksCompleted || 0,
+                tasksThisWeek: recentTasks.length,
+                streakDays: dashboardStats.streakDays || 0,
+                upcomingDeadlines: dueTodayTasks.length + overdueTasks.length,
+                familyEvents: 0,
+                personalEvents: 0,
+                achievementsThisMonth: 0
+              }}
+              onNavigateToCalendar={() => router.push('/calendar')}
+              className="w-full h-full"
             />
             </div>
 

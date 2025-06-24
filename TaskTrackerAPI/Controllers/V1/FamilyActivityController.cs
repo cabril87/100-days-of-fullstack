@@ -19,6 +19,8 @@ using TaskTrackerAPI.DTOs.Family;
 using TaskTrackerAPI.Extensions;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Models;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace TaskTrackerAPI.Controllers.V1;
 
@@ -345,6 +347,102 @@ public class FamilyActivityController : BaseApiController
         {
             _logger.LogError(ex, "Error retrieving entity activities");
             return ApiServerError<FamilyActivityPagedResultDTO>("An error occurred while retrieving entity activities.");
+        }
+    }
+
+    /// <summary>
+    /// Get recent activities for dashboard (lightweight endpoint)
+    /// </summary>
+    /// <param name="familyId">ID of the family</param>
+    /// <param name="limit">Number of activities to return (default 10)</param>
+    /// <returns>Recent activities for dashboard widgets</returns>
+    [HttpGet("recent")]
+    [RateLimit(60, 60)]
+    public async Task<ActionResult<ApiResponse<List<FamilyActivityDTO>>>> GetRecentActivities(
+        int familyId,
+        [FromQuery] int limit = 10)
+    {
+        try
+        {
+            // Validate user is member of the family
+            int userId = GetUserId();
+            bool isMember = await _familyService.IsFamilyMemberAsync(familyId, userId);
+            if (!isMember)
+            {
+                return ApiUnauthorized<List<FamilyActivityDTO>>("You are not a member of this family.");
+            }
+
+            // Get recent activities
+            FamilyActivityPagedResultDTO result = await _activityService.GetAllByFamilyIdAsync(familyId, userId, 1, Math.Min(limit, 20));
+            List<FamilyActivityDTO> activities = result.Activities.ToList();
+
+            return ApiOk(activities, $"Retrieved {activities.Count} recent family activities");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return ApiUnauthorized<List<FamilyActivityDTO>>(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving recent family activities for family {FamilyId}", familyId);
+            return ApiServerError<List<FamilyActivityDTO>>("An error occurred while retrieving recent family activities.");
+        }
+    }
+
+    /// <summary>
+    /// Get activity statistics for the family
+    /// </summary>
+    /// <param name="familyId">ID of the family</param>
+    /// <returns>Family activity statistics</returns>
+    [HttpGet("stats")]
+    [RateLimit(30, 60)]
+    public async Task<ActionResult<ApiResponse<FamilyActivityStatsDTO>>> GetActivityStats(
+        int familyId)
+    {
+        try
+        {
+            // Validate user is member of the family
+            int userId = GetUserId();
+            bool isMember = await _familyService.IsFamilyMemberAsync(familyId, userId);
+            if (!isMember)
+            {
+                return ApiUnauthorized<FamilyActivityStatsDTO>("You are not a member of this family.");
+            }
+
+            // Get all activities for statistics
+            FamilyActivityPagedResultDTO allActivities = await _activityService.GetAllByFamilyIdAsync(familyId, userId, 1, 1000);
+            List<FamilyActivityDTO> activities = allActivities.Activities.ToList();
+
+            // Calculate statistics
+            DateTime today = DateTime.UtcNow.Date;
+            DateTime weekStart = today.AddDays(-(int)today.DayOfWeek);
+            DateTime monthStart = new DateTime(today.Year, today.Month, 1);
+
+            FamilyActivityStatsDTO stats = new FamilyActivityStatsDTO
+            {
+                TotalActivities = activities.Count,
+                TodayActivities = activities.Count(a => a.Timestamp.Date == today),
+                WeekActivities = activities.Count(a => a.Timestamp.Date >= weekStart),
+                MonthActivities = activities.Count(a => a.Timestamp.Date >= monthStart),
+                MostActiveUser = activities.GroupBy(a => a.ActorName)
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault()?.Key ?? "No activity",
+                MostCommonActivityType = activities.GroupBy(a => a.ActionType)
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault()?.Key ?? "No activity",
+                LastActivityTime = activities.OrderByDescending(a => a.Timestamp).FirstOrDefault()?.Timestamp
+            };
+
+            return ApiOk(stats, "Family activity statistics retrieved successfully");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return ApiUnauthorized<FamilyActivityStatsDTO>(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving family activity stats for family {FamilyId}", familyId);
+            return ApiServerError<FamilyActivityStatsDTO>("An error occurred while retrieving family activity statistics.");
         }
     }
 } 

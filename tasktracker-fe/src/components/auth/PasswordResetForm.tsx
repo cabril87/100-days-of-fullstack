@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardFooter, CardHeader } from '../ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
@@ -106,19 +106,34 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
     },
   });
 
-  // Available security questions
-  const securityQuestions = [
-    "What was the name of your first pet?",
-    "What city were you born in?",
-    "What was your childhood nickname?",
-    "What is your mother's maiden name?",
-    "What was the name of your first school?",
-    "What was your favorite childhood book?",
-    "What was the make of your first car?",
-    "What street did you grow up on?",
-    "What was your favorite teacher's name?",
-    "What is your favorite movie?",
-  ];
+  // User's security questions (loaded dynamically)
+  const [securityQuestions, setSecurityQuestions] = useState<string[]>([]);
+  const [loadingSecurityQuestions, setLoadingSecurityQuestions] = useState(false);
+  const [securityQuestionsError, setSecurityQuestionsError] = useState<string | null>(null);
+
+  // Load user's security questions when email is entered
+  const loadUserSecurityQuestions = useCallback(async (email: string) => {
+    if (!email || !showSecurityQuestions) return;
+    
+    setLoadingSecurityQuestions(true);
+    setSecurityQuestionsError(null);
+    
+    try {
+      const result = await enhancedAuthService.getSecurityQuestionsByEmail(email);
+      if (result.hasQuestionsSetup && result.questions.length > 0) {
+        setSecurityQuestions(result.questions.map(q => q.question));
+      } else {
+        setSecurityQuestions([]);
+        setSecurityQuestionsError('No security questions found for this email address.');
+      }
+    } catch (error) {
+      console.error('Error loading security questions:', error);
+      setSecurityQuestions([]);
+      setSecurityQuestionsError('Could not load security questions. You can still use email verification.');
+    } finally {
+      setLoadingSecurityQuestions(false);
+    }
+  }, [showSecurityQuestions, enhancedAuthService]);
 
   // Real-time password strength and breach checking
   const handlePasswordChange = useCallback(async (password: string) => {
@@ -158,6 +173,22 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
       setSecurityAlert(null);
     }
   }, [enhancedAuthService]);
+
+  // Watch email field to load security questions
+  const watchedEmail = requestForm.watch('email');
+  useEffect(() => {
+    if (watchedEmail && watchedEmail.includes('@') && watchedEmail.length > 5) {
+      // Debounce the security questions loading
+      const timer = setTimeout(() => {
+        loadUserSecurityQuestions(watchedEmail);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setSecurityQuestions([]);
+      setSecurityQuestionsError(null);
+    }
+  }, [watchedEmail, loadUserSecurityQuestions]);
 
   // Step 1: Handle password reset request
   const handlePasswordResetRequest = async (data: PasswordResetRequestFormData): Promise<void> => {
@@ -425,7 +456,19 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                 <div className="flex items-center gap-2">
                   <HelpCircle className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium">Security Questions (Optional)</span>
-          </div>
+                  {loadingSecurityQuestions && (
+                    <RefreshCw className="h-3 w-3 animate-spin text-blue-400" />
+                  )}
+                </div>
+
+                {securityQuestionsError && (
+                  <Alert className="border-yellow-600 bg-yellow-950/20">
+                    <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                    <AlertDescription className="text-yellow-200 text-sm">
+                      {securityQuestionsError}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <FormField
                   control={requestForm.control}
@@ -434,9 +477,19 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                     <FormItem>
                       <FormLabel className="text-gray-300 font-medium">Choose a security question</FormLabel>
                       <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          disabled={loadingSecurityQuestions || securityQuestions.length === 0}
+                        >
                           <SelectTrigger className="bg-gray-700 border-gray-600 focus:border-blue-400 text-white">
-                            <SelectValue placeholder="Select a security question" />
+                            <SelectValue placeholder={
+                              loadingSecurityQuestions 
+                                ? "Loading your security questions..." 
+                                : securityQuestions.length === 0 
+                                  ? "No security questions found" 
+                                  : "Select a security question"
+                            } />
                           </SelectTrigger>
                           <SelectContent className="bg-gray-800 border-gray-600">
                             {securityQuestions.map((question, index) => (
@@ -447,6 +500,14 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                           </SelectContent>
                         </Select>
                       </FormControl>
+                      <FormDescription className="text-gray-400 text-xs">
+                        {securityQuestions.length > 0 
+                          ? `${securityQuestions.length} security question(s) found for this email`
+                          : watchedEmail && watchedEmail.includes('@') 
+                            ? "Enter a valid email to load security questions"
+                            : "Security questions will load after entering your email"
+                        }
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -467,6 +528,9 @@ export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
                             className="bg-gray-700 border-gray-600 focus:border-blue-400 transition-colors text-white"
                           />
                         </FormControl>
+                        <FormDescription className="text-gray-400 text-xs">
+                          Enter the exact answer you provided when setting up this security question
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
