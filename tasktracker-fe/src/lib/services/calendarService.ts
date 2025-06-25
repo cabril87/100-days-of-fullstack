@@ -6,17 +6,18 @@
 
 import { apiClient } from '@/lib/config/api-client';
 import { ApiResponse } from '@/lib/types/api-responses';
+import type { CalendarEventDTO } from '@/lib/types/calendar';
 
 // ================================
-// CALENDAR DTOs - BACKEND ALIGNED
+// BACKEND CALENDAR DTOs - ALIGNED WITH API
 // ================================
 
-export interface CalendarEventDTO {
+interface BackendCalendarEventDTO {
   id: number;
   title: string;
   description?: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: string; // ISO string from API
+  endTime: string; // ISO string from API
   isAllDay: boolean;
   location?: string;
   color?: string;
@@ -28,8 +29,8 @@ export interface CalendarEventDTO {
     id: number;
     name: string;
   };
-  createdAt: Date;
-  updatedAt?: Date;
+  createdAt: string; // ISO string from API
+  updatedAt?: string; // ISO string from API
 }
 
 export interface CreateCalendarEventDTO {
@@ -74,6 +75,73 @@ export class CalendarServiceError extends Error {
 }
 
 // ================================
+// DATA TRANSFORMATION UTILITIES
+// ================================
+
+/**
+ * Transform backend calendar event DTO to frontend DTO
+ * Handles date conversion and property mapping
+ */
+function transformBackendEventToFrontend(backendEvent: BackendCalendarEventDTO): CalendarEventDTO {
+  return {
+    id: backendEvent.id,
+    title: backendEvent.title,
+    description: backendEvent.description,
+    // Map backend startTime/endTime to frontend startDate/endDate
+    startDate: new Date(backendEvent.startTime),
+    endDate: new Date(backendEvent.endTime),
+    isAllDay: backendEvent.isAllDay,
+    color: backendEvent.color || '#3b82f6', // Default blue color
+    familyId: backendEvent.familyId,
+    createdByUserId: backendEvent.createdBy.id,
+    eventType: backendEvent.eventType as any, // Type conversion needed
+    createdAt: new Date(backendEvent.createdAt),
+    updatedAt: backendEvent.updatedAt ? new Date(backendEvent.updatedAt) : new Date(),
+    // Additional properties that may be missing from backend
+    taskId: undefined,
+    achievementId: undefined,
+    recurrence: backendEvent.isRecurring ? {
+      type: 'weekly', // Default value - map from recurrencePattern if needed
+      interval: 1,
+      endDate: undefined
+    } : undefined
+  };
+}
+
+/**
+ * Transform array of backend events to frontend events
+ */
+function transformBackendEventsToFrontend(backendEvents: BackendCalendarEventDTO[]): CalendarEventDTO[] {
+  if (!Array.isArray(backendEvents)) {
+    console.warn('⚠️ transformBackendEventsToFrontend: Expected array but got:', typeof backendEvents);
+    return [];
+  }
+
+  return backendEvents.map(event => {
+    try {
+      return transformBackendEventToFrontend(event);
+    } catch (error) {
+      console.error('❌ Failed to transform backend event:', event, error);
+      // Return a minimal valid event to prevent crashes
+      return {
+        id: event.id || 0,
+        title: event.title || 'Invalid Event',
+        description: event.description,
+        startDate: new Date(),
+        endDate: new Date(),
+        isAllDay: false,
+        color: '#ef4444', // Red color for invalid events
+        familyId: event.familyId || 1,
+        createdByUserId: event.createdBy?.id || 1,
+        eventType: 'General' as any,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    }
+  });
+}
+
+// ================================
 // ENTERPRISE CALENDAR SERVICE
 // ================================
 
@@ -96,12 +164,15 @@ export class CalendarService {
       const endpoint = `${this.baseUrl}/family/${familyId}/calendar/events/range?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       console.log('📅 CalendarService: Family endpoint:', endpoint);
 
-      const result = await apiClient.get<CalendarEventDTO[]>(endpoint);
+      const result = await apiClient.get<BackendCalendarEventDTO[]>(endpoint);
       
       console.log('📅 CalendarService: Family API response:', result);
       console.log('📅 CalendarService: Family events count:', result?.length || 0);
 
-      return result || [];
+      const transformedEvents = transformBackendEventsToFrontend(result || []);
+      console.log('📅 CalendarService: Transformed events:', transformedEvents.length, 'events');
+
+      return transformedEvents;
     } catch (error) {
       console.error('❌ CalendarService: Failed to fetch family calendar events:', error);
       return [];
@@ -124,7 +195,7 @@ export class CalendarService {
       const endpoint = `${this.baseUrl}/UserCalendar/all-families/events/range?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
       console.log('📅 CalendarService: Calling endpoint:', endpoint);
 
-      const result = await apiClient.get<CalendarEventDTO[]>(endpoint);
+      const result = await apiClient.get<BackendCalendarEventDTO[]>(endpoint);
       
       console.log('📅 CalendarService: Raw API response:', result);
       console.log('📅 CalendarService: Response type:', typeof result);
@@ -138,7 +209,13 @@ export class CalendarService {
         }
       }
 
-      return result || [];
+      const transformedEvents = transformBackendEventsToFrontend(result || []);
+      console.log('📅 CalendarService: Transformed events:', transformedEvents.length, 'events');
+      if (transformedEvents.length > 0) {
+        console.log('📅 CalendarService: First transformed event:', transformedEvents[0]);
+      }
+
+      return transformedEvents;
     } catch (error) {
       console.error('❌ CalendarService: Failed to fetch user calendar events:', error);
       if (error instanceof Error) {
@@ -155,11 +232,11 @@ export class CalendarService {
    */
   async getTodayEvents(familyId: number): Promise<CalendarEventDTO[]> {
     try {
-      const result = await apiClient.get<CalendarEventDTO[]>(
+      const result = await apiClient.get<BackendCalendarEventDTO[]>(
         `${this.baseUrl}/family/${familyId}/calendar/events/today`
       );
 
-      return result || [];
+      return transformBackendEventsToFrontend(result || []);
     } catch (error) {
       console.error('❌ CalendarService: Failed to fetch today events:', error);
       return [];
@@ -172,11 +249,11 @@ export class CalendarService {
    */
   async getUpcomingEvents(days = 7): Promise<CalendarEventDTO[]> {
     try {
-      const result = await apiClient.get<CalendarEventDTO[]>(
+      const result = await apiClient.get<BackendCalendarEventDTO[]>(
         `${this.baseUrl}/UserCalendar/all-families/events/upcoming?days=${days}`
       );
 
-      return result || [];
+      return transformBackendEventsToFrontend(result || []);
     } catch (error) {
       console.error('❌ CalendarService: Failed to fetch upcoming events:', error);
       return [];
@@ -215,7 +292,7 @@ export class CalendarService {
       };
 
       // API client already unwraps the data from ApiResponse wrapper
-      const result = await apiClient.post<CalendarEventDTO>(
+      const result = await apiClient.post<BackendCalendarEventDTO>(
         `${this.baseUrl}/family/${familyId}/calendar/events`,
         requestData
       );
@@ -225,7 +302,7 @@ export class CalendarService {
       }
 
       console.log('✅ CalendarService: Calendar event created successfully:', result.id);
-      return result;
+      return transformBackendEventToFrontend(result);
     } catch (error) {
       console.error('❌ CalendarService: Failed to create calendar event:', error);
       throw new CalendarServiceError(
@@ -247,7 +324,8 @@ export class CalendarService {
     try {
       console.log('📅 CalendarService: Updating calendar event:', eventId);
 
-      const result = await apiClient.put<CalendarEventDTO>(
+      // API client already unwraps the data from ApiResponse wrapper
+      const result = await apiClient.put<BackendCalendarEventDTO>(
         `${this.baseUrl}/family/${familyId}/calendar/events/${eventId}`,
         eventData
       );
@@ -256,8 +334,8 @@ export class CalendarService {
         throw new CalendarServiceError('No data returned from update event API', 500);
       }
 
-      console.log('✅ CalendarService: Calendar event updated successfully');
-      return result;
+      console.log('✅ CalendarService: Calendar event updated successfully:', result.id);
+      return transformBackendEventToFrontend(result);
     } catch (error) {
       console.error('❌ CalendarService: Failed to update calendar event:', error);
       throw new CalendarServiceError(

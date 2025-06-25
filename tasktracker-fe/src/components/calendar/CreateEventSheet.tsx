@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
+import { triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 
 // Form validation imports - Following Enterprise Standards
 import { useForm } from 'react-hook-form';
@@ -85,6 +87,13 @@ export default function CreateEventSheet({
     editingEvent = null,
     editingTask = null
 }: CreateEventSheetProps) {
+
+    // ============================================================================
+    // ENTERPRISE RESPONSIVE SYSTEM
+    // ============================================================================
+    
+    const responsive = useResponsive();
+    const { touchClasses, buttonSize, animationClasses } = useTouchOptimized();
 
     // ============================================================================
     // STATE MANAGEMENT - Enterprise Standards
@@ -234,34 +243,23 @@ export default function CreateEventSheet({
             if (isEditMode && editingEvent) {
                 console.log('📅 CreateEventSheet: Updating calendar event with data:', eventData);
 
-                // Call update service (would need to be implemented)
-                // For now, we'll simulate an update by calling create and then triggering onEventUpdated
-                const serviceEvent = await calendarService.createCalendarEvent(
+                // Call the actual update service
+                const serviceEvent = await calendarService.updateCalendarEvent(
                     parseInt(familyId),
-                    eventData
+                    editingEvent.id,
+                    {
+                        title: eventData.title,
+                        description: eventData.description,
+                        startTime: eventData.startDate,
+                        endTime: eventData.endDate,
+                        isAllDay: eventData.isAllDay,
+                        color: eventData.color,
+                        eventType: eventData.eventType
+                    }
                 );
 
-                // Map service DTO to component DTO format
-                const componentEvent: CalendarEventDTO = {
-                    id: editingEvent.id, // Keep original ID
-                    title: serviceEvent.title,
-                    description: serviceEvent.description,
-                    startDate: serviceEvent.startTime,
-                    endDate: serviceEvent.endTime,
-                    isAllDay: serviceEvent.isAllDay,
-                    color: serviceEvent.color || '#3B82F6',
-                    familyId: serviceEvent.familyId,
-                    createdByUserId: serviceEvent.createdBy.id,
-                    taskId: undefined,
-                    achievementId: undefined,
-                    eventType: serviceEvent.eventType as CalendarEventType,
-                    recurrence: undefined,
-                    createdAt: editingEvent.createdAt, // Keep original creation date
-                    updatedAt: new Date()
-                };
-
-                console.log('✅ CreateEventSheet: Calendar event updated successfully:', componentEvent.id);
-                onEventUpdated(componentEvent);
+                console.log('✅ CreateEventSheet: Calendar event updated successfully:', serviceEvent.id);
+                onEventUpdated(serviceEvent);
             } else {
                 console.log('📅 CreateEventSheet: Creating calendar event with data:', eventData);
 
@@ -271,24 +269,8 @@ export default function CreateEventSheet({
                     eventData
                 );
 
-                // Map service DTO to component DTO format
-                const componentEvent: CalendarEventDTO = {
-                    id: serviceEvent.id,
-                    title: serviceEvent.title,
-                    description: serviceEvent.description,
-                    startDate: serviceEvent.startTime,
-                    endDate: serviceEvent.endTime,
-                    isAllDay: serviceEvent.isAllDay,
-                    color: serviceEvent.color || '#3B82F6',
-                    familyId: serviceEvent.familyId,
-                    createdByUserId: serviceEvent.createdBy.id,
-                    taskId: undefined,
-                    achievementId: undefined,
-                    eventType: serviceEvent.eventType as CalendarEventType,
-                    recurrence: undefined,
-                    createdAt: serviceEvent.createdAt,
-                    updatedAt: serviceEvent.updatedAt || serviceEvent.createdAt
-                };
+                // Service now returns properly transformed CalendarEventDTO
+                const componentEvent = serviceEvent;
 
                 console.log('✅ CreateEventSheet: Calendar event created successfully:', componentEvent.id);
                 onEventCreated(componentEvent);
@@ -355,11 +337,11 @@ export default function CreateEventSheet({
                     isCompleted: false,
                     pointsValue: data.pointsValue,
                     pointsEarned: 0,
-                    userId: data.assignedToUserId || serviceEvent.createdBy.id,
+                    userId: data.assignedToUserId || serviceEvent.createdByUserId,
                     familyId: data.selectedFamilyId || 1, // Provide fallback
                     requiresApproval: false,
                     createdAt: serviceEvent.createdAt.toISOString(),
-                    updatedAt: (serviceEvent.updatedAt || serviceEvent.createdAt).toISOString()
+                    updatedAt: serviceEvent.updatedAt ? serviceEvent.updatedAt.toISOString() : serviceEvent.createdAt.toISOString()
                 };
 
                 console.log('✅ CreateEventSheet: Task created as calendar event successfully:', serviceEvent.id);
@@ -641,7 +623,17 @@ export default function CreateEventSheet({
 
     return (
         <Sheet open={isOpen} onOpenChange={onClose}>
-            <SheetContent side="right" className="w-[700px] sm:w-[800px] lg:w-[900px] xl:w-[1000px] overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl p-6">
+            <SheetContent 
+                side="right" 
+                className={cn(
+                    "max-w-full overflow-y-auto bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-2xl",
+                    touchClasses,
+                    animationClasses,
+                    responsive.isMobile 
+                        ? "w-full p-4 max-h-screen" 
+                        : "w-[500px] sm:w-[600px] md:w-[700px] lg:w-[800px] xl:w-[900px] p-6"
+                )}
+            >
                 <SheetHeader className="pb-6 border-b border-gray-200 dark:border-gray-700 mb-8">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
@@ -768,8 +760,17 @@ export default function CreateEventSheet({
                                             
                                             <div className="flex gap-3 pt-4 border-t border-blue-200/30 dark:border-blue-700/30">
                                                 <Button
-                                                    onClick={() => setActiveTab('create')}
-                                                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+                                                    onClick={() => {
+                                                        if (responsive.hasTouch) {
+                                                            triggerHapticFeedback('light');
+                                                        }
+                                                        setActiveTab('create');
+                                                    }}
+                                                    className={cn(
+                                                        "flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white",
+                                                        buttonSize,
+                                                        touchClasses
+                                                    )}
                                                 >
                                                     <Edit3 className="h-4 w-4 mr-2" />
                                                     Edit Event
@@ -777,10 +778,17 @@ export default function CreateEventSheet({
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => {
+                                                        if (responsive.hasTouch) {
+                                                            triggerHapticFeedback('warning');
+                                                        }
                                                         onEventDeleted(editingEvent.id.toString());
                                                         onClose();
                                                     }}
-                                                    className="px-6"
+                                                    className={cn(
+                                                        "px-6",
+                                                        buttonSize,
+                                                        touchClasses
+                                                    )}
                                                 >
                                                     <Trash2 className="h-4 w-4 mr-2" />
                                                     Delete
@@ -1150,8 +1158,23 @@ export default function CreateEventSheet({
                                                 type="button"
                                                 variant="outline"
                                                 onClick={() => {
-                                                    eventForm.reset();
-                                                    setActiveTab('create');
+                                                    // Reset form to clean default values
+                                                    const validDate = getSafeDate(selectedDate);
+                                                    const dateStr = validDate.toISOString().split('T')[0];
+                                                    eventForm.reset({
+                                                        title: '',
+                                                        description: '',
+                                                        startDate: dateStr,
+                                                        startTime: selectedTime || '09:00',
+                                                        endDate: dateStr,
+                                                        endTime: '10:00',
+                                                        color: EVENT_COLORS[0],
+                                                        location: '',
+                                                        isAllDay: false,
+                                                        isRecurring: false,
+                                                        recurringPattern: 'weekly',
+                                                    });
+                                                    console.log('🔄 Event form reset to default values');
                                                 }}
                                                 className="px-6 border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-200"
                                             >
@@ -1491,8 +1514,22 @@ export default function CreateEventSheet({
                                                 type="button"
                                                 variant="outline"
                                                 onClick={() => {
-                                                    taskForm.reset();
-                                                    setActiveTab('create');
+                                                    // Reset form to clean default values
+                                                    const validDate = getSafeDate(selectedDate);
+                                                    const dateStr = validDate.toISOString().split('T')[0];
+                                                    taskForm.reset({
+                                                        title: '',
+                                                        description: '',
+                                                        dueDate: dateStr,
+                                                        dueTime: selectedTime || '17:00',
+                                                        priority: 'medium',
+                                                        estimatedHours: 1,
+                                                        pointsValue: 10,
+                                                        taskType: 'personal',
+                                                        selectedFamilyId: undefined,
+                                                        assignedToUserId: undefined,
+                                                    });
+                                                    console.log('🔄 Task form reset to default values');
                                                 }}
                                                 className="px-6 border-emerald-200 dark:border-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-all duration-200"
                                             >

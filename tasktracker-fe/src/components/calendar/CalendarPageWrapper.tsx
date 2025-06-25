@@ -232,19 +232,9 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
         calendarService.getCalendarStats()
       ]);
 
-      // Update state with loaded data - map service DTOs to component types
-      const mappedEvents = calendarEvents.map(event => ({
-        ...event,
-        startDate: new Date(event.startTime),
-        endDate: new Date(event.endTime),
-        createdByUserId: event.createdBy.id,
-        achievementId: undefined,
-        taskId: undefined,
-        eventType: event.eventType as 'task' | 'achievement' | 'family_activity' | 'celebration' | 'reminder' | 'meeting' | 'deadline',
-        recurrence: undefined,
-        color: event.color || '#3B82F6', // Default blue color
-        updatedAt: event.updatedAt ? new Date(event.updatedAt) : new Date()
-      })) as CalendarEventDTO[];
+      // Calendar service now returns properly transformed CalendarEventDTO objects
+      // No additional mapping needed since the service handles the transformation
+      const mappedEvents = calendarEvents as CalendarEventDTO[];
       
       console.log('🔄 CalendarPageWrapper: Mapped events with proper dates:', mappedEvents);
       setEvents(mappedEvents);
@@ -449,17 +439,24 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50/50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900/50">
       <div className="flex h-screen">
-        {/* Sidebar */}
+        {/* Sidebar - Mobile Overlay */}
         {sidebarOpen && (
-          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-            <CalendarSidebar
-              events={events}
-              tasks={familyTasks}
-              stats={stats}
-              onCreateEvent={handleCreateEvent}
-              onToggleSidebar={() => setSidebarOpen(false)}
+          <>
+            {/* Mobile backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+              onClick={() => setSidebarOpen(false)}
             />
-          </div>
+            <div className="fixed inset-y-0 left-0 z-50 w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 lg:relative lg:z-auto">
+              <CalendarSidebar
+                events={events}
+                tasks={familyTasks}
+                stats={stats}
+                onCreateEvent={handleCreateEvent}
+                onToggleSidebar={() => setSidebarOpen(false)}
+              />
+            </div>
+          </>
         )}
 
         {/* Main Content */}
@@ -514,11 +511,11 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
           </div>
         </div>
 
-        {/* Toggle Sidebar Button - Hidden Sidebar */}
+        {/* Toggle Sidebar Button - Mobile Optimized */}
         {!sidebarOpen && (
           <Button
             onClick={() => setSidebarOpen(true)}
-            className="fixed left-4 top-1/2 transform -translate-y-1/2 z-50"
+            className="fixed left-2 sm:left-4 top-20 sm:top-1/2 transform sm:-translate-y-1/2 z-50 h-10 w-10 p-0 rounded-full shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             size="sm"
             variant="outline"
           >
@@ -557,20 +554,65 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
           loadCalendarData(); // Refresh data
         }}
         onEventUpdated={(updatedEvent: CalendarEventDTO) => {
+          // Update the events array
           setEvents(prev => prev.map(e => e.id.toString() === updatedEvent.id.toString() ? updatedEvent : e));
-          loadCalendarData(); // Refresh data
+          
+          // Update the selected event so the sheet shows the latest data immediately
+          if (selectedEvent && selectedEvent.id.toString() === updatedEvent.id.toString()) {
+            setSelectedEvent(updatedEvent);
+          }
+          
+          console.log('✅ CalendarPageWrapper: Event updated and UI refreshed');
         }}
         onTaskUpdated={(updatedTask: FamilyTaskItemDTO) => {
           // Task update would be handled by task service
           loadCalendarData(); // Refresh data
         }}
-        onEventDeleted={(eventId: string) => {
-          setEvents(prev => prev.filter(e => e.id.toString() !== eventId));
-          loadCalendarData(); // Refresh data
+        onEventDeleted={async (eventId: string) => {
+          try {
+            if (!currentFamily?.id) {
+              console.error('❌ No family ID available for event deletion');
+              return;
+            }
+
+            console.log('🗑️ CalendarPageWrapper: Deleting event:', eventId);
+            
+            // Call the actual delete API
+            const { calendarService } = await import('@/lib/services/calendarService');
+            const success = await calendarService.deleteCalendarEvent(currentFamily.id, parseInt(eventId));
+            
+            if (success) {
+              // Remove from local state only after successful API call
+              setEvents(prev => prev.filter(e => e.id.toString() !== eventId));
+              
+              // If the deleted event is currently selected/being edited, clear the state and close the sheet
+              if (selectedEvent && selectedEvent.id.toString() === eventId) {
+                setSelectedEvent(null);
+                setIsEditMode(false);
+                setIsCreateSheetOpen(false);
+                console.log('🗑️ CalendarPageWrapper: Closed edit sheet for deleted event');
+              }
+              
+              console.log('✅ CalendarPageWrapper: Event deleted successfully');
+            } else {
+              console.error('❌ CalendarPageWrapper: Failed to delete event');
+            }
+          } catch (error) {
+            console.error('❌ CalendarPageWrapper: Error deleting event:', error);
+          }
         }}
         onTaskDeleted={(taskId: string) => {
           // Task deletion would be handled by task service
-          loadCalendarData(); // Refresh data
+          
+          // If the deleted task is currently selected/being edited, clear the state and close the sheet
+          if (selectedTask && selectedTask.id.toString() === taskId) {
+            setSelectedTask(null);
+            setIsEditMode(false);
+            setIsCreateSheetOpen(false);
+            console.log('🗑️ CalendarPageWrapper: Closed edit sheet for deleted task');
+          }
+          
+          console.log('✅ CalendarPageWrapper: Task deletion handled (would be managed by task service)');
         }}
       />
     </div>

@@ -4,6 +4,8 @@ import { useMemo, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Target } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
+import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
+import { useSwipeNavigation, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 
 // Types following enterprise standards
 import type {
@@ -35,12 +37,68 @@ export default function AppleCalendarView({
   onCreateEvent
 }: AppleCalendarViewProps) {
 
+  // ============================================================================
+  // ENTERPRISE RESPONSIVE SYSTEM
+  // ============================================================================
+  
+  const responsive = useResponsive();
+  const { touchClasses, buttonSize, animationClasses } = useTouchOptimized();
+  
+  // Swipe navigation for mobile view switching
+  const { gestureRef } = useSwipeNavigation(
+    () => {
+      // Swipe left - next view/period
+      if (responsive.isMobile) {
+        triggerHapticFeedback('light');
+        // Navigate to next period based on current view
+        const nextDate = new Date(currentDate);
+        switch (viewType) {
+          case 'month':
+            nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+          case 'week':
+            nextDate.setDate(nextDate.getDate() + 7);
+            break;
+          case 'day':
+            nextDate.setDate(nextDate.getDate() + 1);
+            break;
+        }
+        onDateSelect(nextDate);
+      }
+    },
+    () => {
+      // Swipe right - previous view/period
+      if (responsive.isMobile) {
+        triggerHapticFeedback('light');
+        // Navigate to previous period based on current view
+        const prevDate = new Date(currentDate);
+        switch (viewType) {
+          case 'month':
+            prevDate.setMonth(prevDate.getMonth() - 1);
+            break;
+          case 'week':
+            prevDate.setDate(prevDate.getDate() - 7);
+            break;
+          case 'day':
+            prevDate.setDate(prevDate.getDate() - 1);
+            break;
+        }
+        onDateSelect(prevDate);
+      }
+    }
+  );
+
   console.log('🔍 AppleCalendarView: Received props:', {
     viewType,
     currentDate: currentDate.toISOString(),
     eventsCount: events.length,
     tasksCount: tasks.length,
-    events: events.map(e => ({ id: e.id, title: e.title, startDate: e.startDate }))
+    events: events.map(e => ({ id: e.id, title: e.title, startDate: e.startDate })),
+    responsive: {
+      isMobile: responsive.isMobile,
+      breakpoint: responsive.breakpoint,
+      hasTouch: responsive.hasTouch
+    }
   });
 
   // ============================================================================
@@ -130,7 +188,9 @@ export default function AppleCalendarView({
               <div
                 key={`${week.weekNumber}-${dayIndex}`}
                 className={cn(
-                  "min-h-[100px] md:min-h-[140px] p-3 md:p-4 border-r border-b border-gray-200/30 dark:border-gray-700/30 cursor-pointer transition-all duration-300 group hover:shadow-lg hover:z-10 relative",
+                  "min-h-[80px] sm:min-h-[100px] md:min-h-[140px] p-2 sm:p-3 md:p-4 border-r border-b border-gray-200/30 dark:border-gray-700/30 cursor-pointer transition-all duration-300 group hover:shadow-lg hover:z-10 relative",
+                  touchClasses,
+                  buttonSize,
                   {
                     "bg-gray-50/30 dark:bg-gray-800/30": !day.isCurrentMonth,
                     "bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/20 ring-1 ring-blue-200/50 dark:ring-blue-700/50": day.isToday,
@@ -142,6 +202,9 @@ export default function AppleCalendarView({
                 onClick={(e) => {
                   // Single click to open side sheet with day content
                   e.preventDefault();
+                  if (responsive.hasTouch) {
+                    triggerHapticFeedback('light');
+                  }
                   handleDateClick(day.date);
                   if (onCreateEvent) {
                     onCreateEvent(day.date);
@@ -156,10 +219,10 @@ export default function AppleCalendarView({
                 }}
               >
                 {/* Day Number with Sophisticated Styling */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <div
                     className={cn(
-                      "w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center font-bold text-sm md:text-base transition-all duration-200",
+                      "w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm md:text-base transition-all duration-200",
                       {
                         "text-gray-400 dark:text-gray-600": !day.isCurrentMonth,
                         "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg": day.isToday,
@@ -173,31 +236,37 @@ export default function AppleCalendarView({
                   
                   {/* Clean Gamification Indicator */}
                   {day.totalPoints > 0 && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-400/20 to-orange-400/20 rounded-lg border border-amber-200/30 dark:border-amber-700/30 backdrop-blur-sm">
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-sm"></div>
+                    <div className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-2 py-0.5 sm:py-1 bg-gradient-to-r from-amber-400/20 to-orange-400/20 rounded-md sm:rounded-lg border border-amber-200/30 dark:border-amber-700/30 backdrop-blur-sm">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 shadow-sm"></div>
                       <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{day.totalPoints}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Events and Tasks - Clean Cards */}
-                <div className="space-y-1.5">
-                  {day.events.slice(0, 2).map((event) => (
+                <div className="space-y-1 sm:space-y-1.5">
+                                    {day.events.slice(0, 2).map((event, eventIndex) => (
                     <div
                       key={event.id}
-                      className="group/event px-2 py-1.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm transform hover:scale-[1.02]"
+                      className={cn(
+                        "group/event px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-md sm:rounded-lg cursor-pointer transition-all duration-200 hover:shadow-sm transform hover:scale-[1.02] touch-manipulation",
+                        eventIndex > 0 && "hidden sm:block"
+                      )}
                       style={{ 
                         backgroundColor: event.color + '15', 
                         borderLeft: `3px solid ${event.color}`,
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (responsive.hasTouch) {
+                          triggerHapticFeedback('light');
+                        }
                         handleEventClick(event);
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <div 
-                          className="w-2 h-2 rounded-full flex-shrink-0 shadow-sm"
+                          className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0 shadow-sm"
                           style={{ backgroundColor: event.color }}
                         />
                         <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -207,17 +276,20 @@ export default function AppleCalendarView({
                     </div>
                   ))}
                   
-                  {day.tasks.slice(0, 2).map((task) => (
+                  {day.tasks.slice(0, 2).map((task, taskIndex) => (
                     <div
                       key={task.id}
-                      className="group/task px-2 py-1.5 rounded-lg bg-gradient-to-r from-slate-100/80 to-gray-100/80 dark:from-slate-700/80 dark:to-gray-700/80 cursor-pointer transition-all duration-200 hover:from-slate-200/80 hover:to-gray-200/80 dark:hover:from-slate-600/80 dark:hover:to-gray-600/80 hover:shadow-sm transform hover:scale-[1.02] border-l-3 border-slate-400/50"
+                      className={cn(
+                        "group/task px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-gradient-to-r from-slate-100/80 to-gray-100/80 dark:from-slate-700/80 dark:to-gray-700/80 cursor-pointer transition-all duration-200 hover:from-slate-200/80 hover:to-gray-200/80 dark:hover:from-slate-600/80 dark:hover:to-gray-600/80 hover:shadow-sm transform hover:scale-[1.02] border-l-2 sm:border-l-3 border-slate-400/50 touch-manipulation",
+                        taskIndex > 0 && "hidden sm:block"
+                      )}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleTaskClick(task);
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-sm bg-slate-400 dark:bg-slate-500 flex-shrink-0"></div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-sm bg-slate-400 dark:bg-slate-500 flex-shrink-0"></div>
                         <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
                           {task.title}
                         </span>
@@ -257,8 +329,11 @@ export default function AppleCalendarView({
     return (
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
 
-        {/* Time Grid with 7-day layout */}
-        <div className="grid grid-cols-8 divide-x divide-gray-200 dark:divide-gray-700">
+        {/* Time Grid with 7-day layout - Mobile Responsive */}
+        <div className={cn(
+          "grid divide-x divide-gray-200 dark:divide-gray-700 overflow-x-auto",
+          responsive.isMobile ? "grid-cols-4" : "grid-cols-8"
+        )}>
           {/* Time column */}
           <div className="bg-gray-50 dark:bg-gray-800">
             <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -273,19 +348,33 @@ export default function AppleCalendarView({
             ))}
           </div>
 
-          {/* Days columns */}
-          {weekData.days.map((day, index) => (
-            <div key={index} className="relative">
-              {/* Day header */}
-              <div className={cn(
-                "h-12 border-b border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center cursor-pointer transition-colors",
-                {
-                  "bg-blue-100 dark:bg-blue-900/30": day.isToday,
-                  "hover:bg-gray-50 dark:hover:bg-gray-800": !day.isToday
-                }
-              )}
-              onClick={() => handleDateClick(day.date)}
-              >
+          {/* Days columns - Show fewer on mobile */}
+          {weekData.days.map((day, index) => {
+            // Show only 3 days on mobile, all 7 on desktop
+            const shouldShow = responsive.isMobile ? index < 3 : true;
+            if (!shouldShow) return null;
+            
+            return (
+              <div key={index} className={cn(
+                "relative",
+                responsive.isMobile ? "min-w-[120px]" : "min-w-0"
+              )}>
+                {/* Day header */}
+                <div className={cn(
+                  "h-12 border-b border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center cursor-pointer transition-colors",
+                  touchClasses,
+                  {
+                    "bg-blue-100 dark:bg-blue-900/30": day.isToday,
+                    "hover:bg-gray-50 dark:hover:bg-gray-800": !day.isToday
+                  }
+                )}
+                onClick={() => {
+                  if (responsive.hasTouch) {
+                    triggerHapticFeedback('light');
+                  }
+                  handleDateClick(day.date);
+                }}
+                >
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   {day.date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </span>
@@ -341,7 +430,8 @@ export default function AppleCalendarView({
                 </div>
               ))}
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
     );
@@ -463,35 +553,36 @@ export default function AppleCalendarView({
               });
 
               return (
-                <div key={dayIndex} className="p-4 md:p-6">
+                <div key={dayIndex} className="p-3 sm:p-4 md:p-6">
                   {/* Date Header */}
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <div className={cn(
-                      "w-12 h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-lg",
+                      "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex flex-col items-center justify-center text-white font-bold shadow-lg",
                       {
                         "bg-gradient-to-br from-blue-500 to-blue-600": day.isToday,
                         "bg-gradient-to-br from-gray-400 to-gray-500": !day.isToday
                       }
                     )}>
                       <span className="text-xs">{day.date.toLocaleDateString('en-US', { month: 'short' })}</span>
-                      <span className="text-lg">{day.date.getDate()}</span>
+                      <span className="text-sm sm:text-lg">{day.date.getDate()}</span>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-white">
-                        {day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">
+                        <span className="hidden sm:inline">{day.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                        <span className="sm:hidden">{day.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                       </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                         {dayItems.length} item{dayItems.length !== 1 ? 's' : ''} • {day.events.length} events • {day.tasks.length} tasks
                       </p>
                     </div>
                   </div>
 
                   {/* Items List */}
-                  <div className="space-y-3 ml-15">
+                  <div className="space-y-2 sm:space-y-3 ml-12 sm:ml-15">
                     {dayItems.map((item, itemIndex) => (
                       <div
                         key={`${item.id}-${itemIndex}`}
-                        className="p-4 rounded-lg cursor-pointer transition-all hover:shadow-md border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600"
+                        className="p-3 sm:p-4 rounded-lg cursor-pointer transition-all hover:shadow-md border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 touch-manipulation"
                         style={{
                           backgroundColor: 'color' in item ? item.color + '08' : '#f9fafb',
                           borderLeftColor: 'color' in item ? item.color : '#6b7280',
@@ -506,11 +597,11 @@ export default function AppleCalendarView({
                           }
                         }}
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {'eventType' in item ? item.title : `📋 ${item.title}`}
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-white flex-1 min-w-0">
+                            <span className="truncate">{'eventType' in item ? item.title : `📋 ${item.title}`}</span>
                           </h4>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                             {'color' in item ? (
                               <Badge style={{ backgroundColor: item.color + '20', color: item.color }} className="text-xs">
                                 Event
@@ -520,7 +611,7 @@ export default function AppleCalendarView({
                                 Task • {item.pointsValue || 0} XP
                               </Badge>
                             )}
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                               {new Date('startDate' in item ? item.startDate : item.dueDate || new Date()).toLocaleTimeString('en-US', { 
                                 hour: 'numeric', 
                                 minute: '2-digit',
@@ -549,11 +640,36 @@ export default function AppleCalendarView({
   // ============================================================================
 
   return (
-    <div className={cn("w-full", className)}>
+    <div 
+      ref={(el) => { gestureRef.current = el; }}
+      className={cn(
+        "w-full",
+        touchClasses,
+        animationClasses,
+        responsive.isMobile && "select-none",
+        className
+      )}
+    >
+      {/* Mobile swipe indicator */}
+      {responsive.isMobile && (
+        <div className="flex justify-center mb-2">
+          <div className="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full opacity-50"></div>
+        </div>
+      )}
+      
       {viewType === 'month' && renderMonthView()}
       {viewType === 'week' && renderWeekView()}
       {viewType === 'day' && renderDayView()}
       {viewType === 'list' && renderListView()}
+      
+      {/* Mobile navigation hint */}
+      {responsive.isMobile && (
+        <div className="text-center mt-3 px-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Swipe left/right to navigate • Tap to select
+          </p>
+        </div>
+      )}
     </div>
   );
 }

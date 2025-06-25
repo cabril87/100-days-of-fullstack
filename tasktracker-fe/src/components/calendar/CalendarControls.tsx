@@ -29,6 +29,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
+import { triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 import type { CalendarStatsDTO } from '@/lib/types/calendar';
 
 export type CalendarViewType = 'month' | 'week' | 'day' | 'list';
@@ -57,8 +59,18 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   className
 }) => {
 
+  // ============================================================================
+  // ENTERPRISE RESPONSIVE SYSTEM
+  // ============================================================================
+  
+  const responsive = useResponsive();
+  const { touchClasses, buttonSize, animationClasses } = useTouchOptimized();
+
   // Navigation helpers
   const navigatePrevious = () => {
+    if (responsive.hasTouch) {
+      triggerHapticFeedback('light');
+    }
     const newDate = new Date(currentDate);
     switch (viewType) {
       case 'month':
@@ -78,6 +90,9 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   };
 
   const navigateNext = () => {
+    if (responsive.hasTouch) {
+      triggerHapticFeedback('light');
+    }
     const newDate = new Date(currentDate);
     switch (viewType) {
       case 'month':
@@ -97,6 +112,9 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   };
 
   const goToToday = () => {
+    if (responsive.hasTouch) {
+      triggerHapticFeedback('medium');
+    }
     onDateChange(new Date());
   };
 
@@ -180,7 +198,11 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={navigatePrevious}
-                  className="h-10 w-10 p-0 rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105"
+                  className={cn(
+                    "h-10 w-10 p-0 rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105",
+                    touchClasses,
+                    buttonSize
+                  )}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -229,8 +251,8 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
 
           {/* Bottom Row: View Selector and Actions */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
-            {/* View Selector */}
-            <div className="flex bg-gray-100/80 dark:bg-gray-800/80 rounded-xl p-1.5 gap-1 shadow-sm border border-gray-200/40 dark:border-gray-700/40 backdrop-blur-sm">
+            {/* View Selector - Mobile Optimized */}
+            <div className="flex bg-gray-100/80 dark:bg-gray-800/80 rounded-xl p-1 sm:p-1.5 gap-0.5 sm:gap-1 shadow-sm border border-gray-200/40 dark:border-gray-700/40 backdrop-blur-sm overflow-x-auto">
               {Object.entries(viewConfigs).map(([view, config]) => {
                 const Icon = config.icon;
                 const isActive = viewType === view;
@@ -242,7 +264,7 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
                     size="sm"
                     onClick={() => onViewChange(view as CalendarViewType)}
                     className={cn(
-                      "h-9 px-2 sm:px-3 lg:px-4 transition-all duration-300 rounded-lg font-medium text-xs sm:text-sm",
+                      "h-8 sm:h-9 px-2 sm:px-3 lg:px-4 transition-all duration-300 rounded-lg font-medium text-xs sm:text-sm flex-shrink-0 min-w-0",
                       {
                         [`bg-gradient-to-r ${config.color} text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]`]: isActive,
                         "hover:bg-white/60 dark:hover:bg-gray-700/60 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white": !isActive
@@ -250,25 +272,25 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
                     )}
                     title={config.description}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span className="hidden sm:inline ml-1.5 lg:ml-2">{config.label}</span>
                   </Button>
                 );
               })}
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Action Buttons - Mobile Optimized */}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto">
               {/* Search */}
               {onSearch && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={onSearch}
-                  className="h-10 w-10 p-0 rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105"
+                  className="h-8 w-8 sm:h-10 sm:w-10 p-0 rounded-lg sm:rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105 flex-shrink-0"
                   title="Search"
                 >
-                  <Search className="h-4 w-4" />
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               )}
 
@@ -278,10 +300,10 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={onFilterToggle}
-                  className="h-10 w-10 p-0 rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105"
+                  className="h-8 w-8 sm:h-10 sm:w-10 p-0 rounded-lg sm:rounded-xl border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-50/80 dark:hover:bg-gray-800/80 hover:shadow-md transition-all duration-200 hover:scale-105 flex-shrink-0"
                   title="Filter"
                 >
-                  <Filter className="h-4 w-4" />
+                  <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               )}
 
@@ -290,10 +312,11 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
                 <Button
                   size="sm"
                   onClick={() => onCreateEvent()}
-                  className="px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-xl font-medium transform hover:scale-[1.02]"
+                  className="h-8 sm:h-10 px-2 sm:px-3 md:px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-lg sm:rounded-xl font-medium transform hover:scale-[1.02] flex-shrink-0"
                 >
-                  <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">New Event</span>
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline ml-1.5 sm:ml-2">New Event</span>
+                  <span className="sm:hidden ml-1">New</span>
                 </Button>
               )}
 

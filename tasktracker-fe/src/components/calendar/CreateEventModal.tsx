@@ -65,21 +65,8 @@ export default function CreateEventModal({
 
       console.log('✅ CreateEventModal: Event created successfully:', createdEvent.id);
       
-      // Map service DTO to component type
-      const mappedEvent: CalendarEventDTO = {
-        ...createdEvent,
-        startDate: createdEvent.startTime,
-        endDate: createdEvent.endTime,
-        createdByUserId: createdEvent.createdBy.id,
-        achievementId: undefined,
-        taskId: undefined,
-        eventType: createdEvent.eventType as 'task' | 'achievement' | 'family_activity' | 'celebration' | 'reminder' | 'meeting' | 'deadline',
-        recurrence: undefined,
-        color: createdEvent.color || '#3B82F6',
-        updatedAt: createdEvent.updatedAt || new Date()
-      };
-      
-      onEventCreated(mappedEvent);
+      // Service now returns properly transformed CalendarEventDTO
+      onEventCreated(createdEvent);
       setTitle('');
       setDescription('');
     } catch (error) {
