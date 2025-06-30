@@ -15,13 +15,7 @@ import type {
   TouchCapability,
   ResponsiveState,
   ResponsiveBreakpoints,
-  UseResponsiveReturn,
-  UseBreakpointConditionalReturn,
-  UseTouchOptimizedReturn,
-  UseResponsiveGridReturn,
-  UseResponsiveTypographyReturn,
-  ResponsiveValueConfig,
-  TouchOptimizedState
+  UseResponsiveReturn
 } from '@/lib/types/mobile-responsive';
 
 // ResponsiveState interface imported from types file
@@ -351,13 +345,45 @@ export function useResponsiveGrid() {
   
   const getGridCols = useCallback((config: Partial<Record<Breakpoint, number>>) => {
     const defaultCols = config.xs || 1;
-    return useResponsiveValue(config, defaultCols);
-  }, []);
+    // Try current breakpoint first
+    if (config[breakpoint] !== undefined) {
+      return config[breakpoint]!;
+    }
+    
+    // Fall back to largest available breakpoint that's smaller
+    const orderedBreakpoints: Breakpoint[] = ['2xl', 'xl', 'lg', 'md', 'sm', 'xs'];
+    const currentIndex = orderedBreakpoints.indexOf(breakpoint);
+    
+    for (let i = currentIndex + 1; i < orderedBreakpoints.length; i++) {
+      const bp = orderedBreakpoints[i];
+      if (config[bp] !== undefined) {
+        return config[bp]!;
+      }
+    }
+    
+    return defaultCols;
+  }, [breakpoint]);
   
   const getGridGap = useCallback((config: Partial<Record<Breakpoint, string>>) => {
     const defaultGap = config.xs || 'gap-4';
-    return useResponsiveValue(config, defaultGap);
-  }, []);
+    // Try current breakpoint first
+    if (config[breakpoint] !== undefined) {
+      return config[breakpoint]!;
+    }
+    
+    // Fall back to largest available breakpoint that's smaller
+    const orderedBreakpoints: Breakpoint[] = ['2xl', 'xl', 'lg', 'md', 'sm', 'xs'];
+    const currentIndex = orderedBreakpoints.indexOf(breakpoint);
+    
+    for (let i = currentIndex + 1; i < orderedBreakpoints.length; i++) {
+      const bp = orderedBreakpoints[i];
+      if (config[bp] !== undefined) {
+        return config[bp]!;
+      }
+    }
+    
+    return defaultGap;
+  }, [breakpoint]);
   
   return {
     getGridCols,

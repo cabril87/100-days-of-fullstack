@@ -405,6 +405,10 @@ public class Program
         builder.Services.AddScoped<ISavedSearchService, SavedSearchService>();
         builder.Services.AddScoped<IUnifiedSearchService, UnifiedSearchService>();
 
+// Photo Attachment Services  
+builder.Services.AddScoped<IPhotoAttachmentRepository, PhotoAttachmentRepository>();
+builder.Services.AddScoped<IPhotoAttachmentService, PhotoAttachmentService>();
+
         // Add response compression
         builder.Services.AddResponseCompression(options =>
         {

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -10,7 +9,6 @@ import {
   CalendarDays,
   Clock,
   List,
-  Grid3X3,
   Plus,
   Filter,
   Search,
@@ -64,7 +62,7 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   // ============================================================================
   
   const responsive = useResponsive();
-  const { touchClasses, buttonSize, animationClasses } = useTouchOptimized();
+  const { touchClasses, buttonSize } = useTouchOptimized();
 
   // Navigation helpers
   const navigatePrevious = () => {

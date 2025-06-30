@@ -15,6 +15,7 @@ import { BoardColumnDTO } from '@/lib/types/board';
 import { FamilyMemberDTO, FamilyDTO } from '@/lib/types/family-invitation';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
+import { gamificationService } from '@/lib/services/gamificationService';
 import { useTaskCompletion } from '@/components/ui/ToastProvider';
 import TaskCreationModal from './TaskCreationModal';
 import ErrorModal from '@/components/ui/ErrorModal';
@@ -179,6 +180,28 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
 
       await taskService.completeTask(taskId);
 
+      // 🎮 REAL-TIME GAMIFICATION INTEGRATION - Process achievements and celebrations
+      console.log('🎮 Processing gamification for task completion...', {
+        taskId,
+        taskTitle: taskToComplete.title,
+        taskPoints: taskToComplete.pointsValue,
+        taskCategoryId: taskToComplete.categoryId,
+        taskPriority: taskToComplete.priority
+      });
+
+      const gamificationResult = await gamificationService.processTaskCompletion(taskId, {
+        title: taskToComplete.title,
+        points: taskToComplete.pointsValue,
+        category: taskToComplete.categoryName || 'General'
+      });
+
+      console.log('🏆 Gamification processing complete:', {
+        pointsEarned: gamificationResult.pointsEarned,
+        newAchievements: gamificationResult.newAchievements.length,
+        achievementNames: gamificationResult.newAchievements.map(a => a.name),
+        levelUp: gamificationResult.levelUp
+      });
+
       // Update local state
       setTasks(prevTasks =>
         prevTasks.map(task =>
@@ -188,30 +211,51 @@ export default function TasksPageContent({ user, initialData }: TasksPageContent
         )
       );
 
-      // Update stats
+      // Update stats with real gamification data
       setStats(prevStats => ({
         ...prevStats,
         completedTasks: prevStats.completedTasks + 1,
-        totalPoints: prevStats.totalPoints + (taskToComplete.pointsValue || 0)
+        totalPoints: prevStats.totalPoints + gamificationResult.pointsEarned
       }));
 
-      // Show completion modal
+      // Show completion modal with REAL achievement data
       setCompletionModal({
         isOpen: true,
         taskTitle: taskToComplete.title,
-        xpEarned: taskToComplete.pointsValue || 0,
-        newLevel: undefined,
-        achievements: [],
-        streakDays: 0
+        xpEarned: gamificationResult.pointsEarned,
+        newLevel: gamificationResult.levelUp?.newLevel,
+        achievements: gamificationResult.newAchievements.map(a => a.name),
+        streakDays: 0 // TODO: Add streak data from gamification service
       });
 
-      // Celebrate completion with correct parameters
+      // 🎉 REAL-TIME CELEBRATION with actual achievement data
       celebrateTaskCompletion({
         taskTitle: taskToComplete.title,
-        pointsEarned: taskToComplete.pointsValue || 0,
-        achievementsUnlocked: [],
-        levelUp: undefined
+        pointsEarned: gamificationResult.pointsEarned,
+        achievementsUnlocked: gamificationResult.newAchievements.map(achievement => ({
+          id: achievement.id,
+          name: achievement.name,
+          title: achievement.name,
+          description: achievement.description,
+          points: achievement.pointValue,
+          rarity: achievement.difficulty === 'VeryEasy' ? 'Common' as const :
+                  achievement.difficulty === 'Easy' ? 'Uncommon' as const :
+                  achievement.difficulty === 'Medium' ? 'Rare' as const :
+                  achievement.difficulty === 'Hard' ? 'Epic' as const :
+                  'Legendary' as const,
+          unlockedAt: achievement.unlockedAt?.toISOString()
+        })),
+        levelUp: gamificationResult.levelUp
       });
+
+      // 🔔 TODO: Broadcast to family members via SignalR
+      // This will notify family members of achievement unlocks in real-time
+      if (gamificationResult.newAchievements.length > 0) {
+        console.log('🎯 Broadcasting achievement unlocks to family members...', {
+          achievements: gamificationResult.newAchievements.map(a => a.name),
+          familyId: family?.id
+      });
+      }
 
     } catch (error) {
       console.error('❌ Failed to complete task:', error);

@@ -91,7 +91,7 @@ export default function ConflictResolutionModal({
                 Scheduling Conflict Detected
               </CardTitle>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                "{eventTitle}" conflicts with {conflicts.length} existing item{conflicts.length > 1 ? 's' : ''}
+                &ldquo;{eventTitle}&rdquo; conflicts with {conflicts.length} existing item{conflicts.length > 1 ? 's' : ''}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                 Scheduled: {originalTime.start.toLocaleTimeString('en-US', { 

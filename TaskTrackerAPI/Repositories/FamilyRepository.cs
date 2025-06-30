@@ -250,10 +250,17 @@ public class FamilyRepository : IFamilyRepository
     public async Task<FamilyMember?> GetMemberByUserIdAsync(int userId, int familyId)
     {
         return await _context.FamilyMembers
-            .Include(m => m.User)
             .Include(m => m.Role)
-                .ThenInclude(r => r.Permissions)
+            .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.UserId == userId && m.FamilyId == familyId);
+    }
+
+    public async Task<FamilyMember?> GetFamilyMemberAsync(int familyId, int userId)
+    {
+        return await _context.FamilyMembers
+            .Include(m => m.Role)
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.FamilyId == familyId && m.UserId == userId);
     }
 
     public async Task<IEnumerable<FamilyMember>> GetPendingMembersAsync()

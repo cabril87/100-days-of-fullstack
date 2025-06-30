@@ -248,7 +248,7 @@ export interface MobileNavigationBarProps {
 // RESPONSIVE HOOK RETURN TYPES
 // ================================
 
-export interface UseResponsiveReturn extends ResponsiveState {}
+export type UseResponsiveReturn = ResponsiveState;
 
 export interface UseResponsiveValueReturn<T> {
   value: T;
@@ -267,7 +267,7 @@ export interface UseBreakpointConditionalReturn {
   showBetween: (min: Breakpoint, max: Breakpoint) => boolean;
 }
 
-export interface UseTouchOptimizedReturn extends TouchOptimizedState {}
+export type UseTouchOptimizedReturn = TouchOptimizedState;
 
 export interface UseResponsiveGridReturn {
   getGridCols: (config: ResponsiveValueConfig<number>) => number;
@@ -275,16 +275,16 @@ export interface UseResponsiveGridReturn {
   currentBreakpoint: Breakpoint;
 }
 
-export interface UseResponsiveTypographyReturn extends ResponsiveTypographyConfig {}
+export type UseResponsiveTypographyReturn = ResponsiveTypographyConfig;
 
 export interface UseSwipeNavigationReturn {
   gestureRef: React.RefObject<HTMLElement | null>;
   attachGestures: (element: HTMLElement | null) => void;
 }
 
-export interface UsePullToRefreshReturn extends MobileGestureState {}
+export type UsePullToRefreshReturn = MobileGestureState;
 
-export interface UseTouchFeedbackReturn extends MobileGestureState {}
+export type UseTouchFeedbackReturn = MobileGestureState;
 
 // ================================
 // MOBILE UI COMPONENT TYPES

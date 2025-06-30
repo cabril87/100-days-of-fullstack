@@ -16,5 +16,9 @@ export { NotificationStream } from './NotificationStream';
 export { FamilyLeaderboardWidget } from './FamilyLeaderboardWidget';
 export { FamilyGoalsWidget } from './FamilyGoalsWidget';
 
+// Productivity & Analytics Widgets
+export { AnalyticsDashboardWidget } from './AnalyticsDashboardWidget';
+export { FocusModeDashboardWidget } from './FocusModeDashboardWidget';
+
 // Widget type definitions for reuse
 export type { CelebrationEvent } from '@/lib/types/gamification'; 

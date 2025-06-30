@@ -34,7 +34,9 @@ import {
   RecentAchievements,
   FamilyActivityStream,
   StreakCounter,
-  NotificationStream
+  NotificationStream,
+  AnalyticsDashboardWidget,
+  FocusModeDashboardWidget
 } from '@/components/dashboard/widgets';
 import CalendarDashboardWidget from '@/components/dashboard/widgets/CalendarDashboardWidget';
 import { useDashboardConnections } from '@/lib/hooks/useDashboardConnections';
@@ -46,6 +48,7 @@ import type {
 import { Avatar, AvatarFallback } from '@radix-ui/react-avatar';
 import { Alert, AlertDescription } from '../ui/alert';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
+import { gamificationService } from '@/lib/services/gamificationService';
 
 // ✨ NEW: Dashboard mode types
 
@@ -292,7 +295,39 @@ function Dashboard({ user, initialData }: DashboardProps) {
   // Handle task completion
   const handleTaskCompletion = useCallback(async (taskId: number) => {
     try {
+      const taskToComplete = recentTasks.find(t => t.id === taskId) ||
+                             dueTodayTasks.find(t => t.id === taskId) ||
+                             overdueTasks.find(t => t.id === taskId);
+
+      if (!taskToComplete) {
+        console.warn(`Task ${taskId} not found for completion`);
+        return;
+      }
+
+      console.log(`🎮 Dashboard: Completing task ${taskId}: ${taskToComplete.title}`);
+
       await taskService.completeTask(taskId);
+
+      // 🎮 REAL-TIME GAMIFICATION INTEGRATION - Process achievements and celebrations
+      console.log('🎮 Dashboard: Processing gamification for task completion...', {
+        taskId,
+        taskTitle: taskToComplete.title,
+        taskPoints: taskToComplete.pointsValue,
+        taskCategoryId: taskToComplete.categoryId
+      });
+
+      const gamificationResult = await gamificationService.processTaskCompletion(taskId, {
+        title: taskToComplete.title,
+        points: taskToComplete.pointsValue,
+        category: taskToComplete.categoryName || 'General'
+      });
+
+      console.log('🏆 Dashboard: Gamification processing complete:', {
+        pointsEarned: gamificationResult.pointsEarned,
+        newAchievements: gamificationResult.newAchievements.length,
+        achievementNames: gamificationResult.newAchievements.map(a => a.name),
+        levelUp: gamificationResult.levelUp
+      });
 
       // Update task states
       setRecentTasks(prev => prev.map(task =>
@@ -306,16 +341,24 @@ function Dashboard({ user, initialData }: DashboardProps) {
         task.id === taskId ? { ...task, isCompleted: true, status: 'completed' } : task
       ));
 
-      // Refresh dashboard stats
+      // Refresh dashboard stats with real gamification data
       const updatedStats = await taskService.getUserTaskStats();
       setDashboardStats(prev => ({
         ...prev,
         tasksCompleted: updatedStats.tasksCompleted,
         activeGoals: updatedStats.activeGoals,
         focusTime: updatedStats.focusTimeToday,
-        totalPoints: updatedStats.totalPoints,
+        totalPoints: updatedStats.totalPoints + gamificationResult.pointsEarned,
         streakDays: updatedStats.streakDays
       }));
+
+      // 🎉 Trigger real-time dashboard widget updates via SignalR
+      if (gamificationResult.newAchievements.length > 0) {
+        console.log('🎯 Dashboard: Broadcasting achievement unlocks to family members...', {
+          achievements: gamificationResult.newAchievements.map(a => a.name),
+          familyId: currentFamily?.id
+        });
+      }
 
       // ✨ NEW: Refresh family stats
       if (currentFamily?.id) {
@@ -325,7 +368,7 @@ function Dashboard({ user, initialData }: DashboardProps) {
       console.error('Failed to complete task:', error);
       setError('Failed to complete task. Please try again.');
     }
-  }, [currentFamily?.id, loadFamilyTasks]);
+  }, [currentFamily?.id, loadFamilyTasks, recentTasks, dueTodayTasks, overdueTasks]);
 
   // ✨ NEW: Load recent tasks for dashboard
   const loadRecentTasks = useCallback(async () => {
@@ -1151,6 +1194,21 @@ function Dashboard({ user, initialData }: DashboardProps) {
                 className="w-full h-full"
                 // ✨ Pass shared connection data
                 isConnected={isConnected}
+              />
+            </div>
+
+            <div className="w-full overflow-hidden">
+              <AnalyticsDashboardWidget
+                userId={user?.id}
+                familyId={currentFamily?.id}
+                className="w-full h-full"
+              />
+            </div>
+
+            <div className="w-full overflow-hidden">
+              <FocusModeDashboardWidget
+                userId={user?.id}
+                className="w-full h-full"
               />
             </div>
           </div>

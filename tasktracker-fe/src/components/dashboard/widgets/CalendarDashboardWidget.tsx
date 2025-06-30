@@ -70,9 +70,9 @@ export default function CalendarDashboardWidget({
       // Map service DTOs to component types
       const mappedEvents = upcomingEvents.map(event => ({
         ...event,
-        startDate: event.startTime,
-        endDate: event.endTime,
-        createdByUserId: event.createdBy?.id || 0,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        createdByUserId: event.createdByUserId || 0,
         achievementId: undefined,
         taskId: undefined,
         eventType: event.eventType as 'task' | 'achievement' | 'family_activity' | 'celebration' | 'reminder' | 'meeting' | 'deadline',

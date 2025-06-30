@@ -20,6 +20,14 @@ export const eventFormSchema = z.object({
   isAllDay: z.boolean(),
   isRecurring: z.boolean(),
   recurringPattern: z.enum(['weekly', 'monthly', 'yearly']).optional(),
+}).refine((data) => {
+  // Validate that end date/time is after start date/time
+  const startDateTime = new Date(`${data.startDate}T${data.startTime}`);
+  const endDateTime = new Date(`${data.endDate}T${data.endTime}`);
+  return endDateTime > startDateTime;
+}, {
+  message: 'End date and time must be after start date and time',
+  path: ['endDate']
 });
 
 // ============================================================================
@@ -29,7 +37,14 @@ export const eventFormSchema = z.object({
 export const taskFormSchema = z.object({
   title: z.string().min(1, 'Task title is required').max(100, 'Title must be less than 100 characters'),
   description: z.string().optional(),
-  dueDate: z.string().min(1, 'Due date is required'),
+  dueDate: z.string().min(1, 'Due date is required')
+    .refine((date) => {
+      // Prevent past dates for tasks (following established pattern)
+      const taskDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      return taskDate >= today;
+    }, 'Tasks cannot be scheduled for past dates'),
   dueTime: z.string().min(1, 'Due time is required'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   estimatedHours: z.number().min(0.5, 'Minimum 0.5 hours').max(24, 'Maximum 24 hours'),

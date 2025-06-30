@@ -16,6 +16,7 @@ import type {
   AchievementDisplayDTO
 } from '@/lib/types/calendar';
 import { FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
 
 // Services and hooks
 import { calendarService } from '@/lib/services/calendarService';
@@ -45,6 +46,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
+
   // Data state
   const [events, setEvents] = useState<CalendarEventDTO[]>(initialData.events);
   const [familyTasks] = useState<FamilyTaskItemDTO[]>(initialData.familyTasks);
@@ -73,8 +75,8 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
 
   // Family context
   const [currentFamily, setCurrentFamily] = useState<{ id: number; name: string } | null>(null);
-  const [allFamilies, setAllFamilies] = useState<any[]>([]);
-  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const [allFamilies, setAllFamilies] = useState<FamilyDTO[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMemberDTO[]>([]);
 
   // ============================================================================
   // COMPUTED VALUES - Memoized for performance
@@ -82,56 +84,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
 
   const userId = useMemo(() => user?.id, [user?.id]);
 
-  // Calendar navigation helpers
-  const navigation = useMemo(() => ({
-    goToToday: () => {
-      setCurrentDate(new Date());
-      setSelectedDate(new Date());
-    },
-    goToNextPeriod: () => {
-      const newDate = new Date(currentDate);
-      switch (viewType) {
-        case 'month':
-          newDate.setMonth(newDate.getMonth() + 1);
-          break;
-        case 'week':
-          newDate.setDate(newDate.getDate() + 7);
-          break;
-        case 'day':
-          newDate.setDate(newDate.getDate() + 1);
-          break;
-        case 'list':
-          newDate.setDate(newDate.getDate() + 7);
-          break;
-      }
-      setCurrentDate(newDate);
-    },
-    goToPreviousPeriod: () => {
-      const newDate = new Date(currentDate);
-      switch (viewType) {
-        case 'month':
-          newDate.setMonth(newDate.getMonth() - 1);
-          break;
-        case 'week':
-          newDate.setDate(newDate.getDate() - 7);
-          break;
-        case 'day':
-          newDate.setDate(newDate.getDate() - 1);
-          break;
-        case 'list':
-          newDate.setDate(newDate.getDate() - 7);
-          break;
-      }
-      setCurrentDate(newDate);
-    },
-    goToSpecificDate: (date: Date) => {
-      setCurrentDate(date);
-      setSelectedDate(date);
-    },
-    changeView: (newViewType: CalendarViewType) => {
-      setViewType(newViewType);
-    }
-  }), [currentDate, viewType]);
+ 
 
   // Calendar display helpers
   const display = useMemo(() => ({
@@ -185,7 +138,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
   // ============================================================================
 
   const loadCalendarData = useCallback(async () => {
-    if (!userId || isLoading) return;
+    if (!userId) return;
 
     setIsLoading(true);
     setError(null);
@@ -309,7 +262,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
             console.warn(`Failed to load members for family ${fam.id}:`, error);
           }
         }
-        setFamilyMembers(allMembers);
+        setFamilyMembers(allMembers );
         console.log('✅ CalendarPageWrapper: All family members loaded:', allMembers.length);
       }
     } catch (error) {
@@ -498,12 +451,12 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
             <AppleCalendarView
               viewType={viewType}
               currentDate={currentDate}
+              selectedDate={selectedDate}
               events={events}
               tasks={familyTasks}
               onDateSelect={handleDateSelect}
               onEventSelect={handleEventSelect}
               onTaskSelect={handleTaskSelect}
-              onViewChange={handleViewChange}
               gamificationData={gamificationData}
               onCreateEvent={handleCreateEvent}
               className={isLoading ? 'opacity-50 pointer-events-none' : ''}
@@ -549,7 +502,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
           setEvents(prev => [...prev, newEvent]);
           loadCalendarData(); // Refresh data
         }}
-        onTaskCreated={(newTask: FamilyTaskItemDTO) => {
+        onTaskCreated={() => {
           // Task creation would be handled by task service
           loadCalendarData(); // Refresh data
         }}
@@ -564,7 +517,7 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
           
           console.log('✅ CalendarPageWrapper: Event updated and UI refreshed');
         }}
-        onTaskUpdated={(updatedTask: FamilyTaskItemDTO) => {
+        onTaskUpdated={() => {
           // Task update would be handled by task service
           loadCalendarData(); // Refresh data
         }}

@@ -1,27 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useRef } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { 
   ChevronLeft, 
   ChevronRight,
-  ChevronDown,
   RefreshCw,
-  Calendar,
-  Clock,
-  List,
-  Grid3X3,
   Plus,
-  Settings,
-  Zap,
-  Smartphone,
-  Volume2,
-  VolumeX,
-  Vibrate,
-  Sparkles,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -47,9 +32,7 @@ import type {
   MobileGestureIndicatorProps,
   TouchFeedbackProps,
   MobileViewSwitcherProps,
-  MobileNavigationBarProps,
-  CalendarViewType,
-  HapticPattern
+  MobileNavigationBarProps
 } from '@/lib/types/mobile-responsive';
 
 // ================================
@@ -197,7 +180,7 @@ export function TouchFeedback({
   onPress, 
   onLongPress, 
   hapticPattern = 'light',
-  className 
+  className: _className 
 }: TouchFeedbackProps) {
   const [isPressed, setIsPressed] = useState(false);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
@@ -247,7 +230,7 @@ export function TouchFeedback({
         "transition-transform duration-150",
         touchClasses,
         isPressed && responsive.hasTouch && "scale-95",
-        className
+        _className
       )}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -265,8 +248,7 @@ export function TouchFeedback({
 
 export function MobileViewSwitcher({ 
   currentView, 
-  onViewChange,
-  className
+  onViewChange
 }: MobileViewSwitcherProps) {
   const responsive = useResponsive();
   
@@ -530,7 +512,6 @@ export default function MobileCalendarEnhancements({
   currentDate,
   viewType,
   onDateChange,
-  onViewChange,
   onRefresh,
   onCreateEvent,
   isLoading = false,
@@ -538,8 +519,8 @@ export default function MobileCalendarEnhancements({
   children
 }: MobileCalendarEnhancementsProps) {
   const responsive = useResponsive();
-  const [gestureDirection, setGestureDirection] = useState<'left' | 'right' | null>(null);
-  const [gestureProgress, setGestureProgress] = useState(0);
+  const [gestureDirection] = useState<'left' | 'right' | null>(null);
+  const [gestureProgress] = useState(0);
 
   // Swipe navigation setup
   const { gestureRef } = useSwipeNavigation(

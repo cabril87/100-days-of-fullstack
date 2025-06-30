@@ -175,6 +175,13 @@ public class ApplicationDbContext : DbContext
     // Search entities
     public DbSet<SavedSearch> SavedSearches { get; set; } = null!;
 
+    // Photo attachment entities (Task Evidence System)
+    public DbSet<PhotoAttachment> PhotoAttachments { get; set; } = null!;
+    public DbSet<PhotoValidation> PhotoValidations { get; set; } = null!;
+    public DbSet<PhotoShare> PhotoShares { get; set; } = null!;
+    public DbSet<PhotoReaction> PhotoReactions { get; set; } = null!;
+    public DbSet<PhotoComment> PhotoComments { get; set; } = null!;
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured && _configuration != null)

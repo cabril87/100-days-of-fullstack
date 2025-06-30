@@ -4,20 +4,16 @@ import React, { useState, useCallback } from 'react';
 import { useResponsive } from '@/lib/hooks/useResponsive';
 import MobileCalendarEnhancements, { 
   MobileViewSwitcher, 
-  TouchFeedback,
-  PullToRefresh 
+  TouchFeedback
 } from './MobileCalendarEnhancements';
-import CalendarPageWrapper from './CalendarPageWrapper';
 import AppleCalendarView from './AppleCalendarView';
 import CalendarControls from './CalendarControls';
 import CreateEventSheet from './CreateEventSheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Calendar,
   Plus,
-  Settings,
   Smartphone,
   Monitor,
   Tablet,
@@ -29,8 +25,9 @@ import { cn } from '@/lib/utils/utils';
 
 // Types
 import type { CalendarViewType } from './CalendarControls';
-import type { CalendarEventDTO } from '@/lib/types/calendar';
+import type { CalendarEventDTO, CalendarStatsDTO } from '@/lib/types/calendar';
 import type { FamilyTaskItemDTO } from '@/lib/types/task';
+import type { FamilyMemberDTO } from '@/lib/types/family-invitation';
 
 interface EnterpriseCalendarWrapperProps {
   // Core calendar props
@@ -52,8 +49,8 @@ interface EnterpriseCalendarWrapperProps {
   
   // Additional props
   familyId?: string;
-  familyMembers?: any[];
-  stats?: any;
+  familyMembers?: FamilyMemberDTO[];
+  stats?: CalendarStatsDTO;
   className?: string;
 }
 
@@ -578,7 +575,6 @@ export default function EnterpriseCalendarWrapper({
                 onDateSelect={handleDateSelect}
                 onEventSelect={onEventSelect}
                 onTaskSelect={onTaskSelect}
-                onViewChange={onViewChange}
                 onCreateEvent={handleCreateEvent}
                 gamificationData={{
                   dailyPoints: {},
@@ -610,24 +606,24 @@ export default function EnterpriseCalendarWrapper({
           familyMembers={familyMembers}
           existingEvents={events}
           existingTasks={tasks}
-          onEventCreated={(event) => {
+          onEventCreated={() => {
             // Handle event creation
             setCreateEventSheetOpen(false);
           }}
-          onTaskCreated={(task) => {
+          onTaskCreated={() => {
             // Handle task creation
             setCreateEventSheetOpen(false);
           }}
-          onEventUpdated={(event) => {
+          onEventUpdated={() => {
             // Handle event update
           }}
-          onTaskUpdated={(task) => {
+          onTaskUpdated={() => {
             // Handle task update
           }}
-          onEventDeleted={(eventId) => {
+          onEventDeleted={() => {
             // Handle event deletion
           }}
-          onTaskDeleted={(taskId) => {
+          onTaskDeleted={() => {
             // Handle task deletion
           }}
         />
@@ -669,7 +665,7 @@ export default function EnterpriseCalendarWrapper({
                 viewType={viewType}
                 onDateChange={onDateChange}
                 onViewChange={onViewChange}
-                stats={stats || { totalEvents: 0, totalTasks: 0, completedTasks: 0, upcomingEvents: 0 }}
+                stats={stats || { tasksThisWeek: 0, completedThisWeek: 0, totalPoints: 0, streakDays: 0, upcomingDeadlines: 0, familyEvents: 0, personalEvents: 0, achievementsThisMonth: 0 }}
                 onCreateEvent={handleCreateEvent}
               />
             </div>
@@ -686,7 +682,6 @@ export default function EnterpriseCalendarWrapper({
             onDateSelect={handleDateSelect}
             onEventSelect={onEventSelect}
             onTaskSelect={onTaskSelect}
-            onViewChange={onViewChange}
             onCreateEvent={handleCreateEvent}
             gamificationData={{
               dailyPoints: {},
@@ -709,22 +704,22 @@ export default function EnterpriseCalendarWrapper({
           familyMembers={familyMembers}
           existingEvents={events}
           existingTasks={tasks}
-          onEventCreated={(event) => {
+          onEventCreated={() => {
             setCreateEventSheetOpen(false);
           }}
-          onTaskCreated={(task) => {
+          onTaskCreated={() => {
             setCreateEventSheetOpen(false);
           }}
-          onEventUpdated={(event) => {
+          onEventUpdated={() => {
             // Handle event update
           }}
-          onTaskUpdated={(task) => {
+          onTaskUpdated={() => {
             // Handle task update
           }}
-          onEventDeleted={(eventId) => {
+          onEventDeleted={() => {
             // Handle event deletion
           }}
-          onTaskDeleted={(taskId) => {
+          onTaskDeleted={() => {
             // Handle task deletion
           }}
         />
@@ -768,7 +763,7 @@ export default function EnterpriseCalendarWrapper({
             viewType={viewType}
             onDateChange={onDateChange}
             onViewChange={onViewChange}
-            stats={stats || { totalEvents: 0, totalTasks: 0, completedTasks: 0, upcomingEvents: 0 }}
+            stats={stats || { tasksThisWeek: 0, completedThisWeek: 0, totalPoints: 0, streakDays: 0, upcomingDeadlines: 0, familyEvents: 0, personalEvents: 0, achievementsThisMonth: 0 }}
             onCreateEvent={handleCreateEvent}
           />
         </div>
@@ -781,7 +776,6 @@ export default function EnterpriseCalendarWrapper({
           onDateSelect={handleDateSelect}
           onEventSelect={onEventSelect}
           onTaskSelect={onTaskSelect}
-          onViewChange={onViewChange}
           onCreateEvent={handleCreateEvent}
           gamificationData={{
             dailyPoints: {},

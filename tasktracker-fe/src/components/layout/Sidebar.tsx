@@ -293,6 +293,32 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                       FAMILY
                     </span>
                   </Link>
+                  <Link
+                    href="/focus"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/focus')
+                        ? 'bg-orange-500/20 border-l-4 border-orange-400 text-orange-700 dark:text-orange-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    🎯 Focus Mode
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                      NEW
+                    </span>
+                  </Link>
+                  <Link
+                    href="/analytics"
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActiveLink('/analytics')
+                        ? 'bg-indigo-500/20 border-l-4 border-indigo-400 text-indigo-700 dark:text-indigo-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    📊 Analytics
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                      INSIGHTS
+                    </span>
+                  </Link>
                 </div>
               )}
             </div>
@@ -660,12 +686,27 @@ export const Sidebar = React.memo(function Sidebar({ isOpen, onClose }: SidebarP
                 )}
                 <button 
                   onClick={() => {
-                    router.push('/dashboard');
-                    // Don't close sidebar for navigation - let user navigate while keeping sidebar open
+                    router.push('/focus');
+                    handleClose();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-orange-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
                 >
-                  ⏰ Set Reminder
+                  🎯 Focus Session
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                    NEW
+                  </span>
+                </button>
+                <button 
+                  onClick={() => {
+                    router.push('/analytics');
+                    handleClose();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-500/20 transition-all duration-200 text-gray-700 dark:text-gray-300"
+                >
+                  📊 View Analytics
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                    INSIGHTS
+                  </span>
                 </button>
               </div>
             </div>

@@ -25,6 +25,7 @@ export interface CalendarEventDTO {
   startDate: Date;
   endDate: Date;
   isAllDay: boolean;
+  location?: string;
   color: string;
   familyId?: number;
   createdByUserId: number;
@@ -151,12 +152,12 @@ export interface CalendarPageWrapperProps {
 export interface AppleCalendarViewProps {
   viewType: CalendarViewType;
   currentDate: Date;
+  selectedDate?: Date | null;
   events: CalendarEventDTO[];
   tasks: FamilyTaskItemDTO[];
   onDateSelect: (date: Date) => void;
   onEventSelect: (event: CalendarEventDTO) => void;
   onTaskSelect: (task: FamilyTaskItemDTO) => void;
-  onViewChange: (viewType: CalendarViewType) => void;
   gamificationData: CalendarGamificationData;
   className?: string;
   onCreateEvent?: (selectedDate: Date, selectedTime?: string) => void;
@@ -241,6 +242,7 @@ export interface CreateCalendarEventRequestDTO {
   startDate: Date;
   endDate: Date;
   isAllDay: boolean;
+  location?: string;
   color: string;
   familyId?: number;
   eventType: CalendarEventType;
@@ -342,3 +344,54 @@ export interface ConflictDetectionResponseDTO {
   severity: 'none' | 'low' | 'medium' | 'high';
   canProceed: boolean;
 } 
+
+// ============================================================================
+// FORM HANDLING TYPES - Following Enterprise Standards
+// ============================================================================
+
+export interface PendingEventData {
+  eventData: {
+    title: string;
+    description?: string;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+    color: string;
+    location?: string;
+    isAllDay: boolean;
+    isRecurring: boolean;
+    recurringPattern?: 'weekly' | 'monthly' | 'yearly';
+  };
+  conflicts: ConflictingEventDTO[];
+}
+
+export interface PriorityOption {
+  value: 'low' | 'medium' | 'high' | 'urgent';
+  label: string;
+  color: string;
+}
+
+// ============================================================================
+// CALENDAR CONSTANTS - Following Enterprise Standards
+// ============================================================================
+
+export const EVENT_COLORS = [
+    '#3B82F6', // Blue
+    '#10B981', // Emerald
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Violet
+    '#06B6D4', // Cyan
+    '#84CC16', // Lime
+    '#F97316', // Orange
+    '#EC4899', // Pink
+    '#6366F1', // Indigo
+] as const;
+
+export const PRIORITY_OPTIONS: PriorityOption[] = [
+    { value: 'low', label: 'Low', color: 'bg-green-100 text-green-800' },
+    { value: 'medium', label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'high', label: 'High', color: 'bg-red-100 text-red-800' },
+    { value: 'urgent', label: 'Urgent', color: 'bg-purple-100 text-purple-800' },
+]; 

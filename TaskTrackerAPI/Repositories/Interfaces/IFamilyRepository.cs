@@ -31,6 +31,7 @@ public interface IFamilyRepository
     Task<bool> HasPermissionAsync(int familyId, int userId, string permission);
     Task<FamilyMember?> GetMemberByIdAsync(int memberId);
     Task<FamilyMember?> GetMemberByUserIdAsync(int userId, int familyId);
+    Task<FamilyMember?> GetFamilyMemberAsync(int familyId, int userId);
     Task<IEnumerable<FamilyMember>> GetPendingMembersAsync();
     Task<bool> UpdateMemberAsync(FamilyMember member);
     Task<bool> DeleteMemberAsync(int memberId);

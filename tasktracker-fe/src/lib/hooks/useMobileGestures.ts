@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useResponsive } from './useResponsive';
 
 // ================================
@@ -103,7 +103,7 @@ export function useMobileGestures(
   const initialPinchDistanceRef = useRef<number>(0);
 
   // Default configuration - explicit types to avoid undefined errors
-  const defaultConfig = {
+  const defaultConfig = useMemo(() => ({
     swipe: {
       threshold: config.swipe?.threshold ?? 50,
       velocityThreshold: config.swipe?.velocityThreshold ?? 0.3,
@@ -121,7 +121,17 @@ export function useMobileGestures(
       threshold: config.pullRefresh?.threshold ?? 100,
       enabled: config.pullRefresh?.enabled ?? true,
     },
-  } as const;
+  }) as const, [
+    config.swipe?.threshold,
+    config.swipe?.velocityThreshold,
+    config.swipe?.enabled,
+    config.pinch?.threshold,
+    config.pinch?.enabled,
+    config.longPress?.duration,
+    config.longPress?.enabled,
+    config.pullRefresh?.threshold,
+    config.pullRefresh?.enabled,
+  ]);
 
   // Utility functions
   const getTouchPoint = (touch: Touch): TouchPoint => ({
@@ -219,7 +229,7 @@ export function useMobileGestures(
     }
   }, [hasTouch, isMobile, callbacks, defaultConfig, pullRefreshState.active]);
 
-  const handleTouchEnd = useCallback((event: TouchEvent) => {
+  const handleTouchEnd = useCallback(() => {
     if (!hasTouch || !isMobile || touchStartRef.current.length === 0) return;
 
     const touchEnd = touchCurrentRef.current;

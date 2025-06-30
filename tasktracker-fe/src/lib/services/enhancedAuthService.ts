@@ -523,7 +523,7 @@ export class EnhancedAuthService {
 
   async setupSecurityQuestions(data: SecurityQuestionFormData): Promise<void> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/setup`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/setup`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -551,7 +551,7 @@ export class EnhancedAuthService {
     questionCount: number;
   }> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/my-questions`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/my-questions`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -579,7 +579,7 @@ export class EnhancedAuthService {
     hasQuestionsSetup: boolean;
     questionCount: number;
   }> {
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/by-email?email=${encodeURIComponent(email)}`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/by-email?email=${encodeURIComponent(email)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -587,8 +587,7 @@ export class EnhancedAuthService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to get security questions');
+      throw new Error('Failed to fetch security questions by email');
     }
 
     return await response.json();
@@ -602,40 +601,39 @@ export class EnhancedAuthService {
     tokenExpiration?: string;
     errorMessage?: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/verify`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        email, 
-        answer1, 
-        answer2, 
-        answer3 
+      body: JSON.stringify({
+        email,
+        answer1,
+        answer2,
+        answer3,
       }),
     });
 
-    const result = await response.json();
-    
     if (!response.ok) {
+      const error = await response.json();
       return {
         isVerified: false,
         correctAnswers: 0,
         totalQuestions: 3,
-        errorMessage: result.message || 'Verification failed'
+        errorMessage: error.message || 'Failed to verify security answers',
       };
     }
 
-    return result;
+    return await response.json();
   }
 
   async updateSecurityQuestions(data: Partial<SecurityQuestionFormData>): Promise<void> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/update`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/update`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(data),
     });
@@ -648,11 +646,11 @@ export class EnhancedAuthService {
 
   async deleteAllSecurityQuestions(): Promise<{ deletedCount: number }> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/delete-all`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/delete-all`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -666,11 +664,11 @@ export class EnhancedAuthService {
 
   async hasSecurityQuestions(): Promise<{ hasQuestions: boolean; userId: number }> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/has-questions`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/has-questions`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
@@ -688,21 +686,21 @@ export class EnhancedAuthService {
     category: string;
     exampleFormat: string;
   }>> {
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/age-appropriate-questions`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/age-appropriate-questions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         ageGroup,
-        count,
-        categories
+        requestedCount: count,
+        categories: categories || [],
       }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to get age-appropriate questions');
+      throw new Error(error.message || 'Failed to fetch age-appropriate questions');
     }
 
     return await response.json();
@@ -715,17 +713,17 @@ export class EnhancedAuthService {
     userId: number;
   }> {
     const token = localStorage.getItem('accessToken');
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/stats`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/stats`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to get security question statistics');
+      throw new Error(error.message || 'Failed to fetch security question stats');
     }
 
     return await response.json();
@@ -736,7 +734,7 @@ export class EnhancedAuthService {
     userId?: number;
     message?: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/v1/security-question/validate-reset-token?token=${encodeURIComponent(token)}`, {
+    const response = await fetch(`${API_BASE_URL}/v1/SecurityQuestion/validate-reset-token?token=${encodeURIComponent(token)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -744,11 +742,7 @@ export class EnhancedAuthService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      return {
-        isValid: false,
-        message: error.message || 'Token validation failed'
-      };
+      return { isValid: false, message: 'Invalid or expired token' };
     }
 
     return await response.json();

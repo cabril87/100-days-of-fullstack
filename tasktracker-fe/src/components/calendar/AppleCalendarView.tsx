@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Target } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
@@ -31,7 +31,6 @@ export default function AppleCalendarView({
   onDateSelect,
   onEventSelect,
   onTaskSelect,
-  onViewChange,
   gamificationData,
   className,
   onCreateEvent
@@ -42,7 +41,7 @@ export default function AppleCalendarView({
   // ============================================================================
   
   const responsive = useResponsive();
-  const { touchClasses, buttonSize, animationClasses } = useTouchOptimized();
+  const { touchClasses, buttonSize } = useTouchOptimized();
   
   // Swipe navigation for mobile view switching
   const { gestureRef } = useSwipeNavigation(
@@ -149,12 +148,7 @@ export default function AppleCalendarView({
     onDateSelect(date);
   };
 
-  const handleCreateEventClick = (date?: Date, time?: string) => {
-    console.log('🎯 AppleCalendarView: Create event clicked for date:', date?.toDateString());
-    if (onCreateEvent) {
-      onCreateEvent(date || new Date(), time);
-    }
-  };
+
 
   // ============================================================================
   // RENDER METHODS - View-specific rendering
@@ -645,7 +639,6 @@ export default function AppleCalendarView({
       className={cn(
         "w-full",
         touchClasses,
-        animationClasses,
         responsive.isMobile && "select-none",
         className
       )}

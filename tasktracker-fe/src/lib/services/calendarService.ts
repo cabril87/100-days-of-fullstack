@@ -5,7 +5,6 @@
  */
 
 import { apiClient } from '@/lib/config/api-client';
-import { ApiResponse } from '@/lib/types/api-responses';
 import type { CalendarEventDTO } from '@/lib/types/calendar';
 
 // ================================
@@ -91,10 +90,11 @@ function transformBackendEventToFrontend(backendEvent: BackendCalendarEventDTO):
     startDate: new Date(backendEvent.startTime),
     endDate: new Date(backendEvent.endTime),
     isAllDay: backendEvent.isAllDay,
+    location: backendEvent.location,
     color: backendEvent.color || '#3b82f6', // Default blue color
     familyId: backendEvent.familyId,
     createdByUserId: backendEvent.createdBy.id,
-    eventType: backendEvent.eventType as any, // Type conversion needed
+    eventType: (backendEvent.eventType as 'task' | 'achievement' | 'family_activity' | 'celebration' | 'reminder' | 'meeting' | 'deadline') || 'meeting',
     createdAt: new Date(backendEvent.createdAt),
     updatedAt: backendEvent.updatedAt ? new Date(backendEvent.updatedAt) : new Date(),
     // Additional properties that may be missing from backend
@@ -133,7 +133,7 @@ function transformBackendEventsToFrontend(backendEvents: BackendCalendarEventDTO
         color: '#ef4444', // Red color for invalid events
         familyId: event.familyId || 1,
         createdByUserId: event.createdBy?.id || 1,
-        eventType: 'General' as any,
+        eventType: 'meeting' as const,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -272,6 +272,7 @@ export class CalendarService {
       startDate: Date;
       endDate: Date;
       isAllDay: boolean;
+      location?: string;
       color: string;
       eventType: string;
     }
@@ -286,6 +287,7 @@ export class CalendarService {
         startTime: eventData.startDate,
         endTime: eventData.endDate,
         isAllDay: eventData.isAllDay,
+        location: eventData.location,
         color: eventData.color,
         eventType: eventData.eventType,
         familyId

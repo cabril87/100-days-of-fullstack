@@ -5,13 +5,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { 
   Calendar,
   Clock,
@@ -20,18 +18,11 @@ import {
   Edit3,
   Trash2,
   Users,
-  Tag,
-  Bell,
-  Repeat,
   MapPin,
-  Link,
-  Palette,
   Star,
-  Target,
   Trophy,
   Sparkles,
-  AlertTriangle,
-  ArrowRight
+    AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -45,21 +36,24 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 
 // Services and hooks
 import { calendarService } from '@/lib/services/calendarService';
-import { taskService } from '@/lib/services/taskService';
 
 // Types - Following enterprise standards with proper lib organization
-import type { CalendarEventDTO, CalendarEventType } from '@/lib/types/calendar';
+import type { 
+    CalendarEventDTO,
+    PendingEventData
+} from '@/lib/types/calendar';
 import type { FamilyTaskItemDTO } from '@/lib/types/task';
+
+// Smart Family Calendar Components
+// import FamilyConflictDetection, { type ConflictData, type ResolutionSuggestion } from './FamilyConflictDetection';
+// import FamilyAvailabilityManager from './FamilyAvailabilityManager';
 
 // Component-specific types and constants from lib/types
 import type { 
-  CreateEventSheetProps, 
-  ConflictingEvent, 
-  ConflictResolution, 
-  PendingEventData
+    CreateEventSheetProps
 } from '@/lib/types/calendar-components';
 
-import { EVENT_COLORS, PRIORITY_OPTIONS } from '@/lib/types/calendar-components';
+import { EVENT_COLORS, PRIORITY_OPTIONS } from '@/lib/types/calendar';
 
 // Form schemas from lib/schemas
 import { eventFormSchema, taskFormSchema, type EventFormData, type TaskFormData } from '@/lib/schemas/calendar';
@@ -99,15 +93,18 @@ export default function CreateEventSheet({
     // STATE MANAGEMENT - Enterprise Standards
     // ============================================================================
 
-    const [activeTab, setActiveTab] = useState<'create' | 'view'>('create');
+    const [activeTab, setActiveTab] = useState<'create' | 'view' | 'smart'>('create');
     const [itemType, setItemType] = useState<'event' | 'task'>('event');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
     // Conflict resolution state
-    const [showConflictModal, setShowConflictModal] = useState(false);
-    const [pendingConflicts, setPendingConflicts] = useState<ConflictingEvent[]>([]);
     const [pendingEventData, setPendingEventData] = useState<PendingEventData | null>(null);
+
+    // Smart Family Features state - commented out until features are fully implemented
+    // const [conflictData, setConflictData] = useState<ConflictData | null>(null);
+    // const [showSmartFeatures, setShowSmartFeatures] = useState(false);
+
 
     // ============================================================================
     // REACT HOOK FORM SETUP - Following Enterprise Standards
@@ -147,6 +144,57 @@ export default function CreateEventSheet({
     });
 
     // ============================================================================
+    // SMART FAMILY FEATURES HANDLERS - Commented out until features are implemented
+    // ============================================================================
+
+    // const handleConflictDetected = React.useCallback((conflicts: ConflictData) => {
+    //     setConflictData(conflicts);
+    //     console.log('⚠️ Family conflicts detected:', conflicts);
+        
+    //     // Auto-show smart features tab if conflicts exist
+    //     if (conflicts.hasConflicts && activeTab === 'create') {
+    //         setShowSmartFeatures(true);
+    //     }
+    // }, [activeTab]);
+
+    // const handleSuggestionApplied = React.useCallback((suggestion: ResolutionSuggestion) => {
+    //     console.log('📝 Applying smart suggestion:', suggestion.title);
+        
+    //     // Apply suggestion to form if it has suggested time
+    //     if (suggestion.suggestedTime) {
+    //         const startTime = suggestion.suggestedTime.start;
+    //         const endTime = suggestion.suggestedTime.end;
+            
+    //         eventForm.setValue('startTime', startTime.toTimeString().slice(0, 5));
+    //         eventForm.setValue('endTime', endTime.toTimeString().slice(0, 5));
+    //         eventForm.setValue('startDate', startTime.toISOString().split('T')[0]);
+    //         eventForm.setValue('endDate', endTime.toISOString().split('T')[0]);
+            
+    //         // Provide haptic feedback
+    //         triggerHapticFeedback('success');
+    //     }
+    // }, [eventForm]);
+
+    // Generate current event data for conflict detection
+    // const getCurrentEventData = React.useCallback(() => {
+    //     const values = eventForm.getValues();
+    //     if (!values.title || !values.startDate || !values.startTime || !values.endTime) {
+    //         return null;
+    //     }
+
+    //     const startDateTime = new Date(`${values.startDate}T${values.startTime}:00`);
+    //     const endDateTime = new Date(`${values.endDate}T${values.endTime}:00`);
+
+    //     return {
+    //         title: values.title,
+    //         startTime: startDateTime,
+    //         endTime: endDateTime,
+    //         location: values.location,
+    //         attendeeIds: familyMembers?.map(member => member.id) || []
+    //     };
+    // }, [eventForm, familyMembers]);
+
+    // ============================================================================
     // EFFECTS - Data loading and view persistence
     // ============================================================================
 
@@ -176,10 +224,10 @@ export default function CreateEventSheet({
                 setActiveTab('create');
             }
         }
-    }, [isOpen, selectedDate, selectedTime, existingEvents, existingTasks, isEditMode]);
+    }, [isOpen, selectedDate, selectedTime, existingEvents, existingTasks, isEditMode, eventForm, taskForm]);
 
-    // Pre-populate forms when in edit mode
-    useEffect(() => {
+    // Pre-populate forms when in edit mode - Using useCallback for proper dependency management
+    const populateEventForm = React.useCallback(() => {
         if (isEditMode && editingEvent && activeTab === 'create') {
             const startDate = new Date(editingEvent.startDate);
             const endDate = new Date(editingEvent.endDate);
@@ -191,7 +239,7 @@ export default function CreateEventSheet({
                 endDate: endDate.toISOString().split('T')[0],
                 endTime: endDate.toTimeString().slice(0, 5),
                 color: editingEvent.color,
-                location: '', // Not available in current DTO
+                location: editingEvent.location || '', // Now properly handling location
                 isAllDay: editingEvent.isAllDay,
                 isRecurring: false, // Not available in current DTO
                 recurringPattern: 'weekly',
@@ -199,7 +247,7 @@ export default function CreateEventSheet({
         }
     }, [isEditMode, editingEvent, activeTab, eventForm]);
 
-    useEffect(() => {
+    const populateTaskForm = React.useCallback(() => {
         if (isEditMode && editingTask && activeTab === 'create') {
             const dueDate = editingTask.dueDate ? new Date(editingTask.dueDate) : new Date();
             taskForm.reset({
@@ -217,11 +265,130 @@ export default function CreateEventSheet({
         }
     }, [isEditMode, editingTask, activeTab, taskForm]);
 
+    useEffect(() => {
+        populateEventForm();
+    }, [populateEventForm]);
+
+    useEffect(() => {
+        populateTaskForm();
+    }, [populateTaskForm]);
+
+    // ============================================================================
+    // COMPREHENSIVE EVENT HANDLERS - Enterprise API Integration
+    // ============================================================================
+
+    const handleEventDelete = React.useCallback(async (eventId: string | number) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            if (!familyId) {
+                throw new Error('Family ID is required to delete calendar events');
+            }
+
+            console.log('🗑️ CreateEventSheet: Deleting calendar event:', eventId);
+            
+            await calendarService.deleteCalendarEvent(
+                parseInt(familyId),
+                typeof eventId === 'string' ? parseInt(eventId) : eventId
+            );
+
+            console.log('✅ CreateEventSheet: Calendar event deleted successfully:', eventId);
+            onEventDeleted(eventId.toString());
+            onClose(); // Close the sheet after deletion
+        } catch (error) {
+            console.error('❌ CreateEventSheet: Failed to delete event:', error);
+            setError(error instanceof Error ? error.message : 'Failed to delete calendar event. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [familyId, onEventDeleted, onClose]);
+
+    const handleTaskDelete = React.useCallback(async (taskId: string | number) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            console.log('🗑️ CreateEventSheet: Deleting task:', taskId);
+            
+            // Since tasks are represented as calendar events in this context,
+            // we'll delete them using the calendar service
+            if (familyId) {
+                await calendarService.deleteCalendarEvent(
+                    parseInt(familyId),
+                    typeof taskId === 'string' ? parseInt(taskId) : taskId
+                );
+            }
+
+            console.log('✅ CreateEventSheet: Task deleted successfully:', taskId);
+            onTaskDeleted(taskId.toString());
+            onClose(); // Close the sheet after deletion
+        } catch (error) {
+            console.error('❌ CreateEventSheet: Failed to delete task:', error);
+            setError(error instanceof Error ? error.message : 'Failed to delete task. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [familyId, onTaskDeleted, onClose]);
+
+    const handleTaskUpdate = React.useCallback(async (data: TaskFormData) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            if (!editingTask) {
+                throw new Error('No task selected for editing');
+            }
+
+            const updatedTaskData = {
+                title: data.title,
+                description: data.description,
+                dueDate: `${data.dueDate}T${data.dueTime}:00`,
+                priority: data.priority,
+                estimatedHours: data.estimatedHours,
+                pointsValue: data.pointsValue,
+                taskType: data.taskType,
+                selectedFamilyId: data.selectedFamilyId,
+                assignedToUserId: data.assignedToUserId,
+            };
+
+            console.log('📋 CreateEventSheet: Updating task with data:', updatedTaskData);
+
+            // Create updated task object
+            const updatedTask: FamilyTaskItemDTO = {
+                ...editingTask,
+                title: data.title,
+                description: data.description,
+                dueDate: `${data.dueDate}T${data.dueTime}:00`,
+                priority: (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) as 'Low' | 'Medium' | 'High' | 'Urgent',
+                pointsValue: data.pointsValue,
+                userId: data.assignedToUserId || editingTask.userId,
+                familyId: data.selectedFamilyId || editingTask.familyId,
+                updatedAt: new Date().toISOString()
+            };
+
+            console.log('✅ CreateEventSheet: Task updated successfully:', updatedTask.id);
+            onTaskUpdated(updatedTask);
+            setActiveTab('view');
+        } catch (error) {
+            console.error('❌ CreateEventSheet: Failed to update task:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update task. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [editingTask, onTaskUpdated]);
+
+
+    const handlePastEventCancel = React.useCallback(() => {
+        setPendingEventData(null);
+        setError(null);
+    }, []);
+
     // ============================================================================
     // FORM HANDLERS - Enterprise API Integration
     // ============================================================================
 
-    const handleEventSubmit = async (data: EventFormData) => {
+    const handleEventSubmit = React.useCallback(async (data: EventFormData) => {
         setIsLoading(true);
         setError(null);
 
@@ -236,9 +403,21 @@ export default function CreateEventSheet({
                 startDate: new Date(`${data.startDate}T${data.startTime}:00`),
                 endDate: new Date(`${data.endDate}T${data.endTime}:00`),
                 isAllDay: data.isAllDay,
+                location: data.location,
                 color: data.color,
                 eventType: 'meeting' // Default event type
             };
+
+            // Check if creating event in the past (show warning but allow)
+            const isPastEvent = eventData.startDate < new Date();
+            if (isPastEvent && !pendingEventData) {
+                setPendingEventData({ eventData: data, conflicts: [] });
+                setError(null);
+                return; // Show confirmation first
+            }
+
+            // Clear pending data when proceeding
+            setPendingEventData(null);
 
             if (isEditMode && editingEvent) {
                 console.log('📅 CreateEventSheet: Updating calendar event with data:', eventData);
@@ -253,6 +432,7 @@ export default function CreateEventSheet({
                         startTime: eventData.startDate,
                         endTime: eventData.endDate,
                         isAllDay: eventData.isAllDay,
+                        location: eventData.location,
                         color: eventData.color,
                         eventType: eventData.eventType
                     }
@@ -284,7 +464,7 @@ export default function CreateEventSheet({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [familyId, isEditMode, editingEvent, pendingEventData, onEventUpdated, onEventCreated, eventForm]);
 
     const handleTaskSubmit = async (data: TaskFormData) => {
         setIsLoading(true);
@@ -332,7 +512,7 @@ export default function CreateEventSheet({
                     title: data.title,
                     description: data.description,
                     status: 'todo',
-                    priority: data.priority as any,
+                    priority: (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) as 'Low' | 'Medium' | 'High' | 'Urgent',
                     dueDate: `${data.dueDate}T${data.dueTime}:00`,
                     isCompleted: false,
                     pointsValue: data.pointsValue,
@@ -354,7 +534,7 @@ export default function CreateEventSheet({
                     title: data.title,
                     description: data.description,
                     status: 'todo',
-                    priority: data.priority as any,
+                    priority: (data.priority.charAt(0).toUpperCase() + data.priority.slice(1)) as 'Low' | 'Medium' | 'High' | 'Urgent',
                     dueDate: `${data.dueDate}T${data.dueTime}:00`,
                     isCompleted: false,
                     pointsValue: data.pointsValue,
@@ -379,6 +559,25 @@ export default function CreateEventSheet({
             setIsLoading(false);
         }
     };
+
+    // Past event confirmation handler - now properly defined after handleEventSubmit
+    const handlePastEventConfirmation = React.useCallback(async () => {
+        if (!pendingEventData) return;
+
+        try {
+            setIsLoading(true);
+            setError(null);
+            
+            // Process the pending event data
+            await handleEventSubmit(pendingEventData.eventData);
+            setPendingEventData(null);
+        } catch (error) {
+            console.error('❌ CreateEventSheet: Failed to create past event:', error);
+            setError(error instanceof Error ? error.message : 'Failed to create past event. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [pendingEventData, handleEventSubmit]);
 
     // ============================================================================
     // RENDER HELPERS
@@ -462,10 +661,10 @@ export default function CreateEventSheet({
                                                 })}
                                             </span>
                                         </div>
-                                        {'location' in item && (item as any).location && (
+                                        {'location' in item && (item as CalendarEventDTO).location && (
                                             <div className="flex items-center gap-1">
                                                 <MapPin className="h-3 w-3" />
-                                                <span className="truncate">{(item as any).location}</span>
+                                                <span className="truncate">{(item as CalendarEventDTO).location}</span>
                                             </div>
                                         )}
                                         {'pointsValue' in item && (
@@ -488,6 +687,19 @@ export default function CreateEventSheet({
                                         variant="ghost"
                                         size="sm"
                                         className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                        onClick={() => {
+                                            if ('color' in item) {
+                                                // Edit event
+                                                setActiveTab('create');
+                                                setItemType('event');
+                                                // The form will be populated by the populateEventForm effect
+                                            } else {
+                                                // Edit task using handleTaskUpdate
+                                                setActiveTab('create');
+                                                setItemType('task');
+                                                // The form will be populated by the populateTaskForm effect
+                                            }
+                                        }}
                                     >
                                         <Edit3 className="h-3 w-3" />
                                     </Button>
@@ -497,9 +709,9 @@ export default function CreateEventSheet({
                                         className="h-8 w-8 p-0 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
                                         onClick={() => {
                                             if ('color' in item) {
-                                                onEventDeleted(item.id.toString());
+                                                handleEventDelete(item.id);
                                             } else {
-                                                onTaskDeleted(item.id.toString());
+                                                handleTaskDelete(item.id);
                                             }
                                         }}
                                     >
@@ -514,108 +726,7 @@ export default function CreateEventSheet({
         );
     };
 
-    // ============================================================================
-    // CONFLICT DETECTION
-    // ============================================================================
 
-    const detectTimeConflicts = (
-        newEventStart: Date,
-        newEventEnd: Date,
-        existingEvents: CalendarEventDTO[],
-        existingTasks: FamilyTaskItemDTO[],
-        excludeId?: string | number
-    ): ConflictingEvent[] => {
-        const conflicts: ConflictingEvent[] = [];
-        
-        // Check event conflicts
-        existingEvents.forEach(event => {
-            if (excludeId && event.id.toString() === excludeId.toString()) return;
-            
-            const eventStart = new Date(event.startDate);
-            const eventEnd = new Date(event.endDate || event.startDate);
-            
-            if (isTimeOverlapping(newEventStart, newEventEnd, eventStart, eventEnd)) {
-                conflicts.push({
-                    id: event.id,
-                    title: event.title,
-                    startTime: eventStart,
-                    endTime: eventEnd,
-                    type: 'event'
-                });
-            }
-        });
-        
-        // Check task conflicts (if they have specific times)
-        existingTasks.forEach(task => {
-            if (excludeId && task.id.toString() === excludeId.toString()) return;
-            if (!task.dueDate) return;
-            
-            const taskTime = new Date(task.dueDate);
-            const taskEnd = new Date(taskTime.getTime() + ((task as any).estimatedHours || 1) * 60 * 60 * 1000);
-            
-            if (isTimeOverlapping(newEventStart, newEventEnd, taskTime, taskEnd)) {
-                conflicts.push({
-                    id: task.id,
-                    title: task.title,
-                    startTime: taskTime,
-                    endTime: taskEnd,
-                    type: 'task',
-                    priority: (task.priority as string)?.toLowerCase() as 'low' | 'medium' | 'high' | 'urgent' | undefined
-                });
-            }
-        });
-        
-        return conflicts;
-    };
-
-    const isTimeOverlapping = (
-        start1: Date, end1: Date,
-        start2: Date, end2: Date
-    ): boolean => {
-        return start1 < end2 && end1 > start2;
-    };
-
-    const generateConflictResolutions = (
-        conflicts: ConflictingEvent[],
-        originalStart: Date,
-        originalEnd: Date
-    ): ConflictResolution[] => {
-        const resolutions: ConflictResolution[] = [];
-        
-        // Option 1: Move to next available time
-        const duration = originalEnd.getTime() - originalStart.getTime();
-        const nextSlot = new Date(originalEnd.getTime() + 30 * 60 * 1000); // 30 min buffer
-        resolutions.push({
-            type: 'move',
-            suggestedTime: {
-                start: nextSlot.toTimeString().slice(0, 5),
-                end: new Date(nextSlot.getTime() + duration).toTimeString().slice(0, 5)
-            },
-            message: `Move to ${nextSlot.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
-        });
-        
-        // Option 2: Shorten if possible
-        if (duration > 30 * 60 * 1000) { // If longer than 30 minutes
-            resolutions.push({
-                type: 'shorten',
-                message: 'Shorten to 30 minutes to fit before conflict'
-            });
-        }
-        
-        // Option 3: Create anyway (ignore conflict)
-        resolutions.push({
-            type: 'ignore',
-            message: `Create anyway (${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''})`
-        });
-        
-        // Option 4: Cancel and reschedule
-        resolutions.push({
-            type: 'cancel',
-            message: 'Cancel and choose different time'
-        });
-        
-        return resolutions;
-    };
 
     // ============================================================================
     // MAIN RENDER
@@ -692,6 +803,40 @@ export default function CreateEventSheet({
                             <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
                             <AlertDescription className="text-red-700 dark:text-red-300">
                                 {error}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {/* Past Event Warning */}
+                    {pendingEventData && (
+                        <Alert className="border-amber-200 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30">
+                            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            <AlertDescription className="text-amber-700 dark:text-amber-300">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium">Creating event in the past</p>
+                                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                                            This event is scheduled for a past date. Continue to create as historical record?
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-2 ml-4">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handlePastEventCancel}
+                                            className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handlePastEventConfirmation}
+                                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                                        >
+                                            Create Anyway
+                                        </Button>
+                                    </div>
+                                </div>
                             </AlertDescription>
                         </Alert>
                     )}
@@ -781,8 +926,7 @@ export default function CreateEventSheet({
                                                         if (responsive.hasTouch) {
                                                             triggerHapticFeedback('warning');
                                                         }
-                                                        onEventDeleted(editingEvent.id.toString());
-                                                        onClose();
+                                                        handleEventDelete(editingEvent.id);
                                                     }}
                                                     className={cn(
                                                         "px-6",
@@ -868,8 +1012,7 @@ export default function CreateEventSheet({
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => {
-                                                        onTaskDeleted(editingTask.id.toString());
-                                                        onClose();
+                                                        handleTaskDelete(editingTask.id);
                                                     }}
                                                     className="px-6"
                                                 >
@@ -980,6 +1123,13 @@ export default function CreateEventSheet({
                                         </div>
 
                                         {/* Date & Time Grid */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Date & Time</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                                                </span>
+                                            </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             <FormField
                                                 control={eventForm.control}
@@ -1082,6 +1232,43 @@ export default function CreateEventSheet({
                                                     </FormItem>
                                                 )}
                                             />
+
+                                                {/* Duration Presets - Apple/Outlook Style */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm text-gray-600 dark:text-gray-400">Quick Duration:</span>
+                                                        <div className="flex gap-1">
+                                                            {[
+                                                                { label: '15m', minutes: 15 },
+                                                                { label: '30m', minutes: 30 },
+                                                                { label: '1h', minutes: 60 },
+                                                                { label: '2h', minutes: 120 },
+                                                            ].map((preset) => (
+                                                                <Button
+                                                                    key={preset.label}
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="text-xs h-7 px-2"
+                                                                    onClick={() => {
+                                                                        const startTime = eventForm.getValues('startTime');
+                                                                        const startDate = eventForm.getValues('startDate');
+                                                                        const start = new Date(`${startDate}T${startTime}:00`);
+                                                                        const end = new Date(start.getTime() + preset.minutes * 60 * 1000);
+
+                                                                        eventForm.setValue('endTime', end.toTimeString().slice(0, 5));
+
+                                                                        // If crosses midnight, update end date
+                                                                        if (end.getDate() !== start.getDate()) {
+                                                                            eventForm.setValue('endDate', end.toISOString().split('T')[0]);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {preset.label}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                             
                                             {/* All Day Switch & Color Picker */}
                                             <div className="flex items-center justify-between">
@@ -1127,6 +1314,8 @@ export default function CreateEventSheet({
                                                         </FormItem>
                                                     )}
                                                 />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1138,7 +1327,7 @@ export default function CreateEventSheet({
                                             </div>
                                             <div>
                                                 <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Create Calendar Event</h4>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">Add your calendar event</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">Schedule events for any date (past or future)</p>
                                             </div>
                                         </div>
                                         
@@ -1186,7 +1375,7 @@ export default function CreateEventSheet({
                             </Form>
                         ) : (
                             <Form {...taskForm}>
-                                <form onSubmit={taskForm.handleSubmit(handleTaskSubmit)} className="space-y-6">
+                                <form onSubmit={taskForm.handleSubmit(isEditMode && editingTask ? handleTaskUpdate : handleTaskSubmit)} className="space-y-6">
                                     {/* Task Form Fields - Compact Layout */}
                                     <div className="space-y-4">
                                         {/* Title & Description */}
@@ -1244,6 +1433,7 @@ export default function CreateEventSheet({
                                                                 <Input
                                                                     {...field}
                                                                     type="date"
+                                                                    min={new Date().toISOString().split('T')[0]}
                                                                     className="border-2 border-blue-200 dark:border-blue-700 focus:border-blue-500 pl-8"
                                                                 />
                                                                 <Calendar className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3 w-3 text-blue-500" />
@@ -1470,7 +1660,7 @@ export default function CreateEventSheet({
                                                                                         <SelectItem key={member.id} value={(member.userId || member.id).toString()}>
                                                                                             <div className="flex items-center gap-2">
                                                                                                 <Users className="h-3 w-3 text-emerald-500" />
-                                                                                                <span className="font-medium">👤 {member.user?.firstName || member.user?.username || (member as any).name || 'Unknown User'}</span>
+                                                                                                <span className="font-medium">👤 {member.user?.firstName || member.user?.username || 'Unknown User'}</span>
                                                                                             </div>
                                                                                         </SelectItem>
                                                                                     ))}
@@ -1494,7 +1684,7 @@ export default function CreateEventSheet({
                                             </div>
                                             <div>
                                                 <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100">Create Task</h4>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">Add your task with XP rewards</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">Add your task with XP rewards (future dates only)</p>
                                             </div>
                                         </div>
                                         

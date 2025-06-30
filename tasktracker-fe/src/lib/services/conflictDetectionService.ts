@@ -10,10 +10,8 @@ import {
   ConflictingEventDTO, 
   ConflictResolutionDTO, 
   ConflictDetectionRequestDTO, 
-  ConflictDetectionResponseDTO,
-  CalendarEventDTO 
+  ConflictDetectionResponseDTO
 } from '@/lib/types/calendar';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
 
 export class ConflictDetectionService {
   private static instance: ConflictDetectionService;
