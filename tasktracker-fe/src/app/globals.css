@@ -1,6 +1,19 @@
 @import "tailwindcss";
 
 /* ================================
+   TAILWIND CSS V4 THEME CONFIG
+   ================================ */
+
+@theme {
+  --font-family-sans: Inter, system-ui, sans-serif;
+  
+  --color-background: 255 255 255;
+  --color-foreground: 17 24 39;
+  --color-primary: 59 130 246;
+  --color-secondary: 148 163 184;
+}
+
+/* ================================
    THEME SYSTEM - CSS VARIABLES
    ================================ */
 

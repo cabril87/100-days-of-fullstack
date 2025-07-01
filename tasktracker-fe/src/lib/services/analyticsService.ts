@@ -27,6 +27,7 @@ import {
   FamilyProductivityInsightsDTO,
   DataVisualizationDTO
 } from '@/lib/types/analytics';
+import { FocusSessionAnalytics } from '@/lib/types/focus';
 
 // ============================================================================
 // ANALYTICS SERVICE ERROR CLASS
@@ -43,8 +44,17 @@ export class AnalyticsServiceError extends Error {
 // ANALYTICS SERVICE CLASS
 // ============================================================================
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 export class AnalyticsService {
-  private baseUrl = '/api/v1/UnifiedAnalytics';
+  private static instance: AnalyticsService;
+  
+  public static getInstance(): AnalyticsService {
+    if (!AnalyticsService.instance) {
+      AnalyticsService.instance = new AnalyticsService();
+    }
+    return AnalyticsService.instance;
+  }
 
   // ============================================================================
   // PRIVATE HELPER METHODS
@@ -52,13 +62,14 @@ export class AnalyticsService {
 
   private async fetchWithAuth<T>(url: string, options?: RequestInit): Promise<T> {
     try {
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(url, {
         ...options,
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           ...options?.headers,
         },
-        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -104,23 +115,23 @@ export class AnalyticsService {
       endDate: endDate?.toISOString(),
     });
     
-    const url = `${this.baseUrl}/user/dashboard${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/user/dashboard${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<UserAnalyticsDashboardDTO>(url);
   }
 
   async getUserProductivityInsights(): Promise<UserProductivityInsightsDTO> {
-    const url = `${this.baseUrl}/user/productivity-insights`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/user/productivity-insights`;
     return this.fetchWithAuth<UserProductivityInsightsDTO>(url);
   }
 
   async getUserBoardAnalytics(boardId?: number): Promise<UserBoardAnalyticsDTO> {
     const params = this.buildQueryParams({ boardId });
-    const url = `${this.baseUrl}/user/board-analytics${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/user/board-analytics${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<UserBoardAnalyticsDTO>(url);
   }
 
   async getPersonalizedRecommendations(): Promise<PersonalizedRecommendationsDTO> {
-    const url = `${this.baseUrl}/user/recommendations`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/user/recommendations`;
     return this.fetchWithAuth<PersonalizedRecommendationsDTO>(url);
   }
 
@@ -138,17 +149,17 @@ export class AnalyticsService {
       endDate: endDate?.toISOString(),
     });
     
-    const url = `${this.baseUrl}/family/${familyId}/dashboard${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/family/${familyId}/dashboard${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<FamilyAnalyticsDashboardDTO>(url);
   }
 
   async getFamilyProductivityInsights(familyId: number): Promise<FamilyProductivityInsightsDTO> {
-    const url = `${this.baseUrl}/family/${familyId}/productivity-insights`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/family/${familyId}/productivity-insights`;
     return this.fetchWithAuth<FamilyProductivityInsightsDTO>(url);
   }
 
   async getFamilyCollaborationAnalytics(familyId: number): Promise<FamilyCollaborationAnalyticsDTO> {
-    const url = `${this.baseUrl}/family/${familyId}/collaboration`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/family/${familyId}/collaboration`;
     return this.fetchWithAuth<FamilyCollaborationAnalyticsDTO>(url);
   }
 
@@ -165,7 +176,7 @@ export class AnalyticsService {
       endDate: endDate?.toISOString(),
     });
     
-    const url = `${this.baseUrl}/admin/dashboard${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/dashboard${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<AdminAnalyticsDashboardDTO>(url);
   }
 
@@ -178,22 +189,22 @@ export class AnalyticsService {
       endDate: endDate?.toISOString(),
     });
     
-    const url = `${this.baseUrl}/admin/platform-usage${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/platform-usage${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<PlatformUsageAnalyticsDTO>(url);
   }
 
   async getSystemHealthAnalytics(): Promise<SystemHealthAnalyticsDTO> {
-    const url = `${this.baseUrl}/admin/system-health`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/system-health`;
     return this.fetchWithAuth<SystemHealthAnalyticsDTO>(url);
   }
 
   async getBackgroundServiceAnalytics(): Promise<BackgroundServiceAnalyticsDTO> {
-    const url = `${this.baseUrl}/admin/background-services`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/background-services`;
     return this.fetchWithAuth<BackgroundServiceAnalyticsDTO>(url);
   }
 
   async getMarketplaceAnalytics(): Promise<MarketplaceAnalyticsDTO> {
-    const url = `${this.baseUrl}/admin/marketplace`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/marketplace`;
     return this.fetchWithAuth<MarketplaceAnalyticsDTO>(url);
   }
 
@@ -206,7 +217,7 @@ export class AnalyticsService {
       endDate: endDate?.toISOString(),
     });
     
-    const url = `${this.baseUrl}/admin/user-engagement${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/admin/user-engagement${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<UserEngagementAnalyticsDTO>(url);
   }
 
@@ -216,17 +227,17 @@ export class AnalyticsService {
 
   async getMLInsights(userId?: number, familyId?: number): Promise<MLInsightsDTO> {
     const params = this.buildQueryParams({ userId, familyId });
-    const url = `${this.baseUrl}/ml/insights${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/ml/insights${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<MLInsightsDTO>(url);
   }
 
   async getBehavioralAnalysis(): Promise<BehavioralAnalysisDTO> {
-    const url = `${this.baseUrl}/ml/behavioral-analysis`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/ml/behavioral-analysis`;
     return this.fetchWithAuth<BehavioralAnalysisDTO>(url);
   }
 
   async getPredictiveAnalytics(): Promise<PredictiveAnalyticsDTO> {
-    const url = `${this.baseUrl}/ml/predictive-analytics`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/ml/predictive-analytics`;
     return this.fetchWithAuth<PredictiveAnalyticsDTO>(url);
   }
 
@@ -235,7 +246,7 @@ export class AnalyticsService {
   // ============================================================================
 
   async exportAnalytics(request: AnalyticsExportRequestDTO): Promise<AnalyticsExportDTO> {
-    const url = `${this.baseUrl}/export`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/export`;
     return this.fetchWithAuth<AnalyticsExportDTO>(url, {
       method: 'POST',
       body: JSON.stringify(request),
@@ -247,7 +258,7 @@ export class AnalyticsService {
     parameters: Record<string, unknown>
   ): Promise<DataVisualizationDTO> {
     const params = this.buildQueryParams(parameters);
-    const url = `${this.baseUrl}/visualization/${visualizationType}${params ? `?${params}` : ''}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/visualization/${visualizationType}${params ? `?${params}` : ''}`;
     return this.fetchWithAuth<DataVisualizationDTO>(url);
   }
 
@@ -256,13 +267,66 @@ export class AnalyticsService {
   // ============================================================================
 
   async refreshAnalyticsCache(): Promise<void> {
-    const url = `${this.baseUrl}/cache/refresh`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/cache/refresh`;
     await this.fetchWithAuth<void>(url, { method: 'POST' });
   }
 
   async refreshFamilyAnalyticsCache(familyId: number): Promise<void> {
-    const url = `${this.baseUrl}/cache/refresh/family/${familyId}`;
+    const url = `${API_BASE_URL}/v1/UnifiedAnalytics/cache/refresh/family/${familyId}`;
     await this.fetchWithAuth<void>(url, { method: 'POST' });
+  }
+
+  // ============================================================================
+  // FOCUS ANALYTICS METHODS
+  // ============================================================================
+
+  async getFocusAnalytics(userId: number, timeRange: string): Promise<FocusSessionAnalytics> {
+    try {
+      console.log('📊 AnalyticsService: Fetching focus analytics for user:', userId, 'timeRange:', timeRange);
+      
+      // Since focus analytics endpoint doesn't exist yet, return mock data
+      // In production, this would call: /v1/UnifiedAnalytics/user/focus-analytics
+      return {
+        weeklyTrend: [
+          { week: 'Week 1', sessions: 5, totalMinutes: 125, averageLength: 25 },
+          { week: 'Week 2', sessions: 7, totalMinutes: 175, averageLength: 25 },
+          { week: 'Week 3', sessions: 4, totalMinutes: 100, averageLength: 25 },
+          { week: 'Week 4', sessions: 6, totalMinutes: 150, averageLength: 25 },
+        ],
+        hourlyDistribution: [
+          { hour: 9, sessions: 3, totalMinutes: 75, productivityScore: 85 },
+          { hour: 10, sessions: 5, totalMinutes: 125, productivityScore: 92 },
+          { hour: 11, sessions: 4, totalMinutes: 100, productivityScore: 88 },
+          { hour: 14, sessions: 2, totalMinutes: 50, productivityScore: 78 },
+        ],
+        categoryBreakdown: [
+          { category: 'Development', sessions: 8, totalMinutes: 200, averageLength: 25, completionRate: 90 },
+          { category: 'Research', sessions: 4, totalMinutes: 100, averageLength: 25, completionRate: 85 },
+          { category: 'Planning', sessions: 3, totalMinutes: 75, averageLength: 25, completionRate: 95 },
+        ],
+        productivityScore: 87,
+        improvementSuggestions: [
+          'Try focusing during your peak hours (10-11 AM)',
+          'Consider extending session length for development tasks',
+          'Take breaks between sessions to maintain high productivity',
+        ],
+        achievements: [
+          {
+            id: 'focus-streak-7',
+            title: '7-Day Focus Streak',
+            description: 'Completed focus sessions for 7 consecutive days',
+            icon: '🔥',
+            unlockedAt: new Date(),
+            category: 'streak',
+          },
+        ],
+      };
+    } catch (error) {
+      console.error('❌ AnalyticsService: Failed to fetch focus analytics:', error);
+      throw new AnalyticsServiceError(
+        `Failed to fetch focus analytics: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 }
 
@@ -270,4 +334,4 @@ export class AnalyticsService {
 // SERVICE INSTANCE
 // ============================================================================
 
-export const analyticsService = new AnalyticsService(); 
+export const analyticsService = AnalyticsService.getInstance(); 

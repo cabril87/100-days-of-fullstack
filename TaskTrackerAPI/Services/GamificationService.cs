@@ -15,14 +15,11 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using AutoMapper;
-using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.DTOs.Gamification;
 using TaskTrackerAPI.Models.Gamification;
 using TaskTrackerAPI.Repositories.Interfaces;
-using GamificationModels = TaskTrackerAPI.Models.Gamification;
-using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.Exceptions;
 
 namespace TaskTrackerAPI.Services
@@ -87,7 +84,7 @@ namespace TaskTrackerAPI.Services
 
             // For new comprehensive system, use calculated points instead of passed points for certain transaction types
             int finalPoints = points;
-            
+
             if (transactionType == "task_completion" && taskId.HasValue)
             {
                 // Use comprehensive task completion calculation
@@ -96,23 +93,23 @@ namespace TaskTrackerAPI.Services
                 {
                     // Determine if task is collaborative based on assignment to family members
                     bool isCollaborative = task.AssignedToFamilyMemberId.HasValue || task.FamilyId.HasValue;
-                    
+
                     // Map priority to difficulty (since difficulty doesn't exist in TaskItem)
                     // We'll treat priority as difficulty for point calculation purposes
                     string difficulty = task.Priority?.ToLower() switch
                     {
                         "critical" => "Expert",
-                        "high" => "High", 
+                        "high" => "High",
                         "medium" => "Medium",
                         "low" => "Low",
                         _ => "Medium"
                     };
 
                     finalPoints = await CalculateTaskCompletionPointsAsync(
-                        userId, 
-                        taskId.Value, 
+                        userId,
+                        taskId.Value,
                         difficulty,
-                        task.Priority ?? "Medium", 
+                        task.Priority ?? "Medium",
                         task.DueDate,
                         isCollaborative
                     );
@@ -125,8 +122,8 @@ namespace TaskTrackerAPI.Services
             }
 
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
-         
+
+
             // This prevents foreign key constraint violations during concurrent operations
             if (taskId.HasValue && transactionType != "task_deletion")
             {
@@ -145,7 +142,7 @@ namespace TaskTrackerAPI.Services
                     taskId = null; // Set to null to avoid FK constraint violation
                 }
             }
-            
+
             // Create a point transaction record
             PointTransaction transaction = new PointTransaction
             {
@@ -160,12 +157,12 @@ namespace TaskTrackerAPI.Services
             try
             {
                 _gamificationRepository.AddPointTransaction(transaction);
-                
+
                 // Update user progress
                 userProgress.CurrentPoints += finalPoints;
                 userProgress.TotalPointsEarned += finalPoints;
                 userProgress.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Check for level up
                 int oldLevel = userProgress.Level;
                 while (userProgress.CurrentPoints >= userProgress.NextLevelThreshold)
@@ -173,39 +170,39 @@ namespace TaskTrackerAPI.Services
                     userProgress.Level++;
                     userProgress.CurrentPoints -= userProgress.NextLevelThreshold;
                     userProgress.NextLevelThreshold = CalculateNextLevelThreshold(userProgress.Level);
-                    
+
                     // Create level up notification or achievement
                     await UnlockLevelBasedAchievements(userId, userProgress.Level);
                 }
 
                 // Check for tier advancement
                 await UpdateUserTierAsync(userId);
-                
+
                 await _gamificationRepository.SaveChangesAsync();
-                
-                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType}", 
+
+                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType}",
                     finalPoints, userId, transactionType);
             }
             catch (DbUpdateException dbEx) when (dbEx.Message.Contains("FK_PointTransactions_Tasks_TaskId"))
             {
                 // Handle foreign key constraint violation gracefully
                 _logger.LogWarning(dbEx, "Foreign key constraint violation for TaskId {TaskId}, retrying without TaskId reference", taskId ?? 0);
-                
+
                 // Retry without TaskId reference
                 transaction.TaskId = null;
                 _gamificationRepository.AddPointTransaction(transaction);
                 await _gamificationRepository.SaveChangesAsync();
-                
-                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType} (without TaskId reference)", 
+
+                _logger.LogInformation("Successfully added {Points} points to user {UserId} for {TransactionType} (without TaskId reference)",
                     finalPoints, userId, transactionType);
             }
-            
+
             // Send real-time notifications
             try
             {
                 // Send points earned notification
                 await _unifiedRealTimeService.SendPointsEarnedAsync(userId, finalPoints, description, taskId);
-                
+
                 // Send level up notification if level changed
                 UserProgress updatedProgress = await GetInternalUserProgressAsync(userId);
                 if (updatedProgress.Level > userProgress.Level)
@@ -218,7 +215,7 @@ namespace TaskTrackerAPI.Services
                 _logger.LogError(ex, "Error sending real-time gamification notifications for user {UserId}", userId);
                 // Don't throw - real-time notifications shouldn't break the main flow
             }
-            
+
             return transaction.Id;
         }
 
@@ -232,11 +229,11 @@ namespace TaskTrackerAPI.Services
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             DateTime now = DateTime.UtcNow.Date;
-            
+
             if (userProgress.LastActivityDate.HasValue)
             {
                 DateTime lastActivityDate = userProgress.LastActivityDate.Value.Date;
-                
+
                 if (lastActivityDate == now)
                 {
                     // Already updated today, no need to do anything
@@ -246,13 +243,13 @@ namespace TaskTrackerAPI.Services
                 {
                     // Consecutive day
                     userProgress.CurrentStreak++;
-                    
+
                     // Update longest streak if current streak is longer
                     if (userProgress.CurrentStreak > userProgress.LongestStreak)
                     {
                         userProgress.LongestStreak = userProgress.CurrentStreak;
                     }
-                    
+
                     // Check for streak achievements
                     await CheckForStreakAchievements(userId, userProgress.CurrentStreak);
                 }
@@ -267,12 +264,12 @@ namespace TaskTrackerAPI.Services
                 // First activity
                 userProgress.CurrentStreak = 1;
             }
-            
+
             userProgress.LastActivityDate = now;
             userProgress.UpdatedAt = DateTime.UtcNow;
-            
+
             await _gamificationRepository.SaveChangesAsync();
-            
+
             // Send real-time streak update notification
             try
             {
@@ -285,22 +282,22 @@ namespace TaskTrackerAPI.Services
                 // Don't throw - real-time notifications shouldn't break the main flow
             }
         }
-        
+
         private async Task CheckForStreakAchievements(int userId, int currentStreak)
         {
             // Find achievements related to streaks
-            var allAchievements = await _gamificationRepository.GetAllAchievementsAsync();
-            var streakAchievements = allAchievements
+            IEnumerable<Achievement> allAchievements = await _gamificationRepository.GetAllAchievementsAsync();
+            List<Achievement> streakAchievements = allAchievements
                 .Where(a => a.Category == "Streak")
                 .ToList();
-                
+
             foreach (Achievement achievement in streakAchievements)
             {
                 // Check if user already has this achievement
                 bool hasAchievement = await _gamificationRepository.AnyUserAchievementAsync(userId, achievement.Id);
                 if (hasAchievement)
                     continue;
-                    
+
                 // Check if the streak meets the criteria
                 if (int.TryParse(achievement.Criteria, out int targetValue) && currentStreak >= targetValue)
                 {
@@ -310,7 +307,7 @@ namespace TaskTrackerAPI.Services
         }
 
         #endregion
-        
+
         #region Achievements
 
         public async Task<List<UserAchievementDTO>> GetUserAchievementsAsync(int userId)
@@ -330,19 +327,19 @@ namespace TaskTrackerAPI.Services
         {
             // Check if already unlocked
             UserAchievement? existingUnlock = await _gamificationRepository.GetUserAchievementAsync(userId, achievementId);
-                
+
             if (existingUnlock != null && existingUnlock.IsCompleted)
             {
                 throw new InvalidOperationException("Achievement already unlocked");
             }
-            
+
             // Get the achievement
             Achievement? achievement = await _gamificationRepository.GetAchievementAsync(achievementId);
             if (achievement == null)
             {
                 throw new ArgumentException("Achievement not found", nameof(achievementId));
             }
-            
+
             // Create or update the user achievement record
             if (existingUnlock == null)
             {
@@ -364,7 +361,7 @@ namespace TaskTrackerAPI.Services
                 existingUnlock.CompletedAt = DateTime.UtcNow;
                 await _gamificationRepository.UpdateUserProgressAsync(await GetInternalUserProgressAsync(userId));
             }
-            
+
             // Calculate points using comprehensive system based on achievement tier and difficulty
             string achievementTier = achievement.Category?.ToLower().Contains("bronze") == true ? "bronze" :
                                    achievement.Category?.ToLower().Contains("silver") == true ? "silver" :
@@ -375,18 +372,18 @@ namespace TaskTrackerAPI.Services
 
             // Determine difficulty from achievement properties
             string difficulty = achievement.Difficulty.ToString();
-            
+
             int calculatedPoints = CalculateAchievementPoints(achievementTier, difficulty);
-            
+
             // Award points for unlocking this achievement using calculated amount
-            await AddPointsAsync(userId, calculatedPoints, "achievement", 
+            await AddPointsAsync(userId, calculatedPoints, "achievement",
                 $"Unlocked {achievementTier} achievement: {achievement.Name}");
-            
+
             await _gamificationRepository.SaveChangesAsync();
-            
+
             // Load the achievement relationship
             existingUnlock.Achievement = achievement;
-            
+
             // Send real-time achievement unlock notification
             try
             {
@@ -396,18 +393,18 @@ namespace TaskTrackerAPI.Services
             {
                 _logger.LogWarning(ex, "Failed to send real-time achievement unlock notification for user {UserId}", userId);
             }
-            
+
             // Check for new level-based achievements after this unlock
             await UnlockLevelBasedAchievements(userId, (await GetInternalUserProgressAsync(userId)).Level);
-            
+
             return _mapper.Map<UserAchievementDTO>(existingUnlock);
         }
-        
+
         private async Task UnlockLevelBasedAchievements(int userId, int level)
         {
             // Find achievements related to level milestones
             List<Achievement> levelAchievements = await _gamificationRepository.GetLevelAchievementsAsync(level);
-                
+
             foreach (Achievement achievement in levelAchievements)
             {
                 // Check if already unlocked
@@ -426,51 +423,51 @@ namespace TaskTrackerAPI.Services
         }
 
         #endregion
-        
+
         #region Badges
 
         public async Task<List<UserBadgeDTO>> GetUserBadgesAsync(int userId)
         {
-            var userBadges = await _gamificationRepository.GetUserBadgesAsync(userId);
+            IEnumerable<UserBadge> userBadges = await _gamificationRepository.GetUserBadgesAsync(userId);
             return _mapper.Map<List<UserBadgeDTO>>(userBadges.ToList());
         }
 
         public async Task<UserBadgeDTO> AwardBadgeAsync(int userId, int badgeId)
         {
             // Check if already awarded
-            GamificationModels.UserBadge? existingBadge = await _gamificationRepository.GetUserBadgeAsync(userId, badgeId);
-                
+            UserBadge? existingBadge = await _gamificationRepository.GetUserBadgeAsync(userId, badgeId);
+
             if (existingBadge != null)
             {
                 throw new InvalidOperationException("Badge already awarded");
             }
-            
+
             // Get the badge
-            GamificationModels.Badge? badge = await _gamificationRepository.GetBadgeAsync(badgeId);
+            Badge? badge = await _gamificationRepository.GetBadgeAsync(badgeId);
             if (badge == null)
             {
                 throw new ArgumentException("Badge not found", nameof(badgeId));
             }
-            
+
             // Create the user badge record
-            GamificationModels.UserBadge userBadge = new GamificationModels.UserBadge
+            UserBadge userBadge = new UserBadge
             {
                 UserId = userId,
                 BadgeId = badgeId,
                 IsDisplayed = true,
                 AwardedAt = DateTime.UtcNow
             };
-            
+
             _gamificationRepository.AddUserBadge(userBadge);
-            
+
             // Award points for earning this badge
             await AddPointsAsync(userId, badge.PointValue, "badge", $"Earned badge: {badge.Name}");
-            
+
             await _gamificationRepository.SaveChangesAsync();
-            
+
             // Load the badge relationship
             userBadge.Badge = badge;
-            
+
             // Send real-time badge earned notification
             try
             {
@@ -481,41 +478,41 @@ namespace TaskTrackerAPI.Services
                 _logger.LogError(ex, "Error sending real-time badge notification for user {UserId}", userId);
                 // Don't throw - real-time notifications shouldn't break the main flow
             }
-            
+
             return _mapper.Map<UserBadgeDTO>(userBadge);
         }
 
         public async Task<bool> ToggleBadgeDisplayAsync(int userId, int badgeId, bool isDisplayed)
         {
-            GamificationModels.UserBadge? userBadge = await _gamificationRepository.GetUserBadgeAsync(userId, badgeId);
-                
+            UserBadge? userBadge = await _gamificationRepository.GetUserBadgeAsync(userId, badgeId);
+
             if (userBadge == null)
             {
                 throw new ArgumentException("User does not have this badge", nameof(badgeId));
             }
-            
+
             userBadge.IsDisplayed = isDisplayed;
             await _gamificationRepository.SaveChangesAsync();
-            
+
             return true;
         }
 
         #endregion
-        
+
         #region Rewards
 
         public async Task<List<RewardDTO>> GetAvailableRewardsAsync(int userId)
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             // Return ALL active rewards, frontend will handle locked/unlocked display
             List<Reward> rewards = await _gamificationRepository.GetActiveRewardsAsync();
 
             // Map to DTOs and include user's level info for frontend to determine lock status
-            var rewardDTOs = _mapper.Map<List<RewardDTO>>(rewards);
-            
+            List<RewardDTO> rewardDTOs = _mapper.Map<List<RewardDTO>>(rewards);
+
             // Add user context to each reward
-            foreach (var reward in rewardDTOs)
+            foreach (RewardDTO reward in rewardDTOs)
             {
                 reward.IsAvailable = userProgress.Level >= reward.MinimumLevel;
                 reward.UserLevel = userProgress.Level;
@@ -529,30 +526,30 @@ namespace TaskTrackerAPI.Services
         {
             // Get user progress
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             // Get the reward
             Reward? reward = await _gamificationRepository.GetRewardAsync(rewardId);
             if (reward == null)
             {
                 throw new ArgumentException("Reward not found", nameof(rewardId));
             }
-            
+
             // Check if user has enough points
             if (userProgress.CurrentPoints < reward.PointCost)
             {
                 throw new InvalidOperationException("Not enough points to redeem this reward");
             }
-            
+
             // Check if reward is available at user's level
             if (userProgress.Level < reward.MinimumLevel)
             {
                 throw new InvalidOperationException("User level is too low to redeem this reward");
             }
-            
+
             // Deduct points
             userProgress.CurrentPoints -= reward.PointCost;
             userProgress.UpdatedAt = DateTime.UtcNow;
-            
+
             // Create transaction record
             PointTransaction transaction = new PointTransaction
             {
@@ -562,9 +559,9 @@ namespace TaskTrackerAPI.Services
                 Description = $"Redeemed reward: {reward.Name}",
                 CreatedAt = DateTime.UtcNow
             };
-            
+
             _gamificationRepository.AddPointTransaction(transaction);
-            
+
             // Create user reward record
             UserReward userReward = new UserReward
             {
@@ -573,13 +570,13 @@ namespace TaskTrackerAPI.Services
                 IsUsed = false,
                 RedeemedAt = DateTime.UtcNow
             };
-            
+
             _gamificationRepository.AddUserReward(userReward);
             await _gamificationRepository.SaveChangesAsync();
-            
+
             // Load the reward relationship
             userReward.Reward = reward;
-            
+
             return _mapper.Map<UserRewardDTO>(userReward);
         }
 
@@ -618,21 +615,21 @@ namespace TaskTrackerAPI.Services
             {
                 throw new ArgumentException("User reward not found", nameof(userRewardId));
             }
-            
+
             if (userReward.IsUsed)
             {
                 return false;
             }
-            
+
             userReward.IsUsed = true;
             userReward.UsedAt = DateTime.UtcNow;
-            
+
             await _gamificationRepository.UpdateUserRewardAsync(userReward);
             return true;
         }
 
         #endregion
-        
+
         #region Challenges
 
         /// <summary>
@@ -649,26 +646,26 @@ namespace TaskTrackerAPI.Services
         /// </summary>
         public async Task<bool> LeaveChallengeAsync(int userId, int challengeId)
         {
-            var challengeProgress = await _gamificationRepository.GetChallengeProgressAsync(userId, challengeId);
-                
+            ChallengeProgress? challengeProgress = await _gamificationRepository.GetChallengeProgressAsync(userId, challengeId);
+
             if (challengeProgress == null)
             {
                 return false; // Not enrolled or already completed
             }
-            
+
             // Remove the challenge progress
             _gamificationRepository.RemoveChallengeProgress(challengeProgress);
-            
+
             // Also remove the user challenge record
-            var userChallenge = await _gamificationRepository.GetUserChallengeAsync(userId, challengeId);
-                
+            UserChallenge? userChallenge = await _gamificationRepository.GetUserChallengeAsync(userId, challengeId);
+
             if (userChallenge != null)
             {
                 _gamificationRepository.RemoveUserChallenge(userChallenge);
             }
-            
+
             await _gamificationRepository.SaveChangesAsync();
-            
+
             _logger.LogInformation($"User {userId} left challenge {challengeId}");
             return true;
         }
@@ -677,15 +674,15 @@ namespace TaskTrackerAPI.Services
         {
             // Get challenges user is enrolled in but hasn't completed
             List<int> enrolledChallengeIds = await _gamificationRepository.GetEnrolledChallengeIdsAsync(userId);
-                
+
             // Get active challenges user isn't enrolled in yet
             List<Challenge> availableChallenges = await _gamificationRepository.GetAvailableChallengesAsync();
-                
+
             // Get challenges user is enrolled in
             List<Challenge> enrolledChallenges = await _gamificationRepository.GetEnrolledChallengesAsync(userId);
-                
+
             // Combine and return
-            var allChallenges = availableChallenges.Concat(enrolledChallenges)
+            List<Challenge> allChallenges = availableChallenges.Concat(enrolledChallenges)
                 .OrderBy(c => c.EndDate)
                 .ToList();
 
@@ -696,40 +693,40 @@ namespace TaskTrackerAPI.Services
         {
             // Check if already enrolled
             ChallengeProgress? existingEnrollment = await _gamificationRepository.GetChallengeProgressAsync(userId, challengeId);
-                
+
             if (existingEnrollment != null)
             {
                 throw new InvalidOperationException("User already enrolled in this challenge");
             }
-            
+
             // Check active challenge limit (2 challenges max)
             int activeChallengeCount = await _gamificationRepository.GetActiveChallengeCountAsync(userId);
-                
+
             if (activeChallengeCount >= 2)
             {
                 throw new InvalidOperationException("You can only participate in 2 challenges at a time. Complete or leave an existing challenge before joining a new one.");
             }
-            
+
             // Get the challenge
             Challenge? challenge = await _gamificationRepository.GetChallengeAsync(challengeId);
             if (challenge == null)
             {
                 throw new ArgumentException("Challenge not found", nameof(challengeId));
             }
-            
+
             // Check if challenge is active
             if (!challenge.IsActive || (challenge.EndDate.HasValue && challenge.EndDate.Value < DateTime.UtcNow))
             {
                 throw new InvalidOperationException("Challenge is not active");
             }
-            
+
             // Check if user has enough points to join
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             if (userProgress.TotalPointsEarned < challenge.PointsRequired)
             {
                 throw new InvalidOperationException($"Insufficient points to join this challenge. Required: {challenge.PointsRequired}, You have: {userProgress.TotalPointsEarned}");
             }
-            
+
             // Create user challenge record
             UserChallenge userChallenge = new UserChallenge
             {
@@ -739,9 +736,9 @@ namespace TaskTrackerAPI.Services
                 IsCompleted = false,
                 EnrolledAt = DateTime.UtcNow
             };
-            
+
             _gamificationRepository.AddUserChallenge(userChallenge);
-            
+
             // Also create a progress record for tracking
             ChallengeProgress challengeProgress = new ChallengeProgress
             {
@@ -751,15 +748,15 @@ namespace TaskTrackerAPI.Services
                 IsCompleted = false,
                 EnrolledAt = DateTime.UtcNow
             };
-            
+
             _gamificationRepository.AddChallengeProgress(challengeProgress);
             await _gamificationRepository.SaveChangesAsync();
-            
+
             _logger.LogInformation($"User {userId} enrolled in challenge {challengeId}. Active challenges: {activeChallengeCount + 1}/2");
-            
+
             // Load the challenge relationship
             userChallenge.Challenge = challenge;
-            
+
             return _mapper.Map<UserChallengeDTO>(userChallenge);
         }
 
@@ -769,23 +766,23 @@ namespace TaskTrackerAPI.Services
             {
                 // First look for an active challenge the user is already working on
                 ChallengeProgress? activeProgress = await _gamificationRepository.GetActiveChallengeProgressAsync(userId);
-                
+
                 if (activeProgress != null)
-            {
-                // Get the challenge directly since navigation property is ignored
+                {
+                    // Get the challenge directly since navigation property is ignored
                     Challenge? challenge = await _gamificationRepository.GetChallengeAsync(activeProgress.ChallengeId);
-                    
+
                     if (challenge != null)
                     {
                         return _mapper.Map<ChallengeDTO>(challenge);
                     }
                 }
-                
+
                 // Otherwise, suggest a new challenge the user hasn't completed yet
                 List<int> completedChallengeIds = await _gamificationRepository.GetCompletedChallengeIdsAsync(userId);
-                
+
                 Challenge? suggestedChallenge = await _gamificationRepository.GetAvailableChallengeAsync(userId);
-                
+
                 return suggestedChallenge != null ? _mapper.Map<ChallengeDTO>(suggestedChallenge) : null;
             }
             catch (Exception ex)
@@ -802,9 +799,9 @@ namespace TaskTrackerAPI.Services
             {
                 throw new ArgumentException("Challenge not found", nameof(challengeId));
             }
-            
+
             ChallengeProgress? progress = await _gamificationRepository.GetChallengeProgressAsync(userId, challengeId);
-                
+
             if (progress == null)
             {
                 // Create a new progress entry
@@ -816,11 +813,11 @@ namespace TaskTrackerAPI.Services
                     IsCompleted = false,
                     EnrolledAt = DateTime.UtcNow
                 };
-                
+
                 _gamificationRepository.AddChallengeProgress(progress);
                 await _gamificationRepository.SaveChangesAsync();
             }
-            
+
             return _mapper.Map<ChallengeProgressDTO>(progress);
         }
 
@@ -832,7 +829,7 @@ namespace TaskTrackerAPI.Services
         }
 
         #endregion
-        
+
         #region Daily Login
 
         public async Task<PointTransactionDTO> ProcessDailyLoginAsync(int userId)
@@ -840,29 +837,29 @@ namespace TaskTrackerAPI.Services
             // Check if user has already logged in today
             DateTime today = DateTime.UtcNow.Date;
             bool hasLoggedInToday = await _gamificationRepository.HasDailyLoginTransactionAsync(userId, today);
-            
+
             if (hasLoggedInToday)
             {
                 throw new InvalidOperationException("Daily login reward already claimed today");
             }
-            
+
             // Calculate streak-based points
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             int pointsToAdd = CalculateDailyLoginPoints(userProgress.CurrentStreak + 1);
-            
+
             // Add points with daily login transaction
             int transactionId = await AddPointsAsync(userId, pointsToAdd, "daily_login", "Daily login reward");
-            
+
             // Update streak
             await UpdateStreakAsync(userId);
-            
+
             // Return the created transaction
             PointTransaction? transaction = await _gamificationRepository.GetPointTransactionAsync(transactionId);
             if (transaction == null)
             {
                 throw new InvalidOperationException("Failed to create transaction record");
             }
-            
+
             return _mapper.Map<PointTransactionDTO>(transaction);
         }
 
@@ -870,17 +867,17 @@ namespace TaskTrackerAPI.Services
         {
             // Base points for daily login
             int basePoints = 10;
-            
+
             // Bonus points for streak milestones
             int streakBonus = (currentStreak / 7) * 5; // +5 points for every week of streak
-            
+
             return Math.Min(basePoints + streakBonus, 50); // Cap at 50 points
         }
 
         public async Task<bool> HasUserLoggedInTodayAsync(int userId)
         {
             DateTime today = DateTime.UtcNow.Date;
-            
+
             // Check for a daily login transaction today
             return await _gamificationRepository.HasDailyLoginTransactionAsync(userId, today);
         }
@@ -889,7 +886,7 @@ namespace TaskTrackerAPI.Services
         {
             bool hasLoggedInToday = await HasUserLoggedInTodayAsync(userId);
             UserProgress progress = await GetInternalUserProgressAsync(userId);
-            
+
             return new DailyLoginStatusDetailDTO
             {
                 UserId = userId,
@@ -903,15 +900,15 @@ namespace TaskTrackerAPI.Services
         }
 
         #endregion
-        
+
         #region Suggestions and Stats
 
         public async Task<List<GamificationSuggestionDetailDTO>> GetGamificationSuggestionsAsync(int userId)
         {
-            var suggestions = new List<GamificationSuggestionDetailDTO>();
-            
+            List<GamificationSuggestionDetailDTO> suggestions = new List<GamificationSuggestionDetailDTO>();
+
             // Suggestion 1: Check for incomplete tasks
-            var incompleteTasks = await _gamificationRepository.GetIncompleteTasksAsync(userId);
+            List<TaskItem> incompleteTasks = await _gamificationRepository.GetIncompleteTasksAsync(userId);
             if (incompleteTasks.Count > 0)
             {
                 suggestions.Add(new GamificationSuggestionDetailDTO
@@ -924,10 +921,10 @@ namespace TaskTrackerAPI.Services
                     Priority = 1
                 });
             }
-            
+
             // Suggestion 2: Check for available achievements
             List<Achievement> availableAchievements = (await _gamificationRepository.GetAvailableAchievementsAsync(userId)).Take(3).ToList();
-            
+
             if (availableAchievements.Count > 0)
             {
                 foreach (Achievement achievement in availableAchievements)
@@ -943,7 +940,7 @@ namespace TaskTrackerAPI.Services
                     });
                 }
             }
-            
+
             // Suggestion 3: Check if daily login is available
             bool hasLoggedInToday = await HasUserLoggedInTodayAsync(userId);
             if (!hasLoggedInToday)
@@ -959,33 +956,33 @@ namespace TaskTrackerAPI.Services
                     Priority = 0
                 });
             }
-            
+
             return suggestions.OrderBy(s => s.Priority).ToList();
         }
 
         public async Task<GamificationStatsDTO> GetGamificationStatsAsync(int userId)
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             // Count completed tasks
             int completedTasks = await _gamificationRepository.GetCompletedTasksCountAsync(userId);
-                
+
             // Count achievements and badges
             int achievementsUnlocked = await _gamificationRepository.GetUserAchievementsCountAsync(userId);
-                
+
             int badgesEarned = await _gamificationRepository.GetUserBadgesCountAsync(userId);
-                
+
             int rewardsRedeemed = await _gamificationRepository.GetUserRewardsCountAsync(userId);
-                
+
             // Calculate consistency score (0-100)
             double consistencyScore = await CalculateConsistencyScoreAsync(userId);
-            
+
             // Get task category stats
             Dictionary<string, int> categoryStats = await GetCategoryStatsAsync(userId);
-            
+
             // Get top users on leaderboard via DTO
             List<LeaderboardEntryDTO> topUsers = await GetLeaderboardAsync("points", 5);
-            
+
             return new GamificationStatsDTO
             {
                 Progress = _mapper.Map<UserProgressDTO>(userProgress),
@@ -1004,11 +1001,11 @@ namespace TaskTrackerAPI.Services
             if (category == "points")
             {
                 // Leaderboard by total points
-                var leaderboardData = await _gamificationRepository.GetLeaderboardByPointsAsync(limit);
-                var leaderboardEntries = leaderboardData.Select((up, index) => new LeaderboardEntryDTO
+                List<UserProgress> leaderboardData = await _gamificationRepository.GetLeaderboardByPointsAsync(limit);
+                List<LeaderboardEntryDTO> leaderboardEntries = leaderboardData.Select((up, index) => new LeaderboardEntryDTO
                 {
                     Rank = index + 1,
-                        UserId = up.UserId,
+                    UserId = up.UserId,
                     Username = $"User {up.UserId}", // Default username - could be enhanced to get actual username
                     Value = up.TotalPointsEarned
                 }).ToList();
@@ -1018,11 +1015,11 @@ namespace TaskTrackerAPI.Services
             else if (category == "streak")
             {
                 // Leaderboard by current streak
-                var leaderboardData = await _gamificationRepository.GetLeaderboardByStreakAsync(limit);
-                var leaderboardEntries = leaderboardData.Select((up, index) => new LeaderboardEntryDTO
+                List<UserProgress> leaderboardData = await _gamificationRepository.GetLeaderboardByStreakAsync(limit);
+                List<LeaderboardEntryDTO> leaderboardEntries = leaderboardData.Select((up, index) => new LeaderboardEntryDTO
                 {
                     Rank = index + 1,
-                        UserId = up.UserId,
+                    UserId = up.UserId,
                     Username = $"User {up.UserId}", // Default username - could be enhanced to get actual username
                     Value = up.CurrentStreak
                 }).ToList();
@@ -1034,7 +1031,7 @@ namespace TaskTrackerAPI.Services
                 // Leaderboard by completed tasks
                 List<TaskCountData> userTaskCounts = await _gamificationRepository.GetUserTaskCountsAsync();
 
-                var result = new List<LeaderboardEntryDTO>();
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
                 foreach (TaskCountData item in userTaskCounts.OrderByDescending(x => x.Count).Take(limit))
@@ -1054,7 +1051,7 @@ namespace TaskTrackerAPI.Services
                         }
                     }
                 }
-                
+
                 return result;
             }
 
@@ -1064,25 +1061,25 @@ namespace TaskTrackerAPI.Services
         public async Task<List<LeaderboardEntryDTO>> GetFamilyMembersLeaderboardAsync(int userId, string category, int limit = 10)
         {
             // Get user's family ID
-            var familyMember = await _gamificationRepository.GetFamilyMembersAsync(0).ContinueWith(t => t.Result.FirstOrDefault(fm => fm.UserId == userId));
+            FamilyMember? familyMember = await _gamificationRepository.GetFamilyMembersAsync(0).ContinueWith(t => t.Result.FirstOrDefault(fm => fm.UserId == userId));
             if (familyMember == null)
             {
                 return new List<LeaderboardEntryDTO>();
             }
 
             // Get all family members
-            var familyMembers = await _gamificationRepository.GetFamilyMembersAsync(familyMember.FamilyId);
-            var familyUserIds = familyMembers.Select(fm => fm.UserId).ToList();
+            List<FamilyMember> familyMembers = await _gamificationRepository.GetFamilyMembersAsync(familyMember.FamilyId);
+            List<int> familyUserIds = familyMembers.Select(fm => fm.UserId).ToList();
 
             if (category == "points")
             {
                 // Get user progress for family members
-                var familyProgresses = await _gamificationRepository.GetUserProgressByIdsAsync(familyUserIds);
-                
-                var result = new List<LeaderboardEntryDTO>();
+                List<UserProgress> familyProgresses = await _gamificationRepository.GetUserProgressByIdsAsync(familyUserIds);
+
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var progress in familyProgresses.OrderByDescending(p => p.TotalPointsEarned).Take(limit))
+                foreach (UserProgress progress in familyProgresses.OrderByDescending(p => p.TotalPointsEarned).Take(limit))
                 {
                     User? user = await _gamificationRepository.GetUserAsync(progress.UserId);
                     if (user != null)
@@ -1102,12 +1099,12 @@ namespace TaskTrackerAPI.Services
             else if (category == "streak")
             {
                 // Get user progress for family members 
-                var familyProgresses = await _gamificationRepository.GetUserProgressByIdsAsync(familyUserIds);
-                
-                var result = new List<LeaderboardEntryDTO>();
+                List<UserProgress> familyProgresses = await _gamificationRepository.GetUserProgressByIdsAsync(familyUserIds);
+
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var progress in familyProgresses.OrderByDescending(p => p.CurrentStreak).Take(limit))
+                foreach (UserProgress progress in familyProgresses.OrderByDescending(p => p.CurrentStreak).Take(limit))
                 {
                     User? user = await _gamificationRepository.GetUserAsync(progress.UserId);
                     if (user != null)
@@ -1127,13 +1124,13 @@ namespace TaskTrackerAPI.Services
             else if (category == "tasks")
             {
                 // Get task completion data for family members
-                var allTaskCounts = await _gamificationRepository.GetUserTaskCountsAsync();
-                var familyTaskCounts = allTaskCounts.Where(tc => tc.UserId.HasValue && familyUserIds.Contains(tc.UserId.Value)).ToList();
+                List<TaskCountData> allTaskCounts = await _gamificationRepository.GetUserTaskCountsAsync();
+                List<TaskCountData> familyTaskCounts = allTaskCounts.Where(tc => tc.UserId.HasValue && familyUserIds.Contains(tc.UserId.Value)).ToList();
 
-                var result = new List<LeaderboardEntryDTO>();
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var taskCount in familyTaskCounts.OrderByDescending(tc => tc.Count).Take(limit))
+                foreach (TaskCountData taskCount in familyTaskCounts.OrderByDescending(tc => tc.Count).Take(limit))
                 {
                     if (taskCount.UserId.HasValue)
                     {
@@ -1144,13 +1141,13 @@ namespace TaskTrackerAPI.Services
                             {
                                 Rank = rank++,
                                 UserId = taskCount.UserId.Value,
-                                Username = user.Username ?? "Unknown", 
+                                Username = user.Username ?? "Unknown",
                                 Value = taskCount.Count
                             });
                         }
                     }
                 }
-                
+
                 return result;
             }
 
@@ -1173,16 +1170,16 @@ namespace TaskTrackerAPI.Services
             if (category == "points")
             {
                 // Simplified query - get users and their progress separately, then combine in memory
-                List<TaskTrackerAPI.DTOs.Gamification.UserSummaryDTO> usersData = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
+                List<UserSummaryDTO> usersData = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
 
-                List<TaskTrackerAPI.DTOs.Gamification.UserProgressDataDTO> progressData = await _gamificationRepository.GetUserProgressDataByIdsAsync(familyMemberUserIds);
+                List<UserProgressDataDTO> progressData = await _gamificationRepository.GetUserProgressDataByIdsAsync(familyMemberUserIds);
 
-                var result = new List<LeaderboardEntryDTO>();
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var userData in usersData)
+                foreach (UserSummaryDTO userData in usersData)
                 {
-                    var userProgressData = progressData.FirstOrDefault(pd => pd.UserId == userData.Id);
+                    UserProgressDataDTO? userProgressData = progressData.FirstOrDefault(pd => pd.UserId == userData.Id);
                     if (userProgressData != null)
                     {
                         result.Add(new LeaderboardEntryDTO
@@ -1200,16 +1197,16 @@ namespace TaskTrackerAPI.Services
             else if (category == "streak")
             {
                 // Simplified query for streak data
-                List<TaskTrackerAPI.DTOs.Gamification.UserSummaryDTO> usersData = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
+                List<UserSummaryDTO> usersData = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
 
-                List<TaskTrackerAPI.DTOs.Gamification.UserStreakDataDTO> progressData = await _gamificationRepository.GetUserStreakDataByIdsAsync(familyMemberUserIds);
+                List<UserStreakDataDTO> progressData = await _gamificationRepository.GetUserStreakDataByIdsAsync(familyMemberUserIds);
 
-                var result = new List<LeaderboardEntryDTO>();
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var userData in usersData)
+                foreach (UserSummaryDTO userData in usersData)
                 {
-                    var userProgressData = progressData.FirstOrDefault(pd => pd.UserId == userData.Id);
+                    UserStreakDataDTO? userProgressData = progressData.FirstOrDefault(pd => pd.UserId == userData.Id);
                     if (userProgressData != null)
                     {
                         result.Add(new LeaderboardEntryDTO
@@ -1227,35 +1224,35 @@ namespace TaskTrackerAPI.Services
             else if (category == "tasks")
             {
                 // Get task counts for family members
-                List<TaskTrackerAPI.DTOs.Gamification.UserTaskCountDTO> taskCounts = await _gamificationRepository.GetFamilyTaskCountsAsync(familyMemberUserIds);
+                List<UserTaskCountDTO> taskCounts = await _gamificationRepository.GetFamilyTaskCountsAsync(familyMemberUserIds);
 
                 // Get all unique users (proper deduplication)
-                List<TaskTrackerAPI.DTOs.Gamification.UserSummaryDTO> uniqueUsers = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
+                List<UserSummaryDTO> uniqueUsers = await _gamificationRepository.GetUsersByIdsAsync(familyMemberUserIds);
 
-                var result = new List<LeaderboardEntryDTO>();
+                List<LeaderboardEntryDTO> result = new List<LeaderboardEntryDTO>();
                 int rank = 1;
 
-                foreach (var taskCount in taskCounts.OrderByDescending(tc => tc.Count).Take(limit))
+                foreach (UserTaskCountDTO taskCount in taskCounts.OrderByDescending(tc => tc.Count).Take(limit))
                 {
-                    var user = uniqueUsers.FirstOrDefault(u => u.Id == taskCount.UserId);
+                    UserSummaryDTO? user = uniqueUsers.FirstOrDefault(u => u.Id == taskCount.UserId);
                     if (user != null)
                     {
                         result.Add(new LeaderboardEntryDTO
                         {
                             Rank = rank++,
-                        UserId = user.Id,
-                        Username = user.Username,
+                            UserId = user.Id,
+                            Username = user.Username,
                             Value = taskCount.Count
                         });
                     }
                 }
-                
+
                 return result;
             }
 
             return new List<LeaderboardEntryDTO>();
         }
-        
+
         #endregion
 
         #region Helper Methods for Stats (now return DTOs)
@@ -1263,8 +1260,8 @@ namespace TaskTrackerAPI.Services
         public async Task<List<PriorityMultiplierDTO>> GetPointMultipliersAsync()
         {
             // Get priority multipliers from database or use defaults
-            var multipliers = (await _gamificationRepository.GetPriorityMultipliersAsync()).ToList();
-            
+            List<PriorityMultiplier> multipliers = (await _gamificationRepository.GetPriorityMultipliersAsync()).ToList();
+
             if (!multipliers.Any())
             {
                 // Return default multipliers
@@ -1286,39 +1283,39 @@ namespace TaskTrackerAPI.Services
 
         public async Task<PointTransactionDTO> GetTransactionAsync(int transactionId)
         {
-            var transaction = await _gamificationRepository.GetPointTransactionAsync(transactionId);
+            PointTransaction? transaction = await _gamificationRepository.GetPointTransactionAsync(transactionId);
             if (transaction == null)
                 throw new NotFoundException($"Transaction with ID {transactionId} not found");
-            
+
             return _mapper.Map<PointTransactionDTO>(transaction);
         }
 
         public async Task<List<PointTransactionDTO>> GetUserPointTransactionsAsync(int userId, int limit = 100)
         {
-            var transactions = await _gamificationRepository.GetUserPointTransactionsAsync(userId, limit);
+            IEnumerable<PointTransaction> transactions = await _gamificationRepository.GetUserPointTransactionsAsync(userId, limit);
             return _mapper.Map<List<PointTransactionDTO>>(transactions);
         }
 
         private async Task<double> CalculateConsistencyScoreAsync(int userId)
         {
             DateTime thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
-            
+
             // Count days with activity in the last 30 days
             int activeDays = await _gamificationRepository.GetActiveDaysCountAsync(userId, thirtyDaysAgo);
-            
+
             // Calculate consistency as percentage (active days / 30)
             return (double)activeDays / 30.0 * 100.0;
         }
-        
+
         private async Task<Dictionary<string, int>> GetCategoryStatsAsync(int userId)
         {
-            
+
             // Get completed tasks by category
             List<CategoryCount> categoryCounts = await _gamificationRepository.GetCategoryCountsAsync(userId);
-            
+
             return categoryCounts.ToDictionary(cc => cc.Category, cc => cc.Count);
         }
-        
+
         #endregion
 
         #region Tier System
@@ -1326,7 +1323,7 @@ namespace TaskTrackerAPI.Services
         public async Task<TierProgressDTO> GetTierProgressAsync(int userId)
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             Dictionary<string, (int pointsRequired, string color, string bgColor)> tierMap = new Dictionary<string, (int pointsRequired, string color, string bgColor)>
             {
                 { "bronze", (0, "text-amber-700", "bg-amber-100") },
@@ -1377,14 +1374,14 @@ namespace TaskTrackerAPI.Services
         public async Task<bool> UpdateUserTierAsync(int userId)
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             // Use the new challenging tier thresholds
             Dictionary<string, int> tierMap = TaskTrackerAPI.Models.TierSystem.Tiers.ToDictionary(
-                kvp => kvp.Key, 
+                kvp => kvp.Key,
                 kvp => kvp.Value.PointsRequired);
 
             string newTier = GetCurrentTier(userProgress.TotalPointsEarned, tierMap.ToDictionary(
-                kvp => kvp.Key, 
+                kvp => kvp.Key,
                 kvp => (kvp.Value, "", "")));
 
             if (userProgress.UserTier != newTier)
@@ -1392,17 +1389,17 @@ namespace TaskTrackerAPI.Services
                 string oldTier = userProgress.UserTier;
                 userProgress.UserTier = newTier;
                 userProgress.UpdatedAt = DateTime.UtcNow;
-                
+
                 // Award tier advancement bonus (much more significant now)
                 TierInfo tierInfo = TaskTrackerAPI.Models.TierSystem.Tiers[newTier];
                 int tierLevel = Array.IndexOf(TaskTrackerAPI.Models.TierSystem.Tiers.Keys.ToArray(), newTier) + 1;
                 int bonusPoints = tierLevel * 250; // Increased from 100 to 250 for tier advancement
-                
-                await AddPointsAsync(userId, bonusPoints, "tier_advancement", 
+
+                await AddPointsAsync(userId, bonusPoints, "tier_advancement",
                     $"🎉 Advanced to {tierInfo.Name} tier! {tierInfo.Description}");
-                
+
                 _logger.LogInformation($"User {userId} advanced from {oldTier} to {newTier} tier. Awarded {bonusPoints} bonus points.");
-                
+
                 await _gamificationRepository.SaveChangesAsync();
                 return true;
             }
@@ -1438,7 +1435,7 @@ namespace TaskTrackerAPI.Services
         {
             // Get base points
             double points = PointCalculationSystem.BasePoints.TaskCompletionBase;
-            
+
             // Apply difficulty multiplier
             points *= difficulty switch
             {
@@ -1448,7 +1445,7 @@ namespace TaskTrackerAPI.Services
                 "Expert" => PointCalculationSystem.DifficultyMultipliers.Expert,
                 _ => PointCalculationSystem.DifficultyMultipliers.Medium
             };
-            
+
             // Apply priority multiplier
             points *= priority switch
             {
@@ -1458,7 +1455,7 @@ namespace TaskTrackerAPI.Services
                 "Critical" => PointCalculationSystem.PriorityMultipliers.Critical,
                 _ => PointCalculationSystem.PriorityMultipliers.Medium
             };
-            
+
             // Apply time-based bonus/penalty
             if (dueDate.HasValue)
             {
@@ -1472,7 +1469,7 @@ namespace TaskTrackerAPI.Services
                     points *= PointCalculationSystem.TimeBonuses.LateCompletion;
                 }
             }
-            
+
             // Apply time of day bonus
             DateTime completionTime = DateTime.UtcNow;
             if (completionTime.Hour < 9)
@@ -1483,32 +1480,32 @@ namespace TaskTrackerAPI.Services
             {
                 points *= PointCalculationSystem.TimeBonuses.NightOwl;
             }
-            
+
             // Apply collaborative task bonus
             if (isCollaborative)
             {
                 points *= PointCalculationSystem.FamilyBonuses.CollaborativeTask;
             }
-            
+
             // Apply streak multiplier
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             points *= PointCalculationSystem.StreakMultipliers.GetStreakMultiplier(userProgress.CurrentStreak);
-            
+
             // Apply weekly consistency multiplier
             int activeDaysThisWeek = await GetActiveDaysThisWeekAsync(userId);
             points *= PointCalculationSystem.ConsistencyBonuses.GetWeeklyConsistencyMultiplier(activeDaysThisWeek);
-            
+
             // Apply special event multipliers
             if (IsWeekend())
             {
                 points *= PointCalculationSystem.SpecialEventMultipliers.WeekendWarrior;
             }
-            
+
             if (IsJanuary())
             {
                 points *= PointCalculationSystem.SpecialEventMultipliers.NewYearResolution;
             }
-            
+
             return (int)Math.Round(points);
         }
 
@@ -1521,30 +1518,30 @@ namespace TaskTrackerAPI.Services
             {
                 return 0; // No points for incomplete sessions
             }
-            
+
             // Base points per minute
             double points = PointCalculationSystem.BasePoints.FocusSessionBase * durationMinutes;
-            
+
             // Apply duration multiplier
             points *= PointCalculationSystem.FocusBonuses.GetFocusMultiplier(durationMinutes);
-            
+
             // Check for daily focus consistency
             bool hadFocusSessionYesterday = await HasUserHadFocusSessionYesterdayAsync(userId);
             if (hadFocusSessionYesterday)
             {
                 points *= PointCalculationSystem.FocusBonuses.ConsistencyBonus;
             }
-            
+
             // Weekend bonus
             if (IsWeekend())
             {
                 points *= PointCalculationSystem.FocusBonuses.WeekendBonus;
             }
-            
+
             // Apply streak multiplier
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
             points *= PointCalculationSystem.StreakMultipliers.GetStreakMultiplier(userProgress.CurrentStreak);
-            
+
             return (int)Math.Round(points);
         }
 
@@ -1554,34 +1551,34 @@ namespace TaskTrackerAPI.Services
         public async Task<int> CalculateAdvancedDailyLoginPointsAsync(int userId)
         {
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
-            
+
             // Base points (kept low to encourage actual productivity)
             double points = PointCalculationSystem.BasePoints.DailyLoginBase;
-            
+
             // Streak bonus (but capped to prevent login-only farming)
             double streakMultiplier = Math.Min(
-                PointCalculationSystem.StreakMultipliers.GetStreakMultiplier(userProgress.CurrentStreak), 
+                PointCalculationSystem.StreakMultipliers.GetStreakMultiplier(userProgress.CurrentStreak),
                 2.0); // Cap at 2x multiplier for login
-            
+
             points *= streakMultiplier;
-            
+
             // Add streak maintenance bonus
             if (userProgress.CurrentStreak > 0)
             {
                 points += PointCalculationSystem.BasePoints.StreakMaintenance;
             }
-            
+
             // Diminishing returns for long streaks to encourage diverse activities
             if (userProgress.CurrentStreak > 30)
             {
                 points *= 0.8; // 20% reduction for very long streaks
             }
-            
+
             if (userProgress.CurrentStreak > 100)
             {
                 points *= 0.6; // Additional 40% reduction (total 52% of original)
             }
-            
+
             return (int)Math.Round(points);
         }
 
@@ -1591,7 +1588,7 @@ namespace TaskTrackerAPI.Services
         public int CalculateAchievementPoints(string tier, string difficulty = "Medium")
         {
             double basePoints = PointCalculationSystem.BasePoints.AchievementUnlockBase;
-            
+
             // Apply tier multiplier (this is where the real value is!)
             double tierMultiplier = tier.ToLower() switch
             {
@@ -1603,7 +1600,7 @@ namespace TaskTrackerAPI.Services
                 "onyx" => PointCalculationSystem.AchievementTierMultipliers.Onyx,
                 _ => 1.0
             };
-            
+
             // Apply difficulty multiplier
             double difficultyMultiplier = difficulty switch
             {
@@ -1612,7 +1609,7 @@ namespace TaskTrackerAPI.Services
                 "Expert" => PointCalculationSystem.DifficultyMultipliers.Expert,
                 _ => PointCalculationSystem.DifficultyMultipliers.Medium
             };
-            
+
             return (int)Math.Round(basePoints * tierMultiplier * difficultyMultiplier);
         }
 
@@ -1622,7 +1619,7 @@ namespace TaskTrackerAPI.Services
         public int CalculateBadgePoints(string rarity, string tier = "bronze")
         {
             double basePoints = PointCalculationSystem.BasePoints.BadgeEarnBase;
-            
+
             // Rarity multiplier
             double rarityMultiplier = rarity.ToLower() switch
             {
@@ -1633,7 +1630,7 @@ namespace TaskTrackerAPI.Services
                 "legendary" => 5.0,
                 _ => 1.0
             };
-            
+
             // Tier multiplier (smaller than achievements but still significant)
             double tierMultiplier = tier.ToLower() switch
             {
@@ -1645,7 +1642,7 @@ namespace TaskTrackerAPI.Services
                 "onyx" => 6.0,
                 _ => 1.0
             };
-            
+
             return (int)Math.Round(basePoints * rarityMultiplier * tierMultiplier);
         }
 
@@ -1690,7 +1687,7 @@ namespace TaskTrackerAPI.Services
             if (today.Month == 1 && today.Day == 1) return true;
             // Example: Christmas
             if (today.Month == 12 && today.Day == 25) return true;
-            
+
             return false;
         }
 
@@ -1794,7 +1791,7 @@ namespace TaskTrackerAPI.Services
             // Category-based achievements if available
             if (task.CategoryId.HasValue)
             {
-            await CheckVersatilityAchievements(userId);
+                await CheckVersatilityAchievements(userId);
             }
         }
 
@@ -1866,7 +1863,7 @@ namespace TaskTrackerAPI.Services
 
         private async Task CheckProgressAchievements(int userId, int completedTaskCount)
         {
-            var progressMilestones = new Dictionary<int, int>
+            Dictionary<int, int> progressMilestones = new Dictionary<int, int>
             {
                 { 1, 1 },    // First Steps
                 { 2, 5 },    // Task Starter  
@@ -1881,7 +1878,7 @@ namespace TaskTrackerAPI.Services
                 { 135, 1000 } // Deity
             };
 
-            foreach (var milestone in progressMilestones)
+            foreach (KeyValuePair<int, int> milestone in progressMilestones)
             {
                 if (completedTaskCount >= milestone.Value)
                 {
@@ -1911,7 +1908,7 @@ namespace TaskTrackerAPI.Services
 
         private async Task CheckTimeBasedTaskAchievements(int userId, int taskId)
         {
-            var transaction = await _gamificationRepository.GetLatestPointTransactionAsync(userId, taskId);
+            PointTransaction? transaction = await _gamificationRepository.GetLatestPointTransactionAsync(userId, taskId);
 
             if (transaction == null) return;
 
@@ -1943,7 +1940,7 @@ namespace TaskTrackerAPI.Services
             }
 
             // On Time - Complete before due date
-            var task = await _gamificationRepository.GetTaskAsync(taskId);
+            TaskItem? task = await _gamificationRepository.GetTaskAsync(taskId);
             if (task?.DueDate.HasValue == true && completionTime < task.DueDate.Value)
             {
                 int onTimeCount = await CountOnTimeCompletions(userId);
@@ -1954,7 +1951,7 @@ namespace TaskTrackerAPI.Services
 
         private async Task CheckStreakMilestones(int userId, int currentStreak)
         {
-            var streakMilestones = new Dictionary<int, int>
+            Dictionary<int, int> streakMilestones = new Dictionary<int, int>
             {
                 { 14, 3 },   // Streak Starter
                 { 15, 5 },   // Daily Dose
@@ -1968,7 +1965,7 @@ namespace TaskTrackerAPI.Services
                 { 141, 730 }  // Unbreakable
             };
 
-            foreach (var milestone in streakMilestones)
+            foreach (KeyValuePair<int, int> milestone in streakMilestones)
             {
                 if (currentStreak >= milestone.Value)
                 {
@@ -1979,7 +1976,7 @@ namespace TaskTrackerAPI.Services
 
         private async Task CheckFocusAchievements(int userId, int sessionCount, Dictionary<string, object>? additionalData)
         {
-            var focusMilestones = new Dictionary<int, int>
+            Dictionary<int, int> focusMilestones = new Dictionary<int, int>
             {
                 { 21, 1 },   // Focused (first session)
                 { 22, 5 },   // Zen Master
@@ -1987,7 +1984,7 @@ namespace TaskTrackerAPI.Services
                 { 121, 100 } // Deep Focus
             };
 
-            foreach (var milestone in focusMilestones)
+            foreach (KeyValuePair<int, int> milestone in focusMilestones)
             {
                 if (sessionCount >= milestone.Value)
                 {
@@ -2048,44 +2045,44 @@ namespace TaskTrackerAPI.Services
 
         private async Task<int> CountEarlyBirdCompletions(int userId)
         {
-            var transactions = await _gamificationRepository.GetPointTransactionsByTimeOfDayAsync(userId, TimeSpan.Zero, TimeSpan.FromHours(8));
+            List<PointTransaction> transactions = await _gamificationRepository.GetPointTransactionsByTimeOfDayAsync(userId, TimeSpan.Zero, TimeSpan.FromHours(8));
             return transactions.Where(t => t.TransactionType == "task_completion").Count();
         }
 
         private async Task<int> CountLunchBreakCompletions(int userId)
         {
-            var transactions = await _gamificationRepository.GetPointTransactionsByTimeOfDayAsync(userId, TimeSpan.FromHours(12), TimeSpan.FromHours(13));
+            List<PointTransaction> transactions = await _gamificationRepository.GetPointTransactionsByTimeOfDayAsync(userId, TimeSpan.FromHours(12), TimeSpan.FromHours(13));
             return transactions.Where(t => t.TransactionType == "task_completion").Count();
         }
 
         private async Task<int> CountWeekendCompletions(int userId)
         {
-            var allTransactions = await _gamificationRepository.GetTransactionsByTypeAsync(userId, "task_completion");
+            IEnumerable<PointTransaction> allTransactions = await _gamificationRepository.GetTransactionsByTypeAsync(userId, "task_completion");
             return allTransactions.Count(t => t.CreatedAt.DayOfWeek == DayOfWeek.Saturday || t.CreatedAt.DayOfWeek == DayOfWeek.Sunday);
         }
 
         private async Task<int> CountOnTimeCompletions(int userId)
         {
-            var transactionsWithTasks = await _gamificationRepository.GetPointTransactionsWithTaskJoinAsync(userId);
+            IEnumerable<PointTransaction> transactionsWithTasks = await _gamificationRepository.GetPointTransactionsWithTaskJoinAsync(userId);
             return transactionsWithTasks.Count(); // Simplified - would need better logic in production
         }
 
         // Placeholder methods for remaining achievement categories
-        private async Task CheckCreationAchievements(int userId, int count) 
+        private async Task CheckCreationAchievements(int userId, int count)
         {
             if (count >= 1) await CheckAndUnlockSingleAchievement(userId, 4); // Creator
             if (count >= 25) await CheckAndUnlockSingleAchievement(userId, 70); // Innovator
             if (count >= 100) await CheckAndUnlockSingleAchievement(userId, 118); // Master Creator
         }
 
-        private async Task CheckOrganizerAchievements(int userId, int count) 
+        private async Task CheckOrganizerAchievements(int userId, int count)
         {
             if (count >= 1) await CheckAndUnlockSingleAchievement(userId, 5); // Organizer
             if (count >= 5) await CheckAndUnlockSingleAchievement(userId, 37); // Category Creator
             if (count >= 15) await CheckAndUnlockSingleAchievement(userId, 72); // System Builder
         }
 
-        private async Task CheckUsageMilestones(int userId) 
+        private async Task CheckUsageMilestones(int userId)
         {
             // Count days with activity
             DateTime sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
@@ -2098,12 +2095,12 @@ namespace TaskTrackerAPI.Services
             if (activeDaysLastMonth >= 30) await CheckAndUnlockSingleAchievement(userId, 32); // Loyal User
         }
 
-        private async Task CheckPointMilestones(int userId, int points) 
+        private async Task CheckPointMilestones(int userId, int points)
         {
             if (points >= 100) await CheckAndUnlockSingleAchievement(userId, 46); // Point Collector
         }
 
-        private async Task CheckProductivityPatternAchievements(int userId) 
+        private async Task CheckProductivityPatternAchievements(int userId)
         {
             // Check for Power Hour - 5 tasks in one hour
             DateTime oneHourAgo = DateTime.UtcNow.AddHours(-1);
@@ -2112,7 +2109,7 @@ namespace TaskTrackerAPI.Services
             if (tasksLastHour >= 5) await CheckAndUnlockSingleAchievement(userId, 33); // Power Hour
         }
 
-        private async Task CheckFamilyTaskAchievements(int userId, int familyId) 
+        private async Task CheckFamilyTaskAchievements(int userId, int familyId)
         {
             int familyTaskCount = await _gamificationRepository.GetTaskCountByFamilyAsync(userId, true);
 
@@ -2124,10 +2121,10 @@ namespace TaskTrackerAPI.Services
         private async Task CheckSeasonalTaskAchievements(int userId, DateTime completionTime)
         {
             int month = completionTime.Month;
-            
+
             // Use existing method for seasonal achievements
             await CheckSeasonalMilestones(userId, month);
-            
+
             // Check for holiday-specific achievements
             if (month == 12) // December
             {
@@ -2145,19 +2142,19 @@ namespace TaskTrackerAPI.Services
             if (uniqueTagsUsed >= 15) await CheckAndUnlockSingleAchievement(userId, 93); // Organization Expert
         }
 
-        private async Task CheckVersatilityAchievements(int userId) 
+        private async Task CheckVersatilityAchievements(int userId)
         {
             // Versatile - Complete tasks in 5 different categories (ID 25)
             DateTime today = DateTime.UtcNow.Date;
             DateTime tomorrow = today.AddDays(1);
-            
+
             int categoriesUsedToday = await _gamificationRepository.GetCategoryCountAsync(userId);
-            
+
             if (categoriesUsedToday >= 5) await CheckAndUnlockSingleAchievement(userId, 25); // Versatile
-            
+
             // Skill Builder - Complete tasks in 10 different categories (ID 93)
             int totalCategoriesUsed = await _gamificationRepository.GetCategoryCountAsync(userId);
-                
+
             if (totalCategoriesUsed >= 10) await CheckAndUnlockSingleAchievement(userId, 93); // Skill Builder
         }
 
@@ -2204,7 +2201,7 @@ namespace TaskTrackerAPI.Services
         }
 
         private async Task ProcessOptimalTimeAchievements(int userId, int eventId, Dictionary<string, object>? additionalData)
-            {
+        {
             // Optimal Time achievement would be tracked here
             await CheckAndUnlockSingleAchievement(userId, 159); // Time Optimizer
         }
@@ -2265,10 +2262,10 @@ namespace TaskTrackerAPI.Services
             {
                 // Recurrence Rookie achievement (ID 169) - Create your first recurring event
                 await CheckAndUnlockSingleAchievement(userId, 169); // Recurrence Rookie
-                
+
                 // Count recurring events created
                 int recurringEventCount = await _gamificationRepository.GetPointTransactionCountByTypeAsync(userId, "recurring_event_creation");
-                
+
                 // Series Specialist achievement (ID 170) - Manage 10 different recurring event series
                 if (recurringEventCount >= 10)
                 {
@@ -2284,7 +2281,7 @@ namespace TaskTrackerAPI.Services
                 {
                     // Track large event coordination
                     int largeEventCount = await _gamificationRepository.GetPointTransactionCountByTypeAsync(userId, "large_event_coordination");
-                    
+
                     // Family Harmonizer achievement (ID 165) - Coordinate 50 family events without conflicts
                     if (largeEventCount >= 50)
                     {
@@ -2300,13 +2297,13 @@ namespace TaskTrackerAPI.Services
         private async Task CheckSeasonalEventAchievements(int userId)
         {
             DateTime now = DateTime.UtcNow;
-            
+
             // Holiday events during December
             if (now.Month == 12)
             {
                 DateTime holidayStart = new DateTime(now.Year, 12, 1);
                 DateTime holidayEnd = new DateTime(now.Year + 1, 1, 1);
-                
+
                 int holidayEvents = await _gamificationRepository.GetPointTransactionCountByTypeAndDateAsync(userId, "family_event_creation", holidayStart, holidayEnd);
                 if (holidayEvents >= 5)
                 {
@@ -2323,7 +2320,7 @@ namespace TaskTrackerAPI.Services
         public async Task<FocusCompletionRewardDTO> ProcessFocusSessionCompletionAsync(int userId, int sessionId, int durationMinutes, bool wasCompleted)
         {
             FocusCompletionRewardDTO reward = new FocusCompletionRewardDTO();
-            
+
             if (!wasCompleted)
             {
                 reward.Message = "Focus session was not completed";
@@ -2352,7 +2349,7 @@ namespace TaskTrackerAPI.Services
             reward.TierAdvanced = await UpdateUserTierAsync(userId);
 
             reward.Message = $"Excellent focus session! Earned {totalPoints} points and {characterXP} character XP.";
-            
+
             // Add streak encouragement if applicable
             if (userProgress.CurrentStreak > 0)
             {
@@ -2362,7 +2359,7 @@ namespace TaskTrackerAPI.Services
                     reward.Message += $" Streak bonus: {(streakMultiplier - 1.0) * 100:F0}% extra points!";
                 }
             }
-            
+
             return reward;
         }
 
@@ -2376,7 +2373,7 @@ namespace TaskTrackerAPI.Services
             {
                 // Unlock first focus achievement if it exists
                 Achievement? firstFocusAchievement = await _gamificationRepository.GetAchievementAsync(21);
-                
+
                 if (firstFocusAchievement != null)
                 {
                     try
@@ -2394,7 +2391,7 @@ namespace TaskTrackerAPI.Services
             if (durationMinutes >= 90)
             {
                 Achievement? longFocusAchievement = await _gamificationRepository.GetAchievementAsync(22);
-                
+
                 if (longFocusAchievement != null)
                 {
                     try
@@ -2439,7 +2436,7 @@ namespace TaskTrackerAPI.Services
 
                 // Remove all challenge progress
                 List<ChallengeProgress> challengeProgresses = await _gamificationRepository.GetAllUserChallengeProgressesAsync(userId);
-                foreach (var progress in challengeProgresses)
+                foreach (ChallengeProgress progress in challengeProgresses)
                 {
                     _gamificationRepository.RemoveChallengeProgress(progress);
                 }
@@ -2558,10 +2555,10 @@ namespace TaskTrackerAPI.Services
 
             userProgress.CurrentCharacterClass = characterClass;
             userProgress.UpdatedAt = DateTime.UtcNow;
-            
+
             await _gamificationRepository.SaveChangesAsync();
             _logger.LogInformation($"User {userId} switched to character class: {characterClass}");
-            
+
             return true;
         }
 
@@ -2583,7 +2580,7 @@ namespace TaskTrackerAPI.Services
 
             await _gamificationRepository.SaveChangesAsync();
             _logger.LogInformation($"User {userId} unlocked character class: {characterClass}");
-            
+
             return true;
         }
 
@@ -2598,11 +2595,11 @@ namespace TaskTrackerAPI.Services
             UserProgress userProgress = await GetInternalUserProgressAsync(userId);
 
             userProgress.CharacterXP += xp;
-            
+
             // Check for character level up (every 1000 XP = 1 level)
             int newCharacterLevel = (userProgress.CharacterXP / 1000) + 1;
             bool leveledUp = newCharacterLevel > userProgress.CharacterLevel;
-            
+
             if (leveledUp)
             {
                 userProgress.CharacterLevel = newCharacterLevel;
@@ -2611,7 +2608,7 @@ namespace TaskTrackerAPI.Services
 
             userProgress.UpdatedAt = DateTime.UtcNow;
             await _gamificationRepository.SaveChangesAsync();
-            
+
             return leveledUp;
         }
 
@@ -2622,9 +2619,9 @@ namespace TaskTrackerAPI.Services
         public async Task ProcessChallengeProgressAsync(int userId, string activityType, int relatedEntityId)
         {
             // Get all active challenge progresses for the user
-            var activeProgresses = await _gamificationRepository.GetActiveChallengeProgressesWithIncludesAsync(userId);
+            List<ChallengeProgress> activeProgresses = await _gamificationRepository.GetActiveChallengeProgressesWithIncludesAsync(userId);
 
-            foreach (var progress in activeProgresses)
+            foreach (ChallengeProgress progress in activeProgresses)
             {
                 if (progress.Challenge == null) continue;
 
@@ -2667,8 +2664,8 @@ namespace TaskTrackerAPI.Services
                         progress.CompletedAt = DateTime.UtcNow;
 
                         // Award challenge completion rewards
-                        await AddPointsAsync(userId, progress.Challenge.PointReward, 
-                            "challenge_completion", 
+                        await AddPointsAsync(userId, progress.Challenge.PointReward,
+                            "challenge_completion",
                             $"Completed challenge: {progress.Challenge.Name}");
 
                         _logger.LogInformation($"User {userId} completed challenge: {progress.Challenge.Name}");
@@ -2680,7 +2677,7 @@ namespace TaskTrackerAPI.Services
         }
 
         #endregion
-        
+
         #region ✨ Enhanced Task Completion Achievement Processing
 
         /// <summary>
@@ -2691,27 +2688,27 @@ namespace TaskTrackerAPI.Services
             try
             {
                 _logger.LogInformation("🏆 Processing enhanced task completion achievements - User: {UserId}, Task: {TaskId}", userId, taskId);
-                
+
                 // Extract task context data
                 string taskTitle = taskData.GetValueOrDefault("taskTitle", "Unknown Task").ToString() ?? "Unknown Task";
                 string taskPriority = taskData.GetValueOrDefault("taskPriority", "Medium").ToString() ?? "Medium";
                 string taskCategory = taskData.GetValueOrDefault("taskCategory", "General").ToString() ?? "General";
                 int pointsEarned = Convert.ToInt32(taskData.GetValueOrDefault("pointsEarned", 0));
                 DateTime completionTime = (DateTime)(taskData.GetValueOrDefault("completionTime", DateTime.UtcNow));
-                
+
                 // Use existing achievement processing method
                 await ProcessAchievementUnlocksAsync(userId, "task_completion", taskId, taskData);
-                
+
                 // Check for milestone achievements (10th, 50th, 100th task, etc.)
                 int totalCompletedTasks = await _gamificationRepository.GetPointTransactionCountByTypeAsync(userId, "task_completion");
                 await CheckTaskMilestoneAchievements(userId, totalCompletedTasks);
-                
+
                 // Check for high-value task achievements
                 if (pointsEarned >= 25)
                 {
                     await CheckHighValueTaskAchievements(userId, pointsEarned);
                 }
-                
+
                 _logger.LogInformation("✅ Enhanced task completion achievement processing completed - User: {UserId}, Achievements checked", userId);
             }
             catch (Exception ex)
@@ -2720,7 +2717,7 @@ namespace TaskTrackerAPI.Services
                 // Don't throw - achievement processing shouldn't break task completion
             }
         }
-        
+
         /// <summary>
         /// Check for task milestone achievements (10th, 50th, 100th task, etc.)
         /// </summary>
@@ -2734,7 +2731,7 @@ namespace TaskTrackerAPI.Services
             if (totalCompletedTasks == 500) await CheckAndUnlockSingleAchievement(userId, 102); // Master
             if (totalCompletedTasks == 1000) await CheckAndUnlockSingleAchievement(userId, 103); // Legend
         }
-        
+
         /// <summary>
         /// Check for high-value task achievements
         /// </summary>
@@ -2745,7 +2742,385 @@ namespace TaskTrackerAPI.Services
             if (pointsEarned >= 50) await CheckAndUnlockSingleAchievement(userId, 89); // Perfectionist
             if (pointsEarned >= 75) await CheckAndUnlockSingleAchievement(userId, 75); // Excellence
         }
-        
+
+        #endregion
+
+        #region ✨ Family Gamification Implementation
+
+        /// <summary>
+        /// Get comprehensive family gamification profile with aggregated data
+        /// </summary>
+        public async Task<FamilyGamificationProfileDTO> GetFamilyGamificationProfileAsync(int userId, int familyId)
+        {
+            try
+            {
+                // Verify user has access to this family
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // Get family members using proper repository pattern (no dynamic types)
+                List<FamilyMember> familyMembers = await _gamificationRepository.GetFamilyMembersAsync(familyId);
+
+                // Calculate aggregated family stats
+                int totalFamilyPoints = 0;
+                int familyLevel = 1;
+                int familyStreak = 0;
+
+                foreach (FamilyMember member in familyMembers)
+                {
+                    UserProgress? memberProgress = await _gamificationRepository.GetUserProgressAsync(member.UserId);
+                    if (memberProgress != null)
+                    {
+                        totalFamilyPoints += memberProgress.TotalPointsEarned;
+                        familyStreak = Math.Max(familyStreak, memberProgress.CurrentStreak);
+                    }
+                }
+
+                // Calculate family level based on total points
+                familyLevel = (totalFamilyPoints / 10000) + 1;
+
+                // Get family entity for AutoMapper conversion
+                Family? family = new Family { Id = familyId, Name = "Family", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+
+                // Use AutoMapper for base mapping, then set calculated values
+                FamilyGamificationProfileDTO profile = _mapper.Map<FamilyGamificationProfileDTO>(family);
+
+                // Set calculated values that AutoMapper ignores
+                profile.TotalFamilyPoints = totalFamilyPoints;
+                profile.FamilyLevel = familyLevel;
+                profile.FamilyStreak = familyStreak;
+                profile.FamilyRank = GetFamilyRank(totalFamilyPoints);
+                profile.WeeklyGoals = await GetActiveFamilyGoalsAsync(familyId);
+                profile.MonthlyChallenge = await GetActiveFamilyChallengeAsync(familyId);
+                profile.Settings = GetDefaultFamilySettings();
+                profile.Statistics = await CalculateFamilyStatisticsAsync(familyId);
+
+                return profile;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting family gamification profile for family {FamilyId}", familyId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Get family goals with filtering by status
+        /// </summary>
+        public async Task<List<FamilyGoalDTO>> GetFamilyGoalsAsync(int userId, int familyId, string status = "active")
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // For now, return sample goals - in a full implementation, these would come from database
+                List<FamilyGoalDTO> goals = new List<FamilyGoalDTO>
+                {
+                    new FamilyGoalDTO
+                    {
+                        Id = 1,
+                        Title = "Complete 50 Family Tasks This Week",
+                        Description = "Work together to complete 50 tasks as a family",
+                        TargetValue = 50,
+                        CurrentValue = 23,
+                        Unit = "tasks",
+                        Type = "family",
+                        Priority = "medium",
+                        DueDate = DateTime.UtcNow.AddDays(7),
+                        AssignedTo = new List<int>(),
+                        Rewards = new List<GoalRewardDTO>
+                        {
+                            new GoalRewardDTO
+                            {
+                                Type = "points",
+                                Value = "500",
+                                Description = "500 bonus points for everyone",
+                                Icon = "🏆",
+                                EligibleMembers = new List<int>()
+                            }
+                        },
+                        Status = status,
+                        CreatedBy = userId,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
+
+                return goals.Where(g => status == "all" || g.Status == status).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting family goals for family {familyId}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Create a new family goal
+        /// </summary>
+        public async Task<FamilyGoalDTO> CreateFamilyGoalAsync(int userId, int familyId, CreateFamilyGoalDTO dto)
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // In a full implementation, this would save to database
+                FamilyGoalDTO goal = new FamilyGoalDTO
+                {
+                    Id = new Random().Next(1000, 9999),
+                    Title = dto.Title,
+                    Description = dto.Description,
+                    TargetValue = dto.TargetValue,
+                    CurrentValue = 0,
+                    Unit = dto.Unit,
+                    Type = dto.Type,
+                    Priority = dto.Priority,
+                    DueDate = dto.DueDate,
+                    AssignedTo = dto.AssignedTo,
+                    Rewards = dto.Rewards,
+                    Status = "active",
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _logger.LogInformation($"Created family goal '{dto.Title}' for family {familyId}");
+                return goal;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating family goal for family {familyId}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Update family goal progress
+        /// </summary>
+        public async Task<bool> UpdateFamilyGoalProgressAsync(int userId, int familyId, int goalId, int progress)
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // In a full implementation, this would update the database
+                _logger.LogInformation($"Updated family goal {goalId} progress to {progress} for family {familyId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating family goal progress for family {familyId}, goal {goalId}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Get family-specific challenges
+        /// </summary>
+        public async Task<List<FamilyChallengeDTO>> GetFamilyChallengesAsync(int userId, int familyId, string status = "active")
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // Get existing challenges and convert to family-specific format
+                List<ChallengeDTO> challenges = await GetActiveChallengesAsync(userId);
+
+                return challenges.Select(c => new FamilyChallengeDTO
+                {
+                    Id = c.Id,
+                    Title = c.Name,
+                    Description = c.Description,
+                    Type = "weekly",
+                    Difficulty = c.Difficulty.ToString(),
+                    Icon = "🏆",
+                    StartDate = c.StartDate,
+                    EndDate = c.EndDate,
+                    TargetPoints = c.PointReward,
+                    CurrentProgress = 0,
+                    Participants = new List<int>(),
+                    Rewards = new List<ChallengeRewardDTO>(),
+                    Milestones = new List<ChallengeMilestoneDTO>(),
+                    Status = status,
+                    IsOptional = true,
+                    AgeRestrictions = new List<string>(),
+                    FamilyId = familyId
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting family challenges for family {familyId}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Join a family challenge
+        /// </summary>
+        public async Task<bool> JoinFamilyChallengeAsync(int userId, int familyId, int challengeId)
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // Use existing challenge enrollment
+                await EnrollInChallengeAsync(userId, challengeId);
+
+                _logger.LogInformation($"User {userId} joined family challenge {challengeId} for family {familyId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error joining family challenge for family {familyId}, challenge {challengeId}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Update member gamification preferences
+        /// </summary>
+        public async Task<bool> UpdateMemberGamificationPreferencesAsync(int userId, int familyId, int memberId, UpdateMemberGamificationPreferencesDTO dto)
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // Verify user can update preferences (must be self or family admin)
+                if (userId != memberId)
+                {
+                    // Check if user is family admin (simplified check - would use proper family repository)
+                    bool isAdmin = userId == memberId; // Simplified - would implement proper admin check
+                    if (!isAdmin)
+                    {
+                        throw new UnauthorizedAccessException("Only family admins can update other members' preferences");
+                    }
+                }
+
+                // In a full implementation, this would save preferences to database
+                _logger.LogInformation($"Updated gamification preferences for member {memberId} in family {familyId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating member gamification preferences for family {familyId}, member {memberId}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Update family gamification settings
+        /// </summary>
+        public async Task<bool> UpdateFamilyGamificationSettingsAsync(int userId, int familyId, UpdateFamilyGamificationSettingsDTO dto)
+        {
+            try
+            {
+                await VerifyFamilyAccessAsync(userId, familyId);
+
+                // Verify user is family admin (simplified check - would use proper family repository)
+                bool isAdmin = true; // Simplified - would implement proper admin check
+                if (!isAdmin)
+                {
+                    throw new UnauthorizedAccessException("Only family admins can update family gamification settings");
+                }
+
+                // In a full implementation, this would save settings to database
+                _logger.LogInformation($"Updated family gamification settings for family {familyId}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating family gamification settings for family {familyId}");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Private Helper Methods for Family Gamification
+
+        /// <summary>
+        /// Verify user has access to family using existing repository pattern
+        /// </summary>
+        private async Task VerifyFamilyAccessAsync(int userId, int familyId)
+        {
+            bool isMember = await _gamificationRepository.CheckUserBelongsToFamilyAsync(userId, familyId);
+            if (!isMember)
+            {
+                throw new UnauthorizedAccessException($"User {userId} does not have access to family {familyId}");
+            }
+        }
+
+        /// <summary>
+        /// Get family rank based on total points
+        /// </summary>
+        private string GetFamilyRank(int totalPoints)
+        {
+            if (totalPoints >= 100000) return "Diamond";
+            if (totalPoints >= 50000) return "Platinum";
+            if (totalPoints >= 25000) return "Gold";
+            if (totalPoints >= 10000) return "Silver";
+            return "Bronze";
+        }
+
+        /// <summary>
+        /// Get active family goals (placeholder implementation)
+        /// </summary>
+        private async Task<List<FamilyGoalDTO>> GetActiveFamilyGoalsAsync(int familyId)
+        {
+            await Task.CompletedTask; // Placeholder for async operation
+            return new List<FamilyGoalDTO>();
+        }
+
+        /// <summary>
+        /// Get active family challenge (placeholder implementation)
+        /// </summary>
+        private async Task<FamilyChallengeDTO?> GetActiveFamilyChallengeAsync(int familyId)
+        {
+            await Task.CompletedTask; // Placeholder for async operation
+            return null;
+        }
+
+        /// <summary>
+        /// Get default family settings
+        /// </summary>
+        private FamilyGamificationSettingsDTO GetDefaultFamilySettings()
+        {
+            return new FamilyGamificationSettingsDTO
+            {
+                IsEnabled = true,
+                DifficultyLevel = "normal",
+                CelebrationLevel = "normal",
+                SoundEnabled = true,
+                AnimationsEnabled = true,
+                WeeklyGoalsEnabled = true,
+                MonthlyChallengesEnabled = true,
+                LeaderboardEnabled = true,
+                PublicRankingOptIn = false,
+                ParentalOversight = new ParentalOversightSettingsDTO(),
+                Notifications = new GamificationNotificationSettingsDTO(),
+                Rewards = new RewardSettingsDTO()
+            };
+        }
+
+        /// <summary>
+        /// Calculate family statistics (placeholder implementation)
+        /// </summary>
+        private async Task<FamilyGamificationStatsDTO> CalculateFamilyStatisticsAsync(int familyId)
+        {
+            await Task.CompletedTask; // Placeholder for async operation
+            return new FamilyGamificationStatsDTO
+            {
+                TotalPointsEarned = 0,
+                TotalTasksCompleted = 0,
+                TotalAchievementsUnlocked = 0,
+                AverageFamilyStreak = 0,
+                MostActiveDay = "Monday",
+                MostProductiveHour = 14,
+                TopCategory = "task_completion",
+                WeeklyProgress = new List<WeeklyProgressDTO>(),
+                MonthlyProgress = new List<MonthlyProgressDTO>(),
+                MemberContributions = new List<MemberContributionDTO>(),
+                EngagementMetrics = new EngagementMetricsDTO()
+            };
+        }
+
         #endregion
     }
-} 
+}

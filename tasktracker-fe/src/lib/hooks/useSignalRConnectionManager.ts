@@ -73,7 +73,7 @@ class SignalRConnectionManager {
   }
 
   updateAuthState(isAuthenticated: boolean, authReady: boolean) {
-    console.log(`🔐 Auth state updated: authenticated=${isAuthenticated}, ready=${authReady}`);
+    console.log(`🔐 Auth state updated: authenticated=${isAuthenticated}, ready=${authReady} (was: auth=${this.isAuthenticated}, ready=${this.authReady})`);
     const wasAuthenticated = this.isAuthenticated;
     this.isAuthenticated = isAuthenticated;
     this.authReady = authReady;
@@ -403,13 +403,19 @@ class SignalRConnectionManager {
 
       console.log(`🔗 Connecting to SignalR hub: ${hubUrl}`);
 
+      // Note: Using HTTP-only cookie authentication (access_token cookie)
+      // JavaScript cannot read HTTP-only cookies, but they're automatically sent via withCredentials: true
+      console.log(`🔐 SignalR auth: Using HTTP-only cookies (access_token) - automatically sent with requests`);
+
       this.connection = new HubConnectionBuilder()
         .withUrl(hubUrl, {
-          withCredentials: true, // Essential for Docker cookie-based auth
+          withCredentials: true, // Essential - automatically sends HTTP-only access_token cookie
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           }
+          // No accessTokenFactory needed - using HTTP-only cookie authentication
+          // The backend reads the access_token cookie automatically
         })
         .withAutomaticReconnect({
           nextRetryDelayInMilliseconds: (retryContext) => {

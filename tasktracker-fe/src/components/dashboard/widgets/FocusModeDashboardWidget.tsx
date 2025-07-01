@@ -9,7 +9,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,11 +52,7 @@ export function FocusModeDashboardWidget({
     weeklyProgress: 0
   });
 
-  useEffect(() => {
-    loadFocusStats();
-  }, [userId]);
-
-  const loadFocusStats = async () => {
+  const loadFocusStats = useCallback(async () => {
     if (!userId) return;
     
     setIsLoading(true);
@@ -77,7 +73,15 @@ export function FocusModeDashboardWidget({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    loadFocusStats();
+  }, [loadFocusStats]);
+  
+  useEffect(() => {
+    loadFocusStats();
+  }, [loadFocusStats]);
 
   const navigateToFocus = () => {
     router.push('/focus');

@@ -405,4 +405,223 @@ export type FocusGestureType = 'swipe_up' | 'swipe_down' | 'swipe_left' | 'swipe
 /**
  * Haptic feedback patterns for different actions
  */
-export type HapticPattern = 'start' | 'pause' | 'resume' | 'complete' | 'distraction' | 'error'; 
+export type HapticPattern = 'start' | 'pause' | 'resume' | 'complete' | 'distraction' | 'error';
+
+// ============================================================================
+// ENHANCED FOCUS SESSION ANALYTICS TYPES
+// ============================================================================
+
+/**
+ * Enhanced focus session statistics for comprehensive analytics
+ */
+export interface FocusSessionStats {
+  totalSessions: number;
+  totalMinutes: number;
+  averageSessionLength: number;
+  currentStreak: number;
+  longestStreak: number;
+  thisWeekSessions: number;
+  thisMonthSessions: number;
+  completionRate: number;
+  mostProductiveHour: number;
+  favoriteTaskCategory: string;
+}
+
+/**
+ * Comprehensive focus session analytics
+ */
+export interface FocusSessionAnalytics {
+  weeklyTrend: FocusWeeklyData[];
+  hourlyDistribution: FocusHourlyData[];
+  categoryBreakdown: FocusCategoryData[];
+  productivityScore: number;
+  improvementSuggestions: string[];
+  achievements: FocusAchievement[];
+}
+
+export interface FocusWeeklyData {
+  week: string;
+  sessions: number;
+  totalMinutes: number;
+  averageLength: number;
+}
+
+export interface FocusHourlyData {
+  hour: number;
+  sessions: number;
+  totalMinutes: number;
+  productivityScore: number;
+}
+
+export interface FocusCategoryData {
+  category: string;
+  sessions: number;
+  totalMinutes: number;
+  averageLength: number;
+  completionRate: number;
+}
+
+export interface FocusAchievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt: Date;
+  category: 'focus' | 'productivity' | 'streak' | 'milestone';
+}
+
+// ================================
+// FOCUS SESSION MANAGEMENT TYPES
+// ================================
+
+/**
+ * Frontend bulk delete request
+ */
+export interface BulkDeleteRequest {
+  sessionIds: number[];
+  confirmationToken?: string;
+}
+
+/**
+ * Backend bulk delete request DTO
+ */
+export interface BulkDeleteRequestDTO {
+  sessionIds: number[];
+  confirmationToken?: string;
+}
+
+/**
+ * Failed deletion info
+ */
+export interface FailedDelete {
+  sessionId: number;
+  reason: string;
+}
+
+/**
+ * Backend failed deletion DTO
+ */
+export interface FailedDeleteDTO {
+  sessionId: number;
+  reason: string;
+}
+
+/**
+ * Frontend bulk delete result
+ */
+export interface BulkDeleteResult {
+  requestedCount: number;
+  successfulDeletes: number[];
+  failedDeletes: FailedDelete[];
+  successCount: number;
+  failedCount: number;
+  successRate: number;
+}
+
+/**
+ * Backend bulk delete result DTO
+ */
+export interface BulkDeleteResultDTO {
+  requestedCount: number;
+  successfulDeletes: number[];
+  failedDeletes: FailedDeleteDTO[];
+  successCount: number;
+  failedCount: number;
+  successRate: number;
+}
+
+/**
+ * Frontend clear history result
+ */
+export interface ClearHistoryResult {
+  deletedSessionCount: number;
+  totalMinutesDeleted: number;
+  totalHoursDeleted: number;
+  dateFilter?: Date;
+  clearedAt: Date;
+}
+
+/**
+ * Backend clear history result DTO
+ */
+export interface ClearHistoryResultDTO {
+  deletedSessionCount: number;
+  totalMinutesDeleted: number;
+  totalHoursDeleted: number;
+  dateFilter?: string; // ISO string
+  clearedAt: string; // ISO string
+}
+
+/**
+ * Frontend focus history export
+ */
+export interface FocusHistoryExport {
+  exportDate: Date;
+  startDate: Date;
+  endDate: Date;
+  totalSessions: number;
+  totalMinutes: number;
+  sessions: FocusSession[];
+  summary: FocusExportSummary;
+  metadata: ExportMetadata;
+}
+
+/**
+ * Backend focus history export DTO
+ */
+export interface FocusHistoryExportDTO {
+  exportDate: string; // ISO string
+  startDate: string; // ISO string
+  endDate: string; // ISO string
+  totalSessions: number;
+  totalMinutes: number;
+  sessions: FocusSessionDTO[];
+  summary: FocusExportSummaryDTO;
+  metadata: ExportMetadataDTO;
+}
+
+/**
+ * Frontend export summary
+ */
+export interface FocusExportSummary {
+  averageSessionLength: number;
+  completedSessions: number;
+  interruptedSessions: number;
+  totalDistractions: number;
+  completionRate: number;
+  mostProductiveDay?: string;
+  totalHours: number;
+}
+
+/**
+ * Backend export summary DTO
+ */
+export interface FocusExportSummaryDTO {
+  averageSessionLength: number;
+  completedSessions: number;
+  interruptedSessions: number;
+  totalDistractions: number;
+  completionRate: number;
+  mostProductiveDay?: string;
+  totalHours: number;
+}
+
+/**
+ * Frontend export metadata
+ */
+export interface ExportMetadata {
+  format: string;
+  version: string;
+  generatedBy: string;
+  includesPersonalData: boolean;
+}
+
+/**
+ * Backend export metadata DTO
+ */
+export interface ExportMetadataDTO {
+  format: string;
+  version: string;
+  generatedBy: string;
+  includesPersonalData: boolean;
+} 

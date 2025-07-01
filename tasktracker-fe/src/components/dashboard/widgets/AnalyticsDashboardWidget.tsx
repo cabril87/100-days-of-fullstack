@@ -9,7 +9,7 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,11 +54,7 @@ export function AnalyticsDashboardWidget({
     weeklyGrowth: 0
   });
 
-  useEffect(() => {
-    loadQuickStats();
-  }, [userId, familyId]);
-
-  const loadQuickStats = async () => {
+  const loadQuickStats = useCallback(async () => {
     if (!userId) return;
     
     setIsLoading(true);
@@ -82,7 +78,11 @@ export function AnalyticsDashboardWidget({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    loadQuickStats();
+  }, [loadQuickStats, familyId]);
 
   const navigateToAnalytics = () => {
     router.push('/analytics');

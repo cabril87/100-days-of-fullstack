@@ -498,6 +498,28 @@ export interface GamificationApiResponse<T> {
   };
 }
 
+/**
+ * Challenge data transfer object from backend API
+ * Basic challenge structure before transformation to FamilyChallenge
+ */
+export interface ChallengeDTO {
+  id: string | number;
+  title?: string;
+  description?: string;
+  icon?: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  targetPoints?: number | string;
+  currentProgress?: number | string;
+  status?: 'active' | 'upcoming' | 'completed' | 'failed';
+  type?: 'weekly' | 'monthly' | 'seasonal' | 'custom';
+  difficulty?: 'easy' | 'medium' | 'hard' | 'expert';
+  ageRestrictions?: string[];
+  isOptional?: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
 export interface GamificationEventPayload {
   eventType: 'achievement_unlocked' | 'level_up' | 'streak_updated' | 'challenge_completed' | 'goal_achieved';
   userId: number;

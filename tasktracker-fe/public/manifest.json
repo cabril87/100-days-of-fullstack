@@ -1,39 +1,121 @@
 {
-  "name": "TaskTracker - Gamified Productivity",
+  "name": "TaskTracker Enterprise",
   "short_name": "TaskTracker",
-  "description": "A gamified task tracker with achievements, rewards, and real-time updates",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
+  "description": "Revolutionary Family Task Management with Comprehensive Gamification Engine",
   "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "display": "standalone",
   "orientation": "portrait-primary",
   "scope": "/",
+  "start_url": "/",
+  "id": "/",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["productivity", "lifestyle", "utilities"],
+  "categories": ["productivity", "business", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your task dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/favicon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks", 
+      "description": "Manage your tasks",
+      "url": "/tasks",
+      "icons": [{ "src": "/favicon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "View your calendar",
+      "url": "/calendar", 
+      "icons": [{ "src": "/favicon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Gamification",
+      "short_name": "Games",
+      "description": "View achievements and rewards",
+      "url": "/gamification",
+      "icons": [{ "src": "/favicon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png", 
       "sizes": "32x32",
-      "type": "image/x-icon",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "/favicon.ico",
+      "src": "/favicon-96x96.png",
+      "sizes": "96x96", 
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-192x192.png",
       "sizes": "192x192",
-      "type": "image/x-icon",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "/favicon.ico",
+      "src": "/favicon-512x512.png",
       "sizes": "512x512",
-      "type": "image/x-icon",
-      "purpose": "any"
+      "type": "image/png",
+      "purpose": "maskable any"
     }
   ],
-  "related_applications": [],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-dashboard.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard view on desktop"
+    },
+    {
+      "src": "/screenshots/mobile-dashboard.png", 
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard view on mobile"
+    }
+  ],
   "prefer_related_applications": false,
-  "edge_side_panel": {
-    "preferred_width": 400
-  }
+  "related_applications": [],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+tasktracker",
+      "url": "/app?task=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/open-task",
+      "accept": {
+        "application/json": [".json"],
+        "text/csv": [".csv"]
+      }
+    }
+  ]
 } 

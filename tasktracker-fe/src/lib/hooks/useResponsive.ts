@@ -1,268 +1,393 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Breakpoint } from '../types/mobile-responsive';
 
 // ================================
-// ENTERPRISE RESPONSIVE SYSTEM
-// Following FAMILY-AUTH-IMPLEMENTATION-CHECKLIST.md Enterprise Standards
+// NAVIGATOR CONNECTION API TYPES
 // ================================
 
-// Import types from lib/types following enterprise file organization
-import type {
-  Breakpoint,
-  Orientation,
-  DeviceType,
-  TouchCapability,
-  ResponsiveState,
-  ResponsiveBreakpoints,
-  UseResponsiveReturn
-} from '@/lib/types/mobile-responsive';
+interface NetworkConnection {
+  effectiveType?: '2g' | '3g' | '4g' | 'slow-2g';
+  downlink?: number;
+  downlinkMax?: number;
+  rtt?: number;
+  saveData?: boolean;
+  type?: 'bluetooth' | 'cellular' | 'ethernet' | 'mixed' | 'none' | 'other' | 'unknown' | 'wifi' | 'wimax';
+}
 
-// ResponsiveState interface imported from types file
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkConnection;
+  mozConnection?: NetworkConnection;
+  webkitConnection?: NetworkConnection;
+}
 
-// Breakpoint definitions (matching Tailwind)
-const BREAKPOINTS: ResponsiveBreakpoints = {
-  xs: 0,
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-  '2xl': 1536,
+// ================================
+// CURSORRULES COMPLIANT DEVICE MATRIX
+// ================================
+
+export const deviceMatrix = {
+  mobile: {
+    small: { width: 320, height: 568 },    // iPhone SE
+    medium: { width: 375, height: 667 },   // iPhone 8, 12 mini
+    large: { width: 414, height: 896 },    // iPhone 11, 12 Pro Max
+    android: { width: 360, height: 640 },  // Galaxy S series
+  },
+  tablet: {
+    ipadMini: { width: 768, height: 1024 }, // iPad Mini
+    ipad: { width: 820, height: 1180 },     // iPad 10.9"
+    ipadAir: { width: 834, height: 1194 },  // iPad Air
+    ipadPro11: { width: 834, height: 1194 }, // iPad Pro 11"
+    ipadPro129: { width: 1024, height: 1366 }, // iPad Pro 12.9"
+    galaxyTab: { width: 800, height: 1280 }, // Galaxy Tab S series
+    galaxyTabPlus: { width: 900, height: 1440 }, // Galaxy Tab S8+
+    galaxyTabUltra: { width: 1180, height: 1680 }, // Galaxy Tab S8 Ultra
+    fire7: { width: 600, height: 1024 },    // Fire 7"
+    fire8: { width: 800, height: 1280 },    // Fire HD 8"
+    fire10: { width: 800, height: 1280 },   // Fire HD 10"
+    fireMax: { width: 1200, height: 2000 }, // Fire Max 11"
+  },
+  desktop: {
+    small: { width: 1024, height: 768 },   // Small laptop
+    medium: { width: 1440, height: 900 },  // MacBook Pro 14"
+    large: { width: 1920, height: 1080 },  // Full HD
+    xl: { width: 2560, height: 1440 },     // 4K displays
+  }
 } as const;
 
-/**
- * Enterprise-grade responsive hook
- * Provides comprehensive device detection and responsive utilities
- */
-export function useResponsive(): UseResponsiveReturn {
-  const [state, setState] = useState<Omit<ResponsiveState, 'isAbove' | 'isBelow' | 'isBetween'>>(() => {
-    // SSR-safe initial state
+// ================================
+// ENTERPRISE RESPONSIVE INTERFACES
+// ================================
+
+export interface ResponsiveState {
+  width: number;
+  height: number;
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
+  orientation: 'portrait' | 'landscape';
+  deviceType: 'mobile' | 'tablet' | 'desktop';
+  breakpoint: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  
+  // Device-specific flags
+  isIPhone: boolean;
+  isIPad: boolean;
+  isAndroid: boolean;
+  isFireTablet: boolean;
+  isGalaxyTab: boolean;
+  
+  // Network & Performance
+  isOnline: boolean;
+  isSlowConnection: boolean;
+  supportsTouch: boolean;
+  maxTouchPoints: number;
+  
+  // Display capabilities
+  pixelRatio: number;
+  colorScheme: 'light' | 'dark';
+  prefersReducedMotion: boolean;
+  supportsHover: boolean;
+  
+  // Responsive utility methods
+  isAbove: (breakpoint: Breakpoint) => boolean;
+  isBelow: (breakpoint: Breakpoint) => boolean;
+  isBetween: (min: Breakpoint, max: Breakpoint) => boolean;
+}
+
+export interface TouchOptimizedStyles {
+  buttonSize: string;
+  touchTarget: string;
+  spacing: string;
+  fontSize: string;
+  borderRadius: string;
+  shadow: string;
+  transition: string;
+  touchClasses: string;
+  animationClasses: string;
+}
+
+// ================================
+// MOBILE-FIRST RESPONSIVE HOOK
+// ================================
+
+export function useResponsive(): ResponsiveState {
+  const [state, setState] = useState<ResponsiveState>(() => {
     if (typeof window === 'undefined') {
       return {
-        breakpoint: 'lg' as Breakpoint,
-        isXs: false,
-        isSm: false,
-        isMd: false,
-        isLg: true,
-        isXl: false,
-        is2Xl: false,
-        deviceType: 'desktop' as DeviceType,
+        width: 1024,
+        height: 768,
         isMobile: false,
         isTablet: false,
         isDesktop: true,
-        width: 1024,
-        height: 768,
-        orientation: 'landscape' as Orientation,
-        isPortrait: false,
-        isLandscape: true,
-        touchCapability: 'no-touch' as TouchCapability,
-        hasTouch: false,
-        hasHover: true,
+        orientation: 'landscape',
+        deviceType: 'desktop',
+        breakpoint: 'lg',
+        isIPhone: false,
+        isIPad: false,
+        isAndroid: false,
+        isFireTablet: false,
+        isGalaxyTab: false,
+        isOnline: true,
+        isSlowConnection: false,
+        supportsTouch: false,
+        maxTouchPoints: 0,
         pixelRatio: 1,
-        isRetina: false,
-        reducedMotion: false,
-        darkMode: false,
+        colorScheme: 'light',
+        prefersReducedMotion: false,
+        supportsHover: true,
+        isAbove: () => false,
+        isBelow: () => false,
+        isBetween: () => false,
       };
     }
 
-    // Calculate initial client-side state inline to avoid circular dependency
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const pixelRatio = window.devicePixelRatio || 1;
-    
-    let breakpoint: Breakpoint = 'xs';
-    if (width >= BREAKPOINTS['2xl']) breakpoint = '2xl';
-    else if (width >= BREAKPOINTS.xl) breakpoint = 'xl';
-    else if (width >= BREAKPOINTS.lg) breakpoint = 'lg';
-    else if (width >= BREAKPOINTS.md) breakpoint = 'md';
-    else if (width >= BREAKPOINTS.sm) breakpoint = 'sm';
-    
-    let deviceType: DeviceType = 'desktop';
-    if (width < BREAKPOINTS.md) deviceType = 'mobile';
-    else if (width < BREAKPOINTS.lg) deviceType = 'tablet';
-    
-    let touchCapability: TouchCapability = 'no-touch';
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const hasHover = window.matchMedia('(hover: hover)').matches;
-    
-    if (hasTouch && hasHover) touchCapability = 'hybrid';
-    else if (hasTouch) touchCapability = 'touch';
-    
-    const orientation: Orientation = height > width ? 'portrait' : 'landscape';
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    return {
-      breakpoint,
-      isXs: breakpoint === 'xs',
-      isSm: breakpoint === 'sm',
-      isMd: breakpoint === 'md',
-      isLg: breakpoint === 'lg',
-      isXl: breakpoint === 'xl',
-      is2Xl: breakpoint === '2xl',
-      deviceType,
-      isMobile: deviceType === 'mobile',
-      isTablet: deviceType === 'tablet',
-      isDesktop: deviceType === 'desktop',
-      width,
-      height,
-      orientation,
-      isPortrait: orientation === 'portrait',
-      isLandscape: orientation === 'landscape',
-      touchCapability,
-      hasTouch,
-      hasHover,
-      pixelRatio,
-      isRetina: pixelRatio > 1,
-      reducedMotion,
-      darkMode,
-    };
+    return getResponsiveState();
   });
 
-  // Get current responsive state
-  const getResponsiveState = useCallback((): Omit<ResponsiveState, 'isAbove' | 'isBelow' | 'isBetween'> => {
-    if (typeof window === 'undefined') {
-      return {
-        breakpoint: 'lg' as Breakpoint,
-        isXs: false,
-        isSm: false,
-        isMd: false,
-        isLg: true,
-        isXl: false,
-        is2Xl: false,
-        deviceType: 'desktop' as DeviceType,
-        isMobile: false,
-        isTablet: false,
-        isDesktop: true,
-        width: 1024,
-        height: 768,
-        orientation: 'landscape' as Orientation,
-        isPortrait: false,
-        isLandscape: true,
-        touchCapability: 'no-touch' as TouchCapability,
-        hasTouch: false,
-        hasHover: true,
-        pixelRatio: 1,
-        isRetina: false,
-        reducedMotion: false,
-        darkMode: false,
-      };
-    }
-
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const pixelRatio = window.devicePixelRatio || 1;
-    
-    // Determine breakpoint
-    let breakpoint: Breakpoint = 'xs';
-    if (width >= BREAKPOINTS['2xl']) breakpoint = '2xl';
-    else if (width >= BREAKPOINTS.xl) breakpoint = 'xl';
-    else if (width >= BREAKPOINTS.lg) breakpoint = 'lg';
-    else if (width >= BREAKPOINTS.md) breakpoint = 'md';
-    else if (width >= BREAKPOINTS.sm) breakpoint = 'sm';
-    
-    // Device type detection
-    let deviceType: DeviceType = 'desktop';
-    if (width < BREAKPOINTS.md) deviceType = 'mobile';
-    else if (width < BREAKPOINTS.lg) deviceType = 'tablet';
-    
-    // Touch capability detection
-    let touchCapability: TouchCapability = 'no-touch';
-    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const hasHover = window.matchMedia('(hover: hover)').matches;
-    
-    if (hasTouch && hasHover) touchCapability = 'hybrid';
-    else if (hasTouch) touchCapability = 'touch';
-    
-    // Orientation
-    const orientation: Orientation = height > width ? 'portrait' : 'landscape';
-    
-    // Motion preferences
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    
-    // Dark mode
-    const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    return {
-      breakpoint,
-      isXs: breakpoint === 'xs',
-      isSm: breakpoint === 'sm',
-      isMd: breakpoint === 'md',
-      isLg: breakpoint === 'lg',
-      isXl: breakpoint === 'xl',
-      is2Xl: breakpoint === '2xl',
-      deviceType,
-      isMobile: deviceType === 'mobile',
-      isTablet: deviceType === 'tablet',
-      isDesktop: deviceType === 'desktop',
-      width,
-      height,
-      orientation,
-      isPortrait: orientation === 'portrait',
-      isLandscape: orientation === 'landscape',
-      touchCapability,
-      hasTouch,
-      hasHover,
-      pixelRatio,
-      isRetina: pixelRatio > 1,
-      reducedMotion,
-      darkMode,
-    };
+  const updateState = useCallback(() => {
+    setState(getResponsiveState());
   }, []);
 
-  // Update state on resize/orientation change
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const updateState = () => {
-      setState(getResponsiveState());
+    // Throttled resize handler for 60fps performance
+    let timeoutId: NodeJS.Timeout;
+    const throttledResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateState, 16); // ~60fps
     };
-
-    // Initial update
-    updateState();
 
     // Event listeners
-    window.addEventListener('resize', updateState);
-    window.addEventListener('orientationchange', updateState);
-    
-    // Media query listeners for preferences
-    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleMotionChange = () => updateState();
-    const handleDarkChange = () => updateState();
-    
-    motionQuery.addEventListener('change', handleMotionChange);
-    darkQuery.addEventListener('change', handleDarkChange);
+    window.addEventListener('resize', throttledResize);
+    window.addEventListener('orientationchange', throttledResize);
+    window.addEventListener('online', updateState);
+    window.addEventListener('offline', updateState);
+
+    // Media query listeners for improved performance
+    const mediaQueries = [
+      window.matchMedia('(max-width: 768px)'),
+      window.matchMedia('(min-width: 769px) and (max-width: 1024px)'),
+      window.matchMedia('(min-width: 1025px)'),
+      window.matchMedia('(orientation: portrait)'),
+      window.matchMedia('(prefers-color-scheme: dark)'),
+      window.matchMedia('(prefers-reduced-motion: reduce)'),
+      window.matchMedia('(hover: hover)'),
+    ];
+
+    mediaQueries.forEach(mq => {
+      if (mq.addEventListener) {
+        mq.addEventListener('change', updateState);
+      } else {
+        // Legacy browsers
+        mq.addListener(updateState);
+      }
+    });
 
     return () => {
-      window.removeEventListener('resize', updateState);
-      window.removeEventListener('orientationchange', updateState);
-      motionQuery.removeEventListener('change', handleMotionChange);
-      darkQuery.removeEventListener('change', handleDarkChange);
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', throttledResize);
+      window.removeEventListener('orientationchange', throttledResize);
+      window.removeEventListener('online', updateState);
+      window.removeEventListener('offline', updateState);
+
+      mediaQueries.forEach(mq => {
+        if (mq.removeEventListener) {
+          mq.removeEventListener('change', updateState);
+        } else {
+          // Legacy browsers
+          mq.removeListener(updateState);
+        }
+      });
     };
-  }, [getResponsiveState]);
+  }, [updateState]);
 
-  // Utility functions
-  const isAbove = useCallback((breakpoint: Breakpoint): boolean => {
-    return state.width >= BREAKPOINTS[breakpoint];
-  }, [state.width]);
+  return state;
+}
 
-  const isBelow = useCallback((breakpoint: Breakpoint): boolean => {
-    return state.width < BREAKPOINTS[breakpoint];
-  }, [state.width]);
+// ================================
+// TOUCH-OPTIMIZED STYLING HOOK
+// ================================
 
-  const isBetween = useCallback((min: Breakpoint, max: Breakpoint): boolean => {
-    return state.width >= BREAKPOINTS[min] && state.width < BREAKPOINTS[max];
-  }, [state.width]);
+export function useTouchOptimized(): TouchOptimizedStyles {
+  const responsive = useResponsive();
 
-  // Memoized final state
-  return useMemo(() => ({
-    ...state,
+  return useMemo(() => {
+    if (responsive.isMobile) {
+      return {
+        buttonSize: 'min-h-[44px] min-w-[44px] px-4 py-2 text-base',
+        touchTarget: 'min-h-[44px] min-w-[44px]',
+        spacing: 'space-y-4 gap-4',
+        fontSize: 'text-base leading-6',
+        borderRadius: 'rounded-lg',
+        shadow: 'shadow-md hover:shadow-lg',
+        transition: 'transition-all duration-200 ease-out',
+        touchClasses: 'select-none touch-manipulation',
+        animationClasses: 'animate-in slide-in-from-bottom-2 duration-300',
+      };
+    }
+
+    if (responsive.isTablet) {
+      return {
+        buttonSize: 'min-h-[48px] min-w-[48px] px-5 py-2.5 text-lg',
+        touchTarget: 'min-h-[48px] min-w-[48px]',
+        spacing: 'space-y-5 gap-5',
+        fontSize: 'text-lg leading-7',
+        borderRadius: 'rounded-xl',
+        shadow: 'shadow-lg hover:shadow-xl',
+        transition: 'transition-all duration-250 ease-out',
+        touchClasses: 'select-none touch-manipulation',
+        animationClasses: 'animate-in slide-in-from-bottom-3 duration-400',
+      };
+    }
+
+    // Desktop
+    return {
+      buttonSize: 'min-h-[40px] min-w-[40px] px-4 py-2 text-sm',
+      touchTarget: 'min-h-[40px] min-w-[40px]',
+      spacing: 'space-y-3 gap-3',
+      fontSize: 'text-sm leading-5',
+      borderRadius: 'rounded-md',
+      shadow: 'shadow hover:shadow-md',
+      transition: 'transition-all duration-150 ease-out',
+      touchClasses: 'select-none',
+      animationClasses: 'animate-in fade-in duration-200',
+    };
+  }, [responsive.isMobile, responsive.isTablet]);
+}
+
+// ================================
+// RESPONSIVE UTILITIES
+// ================================
+
+export function getBreakpoint(width: number): 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' {
+  if (width < 640) return 'xs';
+  if (width < 768) return 'sm';
+  if (width < 1024) return 'md';
+  if (width < 1280) return 'lg';
+  if (width < 1536) return 'xl';
+  return '2xl';
+}
+
+export function getDeviceType(width: number): 'mobile' | 'tablet' | 'desktop' {
+  if (width <= 768) return 'mobile';
+  if (width <= 1024) return 'tablet';
+  return 'desktop';
+}
+
+export function detectDeviceModel(userAgent: string): string {
+  if (/iPhone/.test(userAgent)) {
+    if (/iPhone SE/.test(userAgent)) return 'iPhone SE';
+    if (/iPhone 1[2-9]/.test(userAgent)) return 'iPhone 12+';
+    return 'iPhone';
+  }
+  
+  if (/iPad/.test(userAgent)) {
+    if (/iPad Pro/.test(userAgent)) return 'iPad Pro';
+    if (/iPad Air/.test(userAgent)) return 'iPad Air';
+    if (/iPad mini/.test(userAgent)) return 'iPad Mini';
+    return 'iPad';
+  }
+  
+  if (/Android/.test(userAgent)) {
+    if (/Galaxy Tab/.test(userAgent)) return 'Galaxy Tab';
+    if (/Fire/.test(userAgent)) return 'Fire Tablet';
+    return 'Android Device';
+  }
+  
+  return 'Unknown Device';
+}
+
+// ================================
+// HELPER FUNCTIONS
+// ================================
+
+function getResponsiveState(): ResponsiveState {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const userAgent = navigator.userAgent;
+  
+  // Device type detection
+  const deviceType = getDeviceType(width);
+  const isMobile = deviceType === 'mobile';
+  const isTablet = deviceType === 'tablet';
+  const isDesktop = deviceType === 'desktop';
+  
+  // Orientation
+  const orientation = width > height ? 'landscape' : 'portrait';
+  
+  // Breakpoint
+  const breakpoint = getBreakpoint(width);
+  
+  // Device-specific flags
+  const isIPhone = /iPhone/.test(userAgent);
+  const isIPad = /iPad/.test(userAgent);
+  const isAndroid = /Android/.test(userAgent) && !/iPad/.test(userAgent);
+  const isFireTablet = /Fire/.test(userAgent);
+  const isGalaxyTab = /Galaxy Tab/.test(userAgent);
+  
+  // Network & Performance - FIXED: No more any types
+  const isOnline = navigator.onLine;
+  const navigatorWithConnection = navigator as NavigatorWithConnection;
+  const connection = navigatorWithConnection.connection || navigatorWithConnection.mozConnection || navigatorWithConnection.webkitConnection;
+  const isSlowConnection = connection?.effectiveType === '2g' || connection?.effectiveType === 'slow-2g' || false;
+  
+  // Touch capabilities
+  const supportsTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const maxTouchPoints = navigator.maxTouchPoints || 0;
+  
+  // Display capabilities
+  const pixelRatio = window.devicePixelRatio || 1;
+  const colorScheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const supportsHover = window.matchMedia('(hover: hover)').matches;
+
+  // Breakpoint comparison utility functions
+  const breakpointOrder: Breakpoint[] = ['xs', 'sm', 'md', 'lg', 'xl', '2xl'];
+  const currentIndex = breakpointOrder.indexOf(breakpoint);
+  
+  const isAbove = (targetBreakpoint: Breakpoint): boolean => {
+    const targetIndex = breakpointOrder.indexOf(targetBreakpoint);
+    return currentIndex > targetIndex;
+  };
+  
+  const isBelow = (targetBreakpoint: Breakpoint): boolean => {
+    const targetIndex = breakpointOrder.indexOf(targetBreakpoint);
+    return currentIndex < targetIndex;
+  };
+  
+  const isBetween = (minBreakpoint: Breakpoint, maxBreakpoint: Breakpoint): boolean => {
+    const minIndex = breakpointOrder.indexOf(minBreakpoint);
+    const maxIndex = breakpointOrder.indexOf(maxBreakpoint);
+    return currentIndex >= minIndex && currentIndex <= maxIndex;
+  };
+
+  return {
+    width,
+    height,
+    isMobile,
+    isTablet,
+    isDesktop,
+    orientation,
+    deviceType,
+    breakpoint,
+    isIPhone,
+    isIPad,
+    isAndroid,
+    isFireTablet,
+    isGalaxyTab,
+    isOnline,
+    isSlowConnection,
+    supportsTouch,
+    maxTouchPoints,
+    pixelRatio,
+    colorScheme,
+    prefersReducedMotion,
+    supportsHover,
     isAbove,
     isBelow,
     isBetween,
-  }), [state, isAbove, isBelow, isBetween]);
+  };
 }
 
 /**
@@ -309,31 +434,6 @@ export function useBreakpointConditional() {
     showAbove: (breakpoint: Breakpoint) => responsive.isAbove(breakpoint),
     showBelow: (breakpoint: Breakpoint) => responsive.isBelow(breakpoint),
     showBetween: (min: Breakpoint, max: Breakpoint) => responsive.isBetween(min, max),
-  };
-}
-
-/**
- * Hook for touch-optimized interactions
- */
-export function useTouchOptimized() {
-  const { hasTouch, touchCapability, reducedMotion } = useResponsive();
-  
-  return {
-    // Touch-specific classes
-    touchClasses: hasTouch ? 'touch-manipulation select-none' : '',
-    
-    // Button sizes
-    buttonSize: hasTouch ? 'min-h-[44px] min-w-[44px]' : 'min-h-[32px] min-w-[32px]',
-    
-    // Animation preferences
-    animationClasses: reducedMotion ? 'motion-reduce:transition-none' : 'transition-all duration-200',
-    
-    // Touch capabilities
-    touchCapability,
-    hasTouch,
-    
-    // Gesture support
-    supportsGestures: touchCapability === 'touch' || touchCapability === 'hybrid',
   };
 }
 

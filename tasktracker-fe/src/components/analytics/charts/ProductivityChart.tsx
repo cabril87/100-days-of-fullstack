@@ -22,26 +22,25 @@ export function ProductivityChart({
   timeRange,
   className 
 }: ProductivityChartProps) {
-  const {
-    productivityScore,
-    efficiencyRating,
-    averageFocusTime,
-    focusSessionsCompleted,
-    peakProductivityHours,
-    productivityTrends
-  } = data;
+  // Defensive programming - ensure all properties have fallback values
+  const productivityScore = data?.productivityScore ?? 0;
+  const efficiencyRating = data?.efficiencyRating ?? 0;
+  const averageFocusTime = data?.averageFocusTime ?? 'N/A';
+  const focusSessionsCompleted = data?.focusSessionsCompleted ?? 0;
+  const peakProductivityHours = data?.peakProductivityHours ?? [];
+  const productivityTrends = data?.productivityTrends ?? {};
 
   // Convert productivity trends to array for visualization
   const dataPoints = Object.entries(productivityTrends).map(([key, value]) => ({
     label: key,
-    value: value,
+    value: value ?? 0,
     date: new Date(key)
   })).sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const maxValue = Math.max(...dataPoints.map(d => d.value));
+  const maxValue = Math.max(...dataPoints.map(d => d.value), 1); // Ensure maxValue is at least 1
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className ?? ''}`}>
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-4 text-center">
         <div className="space-y-1">
@@ -62,22 +61,28 @@ export function ProductivityChart({
       <div className="space-y-2">
         <h4 className="text-sm font-medium">Productivity Trends ({timeRange})</h4>
         <div className="space-y-1">
-          {dataPoints.slice(-7).map((point, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="text-xs w-16 text-muted-foreground">
-                {point.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </span>
-              <div className="flex-1">
-                <Progress 
-                  value={maxValue > 0 ? (point.value / maxValue) * 100 : 0} 
-                  className="h-3"
-                />
+          {dataPoints.length > 0 ? (
+            dataPoints.slice(-7).map((point, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="text-xs w-16 text-muted-foreground">
+                  {point.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+                <div className="flex-1">
+                  <Progress 
+                    value={maxValue > 0 ? (point.value / maxValue) * 100 : 0} 
+                    className="h-3"
+                  />
+                </div>
+                <span className="text-xs w-8 text-right font-medium">
+                  {point.value.toFixed(0)}
+                </span>
               </div>
-              <span className="text-xs w-8 text-right font-medium">
-                {point.value.toFixed(0)}
-              </span>
+            ))
+          ) : (
+            <div className="text-center text-muted-foreground py-4">
+              <p className="text-xs">No productivity trend data available</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 

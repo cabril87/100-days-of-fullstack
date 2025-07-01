@@ -147,6 +147,10 @@ export default function TaskSelectionModal({
       // Use real taskService API - get recent tasks (includes all accessible tasks)
       const apiTasks = await taskService.getRecentTasks(50); // Get up to 50 tasks
       
+      // DEBUG: Log what tasks are available for this user
+      console.log('🔍 TaskSelection: Available tasks for user:', apiTasks);
+      console.log('🔍 TaskSelection: Task IDs available:', apiTasks.map(t => `ID: ${t.id}, Title: "${t.title}"`));
+      
       // Transform from Task[] to TaskItem[] with proper mapping
       const transformedTasks: TaskItem[] = apiTasks.map(transformTaskToTaskItem);
       
@@ -306,20 +310,73 @@ export default function TaskSelectionModal({
       ) : (
         <div className="space-y-2">
           {suggestions.map((suggestion, index) => (
-            <div key={index} className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Star className="h-4 w-4 text-yellow-500" />
-                <span className="font-medium text-sm">{suggestion.reason}</span>
+            <button
+              key={index}
+              onClick={() => handleTaskSelect(suggestion.task)}
+              className={cn(
+                "w-full p-4 text-left rounded-lg border-2 transition-all duration-200 hover:shadow-md",
+                selectedTask?.id === suggestion.task.id
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/10 dark:to-blue-900/10 hover:border-gray-300 dark:hover:border-gray-600"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  {/* ✅ AI SUGGESTION BADGE */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <Badge className="text-xs bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 border-yellow-300">
+                      {suggestion.reason.replace('_', ' ').toUpperCase()} SUGGESTION
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Score: {Math.round(suggestion.score * 100)}%
+                    </Badge>
+                  </div>
+
+                  {/* ✅ TASK INFORMATION */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-medium text-sm truncate">
+                      {suggestion.task.title}
+                    </h4>
+                    {isTaskOverdue(suggestion.task) && (
+                      <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  
+                  {suggestion.task.description && (
+                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
+                      {suggestion.task.description}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={cn("text-xs", getPriorityColor(suggestion.task.priority))}>
+                      {suggestion.task.priority}
+                    </Badge>
+                    
+                    <Badge variant="outline" className="text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {suggestion.estimatedFocusTime}m focus
+                    </Badge>
+                    
+                    {suggestion.task.categoryName && (
+                      <Badge variant="outline" className="text-xs">
+                        {suggestion.task.categoryName}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex-shrink-0">
+                  <Target className="h-4 w-4 text-gray-400" />
+                </div>
               </div>
-                             <p className="text-xs text-gray-600 dark:text-gray-400">
-                 Estimated focus time: {suggestion.estimatedFocusTime} minutes
-               </p>
-            </div>
+            </button>
           ))}
         </div>
       )}
     </div>
-  ), [suggestions]);
+  ), [suggestions, selectedTask, handleTaskSelect, getPriorityColor, isTaskOverdue]);
 
   // ============================================================================
   // MAIN RENDER

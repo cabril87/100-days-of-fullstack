@@ -282,12 +282,19 @@ export function UserAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(userAnalytics.taskAnalytics.tasksByPriority).map(([priority, count]) => (
-                  <div key={priority} className="flex items-center justify-between">
-                    <span className="capitalize">{priority}</span>
-                    <Badge variant="outline">{count}</Badge>
-                  </div>
-                ))}
+                {userAnalytics.taskAnalytics.tasksByPriority ? 
+                  Object.entries(userAnalytics.taskAnalytics.tasksByPriority).map(([priority, count]) => (
+                    <div key={priority} className="flex items-center justify-between">
+                      <span className="capitalize">{priority}</span>
+                      <Badge variant="outline">{count}</Badge>
+                    </div>
+                  ))
+                  : (
+                    <div className="text-center text-muted-foreground">
+                      No priority data available
+                    </div>
+                  )
+                }
               </div>
             </CardContent>
           </Card>
@@ -299,12 +306,19 @@ export function UserAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(userAnalytics.taskAnalytics.tasksByCategory).map(([category, count]) => (
-                  <div key={category} className="flex items-center justify-between">
-                    <span className="capitalize">{category}</span>
-                    <Badge variant="outline">{count}</Badge>
-                  </div>
-                ))}
+                {userAnalytics.taskAnalytics.tasksByCategory ? 
+                  Object.entries(userAnalytics.taskAnalytics.tasksByCategory).map(([category, count]) => (
+                    <div key={category} className="flex items-center justify-between">
+                      <span className="capitalize">{category}</span>
+                      <Badge variant="outline">{count}</Badge>
+                    </div>
+                  ))
+                  : (
+                    <div className="text-center text-muted-foreground">
+                      No category data available
+                    </div>
+                  )
+                }
               </div>
             </CardContent>
           </Card>

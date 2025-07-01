@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Target } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
-import { useSwipeNavigation, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
+import { useCommonGestures, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 
 // Types following enterprise standards
 import type {
@@ -44,8 +44,10 @@ export default function AppleCalendarView({
   const { touchClasses, buttonSize } = useTouchOptimized();
   
   // Swipe navigation for mobile view switching
-  const { gestureRef } = useSwipeNavigation(
-    () => {
+  const gestureRef = useRef<HTMLElement | null>(null);
+  
+  useCommonGestures({
+    onSwipeLeft: () => {
       // Swipe left - next view/period
       if (responsive.isMobile) {
         triggerHapticFeedback('light');
@@ -65,7 +67,7 @@ export default function AppleCalendarView({
         onDateSelect(nextDate);
       }
     },
-    () => {
+    onSwipeRight: () => {
       // Swipe right - previous view/period
       if (responsive.isMobile) {
         triggerHapticFeedback('light');
@@ -85,7 +87,7 @@ export default function AppleCalendarView({
         onDateSelect(prevDate);
       }
     }
-  );
+  });
 
   console.log('🔍 AppleCalendarView: Received props:', {
     viewType,
@@ -95,8 +97,7 @@ export default function AppleCalendarView({
     events: events.map(e => ({ id: e.id, title: e.title, startDate: e.startDate })),
     responsive: {
       isMobile: responsive.isMobile,
-      breakpoint: responsive.breakpoint,
-      hasTouch: responsive.hasTouch
+      breakpoint: responsive.breakpoint
     }
   });
 
@@ -196,7 +197,7 @@ export default function AppleCalendarView({
                 onClick={(e) => {
                   // Single click to open side sheet with day content
                   e.preventDefault();
-                  if (responsive.hasTouch) {
+                  if (responsive.isMobile) {
                     triggerHapticFeedback('light');
                   }
                   handleDateClick(day.date);
@@ -252,7 +253,7 @@ export default function AppleCalendarView({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (responsive.hasTouch) {
+                        if (responsive.isMobile) {
                           triggerHapticFeedback('light');
                         }
                         handleEventClick(event);
@@ -363,7 +364,7 @@ export default function AppleCalendarView({
                   }
                 )}
                 onClick={() => {
-                  if (responsive.hasTouch) {
+                  if (responsive.isMobile) {
                     triggerHapticFeedback('light');
                   }
                   handleDateClick(day.date);

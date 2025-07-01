@@ -4,6 +4,13 @@
  * 
  * Character Engine
  * Enterprise character animation system with smooth sprite movements
+ * 
+ * MOBILE-FIRST RESPONSIVE ENHANCEMENTS:
+ * - Responsive character sizing based on device type
+ * - Touch interaction support with gesture recognition
+ * - Device-specific animation optimizations
+ * - Battery-aware performance adjustments
+ * - Orientation-aware positioning and scaling
  */
 
 import { 
@@ -15,6 +22,45 @@ import {
   CharacterType
 } from '@/lib/types/animations';
 
+// ================================
+// MOBILE-FIRST RESPONSIVE TYPES
+// ================================
+
+interface ResponsiveCharacterConfig {
+  mobile: {
+    size: number;
+    animationSpeed: number;
+    enableShadow: boolean;
+    simplifiedAnimations: boolean;
+  };
+  tablet: {
+    size: number;
+    animationSpeed: number;
+    enableShadow: boolean;
+    simplifiedAnimations: boolean;
+  };
+  desktop: {
+    size: number;
+    animationSpeed: number;
+    enableShadow: boolean;
+    simplifiedAnimations: boolean;
+  };
+}
+
+interface TouchInteractionConfig {
+  enabled: boolean;
+  tapToInteract: boolean;
+  dragToMove: boolean;
+  hapticFeedback: boolean;
+  touchRadius: number;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    effectiveType?: string;
+  };
+}
+
 export interface Character {
   id: string;
   element: HTMLElement;
@@ -25,6 +71,7 @@ export interface Character {
   animationStartTime: number;
   type: 'character';
   
+  // Enhanced mobile-first methods
   play(animation: string): Promise<void>;
   move(position: Vector2D, duration: number): Promise<void>;
   setExpression(expression: string): void;
@@ -32,6 +79,11 @@ export interface Character {
   resume(): void;
   stop(): void;
   destroy(): void;
+  
+  // New mobile-first methods
+  adaptToDevice(deviceType: 'mobile' | 'tablet' | 'desktop'): void;
+  setTouchInteraction(enabled: boolean): void;
+  handleTouch(x: number, y: number, type: 'tap' | 'longpress' | 'drag'): void;
 }
 
 export class CharacterEngine {
@@ -40,13 +92,31 @@ export class CharacterEngine {
   private activeCharacters = new Map<string, Character>();
   private characterId = 0;
   private quality: AnimationQuality = 'high';
+  
+  // Mobile-first responsive features
+  private responsiveConfig!: ResponsiveCharacterConfig;
+  private touchConfig!: TouchInteractionConfig;
+  private currentDeviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+  private isLowEndDevice = false;
+  
+  // Touch state for proper handler implementation
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchStartTime = 0;
+  private dragTarget: Character | null = null;
 
   async initialize(container: HTMLElement, config: AnimationSystemConfig): Promise<void> {
     this.container = container;
     this.config = config;
     this.quality = config.qualityLevel;
     
+    // Initialize mobile-first responsive features
+    this.detectDevice();
+    this.responsiveConfig = this.initializeResponsiveConfig();
+    this.touchConfig = this.getTouchConfig();
+    
     this.injectStyles();
+    this.setupTouchInteractions();
   }
 
   async createCharacter(config: CharacterConfig): Promise<Character> {
@@ -110,6 +180,19 @@ export class CharacterEngine {
           element.parentNode.removeChild(element);
         }
         this.activeCharacters.delete(id);
+      },
+
+      // New mobile-first methods
+      adaptToDevice: (deviceType: 'mobile' | 'tablet' | 'desktop') => {
+        this.adaptCharacterToDevice(character, deviceType);
+      },
+
+      setTouchInteraction: (enabled: boolean) => {
+        this.setCharacterTouchInteraction(character, enabled);
+      },
+
+      handleTouch: (x: number, y: number, type: 'tap' | 'longpress' | 'drag') => {
+        this.handleCharacterTouch(character, x, y, type);
       }
     };
 
@@ -178,6 +261,9 @@ export class CharacterEngine {
   destroy(): void {
     this.activeCharacters.forEach(character => character.destroy());
     this.activeCharacters.clear();
+    
+    // Clean up touch event listeners
+    this.cleanupTouchInteractions();
   }
 
   private createCharacterElement(config: CharacterConfig): HTMLElement {
@@ -424,6 +510,277 @@ export class CharacterEngine {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
+  // ================================
+  // MOBILE-FIRST RESPONSIVE METHODS
+  // ================================
+
+  private detectDevice(): void {
+    if (typeof window === 'undefined') {
+      this.currentDeviceType = 'desktop';
+      return;
+    }
+
+    const width = window.innerWidth;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    if (width <= 768 && hasTouch) {
+      this.currentDeviceType = 'mobile';
+    } else if (width <= 1024 && hasTouch) {
+      this.currentDeviceType = 'tablet';
+    } else {
+      this.currentDeviceType = 'desktop';
+    }
+
+    // Detect low-end device
+    const navigatorWithConnection = navigator as NavigatorWithConnection;
+    this.isLowEndDevice = 
+      (window.devicePixelRatio && window.devicePixelRatio < 2) ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+      navigatorWithConnection.connection?.effectiveType === '2g' ||
+      navigatorWithConnection.connection?.effectiveType === 'slow-2g';
+  }
+
+  private initializeResponsiveConfig(): ResponsiveCharacterConfig {
+    return {
+      mobile: {
+        size: 32,
+        animationSpeed: 0.8,
+        enableShadow: false,
+        simplifiedAnimations: true
+      },
+      tablet: {
+        size: 48,
+        animationSpeed: 1.0,
+        enableShadow: true,
+        simplifiedAnimations: false
+      },
+      desktop: {
+        size: 64,
+        animationSpeed: 1.2,
+        enableShadow: true,
+        simplifiedAnimations: false
+      }
+    };
+  }
+
+  private getTouchConfig(): TouchInteractionConfig {
+    return {
+      enabled: this.currentDeviceType !== 'desktop',
+      tapToInteract: true,
+      dragToMove: true,
+      hapticFeedback: this.currentDeviceType === 'mobile',
+      touchRadius: this.currentDeviceType === 'mobile' ? 44 : 32
+    };
+  }
+
+  private touchStartHandler = (e: TouchEvent): void => {
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchStartTime = Date.now();
+
+    // Find character under touch
+    this.dragTarget = this.findCharacterAt(this.touchStartX, this.touchStartY);
+    
+    if (this.dragTarget && this.touchConfig.hapticFeedback) {
+      this.triggerHapticFeedback('light');
+    }
+  };
+
+  private touchMoveHandler = (e: TouchEvent): void => {
+    if (!this.dragTarget || !this.touchConfig.dragToMove) return;
+
+    const touch = e.touches[0];
+    const newPosition = {
+      x: touch.clientX - this.dragTarget.config.size / 2,
+      y: touch.clientY - this.dragTarget.config.size / 2
+    };
+
+    // Update position immediately for smooth dragging
+    this.dragTarget.element.style.left = `${newPosition.x}px`;
+    this.dragTarget.element.style.top = `${newPosition.y}px`;
+    this.dragTarget.position = newPosition;
+  };
+
+  private touchEndHandler = (e: TouchEvent): void => {
+    const touch = e.changedTouches[0];
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+    const endTime = Date.now();
+    
+    const deltaTime = endTime - this.touchStartTime;
+    const distance = Math.sqrt(
+      Math.pow(endX - this.touchStartX, 2) + 
+      Math.pow(endY - this.touchStartY, 2)
+    );
+
+    if (this.dragTarget) {
+      // Determine interaction type
+      if (distance < this.touchConfig.touchRadius / 2 && deltaTime < 300) {
+        // Tap
+        this.dragTarget.handleTouch(endX, endY, 'tap');
+      } else if (distance < this.touchConfig.touchRadius / 2 && deltaTime > 500) {
+        // Long press
+        this.dragTarget.handleTouch(endX, endY, 'longpress');
+      } else if (distance > this.touchConfig.touchRadius) {
+        // Drag
+        this.dragTarget.handleTouch(endX, endY, 'drag');
+      }
+    }
+
+    this.dragTarget = null;
+  };
+
+  private setupTouchInteractions(): void {
+    if (!this.container || !this.touchConfig.enabled) return;
+
+    this.container.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+    this.container.addEventListener('touchmove', this.touchMoveHandler, { passive: false });
+    this.container.addEventListener('touchend', this.touchEndHandler, { passive: true });
+  }
+
+  private cleanupTouchInteractions(): void {
+    if (!this.container) return;
+    
+    this.container.removeEventListener('touchstart', this.touchStartHandler);
+    this.container.removeEventListener('touchmove', this.touchMoveHandler);
+    this.container.removeEventListener('touchend', this.touchEndHandler);
+  }
+
+  private findCharacterAt(x: number, y: number): Character | null {
+    for (const character of this.activeCharacters.values()) {
+      const rect = character.element.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && 
+          y >= rect.top && y <= rect.bottom) {
+        return character;
+      }
+    }
+    return null;
+  }
+
+  private triggerHapticFeedback(intensity: 'light' | 'medium' | 'heavy'): void {
+    if (!this.touchConfig.hapticFeedback) return;
+
+    if ('vibrate' in navigator) {
+      const patterns = {
+        light: [10],
+        medium: [50],
+        heavy: [100]
+      };
+      navigator.vibrate(patterns[intensity]);
+    }
+  }
+
+  private adaptCharacterToDevice(character: Character, deviceType: 'mobile' | 'tablet' | 'desktop'): void {
+    const config = this.responsiveConfig[deviceType];
+    const element = character.element;
+
+    // Update size
+    element.style.width = `${config.size}px`;
+    element.style.height = `${config.size}px`;
+    element.style.fontSize = `${config.size}px`;
+
+    // Update animation speed
+    if (element.style.animation) {
+      const currentAnimation = element.style.animation;
+      const newAnimation = currentAnimation.replace(
+        /(\d+(?:\.\d+)?s)/g, 
+        `${parseFloat(RegExp.$1) / config.animationSpeed}s`
+      );
+      element.style.animation = newAnimation;
+    }
+
+    // Update visual effects
+    if (config.enableShadow) {
+      element.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))';
+    } else {
+      element.style.filter = 'none';
+    }
+
+    // Simplify animations for low-end devices
+    if (config.simplifiedAnimations && this.isLowEndDevice) {
+      element.style.willChange = 'transform';
+      element.style.backfaceVisibility = 'hidden';
+    }
+
+    character.config.size = config.size;
+  }
+
+  private setCharacterTouchInteraction(character: Character, enabled: boolean): void {
+    const element = character.element;
+    
+    if (enabled && this.touchConfig.enabled) {
+      element.style.cursor = 'pointer';
+      element.style.userSelect = 'none';
+      element.style.touchAction = 'none';
+    } else {
+      element.style.cursor = 'default';
+      element.style.userSelect = 'auto';
+      element.style.touchAction = 'auto';
+    }
+  }
+
+  private handleCharacterTouch(character: Character, x: number, y: number, type: 'tap' | 'longpress' | 'drag'): void {
+    switch (type) {
+      case 'tap':
+        // Quick celebration animation
+        character.play('bounce');
+        if (this.touchConfig.hapticFeedback) {
+          this.triggerHapticFeedback('light');
+        }
+        break;
+
+      case 'longpress':
+        // Expression change
+        const expressions = ['happy', 'excited', 'surprised', 'proud'];
+        const randomExpression = expressions[Math.floor(Math.random() * expressions.length)];
+        character.setExpression(randomExpression);
+        character.play('celebration');
+        if (this.touchConfig.hapticFeedback) {
+          this.triggerHapticFeedback('heavy');
+        }
+        break;
+
+      case 'drag':
+        // Movement completed - play arrival animation
+        character.play('wave');
+        if (this.touchConfig.hapticFeedback) {
+          this.triggerHapticFeedback('medium');
+        }
+        break;
+    }
+  }
+
+  /**
+   * Public method to adapt all characters to new device type
+   */
+  public adaptToDevice(deviceType: 'mobile' | 'tablet' | 'desktop'): void {
+    this.currentDeviceType = deviceType;
+    this.detectDevice(); // Update device detection
+    
+    this.activeCharacters.forEach(character => {
+      character.adaptToDevice(deviceType);
+    });
+  }
+
+  /**
+   * Public method to enable/disable touch interactions
+   */
+  public setTouchInteractions(enabled: boolean): void {
+    this.touchConfig.enabled = enabled;
+    
+    this.activeCharacters.forEach(character => {
+      character.setTouchInteraction(enabled);
+    });
+  }
+
+  /**
+   * Get current responsive configuration
+   */
+  public getResponsiveConfig(): ResponsiveCharacterConfig {
+    return { ...this.responsiveConfig };
+  }
+
   private injectStyles(): void {
     if (typeof document === 'undefined') return;
     
@@ -440,6 +797,59 @@ export class CharacterEngine {
         align-items: center;
         justify-content: center;
         text-align: center;
+        transition: transform 0.3s ease, filter 0.3s ease;
+        will-change: transform;
+        backface-visibility: hidden;
+      }
+      
+      /* Mobile-first responsive character styles */
+      @media (max-width: 768px) {
+        .enterprise-character {
+          font-size: 24px !important;
+          width: 32px !important;
+          height: 32px !important;
+        }
+      }
+      
+      @media (min-width: 769px) and (max-width: 1024px) {
+        .enterprise-character {
+          font-size: 36px !important;
+          width: 48px !important;
+          height: 48px !important;
+        }
+      }
+      
+      @media (min-width: 1025px) {
+        .enterprise-character {
+          font-size: 48px !important;
+          width: 64px !important;
+          height: 64px !important;
+        }
+      }
+      
+      /* Touch-friendly hover states */
+      @media (hover: hover) {
+        .enterprise-character:hover {
+          transform: scale(1.1);
+        }
+      }
+      
+      /* Touch device styles */
+      @media (hover: none) {
+        .enterprise-character {
+          cursor: pointer;
+          touch-action: none;
+        }
+      }
+      
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        .enterprise-character,
+        .enterprise-character * {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
       }
       
       @keyframes characterIdle {

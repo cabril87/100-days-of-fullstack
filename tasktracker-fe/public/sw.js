@@ -1,1 +1,575 @@
-if(!self.define){let i,s={};const e=(e,t)=>(e=new URL(e+".js",t).href,s[e]||new Promise((s=>{if("document"in self){const i=document.createElement("script");i.src=e,i.onload=s,document.head.appendChild(i)}else i=e,importScripts(e),s()})).then((()=>{let i=s[e];if(!i)throw new Error(`Module ${e} didn’t register its module`);return i})));self.define=(t,c)=>{const a=i||("document"in self?document.currentScript.src:"")||location.href;if(s[a])return;let n={};const r=i=>e(i,a),d={module:{uri:a},exports:n,require:r};s[a]=Promise.all(t.map((i=>d[i]||r(i)))).then((i=>(c(...i),n)))}}define(["./workbox-cb477421"],(function(i){"use strict";importScripts(),self.skipWaiting(),i.clientsClaim(),i.precacheAndRoute([{url:"/_next/app-build-manifest.json",revision:"8d74f188eb7edccfba596e74e31bb4fb"},{url:"/_next/static/796O8G2-U05OidKiPrKSv/_buildManifest.js",revision:"6cbf761374a7b206be50a3678657cb40"},{url:"/_next/static/796O8G2-U05OidKiPrKSv/_ssgManifest.js",revision:"b6652df95db52feb4daf4eca35380933"},{url:"/_next/static/chunks/1071-d38c2041c95aa1bc.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1148-50691536994519c3.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1377-9c742a8e74df2140.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1432-42e9ec5922904c19.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1468-ef1edcbac1bc07e5.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1684-91425e4294502296.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/1896-b01ca4f5377a44f1.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/192-daacdb6aade84145.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/2270-a17be5819b7c6a9f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/2305-34db9b1672577f22.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/238-703274574971e15c.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/2423-8b687f6d097c6ed5.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/2887-f7371de3def2b1cc.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/2898-70ae7d8c45a24d9f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/302-7abf4a9f3ebdd16c.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/303-68a38cfdcd2854c4.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3129-4607fa7c6562f5ff.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3352-89e569d179b38d12.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3499-422241ab95af7f06.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3652-b9713daa920981a0.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3657-79fc169fbebdd631.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3685-a41ec6608a31d8aa.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/3758-c7a01d1c79c0c64e.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/377-43867f246037f4c7.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4145-e53636e5825f50c2.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4233-3fd4846945358bbd.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4277-262222c28407ed8a.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4591-47f2f00ebbc87605.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4652-cd1075102568493f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/472.2c08b965bd9148e2.js",revision:"2c08b965bd9148e2"},{url:"/_next/static/chunks/4907-53a393e95d32cc24.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/4bd1b696-b913e92d5365458e.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5241-4bfa99256c8c0291.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5261-f432764a2b72273f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5324-8b60ad5ca4d78e80.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5406-ba21bc5c78c01a97.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5421-2ea486774439e080.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5650-610877f2ff2204bf.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/5814-7d8e7a7056f75031.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/6022-d2be93ea08dfceb1.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/6220-d137faa7302848d6.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/627-6e139c007ee08ef8.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/6420-56b382906e4eda90.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/6625-d639f5580e1c6d9a.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/6874-179161e2a141c8e0.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/710-0540a607bc1764d3.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/7340-b81f95356c4053be.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/7342-850034f47db57578.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/7806-c1e6fcefaf03ce81.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/7838-9d57baed379a633f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/8034-1fad477fdcea87ba.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/8263-5bdacb3fa6127f9e.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/8413-1d1c55b7e7c5b48a.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/861-80d75855d793ce7c.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/8626-84f8cd03ce1d5240.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/8786-c753a548a0318e58.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/884-1efd63ca04aa2920.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/913-aa956bbc4e7301f9.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/9131-f8ce3dc2a0087230.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/9189-d881a538121e24fc.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/9341.3ca6eb08eac1d97b.js",revision:"3ca6eb08eac1d97b"},{url:"/_next/static/chunks/9536.fd28f56244f9f08d.js",revision:"fd28f56244f9f08d"},{url:"/_next/static/chunks/9781-6acab0913c8c94f4.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/9882-a71941de8cd35e8f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/9909-4e917ce24d8d6e73.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/_not-found/page-b08a3ec984ac8ddf.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/about/page-d2e163a55d024e40.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/admin/family-seeding/page-23a6009884996c61.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/admin/page-8b156f4aa576220b.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/admin/support/page-7fdc05a65a80fb48.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/admin/user-creation/page-76b96fbc571b0a75.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/analytics/page-46603c51094040af.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/auth/cookie-test/page-386be3456c329c18.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/auth/forgot-password/page-1550efe8acbe3fd0.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/auth/login/page-cd64824ca08b6f85.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/auth/register/page-269bcd3598a151e9.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/auth/reset-password/page-7fa919b93e574c27.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/blog/page-f7cd2e8b1466a34d.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/boards/%5Bid%5D/page-f1584f706808b0e4.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/boards/page-1752f920fc997fe8.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/boards/templates/page-66f24c31ec75f3ed.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/calendar/page-70c6839f4edb2d70.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/contact/page-9545e11e74ba76dd.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/dashboard/page-1ebbc9e6b3c4d24f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/families/page-e4b8315bb1d13ae9.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/family/%5Bid%5D/page-4638e34611652102.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/family/%5Bid%5D/tasks/page-edd7fe3257b2cb20.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/features/page-220b6774e0322887.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/focus/page-cefef25e94ae5d52.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/gamification/page-3f91557385148daf.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/layout-41ca67ddf9d62d5a.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/notifications/page-fdfa365223b4fb09.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/page-1b0fce48b9d11b89.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/pricing/page-dc63536c0bc19a8e.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/privacy/page-79b6db63bd1cc3f5.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/search/page-0f2d1375dfd6504f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/appearance/page-c353726cf4fbda24.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/family/page-8c5aebe5923ce211.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/notifications/page-2b7111cac9e84310.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/page-dadb7d3c2a2c32e9.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/profile/page-d242255c3a6c3cd8.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/settings/security/page-4a515b11cf4d437f.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/support/page-0cbfa2f7ad1d272d.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/tasks/%5Bid%5D/page-5db367773527172c.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/tasks/page-4d25b34297892ffb.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/app/terms/page-72cc406c4a019038.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/framework-82b67a6346ddd02b.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/main-app-894074a7efe17b15.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/main-d448ffa5718daec6.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/pages/_app-0b0b6e26a728d49c.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/pages/_error-f94192b14105bd76.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/chunks/polyfills-42372ed130431b0a.js",revision:"846118c33b2c0e922d7b3a7676f81f6f"},{url:"/_next/static/chunks/webpack-a1dbd45413cb3b58.js",revision:"796O8G2-U05OidKiPrKSv"},{url:"/_next/static/css/57904a6f4ef63a9c.css",revision:"57904a6f4ef63a9c"},{url:"/_next/static/css/931b179cff3131dc.css",revision:"931b179cff3131dc"},{url:"/_next/static/media/26a46d62cd723877-s.woff2",revision:"befd9c0fdfa3d8a645d5f95717ed6420"},{url:"/_next/static/media/55c55f0601d81cf3-s.woff2",revision:"43828e14271c77b87e3ed582dbff9f74"},{url:"/_next/static/media/581909926a08bbc8-s.woff2",revision:"f0b86e7c24f455280b8df606b89af891"},{url:"/_next/static/media/8e9860b6e62d6359-s.woff2",revision:"01ba6c2a184b8cba08b0d57167664d75"},{url:"/_next/static/media/97e0cb1ae144a2a9-s.woff2",revision:"e360c61c5bd8d90639fd4503c829c2dc"},{url:"/_next/static/media/df0a9ae256c0569c-s.woff2",revision:"d54db44de5ccb18886ece2fda72bdfe0"},{url:"/_next/static/media/e4af272ccee01ff0-s.p.woff2",revision:"65850a373e258f1c897a2b3d75eb74de"},{url:"/clear-cache.html",revision:"7dbfbc88dbcdefae087e7d75324d6549"},{url:"/favicon.ico",revision:"c30c7d42707a47a3f4591831641e50dc"},{url:"/favicon.svg",revision:"fcd56a0d6a997888e9077cde2847c1f6"},{url:"/file.svg",revision:"d09f95206c3fa0bb9bd9fefabfd0ea71"},{url:"/globe.svg",revision:"2aaafa6a49b6563925fe440891e32717"},{url:"/manifest.json",revision:"7188641baf80a13fd90c1f195f393467"},{url:"/next.svg",revision:"8e061864f388b47f33a1c3780831193e"},{url:"/vercel.svg",revision:"c0af2f507b369b085b35ef4bbe3bcf1e"},{url:"/window.svg",revision:"a2760511c65806022ad20adf74370ff3"}],{ignoreURLParametersMatching:[]}),i.cleanupOutdatedCaches(),i.registerRoute("/",new i.NetworkFirst({cacheName:"start-url",plugins:[{cacheWillUpdate:async({request:i,response:s,event:e,state:t})=>s&&"opaqueredirect"===s.type?new Response(s.body,{status:200,statusText:"OK",headers:s.headers}):s}]}),"GET"),i.registerRoute(/^https?.*/,new i.NetworkFirst({cacheName:"offlineCache",plugins:[new i.ExpirationPlugin({maxEntries:200})]}),"GET")}));
+/*
+ * Copyright (c) 2025 TaskTracker Enterprise
+ * Enterprise Service Worker
+ * 
+ * BULLETPROOF CACHE MANAGEMENT SYSTEM
+ * - Environment-specific caching strategies
+ * - Intelligent cache versioning
+ * - Background cache updates
+ * - Performance monitoring
+ * - Zero cache conflicts
+ */
+
+// ================================
+// ENTERPRISE CACHE CONFIGURATION
+// ================================
+
+const CACHE_VERSION = '1.0.0';
+const BUILD_ID = '{{BUILD_ID}}'; // Replaced during build
+const ENV_MODE = '{{ENV_MODE}}'; // Replaced during build
+const IS_DEVELOPMENT = ENV_MODE === 'development';
+
+// Cache Names with Versioning
+const CACHE_NAMES = {
+  PAGES: `tasktracker-pages-${BUILD_ID}`,
+  API: `tasktracker-api-${BUILD_ID}`,
+  STATIC: `tasktracker-static-${BUILD_ID}`,
+  IMAGES: `tasktracker-images-${BUILD_ID}`,
+  CSS: `tasktracker-css-${BUILD_ID}`,
+  JS: `tasktracker-js-${BUILD_ID}`
+};
+
+// Environment-Specific Cache TTL (in seconds)
+const CACHE_TTL = IS_DEVELOPMENT ? {
+  PAGES: 300,    // 5 minutes
+  API: 60,       // 1 minute  
+  STATIC: 600,   // 10 minutes
+  IMAGES: 1800,  // 30 minutes
+  CSS: 300,      // 5 minutes
+  JS: 600        // 10 minutes
+} : {
+  PAGES: 86400,    // 24 hours
+  API: 3600,       // 1 hour
+  STATIC: 2592000, // 30 days
+  IMAGES: 2592000, // 30 days
+  CSS: 2592000,    // 30 days
+  JS: 2592000      // 30 days
+};
+
+// Cache Strategies
+const CACHE_STRATEGIES = {
+  CACHE_FIRST: 'CacheFirst',
+  NETWORK_FIRST: 'NetworkFirst',
+  STALE_WHILE_REVALIDATE: 'StaleWhileRevalidate',
+  NETWORK_ONLY: 'NetworkOnly'
+};
+
+// Route Patterns and Strategies
+const ROUTE_STRATEGIES = [
+  // CSS Files - Critical for styling
+  {
+    pattern: /\.css$/i,
+    strategy: IS_DEVELOPMENT ? CACHE_STRATEGIES.NETWORK_FIRST : CACHE_STRATEGIES.STALE_WHILE_REVALIDATE,
+    cacheName: CACHE_NAMES.CSS,
+    ttl: CACHE_TTL.CSS,
+    priority: 'high'
+  },
+  
+  // JavaScript Files
+  {
+    pattern: /\.js$/i,
+    strategy: IS_DEVELOPMENT ? CACHE_STRATEGIES.NETWORK_FIRST : CACHE_STRATEGIES.CACHE_FIRST,
+    cacheName: CACHE_NAMES.JS,
+    ttl: CACHE_TTL.JS,
+    priority: 'high'
+  },
+  
+  // Images
+  {
+    pattern: /\.(png|jpg|jpeg|gif|svg|webp|avif|ico)$/i,
+    strategy: CACHE_STRATEGIES.CACHE_FIRST,
+    cacheName: CACHE_NAMES.IMAGES,
+    ttl: CACHE_TTL.IMAGES,
+    priority: 'low'
+  },
+  
+  // API Routes
+  {
+    pattern: /^https?:\/\/[^\/]*\/api\//,
+    strategy: CACHE_STRATEGIES.NETWORK_FIRST,
+    cacheName: CACHE_NAMES.API,
+    ttl: CACHE_TTL.API,
+    priority: 'high'
+  },
+  
+  // Static Next.js Assets
+  {
+    pattern: /\/_next\/static\//,
+    strategy: IS_DEVELOPMENT ? CACHE_STRATEGIES.NETWORK_FIRST : CACHE_STRATEGIES.CACHE_FIRST,
+    cacheName: CACHE_NAMES.STATIC,
+    ttl: CACHE_TTL.STATIC,
+    priority: 'medium'
+  },
+  
+  // Pages
+  {
+    pattern: /^https?:\/\/[^\/]*\/(?!api|_next)/,
+    strategy: IS_DEVELOPMENT ? CACHE_STRATEGIES.NETWORK_FIRST : CACHE_STRATEGIES.STALE_WHILE_REVALIDATE,
+    cacheName: CACHE_NAMES.PAGES,
+    ttl: CACHE_TTL.PAGES,
+    priority: 'medium'
+  }
+];
+
+// ================================
+// PERFORMANCE METRICS
+// ================================
+
+let cacheMetrics = {
+  cacheHits: 0,
+  cacheMisses: 0,
+  networkRequests: 0,
+  errors: 0,
+  lastUpdated: new Date().toISOString()
+};
+
+// ================================
+// UTILITY FUNCTIONS
+// ================================
+
+function log(message, ...args) {
+  if (IS_DEVELOPMENT) {
+    console.log(`[SW ${CACHE_VERSION}] ${message}`, ...args);
+  }
+}
+
+function getRouteStrategy(url) {
+  for (const route of ROUTE_STRATEGIES) {
+    if (route.pattern.test(url)) {
+      return route;
+    }
+  }
+  
+  // Default strategy
+  return {
+    strategy: IS_DEVELOPMENT ? CACHE_STRATEGIES.NETWORK_FIRST : CACHE_STRATEGIES.STALE_WHILE_REVALIDATE,
+    cacheName: CACHE_NAMES.PAGES,
+    ttl: CACHE_TTL.PAGES,
+    priority: 'low'
+  };
+}
+
+function isExpired(response, ttl) {
+  if (!response || !response.headers) return true;
+  
+  const dateHeader = response.headers.get('date');
+  if (!dateHeader) return true;
+  
+  const cacheDate = new Date(dateHeader);
+  const now = new Date();
+  const age = (now.getTime() - cacheDate.getTime()) / 1000;
+  
+  return age > ttl;
+}
+
+async function cleanupExpiredCache(cacheName, ttl) {
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    
+    let cleanedCount = 0;
+    
+    for (const request of keys) {
+      const response = await cache.match(request);
+      if (response && isExpired(response, ttl)) {
+        await cache.delete(request);
+        cleanedCount++;
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      log(`Cleaned ${cleanedCount} expired entries from ${cacheName}`);
+    }
+  } catch (error) {
+    log(`Error cleaning cache ${cacheName}:`, error);
+  }
+}
+
+async function addResponseToCache(cacheName, request, response, ttl) {
+  try {
+    const cache = await caches.open(cacheName);
+    
+    // Clone response before caching
+    const responseToCache = response.clone();
+    
+    // Add cache timestamp header
+    const headers = new Headers(responseToCache.headers);
+    headers.set('sw-cached-at', new Date().toISOString());
+    headers.set('sw-ttl', ttl.toString());
+    
+    const modifiedResponse = new Response(responseToCache.body, {
+      status: responseToCache.status,
+      statusText: responseToCache.statusText,
+      headers
+    });
+    
+    await cache.put(request, modifiedResponse);
+    log(`Cached: ${request.url} in ${cacheName}`);
+    
+  } catch (error) {
+    log(`Error caching ${request.url}:`, error);
+  }
+}
+
+function postMessage(type, data) {
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({ type, data });
+    });
+  });
+}
+
+// ================================
+// CACHE STRATEGIES IMPLEMENTATION
+// ================================
+
+async function cacheFirstStrategy(request, routeConfig) {
+  const { cacheName, ttl } = routeConfig;
+  
+  try {
+    // Try cache first
+    const cache = await caches.open(cacheName);
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse && !isExpired(cachedResponse, ttl)) {
+      cacheMetrics.cacheHits++;
+      log(`Cache hit: ${request.url}`);
+      return cachedResponse;
+    }
+    
+    // If not in cache or expired, fetch from network
+    const networkResponse = await fetch(request);
+    cacheMetrics.networkRequests++;
+    
+    if (networkResponse.ok) {
+      await addResponseToCache(cacheName, request, networkResponse, ttl);
+    }
+    
+    return networkResponse;
+    
+  } catch (error) {
+    cacheMetrics.errors++;
+    log(`CacheFirst error for ${request.url}:`, error);
+    
+    // Return stale cache if network fails
+    const cache = await caches.open(cacheName);
+    const staleResponse = await cache.match(request);
+    return staleResponse || new Response('Offline', { status: 503 });
+  }
+}
+
+async function networkFirstStrategy(request, routeConfig) {
+  const { cacheName, ttl } = routeConfig;
+  
+  try {
+    // Try network first
+    const networkResponse = await fetch(request);
+    cacheMetrics.networkRequests++;
+    
+    if (networkResponse.ok) {
+      await addResponseToCache(cacheName, request, networkResponse, ttl);
+      return networkResponse;
+    }
+    
+    throw new Error(`Network response not ok: ${networkResponse.status}`);
+    
+  } catch (error) {
+    cacheMetrics.errors++;
+    log(`Network error for ${request.url}, trying cache:`, error);
+    
+    // Fallback to cache
+    const cache = await caches.open(cacheName);
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse) {
+      cacheMetrics.cacheHits++;
+      log(`Cache fallback: ${request.url}`);
+      return cachedResponse;
+    }
+    
+    cacheMetrics.cacheMisses++;
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+async function staleWhileRevalidateStrategy(request, routeConfig) {
+  const { cacheName, ttl } = routeConfig;
+  
+  try {
+    const cache = await caches.open(cacheName);
+    const cachedResponse = await cache.match(request);
+    
+    // Always try to fetch in background
+    const networkPromise = fetch(request).then(async (response) => {
+      cacheMetrics.networkRequests++;
+      if (response.ok) {
+        await addResponseToCache(cacheName, request, response, ttl);
+        
+        // Notify clients of updated content
+        postMessage('CACHE_UPDATED', {
+          url: request.url,
+          cacheName
+        });
+      }
+      return response;
+    }).catch(error => {
+      cacheMetrics.errors++;
+      log(`Background fetch error for ${request.url}:`, error);
+      return null;
+    });
+    
+    // Return cached version immediately if available
+    if (cachedResponse) {
+      cacheMetrics.cacheHits++;
+      log(`Stale cache served: ${request.url}`);
+      
+      // Don't await network promise - let it update in background
+      networkPromise;
+      
+      return cachedResponse;
+    }
+    
+    // If no cache, wait for network
+    const networkResponse = await networkPromise;
+    return networkResponse || new Response('Offline', { status: 503 });
+    
+  } catch (error) {
+    cacheMetrics.errors++;
+    log(`StaleWhileRevalidate error for ${request.url}:`, error);
+    return new Response('Error', { status: 500 });
+  }
+}
+
+async function networkOnlyStrategy(request) {
+  try {
+    const response = await fetch(request);
+    cacheMetrics.networkRequests++;
+    return response;
+  } catch (error) {
+    cacheMetrics.errors++;
+    log(`NetworkOnly error for ${request.url}:`, error);
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+// ================================
+// SERVICE WORKER EVENT HANDLERS
+// ================================
+
+self.addEventListener('install', (event) => {
+  log(`Installing Service Worker version ${CACHE_VERSION}`);
+  
+  if (IS_DEVELOPMENT) {
+    // In development, take control immediately
+    self.skipWaiting();
+  }
+  
+  event.waitUntil(
+    Promise.all([
+      // Pre-cache critical resources
+      caches.open(CACHE_NAMES.STATIC).then(cache => {
+        const criticalUrls = [
+          '/',
+          '/manifest.json',
+          '/_next/static/css/app.css' // Adjust based on your CSS file structure
+        ];
+        
+        return cache.addAll(criticalUrls.filter(url => url)).catch(error => {
+          log('Pre-cache failed:', error);
+        });
+      }),
+      
+      // Initialize metrics
+      Promise.resolve().then(() => {
+        cacheMetrics.lastUpdated = new Date().toISOString();
+        log('Service Worker installed successfully');
+      })
+    ])
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  log(`Activating Service Worker version ${CACHE_VERSION}`);
+  
+  event.waitUntil(
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
+        const validCacheNames = Object.values(CACHE_NAMES);
+        
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (!validCacheNames.includes(cacheName)) {
+              log(`Deleting old cache: ${cacheName}`);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      
+      // Take control of all clients
+      self.clients.claim()
+    ])
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = request.url;
+  
+  // Skip non-GET requests
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Skip cross-origin requests (unless explicitly allowed)
+  if (!url.startsWith(self.location.origin) && !url.includes('/api/')) {
+    return;
+  }
+  
+  // Skip requests with cache-control: no-cache
+  if (request.headers.get('cache-control') === 'no-cache') {
+    log(`Skipping no-cache request: ${url}`);
+    return;
+  }
+  
+  const routeConfig = getRouteStrategy(url);
+  
+  log(`Handling ${routeConfig.strategy} for: ${url}`);
+  
+  event.respondWith(
+    (async () => {
+      try {
+        switch (routeConfig.strategy) {
+          case CACHE_STRATEGIES.CACHE_FIRST:
+            return await cacheFirstStrategy(request, routeConfig);
+            
+          case CACHE_STRATEGIES.NETWORK_FIRST:
+            return await networkFirstStrategy(request, routeConfig);
+            
+          case CACHE_STRATEGIES.STALE_WHILE_REVALIDATE:
+            return await staleWhileRevalidateStrategy(request, routeConfig);
+            
+          case CACHE_STRATEGIES.NETWORK_ONLY:
+            return await networkOnlyStrategy(request);
+            
+          default:
+            return await networkFirstStrategy(request, routeConfig);
+        }
+      } catch (error) {
+        cacheMetrics.errors++;
+        log(`Fetch handler error for ${url}:`, error);
+        
+        // Try to return any cached version as last resort
+        const cache = await caches.open(routeConfig.cacheName);
+        const cachedResponse = await cache.match(request);
+        
+        return cachedResponse || new Response('Service Worker Error', { 
+          status: 500,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+    })()
+  );
+});
+
+self.addEventListener('message', (event) => {
+  const { type, data } = event.data;
+  
+  switch (type) {
+    case 'REQUEST_METRICS':
+      cacheMetrics.lastUpdated = new Date().toISOString();
+      event.ports[0]?.postMessage({
+        type: 'CACHE_METRICS',
+        data: cacheMetrics
+      });
+      break;
+      
+    case 'CLEAR_CACHE':
+      event.waitUntil(
+        caches.keys().then(cacheNames => {
+          return Promise.all(
+            cacheNames.map(cacheName => caches.delete(cacheName))
+          );
+        }).then(() => {
+          event.ports[0]?.postMessage({
+            type: 'CACHE_CLEARED',
+            data: { success: true }
+          });
+        })
+      );
+      break;
+      
+    case 'CLEANUP_EXPIRED':
+      event.waitUntil(
+        Promise.all(
+          ROUTE_STRATEGIES.map(route => 
+            cleanupExpiredCache(route.cacheName, route.ttl)
+          )
+        ).then(() => {
+          event.ports[0]?.postMessage({
+            type: 'CLEANUP_COMPLETED',
+            data: { success: true }
+          });
+        })
+      );
+      break;
+      
+    case 'WARM_CACHE':
+      event.waitUntil(
+        (async () => {
+          const urls = data?.urls || [
+            '/',
+            '/dashboard',
+            '/tasks',
+            '/calendar',
+            '/gamification'
+          ];
+          
+          const cache = await caches.open(CACHE_NAMES.PAGES);
+          
+          for (const url of urls) {
+            try {
+              const response = await fetch(url);
+              if (response.ok) {
+                await cache.put(url, response);
+                log(`Warmed cache for: ${url}`);
+              }
+            } catch (error) {
+              log(`Failed to warm cache for ${url}:`, error);
+            }
+          }
+          
+          event.ports[0]?.postMessage({
+            type: 'CACHE_WARMED',
+            data: { success: true, urls }
+          });
+        })()
+      );
+      break;
+  }
+});
+
+// ================================
+// BACKGROUND SYNC & CLEANUP
+// ================================
+
+// Periodic cache cleanup (every 6 hours)
+setInterval(() => {
+  if (!IS_DEVELOPMENT) {
+    Promise.all(
+      ROUTE_STRATEGIES.map(route => 
+        cleanupExpiredCache(route.cacheName, route.ttl)
+      )
+    ).then(() => {
+      log('Periodic cache cleanup completed');
+    });
+  }
+}, 6 * 60 * 60 * 1000);
+
+// Send metrics update every 5 minutes
+setInterval(() => {
+  postMessage('CACHE_METRICS', cacheMetrics);
+}, 5 * 60 * 1000);
+
+log(`Service Worker ${CACHE_VERSION} loaded (${IS_DEVELOPMENT ? 'development' : 'production'} mode)`); 

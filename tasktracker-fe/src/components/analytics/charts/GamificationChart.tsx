@@ -18,25 +18,32 @@ export function GamificationChart({
   timeRange,
   className 
 }: GamificationChartProps) {
-  const { 
-    totalPoints, 
-    currentLevel, 
-    currentStreak, 
-    longestStreak,
-    badgesEarned,
-    achievementsUnlocked,
-    pointsHistory,
-    levelProgress 
-  } = data;
+  // Defensive programming: Handle undefined data with fallback values
+  const safeLevelProgress = data?.levelProgress || {
+    currentPoints: 0,
+    pointsToNextLevel: 100,
+    progressPercentage: 0
+  };
+
+  const safeData = {
+    totalPoints: data?.totalPoints ?? 0,
+    currentLevel: data?.currentLevel ?? 1,
+    currentStreak: data?.currentStreak ?? 0,
+    longestStreak: data?.longestStreak ?? 0,
+    badgesEarned: data?.badgesEarned ?? 0,
+    achievementsUnlocked: data?.achievementsUnlocked ?? 0,
+    pointsHistory: data?.pointsHistory ?? {},
+    levelProgress: safeLevelProgress
+  };
 
   // Convert points history to array for visualization
-  const pointsData = Object.entries(pointsHistory).map(([key, value]) => ({
+  const pointsData = Object.entries(safeData.pointsHistory).map(([key, value]) => ({
     label: key,
-    value: value,
+    value: typeof value === 'number' ? value : 0,
     date: new Date(key)
   })).sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const maxPoints = Math.max(...pointsData.map(d => d.value));
+  const maxPoints = pointsData.length > 0 ? Math.max(...pointsData.map(d => d.value)) : 100;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -44,15 +51,15 @@ export function GamificationChart({
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <h4 className="text-sm font-medium">Level Progress</h4>
-          <Badge variant="default">Level {currentLevel}</Badge>
+          <Badge variant="default">Level {safeData.currentLevel}</Badge>
         </div>
         <div className="space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{levelProgress.currentPoints} points</span>
-            <span>{levelProgress.pointsToNextLevel} to next level</span>
+            <span>{safeData.levelProgress.currentPoints} points</span>
+            <span>{safeData.levelProgress.pointsToNextLevel} to next level</span>
           </div>
           <Progress 
-            value={levelProgress.progressPercentage} 
+            value={safeData.levelProgress.progressPercentage} 
             className="h-3"
           />
         </div>
@@ -61,19 +68,19 @@ export function GamificationChart({
       {/* Gamification Stats Grid */}
       <div className="grid grid-cols-2 gap-4 text-center">
         <div className="space-y-1">
-          <p className="text-xl font-bold text-yellow-600">{totalPoints.toLocaleString()}</p>
+          <p className="text-xl font-bold text-yellow-600">{safeData.totalPoints.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground">Total Points</p>
         </div>
         <div className="space-y-1">
-          <p className="text-xl font-bold text-purple-600">{badgesEarned}</p>
+          <p className="text-xl font-bold text-purple-600">{safeData.badgesEarned}</p>
           <p className="text-xs text-muted-foreground">Badges Earned</p>
         </div>
         <div className="space-y-1">
-          <p className="text-xl font-bold text-green-600">{currentStreak}</p>
+          <p className="text-xl font-bold text-green-600">{safeData.currentStreak}</p>
           <p className="text-xs text-muted-foreground">Current Streak</p>
         </div>
         <div className="space-y-1">
-          <p className="text-xl font-bold text-blue-600">{achievementsUnlocked}</p>
+          <p className="text-xl font-bold text-blue-600">{safeData.achievementsUnlocked}</p>
           <p className="text-xs text-muted-foreground">Achievements</p>
         </div>
       </div>
@@ -106,16 +113,16 @@ export function GamificationChart({
         <h4 className="text-sm font-medium">Streak Performance</h4>
         <div className="flex justify-between items-center p-2 bg-muted rounded-lg">
           <div className="text-center">
-            <p className="text-sm font-bold">{currentStreak}</p>
+            <p className="text-sm font-bold">{safeData.currentStreak}</p>
             <p className="text-xs text-muted-foreground">Current</p>
           </div>
           <div className="text-center">
-            <p className="text-sm font-bold text-orange-600">{longestStreak}</p>
+            <p className="text-sm font-bold text-orange-600">{safeData.longestStreak}</p>
             <p className="text-xs text-muted-foreground">Best Ever</p>
           </div>
           <div className="text-center">
             <p className="text-sm font-bold">
-              {currentStreak >= longestStreak ? '🔥' : currentStreak > 0 ? '⚡' : '💤'}
+              {safeData.currentStreak >= safeData.longestStreak ? '🔥' : safeData.currentStreak > 0 ? '⚡' : '💤'}
             </p>
             <p className="text-xs text-muted-foreground">Status</p>
           </div>
@@ -126,20 +133,20 @@ export function GamificationChart({
       <div className="space-y-2">
         <h4 className="text-sm font-medium">Achievement Insights</h4>
         <div className="space-y-1 text-xs text-muted-foreground">
-          {currentStreak >= longestStreak && currentStreak > 0 && (
+          {safeData.currentStreak >= safeData.longestStreak && safeData.currentStreak > 0 && (
             <p className="text-green-600">🏆 New personal best streak! Keep it going!</p>
           )}
-          {currentStreak >= 7 && (
+          {safeData.currentStreak >= 7 && (
             <p className="text-blue-600">🔥 On fire! 1 week streak achieved</p>
           )}
-          {currentStreak >= 30 && (
+          {safeData.currentStreak >= 30 && (
             <p className="text-purple-600">🚀 Incredible dedication! 30+ day streak</p>
           )}
-          {levelProgress.progressPercentage > 80 && (
-            <p className="text-yellow-600">⭐ Almost leveled up! {levelProgress.pointsToNextLevel} points to go</p>
+          {safeData.levelProgress.progressPercentage > 80 && (
+            <p className="text-yellow-600">⭐ Almost leveled up! {safeData.levelProgress.pointsToNextLevel} points to go</p>
           )}
-          {badgesEarned > 10 && (
-            <p className="text-indigo-600">🎖️ Badge collector! {badgesEarned} badges earned</p>
+          {safeData.badgesEarned > 10 && (
+            <p className="text-indigo-600">🎖️ Badge collector! {safeData.badgesEarned} badges earned</p>
           )}
         </div>
       </div>

@@ -456,7 +456,7 @@ export const WidgetConfigurationSchema = z.object({
     height: z.number().min(1)
   }),
   isVisible: z.boolean(),
-  settings: z.record(z.any()),
+  settings: z.record(z.union([z.string(), z.number(), z.boolean()])),
   permissions: WidgetPermissionsSchema
 });
 
@@ -490,7 +490,7 @@ export const GamificationEventPayloadSchema = z.object({
   eventType: z.enum(['achievement_unlocked', 'level_up', 'streak_updated', 'challenge_completed', 'goal_achieved']),
   userId: z.number().min(1),
   familyId: z.number().min(1),
-  data: z.record(z.any()),
+  data: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])),
   timestamp: z.date(),
   shouldNotifyFamily: z.boolean(),
   celebrationLevel: z.enum(['minimal', 'normal', 'festive'])

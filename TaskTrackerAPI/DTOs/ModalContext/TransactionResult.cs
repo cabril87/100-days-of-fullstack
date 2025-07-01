@@ -114,7 +114,7 @@ namespace TaskTrackerAPI.DTOs.ModalContext
         /// <summary>
         /// Result of previous operations in the transaction
         /// </summary>
-        public object Result { get; set; } = new();
+        public string Result { get; set; } = string.Empty;
         
         /// <summary>
         /// Timestamp when the transaction started

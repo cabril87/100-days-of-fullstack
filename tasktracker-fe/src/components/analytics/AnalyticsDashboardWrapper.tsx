@@ -8,9 +8,10 @@
  * found in the LICENSE file in the root directory of this source tree.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useUser } from '@/lib/hooks/useUserWithFamily';
 import { useAnalytics } from '@/lib/hooks/useAnalytics';
+import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { UserAnalyticsDashboard } from './UserAnalyticsDashboard';
 import { AdminAnalyticsDashboard } from './AdminAnalyticsDashboard';
 import { analyticsService } from '@/lib/services/analyticsService';
@@ -26,25 +27,71 @@ import {
   Clock,
   Download
 } from 'lucide-react';
-import { AnalyticsDashboardWrapperProps } from '@/lib/types/analytics';
+import { AnalyticsDashboardWrapperProps } from '@/lib/types/analytics-components';
+import { BackendGamificationEventDTO, BackendTaskCompletionEventDTO } from '@/lib/types/backend-signalr-events';
 
 type TimeRange = '7d' | '30d' | '90d' | '1y';
 type DashboardMode = 'user' | 'family' | 'admin';
 
-export function AnalyticsDashboardWrapper({ className }: AnalyticsDashboardWrapperProps) {
+export function AnalyticsDashboardWrapper({ 
+  className,
+  userId: propUserId,
+  familyId: propFamilyId,
+  showPersonalData = true,
+  showFamilyData = true,
+  showAdminData = true,
+  timeRange = 'month' // Available for future use
+}: AnalyticsDashboardWrapperProps) {
   const { user, selectedFamily, isGlobalAdmin } = useUser();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Use props or fallback to user context
+  const userId = propUserId || user?.id;
+  const familyId = propFamilyId || selectedFamily?.id;
+
+  // Convert timeRange format for compatibility
+  const convertTimeRange = (range: 'week' | 'month' | 'quarter' | 'year'): TimeRange => {
+    switch (range) {
+      case 'week': return '7d';
+      case 'month': return '30d';
+      case 'quarter': return '90d';
+      case 'year': return '1y';
+      default: return '30d';
+    }
+  };
+
   // Initialize analytics with proper state management
   const analytics = useAnalytics({
-    userId: user?.id,
-    familyId: selectedFamily?.id,
+    userId: userId,
+    familyId: familyId,
     isAdmin: isGlobalAdmin,
-    initialTimeRange: '30d',
-    initialMode: selectedFamily ? 'family' : 'user'
+    initialTimeRange: convertTimeRange(timeRange),
+    initialMode: familyId ? 'family' : 'user'
   });
 
-  const hasFamilyAccess = selectedFamily != null;
+  // Real-time analytics updates via SignalR
+  const handleGamificationEvent = useCallback((event: BackendGamificationEventDTO) => {
+    console.log('🎮 Real-time gamification event in analytics:', event);
+    // Refresh analytics data when gamification events occur
+    analytics.refreshData();
+  }, [analytics]);
+
+  const handleTaskCompletion = useCallback((event: BackendTaskCompletionEventDTO) => {
+    console.log('✅ Real-time task completion in analytics:', event);
+    // Refresh analytics data when tasks are completed
+    analytics.refreshData();
+  }, [analytics]);
+
+  // Keep SignalR connection alive for real-time analytics updates
+  useSignalRConnectionManager('analytics-dashboard', {
+    onReceiveGamificationEvent: handleGamificationEvent,
+    onReceiveTaskCompletionEvent: handleTaskCompletion,
+    onReceiveFamilyTaskCompletion: handleTaskCompletion,
+    onConnected: () => console.log('📡 Analytics dashboard connected to SignalR'),
+    onDisconnected: () => console.log('📡 Analytics dashboard disconnected from SignalR'),
+  });
+
+  const hasFamilyAccess = (familyId != null) && showFamilyData;
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -139,11 +186,17 @@ export function AnalyticsDashboardWrapper({ className }: AnalyticsDashboardWrapp
 
       {/* Dashboard Tabs */}
       <Tabs value={analytics.dashboardMode} onValueChange={(value) => analytics.setDashboardMode(value as DashboardMode)}>
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-3">
-          <TabsTrigger value="user" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Personal
-          </TabsTrigger>
+        <TabsList className={`grid w-full ${
+          [showPersonalData, hasFamilyAccess, isGlobalAdmin && showAdminData].filter(Boolean).length === 1 ? 'grid-cols-1' :
+          [showPersonalData, hasFamilyAccess, isGlobalAdmin && showAdminData].filter(Boolean).length === 2 ? 'grid-cols-2' :
+          'grid-cols-3'
+        }`}>
+          {showPersonalData && (
+            <TabsTrigger value="user" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Personal
+            </TabsTrigger>
+          )}
           
           {hasFamilyAccess && (
             <TabsTrigger value="family" className="flex items-center gap-2">
@@ -152,7 +205,7 @@ export function AnalyticsDashboardWrapper({ className }: AnalyticsDashboardWrapp
             </TabsTrigger>
           )}
           
-          {isGlobalAdmin && (
+          {isGlobalAdmin && showAdminData && (
             <TabsTrigger value="admin" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Platform
@@ -161,12 +214,14 @@ export function AnalyticsDashboardWrapper({ className }: AnalyticsDashboardWrapp
         </TabsList>
 
         {/* Personal Analytics */}
-        <TabsContent value="user" className="space-y-6">
-          <UserAnalyticsDashboard 
-            analytics={analytics}
-            mode="user"
-          />
-        </TabsContent>
+        {showPersonalData && (
+          <TabsContent value="user" className="space-y-6">
+            <UserAnalyticsDashboard 
+              analytics={analytics}
+              mode="user"
+            />
+          </TabsContent>
+        )}
 
         {/* Family Analytics */}
         {hasFamilyAccess && (
@@ -179,7 +234,7 @@ export function AnalyticsDashboardWrapper({ className }: AnalyticsDashboardWrapp
         )}
 
         {/* Admin Analytics */}
-        {isGlobalAdmin && (
+        {isGlobalAdmin && showAdminData && (
           <TabsContent value="admin" className="space-y-6">
             <AdminAnalyticsDashboard 
               analytics={analytics}

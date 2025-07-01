@@ -854,5 +854,255 @@ namespace TaskTrackerAPI.Controllers.V1
         }
 
         #endregion
+
+        #region Family Gamification
+
+        /// <summary>
+        /// Get family gamification profile with aggregated family data
+        /// </summary>
+        [HttpGet("family/{familyId}/profile")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<FamilyGamificationProfileDTO>> GetFamilyGamificationProfile(int familyId)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                FamilyGamificationProfileDTO profile = await _gamificationService.GetFamilyGamificationProfileAsync(userId, familyId);
+                
+                return Ok(ApiResponse<FamilyGamificationProfileDTO>.SuccessResponse(profile));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to access family gamification profile for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving family gamification profile for family {familyId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<FamilyGamificationProfileDTO>.FailureResponse("Error retrieving family gamification profile", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Get family goals (family-specific challenges and objectives)
+        /// </summary>
+        [HttpGet("family/{familyId}/goals")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<FamilyGoalDTO>>> GetFamilyGoals(int familyId, [FromQuery] string status = "active")
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                List<FamilyGoalDTO> goals = await _gamificationService.GetFamilyGoalsAsync(userId, familyId, status);
+                
+                return Ok(ApiResponse<IEnumerable<FamilyGoalDTO>>.SuccessResponse(goals));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to access family goals for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving family goals for family {familyId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<IEnumerable<FamilyGoalDTO>>.FailureResponse("Error retrieving family goals", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Create a new family goal
+        /// </summary>
+        [HttpPost("family/{familyId}/goals")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<FamilyGoalDTO>> CreateFamilyGoal(int familyId, [FromBody] CreateFamilyGoalDTO dto)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                FamilyGoalDTO goal = await _gamificationService.CreateFamilyGoalAsync(userId, familyId, dto);
+                
+                return CreatedAtAction(nameof(GetFamilyGoals), new { familyId }, ApiResponse<FamilyGoalDTO>.SuccessResponse(goal, "Family goal created successfully"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to create family goal for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating family goal for family {familyId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<FamilyGoalDTO>.FailureResponse("Error creating family goal", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Update family goal progress
+        /// </summary>
+        [HttpPut("family/{familyId}/goals/{goalId}/progress")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<bool>> UpdateFamilyGoalProgress(int familyId, int goalId, [FromBody] UpdateGoalProgressDTO dto)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                bool success = await _gamificationService.UpdateFamilyGoalProgressAsync(userId, familyId, goalId, dto.Progress);
+                
+                if (!success)
+                {
+                    return NotFound(ApiResponse<bool>.FailureResponse("Family goal not found", StatusCodes.Status404NotFound));
+                }
+                
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Goal progress updated successfully"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to update family goal progress for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating family goal progress for family {familyId}, goal {goalId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<bool>.FailureResponse("Error updating goal progress", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Get family-specific challenges
+        /// </summary>
+        [HttpGet("family/{familyId}/challenges")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<IEnumerable<FamilyChallengeDTO>>> GetFamilyChallenges(int familyId, [FromQuery] string status = "active")
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                List<FamilyChallengeDTO> challenges = await _gamificationService.GetFamilyChallengesAsync(userId, familyId, status);
+                
+                return Ok(ApiResponse<IEnumerable<FamilyChallengeDTO>>.SuccessResponse(challenges));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to access family challenges for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving family challenges for family {familyId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<IEnumerable<FamilyChallengeDTO>>.FailureResponse("Error retrieving family challenges", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Join a family challenge
+        /// </summary>
+        [HttpPost("family/{familyId}/challenges/{challengeId}/join")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<bool>> JoinFamilyChallenge(int familyId, int challengeId)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                bool success = await _gamificationService.JoinFamilyChallengeAsync(userId, familyId, challengeId);
+                
+                if (!success)
+                {
+                    return BadRequest(ApiResponse<bool>.BadRequestResponse("Unable to join family challenge"));
+                }
+                
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Successfully joined family challenge"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to join family challenge for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error joining family challenge for family {familyId}, challenge {challengeId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<bool>.FailureResponse("Error joining family challenge", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Update family member gamification preferences
+        /// </summary>
+        [HttpPut("family/{familyId}/members/{memberId}/gamification/preferences")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<bool>> UpdateMemberGamificationPreferences(int familyId, int memberId, [FromBody] UpdateMemberGamificationPreferencesDTO dto)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                bool success = await _gamificationService.UpdateMemberGamificationPreferencesAsync(userId, familyId, memberId, dto);
+                
+                return Ok(ApiResponse<bool>.SuccessResponse(success, "Member gamification preferences updated successfully"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to update member gamification preferences for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating member gamification preferences for family {familyId}, member {memberId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<bool>.FailureResponse("Error updating member preferences", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        /// <summary>
+        /// Update family gamification settings
+        /// </summary>
+        [HttpPut("family/{familyId}/gamification/settings")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<bool>> UpdateFamilyGamificationSettings(int familyId, [FromBody] UpdateFamilyGamificationSettingsDTO dto)
+        {
+            try
+            {
+                int userId = User.GetUserIdAsInt();
+                bool success = await _gamificationService.UpdateFamilyGamificationSettingsAsync(userId, familyId, dto);
+                
+                return Ok(ApiResponse<bool>.SuccessResponse(success, "Family gamification settings updated successfully"));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning($"User {User.GetUserIdAsInt()} attempted to update family gamification settings for family {familyId} without permission");
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating family gamification settings for family {familyId}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<bool>.FailureResponse("Error updating family settings", StatusCodes.Status500InternalServerError));
+            }
+        }
+
+        #endregion
     }
 } 

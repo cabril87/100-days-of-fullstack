@@ -141,6 +141,7 @@ export interface FocusSessionManagerProps {
   showTaskDetails?: boolean;
   showStreakCounter?: boolean;
   showKeyboardHelp?: boolean;
+  refreshTrigger?: number; // ✅ NEW: Trigger to force session reload
   onSessionStateChange?: (state: FocusSessionState) => void;
   onSessionComplete?: (session: FocusSession) => void;
 }
@@ -164,6 +165,20 @@ export interface ProductivityInsightsProps {
   className?: string;
   insights: ProductivityInsightsDTO;
   onInsightClick?: (insight: string) => void;
+}
+
+// ============================================================================
+// FOCUS HISTORY MANAGEMENT PROPS
+// ============================================================================
+
+export interface FocusHistoryManagementProps {
+  className?: string;
+  userId?: number;
+  sessions?: FocusSession[];
+  onSessionsChange?: (sessions: FocusSession[]) => void;
+  showExportOptions?: boolean;
+  showBulkOperations?: boolean;
+  showDeleteConfirmation?: boolean;
 }
 
 // Note: Core business logic types moved to lib/types/focus.ts per enterprise standards 

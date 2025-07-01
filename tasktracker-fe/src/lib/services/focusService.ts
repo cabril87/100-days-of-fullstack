@@ -4,7 +4,7 @@
  * Following Enterprise Standards and Family Auth Implementation Checklist
  */
 
-import { apiClient } from '@/lib/config/api-client';
+import { apiClient, ApiClientError } from '@/lib/config/api-client';
 import type { 
   FocusSessionDTO, 
   FocusSession,
@@ -17,7 +17,16 @@ import type {
   CreateDistractionDTO,
   FocusStatisticsDTO,
   FocusStatistics,
-  ProductivityInsightsDTO
+  ProductivityInsightsDTO,
+  FocusSessionStats,
+  BulkDeleteResultDTO,
+  BulkDeleteRequest,
+  BulkDeleteResult,
+  ClearHistoryResultDTO,
+  ClearHistoryResult,
+  FocusHistoryExportDTO,
+  FocusHistoryExport,
+  FailedDeleteDTO
 } from '@/lib/types/focus';
 
 // ================================
@@ -181,22 +190,45 @@ export class FocusService {
       console.log('🎯 FocusService: Current session:', result);
       return transformBackendSessionToFrontend(result);
     } catch (error: unknown) {
-      // Handle 404 responses as normal state (no active session)
+      // Defensive programming: Handle 404 as normal "no session" state
+      // This prevents uncaught promise rejections per .cursorrules
+      
+      // Check for ApiClientError instances first (most specific)
+      if (error instanceof ApiClientError) {
+        if (error.statusCode === 404) {
+          console.log('🎯 FocusService: No active session found (ApiClientError 404)');
+          return null; // No active session - this is normal
+        }
+        // Re-throw non-404 ApiClientErrors as FocusServiceError
+        throw new FocusServiceError(
+          error.message,
+          error.statusCode,
+          'API_CLIENT_ERROR'
+        );
+      }
+      
+      // Check for generic objects with statusCode property
       if (error && typeof error === 'object' && 'statusCode' in error) {
         const apiError = error as { statusCode: number; message?: string };
         if (apiError.statusCode === 404) {
-          console.log('🎯 FocusService: No active session found (404)');
+          console.log('🎯 FocusService: No active session found (Generic 404)');
           return null; // No active session - this is normal
         }
       }
       
-      // Handle other error types
-      if (error instanceof Error && error.message.includes('No active focus session found')) {
-        console.log('🎯 FocusService: No active session found (message check)');
-        return null; // No active session - this is normal
+      // Check for error messages indicating "no session"
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errorWithMessage = error as { message: string };
+        if (errorWithMessage.message.includes('No active focus session') ||
+            errorWithMessage.message.includes('404') ||
+            errorWithMessage.message.includes('Not Found')) {
+          console.log('🎯 FocusService: No active session found (message pattern)');
+          return null; // No active session - this is normal
+        }
       }
       
-      console.error('❌ FocusService: Failed to fetch current session:', error);
+      // Only log and throw for truly unexpected errors
+      console.error('❌ FocusService: Unexpected error fetching current session:', error);
       throw new FocusServiceError(
         'Failed to fetch current focus session',
         500,
@@ -221,6 +253,16 @@ export class FocusService {
       });
 
       console.log('🎯 FocusService: Session started successfully:', result);
+      
+      // Handle null response (API error that was treated as expected)
+      if (!result) {
+        throw new FocusServiceError(
+          'Failed to start focus session - no response from server',
+          500,
+          'NULL_RESPONSE_ERROR'
+        );
+      }
+      
       return transformBackendSessionToFrontend(result);
     } catch (error) {
       console.error('❌ FocusService: Failed to start session:', error);
@@ -282,6 +324,7 @@ export class FocusService {
   /**
    * Pause current focus session
    * BACKEND: POST /api/v1/focus/current/pause
+   * ✅ ENTERPRISE ERROR HANDLING: Comprehensive error categorization
    */
   async pauseCurrentSession(): Promise<FocusSession> {
     try {
@@ -289,10 +332,52 @@ export class FocusService {
 
       const result = await apiClient.post<FocusSessionDTO>(`${this.baseUrl}/current/pause`);
 
+      if (!result) {
+        throw new FocusServiceError(
+          'No response received from pause endpoint',
+          500,
+          'EMPTY_RESPONSE_ERROR'
+        );
+      }
+
       console.log('🎯 FocusService: Session paused successfully:', result);
       return transformBackendSessionToFrontend(result);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ FocusService: Failed to pause session:', error);
+
+      // ✅ ENTERPRISE ERROR HANDLING: Explicit error type checking
+      if (error instanceof ApiClientError) {
+        if (error.statusCode === 404) {
+          throw new FocusServiceError(
+            'No active session found to pause',
+            404,
+            'NO_ACTIVE_SESSION',
+            undefined,
+            undefined,
+            undefined
+          );
+        } else if (error.statusCode === 400) {
+          throw new FocusServiceError(
+            'Invalid session state for pausing',
+            400,
+            'INVALID_SESSION_STATE',
+            undefined,
+            undefined,
+            undefined
+          );
+        } else if (error.statusCode === 500) {
+          throw new FocusServiceError(
+            'Backend error while pausing session. Please try refreshing.',
+            500,
+            'BACKEND_ERROR',
+            undefined,
+            undefined,
+            undefined
+          );
+        }
+      }
+
+      // ✅ FALLBACK: Generic error for unknown issues
       throw new FocusServiceError(
         'Failed to pause focus session',
         500,
@@ -304,6 +389,7 @@ export class FocusService {
   /**
    * Resume paused focus session
    * BACKEND: POST /api/v1/focus/{id}/resume
+   * ✅ ENTERPRISE ERROR HANDLING: Comprehensive error categorization
    */
   async resumeSession(sessionId: number): Promise<FocusSession> {
     try {
@@ -311,10 +397,51 @@ export class FocusService {
 
       const result = await apiClient.post<FocusSessionDTO>(`${this.baseUrl}/${sessionId}/resume`);
 
+      if (!result) {
+        throw new FocusServiceError(
+          'No response received from resume endpoint',
+          500,
+          'EMPTY_RESPONSE_ERROR',
+          undefined,
+          sessionId
+        );
+      }
+
       console.log('🎯 FocusService: Session resumed successfully:', result);
       return transformBackendSessionToFrontend(result);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ FocusService: Failed to resume session:', error);
+
+      // ✅ ENTERPRISE ERROR HANDLING: Explicit error type checking
+      if (error instanceof ApiClientError) {
+        if (error.statusCode === 404) {
+          throw new FocusServiceError(
+            'Session not found or not accessible',
+            404,
+            'SESSION_NOT_FOUND',
+            undefined,
+            sessionId
+          );
+        } else if (error.statusCode === 400) {
+          throw new FocusServiceError(
+            'Only paused sessions can be resumed',
+            400,
+            'INVALID_SESSION_STATE',
+            undefined,
+            sessionId
+          );
+        } else if (error.statusCode === 500) {
+          throw new FocusServiceError(
+            'Backend error while resuming session. Please try refreshing.',
+            500,
+            'BACKEND_ERROR',
+            undefined,
+            sessionId
+          );
+        }
+      }
+
+      // ✅ FALLBACK: Generic error for unknown issues
       throw new FocusServiceError(
         'Failed to resume focus session',
         500,
@@ -328,6 +455,7 @@ export class FocusService {
   /**
    * End current focus session
    * BACKEND: POST /api/v1/focus/current/end
+   * ✅ ENTERPRISE ERROR HANDLING: Comprehensive error categorization
    */
   async endCurrentSession(): Promise<FocusSession> {
     try {
@@ -335,10 +463,43 @@ export class FocusService {
 
       const result = await apiClient.post<FocusSessionDTO>(`${this.baseUrl}/current/end`);
 
+      if (!result) {
+        throw new FocusServiceError(
+          'No response received from end endpoint',
+          500,
+          'EMPTY_RESPONSE_ERROR'
+        );
+      }
+
       console.log('🎯 FocusService: Session ended successfully:', result);
       return transformBackendSessionToFrontend(result);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('❌ FocusService: Failed to end session:', error);
+
+      // ✅ ENTERPRISE ERROR HANDLING: Explicit error type checking
+      if (error instanceof ApiClientError) {
+        if (error.statusCode === 404) {
+          throw new FocusServiceError(
+            'No active session found to end',
+            404,
+            'NO_ACTIVE_SESSION'
+          );
+        } else if (error.statusCode === 400) {
+          throw new FocusServiceError(
+            'Invalid session state for ending',
+            400,
+            'INVALID_SESSION_STATE'
+          );
+        } else if (error.statusCode === 500) {
+          throw new FocusServiceError(
+            'Backend error while ending session. Please try refreshing.',
+            500,
+            'BACKEND_ERROR'
+          );
+        }
+      }
+
+      // ✅ FALLBACK: Generic error for unknown issues
       throw new FocusServiceError(
         'Failed to end focus session',
         500,
@@ -514,6 +675,206 @@ export class FocusService {
     } catch (error) {
       console.error('❌ FocusService: Failed to fetch distractions:', error);
       return []; // Return empty array instead of throwing - distractions are optional
+    }
+  }
+
+  /**
+   * Get user focus statistics for enhanced analytics
+   */
+  async getUserFocusStats(userId: number): Promise<FocusSessionStats> {
+    try {
+      console.log('🎯 FocusService: Fetching user focus stats:', userId);
+
+      // Since we don't have a specific stats endpoint, use existing statistics and transform
+      const stats = await this.getFocusStatistics();
+      
+      return {
+        totalSessions: stats.sessionCount,
+        totalMinutes: stats.totalMinutesFocused,
+        averageSessionLength: stats.averageSessionLength,
+        currentStreak: 0, // Would need backend support
+        longestStreak: 0, // Would need backend support
+        thisWeekSessions: Object.values(stats.dailyFocusMinutes).length,
+        thisMonthSessions: stats.sessionCount,
+        completionRate: stats.focusEfficiencyScore,
+        mostProductiveHour: 10, // Default value - would need backend analysis
+        favoriteTaskCategory: 'General', // Default value - would need backend analysis
+      };
+    } catch (error) {
+      console.error('❌ FocusService: Failed to fetch user focus stats:', error);
+      // Return default stats for graceful degradation
+      return {
+        totalSessions: 0,
+        totalMinutes: 0,
+        averageSessionLength: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        thisWeekSessions: 0,
+        thisMonthSessions: 0,
+        completionRate: 0,
+        mostProductiveHour: 10,
+        favoriteTaskCategory: 'General',
+      };
+    }
+  }
+
+  /**
+   * Delete a focus session
+   * BACKEND: DELETE /api/v1/focus/{id}
+   */
+  async deleteFocusSession(sessionId: number): Promise<boolean> {
+    try {
+      console.log('🗑️ FocusService: Deleting session:', sessionId);
+
+      const result = await apiClient.delete<boolean>(`${this.baseUrl}/${sessionId}`);
+
+      console.log('✅ FocusService: Session deleted successfully:', sessionId);
+      return result ?? false;
+    } catch (error) {
+      console.error('❌ FocusService: Failed to delete session:', error);
+      throw new FocusServiceError(
+        'Failed to delete focus session',
+        500,
+        'DELETE_SESSION_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Bulk delete focus sessions
+   * BACKEND: DELETE /api/v1/focus/bulk
+   */
+  async bulkDeleteFocusSessions(sessionIds: number[]): Promise<BulkDeleteResult> {
+    try {
+      console.log('🗑️ FocusService: Bulk deleting sessions:', sessionIds.length);
+
+      const request: BulkDeleteRequest = {
+        sessionIds,
+        confirmationToken: `bulk_delete_${Date.now()}`
+      };
+
+             const result = await apiClient.post<BulkDeleteResultDTO>(`${this.baseUrl}/bulk-delete`, request);
+
+      if (!result) {
+        throw new Error('No response received from bulk delete');
+      }
+
+             const transformedResult: BulkDeleteResult = {
+         requestedCount: result.requestedCount,
+         successfulDeletes: result.successfulDeletes,
+         failedDeletes: result.failedDeletes.map((failed: FailedDeleteDTO) => ({
+           sessionId: failed.sessionId,
+           reason: failed.reason
+         })),
+         successCount: result.successCount,
+         failedCount: result.failedCount,
+         successRate: result.successRate
+       };
+
+      console.log('✅ FocusService: Bulk delete completed:', 
+        `${transformedResult.successCount}/${transformedResult.requestedCount} successful`);
+      
+      return transformedResult;
+    } catch (error) {
+      console.error('❌ FocusService: Bulk delete failed:', error);
+      throw new FocusServiceError(
+        'Failed to bulk delete focus sessions',
+        500,
+        'BULK_DELETE_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Clear focus history (delete all or before date)
+   * BACKEND: DELETE /api/v1/focus/clear-history
+   */
+  async clearFocusHistory(beforeDate?: Date): Promise<ClearHistoryResult> {
+    try {
+      console.log('🗑️ FocusService: Clearing history:', beforeDate ? `before ${beforeDate.toISOString()}` : 'all sessions');
+
+             const queryParams = beforeDate ? `?beforeDate=${encodeURIComponent(beforeDate.toISOString())}` : '';
+       const result = await apiClient.delete<ClearHistoryResultDTO>(`${this.baseUrl}/clear-history${queryParams}`);
+
+      if (!result) {
+        throw new Error('No response received from clear history');
+      }
+
+      const transformedResult: ClearHistoryResult = {
+        deletedSessionCount: result.deletedSessionCount,
+        totalMinutesDeleted: result.totalMinutesDeleted,
+        totalHoursDeleted: result.totalHoursDeleted,
+        dateFilter: result.dateFilter ? new Date(result.dateFilter) : undefined,
+        clearedAt: new Date(result.clearedAt)
+      };
+
+      console.log('✅ FocusService: History cleared:', 
+        `${transformedResult.deletedSessionCount} sessions (${transformedResult.totalHoursDeleted.toFixed(1)}h)`);
+      
+      return transformedResult;
+    } catch (error) {
+      console.error('❌ FocusService: Failed to clear history:', error);
+      throw new FocusServiceError(
+        'Failed to clear focus history',
+        500,
+        'CLEAR_HISTORY_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Export focus history
+   * BACKEND: GET /api/v1/focus/export
+   */
+  async exportFocusHistory(startDate?: Date, endDate?: Date, format: string = 'json'): Promise<FocusHistoryExport> {
+    try {
+      console.log('📤 FocusService: Exporting history:', { startDate, endDate, format });
+
+             const queryParams = new URLSearchParams({ format });
+       if (startDate) queryParams.set('startDate', startDate.toISOString());
+       if (endDate) queryParams.set('endDate', endDate.toISOString());
+
+       const result = await apiClient.get<FocusHistoryExportDTO>(`${this.baseUrl}/export?${queryParams.toString()}`);
+
+      if (!result) {
+        throw new Error('No response received from export');
+      }
+
+      const transformedResult: FocusHistoryExport = {
+        exportDate: new Date(result.exportDate),
+        startDate: new Date(result.startDate),
+        endDate: new Date(result.endDate),
+        totalSessions: result.totalSessions,
+        totalMinutes: result.totalMinutes,
+        sessions: transformBackendSessionsToFrontend(result.sessions),
+        summary: {
+          averageSessionLength: result.summary.averageSessionLength,
+          completedSessions: result.summary.completedSessions,
+          interruptedSessions: result.summary.interruptedSessions,
+          totalDistractions: result.summary.totalDistractions,
+          completionRate: result.summary.completionRate,
+          mostProductiveDay: result.summary.mostProductiveDay,
+          totalHours: result.summary.totalHours
+        },
+        metadata: {
+          format: result.metadata.format,
+          version: result.metadata.version,
+          generatedBy: result.metadata.generatedBy,
+          includesPersonalData: result.metadata.includesPersonalData
+        }
+      };
+
+      console.log('✅ FocusService: History exported:', 
+        `${transformedResult.totalSessions} sessions (${transformedResult.totalMinutes}min)`);
+      
+      return transformedResult;
+    } catch (error) {
+      console.error('❌ FocusService: Failed to export history:', error);
+      throw new FocusServiceError(
+        'Failed to export focus history',
+        500,
+        'EXPORT_HISTORY_ERROR'
+      );
     }
   }
 }

@@ -164,7 +164,7 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
     }
   }, [familyId]);
 
-  const fetchGoals = useCallback(async (status: 'active' | 'completed' | 'paused' = 'active') => {
+  const fetchGoals = useCallback(async (status: 'active' | 'completed' | 'all' = 'active') => {
     if (!familyId || !mounted.current) return;
 
     setState(prev => ({ ...prev, isLoadingGoals: true }));
@@ -190,7 +190,7 @@ export function useEnterpriseGamification(options: UseEnterpriseGamificationOpti
     }
   }, [familyId]);
 
-  const fetchChallenges = useCallback(async (status: 'active' | 'upcoming' | 'completed' = 'active') => {
+  const fetchChallenges = useCallback(async (status: 'active' | 'completed' | 'all' = 'active') => {
     if (!familyId || !mounted.current) return;
 
     try {

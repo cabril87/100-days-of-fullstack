@@ -93,5 +93,15 @@ namespace TaskTrackerAPI.Services.Interfaces
         
         // ✨ NEW: Enhanced task completion achievement processing
         Task ProcessTaskCompletionAchievementsAsync(int userId, int taskId, Dictionary<string, object> taskData);
+        
+        // ✨ NEW: Family Gamification Methods
+        Task<FamilyGamificationProfileDTO> GetFamilyGamificationProfileAsync(int userId, int familyId);
+        Task<List<FamilyGoalDTO>> GetFamilyGoalsAsync(int userId, int familyId, string status = "active");
+        Task<FamilyGoalDTO> CreateFamilyGoalAsync(int userId, int familyId, CreateFamilyGoalDTO dto);
+        Task<bool> UpdateFamilyGoalProgressAsync(int userId, int familyId, int goalId, int progress);
+        Task<List<FamilyChallengeDTO>> GetFamilyChallengesAsync(int userId, int familyId, string status = "active");
+        Task<bool> JoinFamilyChallengeAsync(int userId, int familyId, int challengeId);
+        Task<bool> UpdateMemberGamificationPreferencesAsync(int userId, int familyId, int memberId, UpdateMemberGamificationPreferencesDTO dto);
+        Task<bool> UpdateFamilyGamificationSettingsAsync(int userId, int familyId, UpdateFamilyGamificationSettingsDTO dto);
     }
 } 

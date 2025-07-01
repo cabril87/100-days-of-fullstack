@@ -387,7 +387,7 @@ export interface DataVisualizationDTO {
   title: string;
   description: string;
   chartConfig: ChartConfigurationDTO;
-  data: unknown[];
+  data: Array<Record<string, string | number>>;
   metadata: VisualizationMetadataDTO;
 }
 
@@ -529,7 +529,7 @@ export interface AnalyticsCardProps {
 
 export interface AnalyticsChartProps {
   title: string;
-  data: unknown[];
+  data: Array<Record<string, string | number>>;
   type: 'line' | 'bar' | 'pie' | 'area';
   height?: number;
   loading?: boolean;

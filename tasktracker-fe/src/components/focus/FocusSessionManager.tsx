@@ -11,46 +11,36 @@
  * accordance with the terms contained in the LICENSE file.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { useFocusSessionStore } from '@/lib/hooks/useFocusSessionStore';
+import type { 
+  FocusSessionManagerProps
+} from '@/lib/types/focus-components';
 import { 
   Play, 
   Pause, 
   Square, 
   Target, 
   Brain,
-  CheckCircle
+  AlertCircle,
+  Keyboard,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
-import { toast } from 'sonner';
-
-// Enterprise types
-import type {
-  FocusSession,
-  FocusSessionState,
-  TimerState,
-  CreateFocusSessionDTO,
-  CompleteFocusSessionDTO
-} from '@/lib/types/focus';
-import type {
-  FocusSessionManagerProps
-} from '@/lib/types/focus-components';
-
-// Enterprise services
-import { focusService } from '@/lib/services/focusService';
 
 /**
  * Focus Session Manager Component
  * Enterprise-grade focus session control with real-time timer
- * Integrates with backend API for session persistence
+ * Integrates with persistent store for cross-refresh session continuity
  */
 export default function FocusSessionManager({
   className,
-  userId,
   showTaskDetails = true,
   showStreakCounter = true,
   showKeyboardHelp = false,
@@ -59,281 +49,124 @@ export default function FocusSessionManager({
 }: FocusSessionManagerProps) {
   
   // ============================================================================
-  // STATE MANAGEMENT - ENTERPRISE PATTERNS
+  // PERSISTENT STATE MANAGEMENT - ENTERPRISE STORE INTEGRATION
   // ============================================================================
   
-  const [currentSession, setCurrentSession] = useState<FocusSession | null>(null);
-  const [focusState, setFocusState] = useState<FocusSessionState>('NO_SESSION');
-  const [timerState, setTimerState] = useState<TimerState>({
-    elapsedSeconds: 0,
-    isRunning: false,
-    isPaused: false,
-    displayTime: '00:00'
-  });
+  const {
+    session: currentSession,
+    focusState,
+    timerState,
+    isLoading: storeLoading,
+    error: storeError,
+    isInitialized,
+    pauseSession,
+    resumeSession,
+    completeSession,
+    canPause,
+    canResume,
+    getElapsedMinutes,
+    getFormattedTime
+  } = useFocusSessionStore();
+
+  // Local UI state (non-persistent)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const timerInterval = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<Date | null>(null);
-  const pausedTimeRef = useRef<number>(0);
 
   // ============================================================================
-  // TIMER UTILITIES - ACCURATE TIME TRACKING
+  // SESSION MANAGEMENT - PERSISTENT STORE INTEGRATION
   // ============================================================================
 
-  const formatTime = useCallback((seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  // Session state notifications to parent components
+  useEffect(() => {
+    if (onSessionStateChange && isInitialized) {
+      onSessionStateChange(focusState);
     }
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, []);
+  }, [focusState, onSessionStateChange, isInitialized]);
 
-  const startTimer = useCallback(() => {
-    if (timerInterval.current) {
-      clearInterval(timerInterval.current);
+  // Clear local errors when store initializes successfully
+  useEffect(() => {
+    if (isInitialized && !storeError) {
+      setError(null);
     }
-
-    startTimeRef.current = new Date();
-    
-    timerInterval.current = setInterval(() => {
-      if (startTimeRef.current) {
-        const now = Date.now();
-        const elapsed = Math.floor((now - startTimeRef.current.getTime()) / 1000) + pausedTimeRef.current;
-        
-        setTimerState(prev => ({
-          ...prev,
-          elapsedSeconds: elapsed,
-          displayTime: formatTime(elapsed),
-          isRunning: true,
-          isPaused: false
-        }));
-      }
-    }, 1000);
-  }, [formatTime]);
-
-  const pauseTimer = useCallback(() => {
-    if (timerInterval.current) {
-      clearInterval(timerInterval.current);
-      timerInterval.current = null;
-    }
-    
-    pausedTimeRef.current = timerState.elapsedSeconds;
-    
-    setTimerState(prev => ({
-      ...prev,
-      isRunning: false,
-      isPaused: true
-    }));
-  }, [timerState.elapsedSeconds]);
-
-  const stopTimer = useCallback(() => {
-    if (timerInterval.current) {
-      clearInterval(timerInterval.current);
-      timerInterval.current = null;
-    }
-    
-    startTimeRef.current = null;
-    pausedTimeRef.current = 0;
-    
-    setTimerState({
-      elapsedSeconds: 0,
-      isRunning: false,
-      isPaused: false,
-      displayTime: '00:00'
-    });
-  }, []);
+  }, [isInitialized, storeError]);
 
   // ============================================================================
-  // SESSION MANAGEMENT - REAL API INTEGRATION
+  // SESSION ACTION HANDLERS - STORE INTEGRATION
   // ============================================================================
-
-  const loadCurrentSession = useCallback(async () => {
-    if (!userId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      console.log('🎯 FocusManager: Loading current session...');
-      const session = await focusService.getCurrentSession();
-      
-      if (session) {
-        setCurrentSession(session);
-        setFocusState('IN_PROGRESS');
-        
-        // Calculate elapsed time from session start
-        const startTime = new Date(session.startTime);
-        const now = new Date();
-        const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000);
-        
-        setTimerState({
-          elapsedSeconds: elapsed,
-          isRunning: session.status === 'InProgress',
-          isPaused: session.status === 'Paused',
-          displayTime: formatTime(elapsed)
-        });
-        
-        if (session.status === 'InProgress') {
-          startTimer();
-        }
-        
-        console.log('✅ FocusManager: Session loaded successfully');
-        onSessionStateChange?.('IN_PROGRESS');
-      } else {
-        setFocusState('NO_SESSION');
-        console.log('📭 FocusManager: No active session found');
-        onSessionStateChange?.('NO_SESSION');
-      }
-    } catch (error) {
-      console.error('❌ FocusManager: Failed to load session:', error);
-      setError('Failed to load current session');
-      setFocusState('ERROR');
-      onSessionStateChange?.('ERROR');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, formatTime, startTimer, onSessionStateChange]);
-
-  const handleStartSession = useCallback(async (taskId: number, durationMinutes: number = 25) => {
-    setIsLoading(true);
-    setError(null);
-    setFocusState('STARTING');
-    
-    try {
-      console.log('🚀 FocusManager: Starting new session...');
-      
-      const createDto: CreateFocusSessionDTO = {
-        taskId,
-        durationMinutes,
-        forceStart: true // Auto-end any existing session
-      };
-      
-      const session = await focusService.startSession(createDto);
-      setCurrentSession(session);
-      setFocusState('IN_PROGRESS');
-      
-      // Reset and start timer
-      pausedTimeRef.current = 0;
-      startTimer();
-      
-      toast.success(`🎯 Focus session started! Duration: ${durationMinutes} minutes`);
-      console.log('✅ FocusManager: Session started successfully');
-      onSessionStateChange?.('IN_PROGRESS');
-      
-    } catch (error) {
-      console.error('❌ FocusManager: Failed to start session:', error);
-      setError('Failed to start focus session');
-      setFocusState('ERROR');
-      toast.error('Failed to start focus session');
-      onSessionStateChange?.('ERROR');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [startTimer, onSessionStateChange]);
 
   const handlePauseSession = useCallback(async () => {
-    if (!currentSession) return;
+    if (!canPause()) {
+      toast.error('Session cannot be paused in current state');
+      return;
+    }
     
     setIsLoading(true);
     try {
-      console.log('⏸️ FocusManager: Pausing session...');
-      await focusService.pauseCurrentSession();
-      
-      pauseTimer();
-      setFocusState('PAUSED');
-      
-      toast.success('⏸️ Session paused');
-      console.log('✅ FocusManager: Session paused');
-      onSessionStateChange?.('PAUSED');
-      
+      await pauseSession();
+      toast.success('⏸️ Session paused successfully');
     } catch (error) {
-      console.error('❌ FocusManager: Failed to pause:', error);
+      console.error('❌ Failed to pause session:', error);
       toast.error('Failed to pause session');
+      setError('Failed to pause session');
     } finally {
       setIsLoading(false);
     }
-  }, [currentSession, pauseTimer, onSessionStateChange]);
+  }, [canPause, pauseSession]);
 
   const handleResumeSession = useCallback(async () => {
-    if (!currentSession) return;
+    if (!canResume()) {
+      toast.error('Session cannot be resumed in current state');
+      return;
+    }
     
     setIsLoading(true);
     try {
-      console.log('▶️ FocusManager: Resuming session...');
-      await focusService.resumeSession(currentSession.id);
-      
-      startTimer();
-      setFocusState('IN_PROGRESS');
-      
-      toast.success('▶️ Session resumed');
-      console.log('✅ FocusManager: Session resumed');
-      onSessionStateChange?.('IN_PROGRESS');
-      
+      await resumeSession();
+      toast.success('▶️ Session resumed successfully');
     } catch (error) {
-      console.error('❌ FocusManager: Failed to resume:', error);
+      console.error('❌ Failed to resume session:', error);
       toast.error('Failed to resume session');
+      setError('Failed to resume session');
     } finally {
       setIsLoading(false);
     }
-  }, [currentSession, startTimer, onSessionStateChange]);
+  }, [canResume, resumeSession]);
 
   const handleEndSession = useCallback(async () => {
-    if (!currentSession) return;
+    if (!currentSession) {
+      toast.error('No active session to end');
+      return;
+    }
     
-    setFocusState('COMPLETING');
     setIsLoading(true);
-    
     try {
-      console.log('🏁 FocusManager: Ending session...');
+      const completedSession = { ...currentSession };
+      await completeSession();
       
-      const completionDto: CompleteFocusSessionDTO = {
-        sessionQualityRating: 4, // Default good rating
-        completionNotes: `Focused for ${timerState.displayTime}`,
-        taskProgressAfter: Math.min(currentSession.taskProgressBefore + 25, 100),
-        taskCompletedDuringSession: false // Default - task not completed during session
-      };
-      
-      await focusService.completeSession(currentSession.id, completionDto);
-      
-      stopTimer();
-      setCurrentSession(null);
-      setFocusState('NO_SESSION');
-      
-      toast.success(`🎉 Focus session completed! Time: ${timerState.displayTime}`);
-      console.log('✅ FocusManager: Session completed successfully');
-      onSessionStateChange?.('NO_SESSION');
-      onSessionComplete?.(currentSession);
-      
+      toast.success(`🎉 Focus session completed! Time: ${getFormattedTime()}`);
+      onSessionComplete?.(completedSession);
     } catch (error) {
-      console.error('❌ FocusManager: Failed to end session:', error);
-      setError('Failed to complete session');
-      setFocusState('ERROR');
+      console.error('❌ Failed to complete session:', error);
       toast.error('Failed to complete session');
-      onSessionStateChange?.('ERROR');
+      setError('Failed to complete session');
     } finally {
       setIsLoading(false);
     }
-  }, [currentSession, timerState.displayTime, stopTimer, onSessionStateChange, onSessionComplete]);
+  }, [currentSession, completeSession, getFormattedTime, onSessionComplete]);
 
-  // ============================================================================
-  // LIFECYCLE MANAGEMENT
-  // ============================================================================
-
-  useEffect(() => {
-    if (userId) {
-      loadCurrentSession();
+  const handleClearError = useCallback(async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      // The store will automatically reinitialize and restore session if valid
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error('❌ Failed to retry connection:', error);
+      setError('Connection retry failed');
+    } finally {
+      setIsLoading(false);
     }
-    
-    return () => {
-      if (timerInterval.current) {
-        clearInterval(timerInterval.current);
-      }
-    };
-  }, [userId, loadCurrentSession]);
+  }, []);
 
   // ============================================================================
   // RENDER HELPERS
@@ -368,7 +201,7 @@ export default function FocusSessionManager({
   // LOADING STATE
   // ============================================================================
 
-  if (isLoading && focusState === 'NO_SESSION') {
+  if (!isInitialized || (storeLoading && focusState === 'NO_SESSION')) {
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
@@ -394,6 +227,7 @@ export default function FocusSessionManager({
 
   const stateDisplay = getStateDisplay();
   const progressPercentage = getProgressPercentage();
+  const displayError = error || storeError;
 
   return (
     <Card className={cn("w-full", className)}>
@@ -431,7 +265,7 @@ export default function FocusSessionManager({
             <div className="space-y-2">
               <Progress value={progressPercentage} className="h-2" />
               <div className="text-xs text-gray-500">
-                Target: {currentSession.durationMinutes} minutes
+                Target: {currentSession.durationMinutes} minutes • Elapsed: {getElapsedMinutes()} min
               </div>
             </div>
           )}
@@ -445,82 +279,148 @@ export default function FocusSessionManager({
               <span className="font-medium text-sm">Current Task</span>
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-300">
-              Task #{currentSession.taskId}
+              {currentSession.taskItem?.title || `Task #${currentSession.taskId}`}
             </div>
+            {currentSession.notes && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                &ldquo;{currentSession.notes}&rdquo;
+              </div>
+            )}
           </div>
         )}
 
         {/* Controls */}
-        <div className="flex gap-2">
-          {focusState === 'NO_SESSION' && (
-            <Button 
-              onClick={() => handleStartSession(1, 25)} // Demo with task ID 1
-              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-              disabled={isLoading}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              Start Focus
-            </Button>
-          )}
-          
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* IN PROGRESS STATE */}
           {focusState === 'IN_PROGRESS' && (
             <>
               <Button 
                 onClick={handlePauseSession}
                 variant="outline"
-                className="flex-1"
-                disabled={isLoading}
+                className="flex-1 min-h-[44px] active:scale-95 transition-transform duration-150 
+                           bg-gradient-to-r from-yellow-50 to-orange-50 hover:from-yellow-100 hover:to-orange-100
+                           border-yellow-300 hover:border-yellow-400 text-yellow-800 hover:text-yellow-900
+                           touch-manipulation focus:ring-2 focus:ring-yellow-300"
+                disabled={isLoading || !canPause()}
               >
                 <Pause className="h-4 w-4 mr-2" />
-                Pause
+                <span className="font-medium">Pause</span>
               </Button>
               <Button 
                 onClick={handleEndSession}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 min-h-[44px] active:scale-95 transition-transform duration-150
+                           bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100
+                           border-red-300 hover:border-red-400 text-red-800 hover:text-red-900
+                           touch-manipulation focus:ring-2 focus:ring-red-300"
                 disabled={isLoading}
               >
                 <Square className="h-4 w-4 mr-2" />
-                End
+                <span className="font-medium">End Session</span>
               </Button>
             </>
           )}
           
+          {/* PAUSED STATE */}
           {focusState === 'PAUSED' && (
             <>
               <Button 
                 onClick={handleResumeSession}
-                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                disabled={isLoading}
+                variant="default"
+                className="flex-1 min-h-[44px] active:scale-95 transition-transform duration-150
+                           bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600
+                           text-white shadow-lg hover:shadow-xl
+                           touch-manipulation focus:ring-2 focus:ring-green-300"
+                disabled={isLoading || !canResume()}
               >
                 <Play className="h-4 w-4 mr-2" />
-                Resume
+                <span className="font-medium">Resume</span>
               </Button>
               <Button 
                 onClick={handleEndSession}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 min-h-[44px] active:scale-95 transition-transform duration-150
+                           bg-gradient-to-r from-red-50 to-pink-50 hover:from-red-100 hover:to-pink-100
+                           border-red-300 hover:border-red-400 text-red-800 hover:text-red-900
+                           touch-manipulation focus:ring-2 focus:ring-red-300"
                 disabled={isLoading}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Complete
+                <Square className="h-4 w-4 mr-2" />
+                <span className="font-medium">End Session</span>
               </Button>
             </>
           )}
+
+          {/* NO SESSION STATE */}
+          {focusState === 'NO_SESSION' && (
+            <div className="flex flex-col items-center space-y-3 py-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Ready to start focusing?
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  Use the task selection to begin a new focus session
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ERROR STATE */}
+          {focusState === 'ERROR' && displayError && (
+            <div className="flex flex-col space-y-2">
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-800 dark:text-red-200">Session Error</span>
+                </div>
+                <p className="text-xs text-red-700 dark:text-red-300">{displayError}</p>
+              </div>
+              <Button 
+                onClick={handleClearError}
+                variant="outline"
+                size="sm"
+                className="w-full min-h-[44px] active:scale-95 transition-transform duration-150
+                           bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100
+                           border-blue-300 hover:border-blue-400 text-blue-800 hover:text-blue-900
+                           touch-manipulation focus:ring-2 focus:ring-blue-300"
+                disabled={isLoading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                <span className="font-medium">Retry Connection</span>
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-sm text-red-600 dark:text-red-400">
-            {error}
+        {/* Keyboard Shortcuts Help */}
+        {showKeyboardHelp && (
+          <div className="hidden sm:block">
+            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Keyboard className="h-4 w-4 text-gray-600" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Keyboard Shortcuts</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <div className="flex justify-between">
+                  <span>Pause/Resume:</span>
+                  <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Space</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span>End Session:</span>
+                  <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Esc</kbd>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Keyboard Help */}
-        {showKeyboardHelp && (
-          <div className="text-xs text-gray-500 text-center space-y-1">
-            <div>Space: Play/Pause • Esc: End Session</div>
-            <div>D: Record Distraction • S: Switch Task</div>
+        {/* Session Persistence Indicator */}
+        {currentSession && (
+          <div className="text-center">
+            <div className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Session auto-saves • Persists across page refreshes
+            </div>
           </div>
         )}
       </CardContent>

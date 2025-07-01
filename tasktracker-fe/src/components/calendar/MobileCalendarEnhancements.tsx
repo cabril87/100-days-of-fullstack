@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useResponsive, useTouchOptimized, useResponsiveValue } from '@/lib/hooks/useResponsive';
-import { useSwipeNavigation, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
+import { useCommonGestures, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 
 // ================================
 // MOBILE CALENDAR ENHANCEMENT TYPES
@@ -73,7 +73,7 @@ export function PullToRefresh({
       setPullDistance(distance);
       
       if (distance >= threshold && !isRefreshing) {
-        triggerHapticFeedback('success');
+        triggerHapticFeedback('light');
       }
     }
   };
@@ -188,7 +188,7 @@ export function TouchFeedback({
   const { touchClasses } = useTouchOptimized();
 
   const handleTouchStart = () => {
-    if (!responsive.hasTouch) return;
+    if (!responsive.isMobile) return;
     
     setIsPressed(true);
     
@@ -201,7 +201,7 @@ export function TouchFeedback({
   };
 
   const handleTouchEnd = () => {
-    if (!responsive.hasTouch) return;
+    if (!responsive.isMobile) return;
     
     setIsPressed(false);
     
@@ -211,7 +211,8 @@ export function TouchFeedback({
     }
     
     if (onPress) {
-      triggerHapticFeedback(hapticPattern);
+      const pattern: 'light' | 'medium' | 'heavy' = hapticPattern === 'warning' ? 'medium' : hapticPattern as 'light' | 'medium' | 'heavy';
+      triggerHapticFeedback(pattern);
       onPress();
     }
   };
@@ -229,13 +230,13 @@ export function TouchFeedback({
       className={cn(
         "transition-transform duration-150",
         touchClasses,
-        isPressed && responsive.hasTouch && "scale-95",
+        isPressed && responsive.isMobile && "scale-95",
         _className
       )}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
-      onClick={!responsive.hasTouch ? onPress : undefined}
+      onClick={!responsive.isMobile ? onPress : undefined}
     >
       {children}
     </div>
@@ -523,8 +524,10 @@ export default function MobileCalendarEnhancements({
   const [gestureProgress] = useState(0);
 
   // Swipe navigation setup
-  const { gestureRef } = useSwipeNavigation(
-    () => {
+  const gestureRef = useRef<HTMLElement | null>(null);
+  
+  useCommonGestures({
+    onSwipeLeft: () => {
       // Swipe left - next period
       const nextDate = new Date(currentDate);
       switch (viewType) {
@@ -540,7 +543,7 @@ export default function MobileCalendarEnhancements({
       }
       onDateChange(nextDate);
     },
-    () => {
+    onSwipeRight: () => {
       // Swipe right - previous period
       const prevDate = new Date(currentDate);
       switch (viewType) {
@@ -556,7 +559,7 @@ export default function MobileCalendarEnhancements({
       }
       onDateChange(prevDate);
     }
-  );
+  });
 
   // Responsive padding
   const containerPadding = useResponsiveValue({

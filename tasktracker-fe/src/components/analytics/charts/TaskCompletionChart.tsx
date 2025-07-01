@@ -30,7 +30,7 @@ export function TaskCompletionChart({
   } = data;
 
   // Convert completion trends to array for visualization
-  const dataPoints = Object.entries(completionTrends).map(([key, value]) => ({
+  const dataPoints = Object.entries(completionTrends || {}).map(([key, value]) => ({
     label: key,
     value: value,
     date: new Date(key)
@@ -118,7 +118,7 @@ export function TaskCompletionChart({
         <div className="space-y-2">
           <h4 className="text-sm font-medium">By Priority</h4>
           <div className="space-y-1">
-            {Object.entries(tasksByPriority).map(([priority, count]) => (
+            {Object.entries(tasksByPriority || {}).map(([priority, count]) => (
               <div key={priority} className="flex justify-between text-xs">
                 <span className="capitalize">{priority}</span>
                 <span className="font-medium">{count}</span>
@@ -131,7 +131,7 @@ export function TaskCompletionChart({
         <div className="space-y-2">
           <h4 className="text-sm font-medium">By Category</h4>
           <div className="space-y-1">
-            {Object.entries(tasksByCategory).map(([category, count]) => (
+            {Object.entries(tasksByCategory || {}).map(([category, count]) => (
               <div key={category} className="flex justify-between text-xs">
                 <span className="capitalize">{category}</span>
                 <span className="font-medium">{count}</span>

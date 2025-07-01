@@ -19,6 +19,7 @@ using TaskTrackerAPI.Data;
 using TaskTrackerAPI.Models;
 using TaskTrackerAPI.DTOs;
 using TaskTrackerAPI.DTOs.Focus;
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using TaskTrackerAPI.Services.Interfaces;
 using TaskTrackerAPI.Controllers.V2;
@@ -42,12 +43,14 @@ namespace TaskTrackerAPI.Controllers.V1
         private readonly ApplicationDbContext _context;
         private readonly ILogger<FocusController> _logger;
         private readonly IGamificationService _gamificationService;
+        private readonly IMapper _mapper;
 
-        public FocusController(ApplicationDbContext context, ILogger<FocusController> logger, IGamificationService gamificationService)
+        public FocusController(ApplicationDbContext context, ILogger<FocusController> logger, IGamificationService gamificationService, IMapper mapper)
         {
             _context = context;
             _logger = logger;
             _gamificationService = gamificationService;
+            _mapper = mapper;
         }
 
         // GET: api/v1/focus/current
@@ -417,80 +420,83 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            // ✅ FIXED: Proper Include and null checking to prevent 500 errors
+            FocusSession? session = await _context.FocusSessions
+                .Include(fs => fs.TaskItem) // Explicitly load TaskItem to prevent null reference
                 .Where(fs => fs.UserId == userId && 
                        (fs.Status == SessionStatus.InProgress || fs.Status == SessionStatus.Paused))
                 .OrderByDescending(fs => fs.StartTime)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        ProgressPercentage = fs.TaskItem.ProgressPercentage,
-                        ActualTimeSpentMinutes = fs.TaskItem.ActualTimeSpentMinutes
-                    }
-                })
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
+                _logger.LogInformation("No active focus session found for user {UserId}", userId);
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
 
-            FocusSession session = sessionData.Session;
-            TaskItem task = sessionData.TaskItem;
-            session.TaskItem = task;
+            // ✅ ENTERPRISE VALIDATION: Check TaskItem exists
+            if (session.TaskItem == null)
+            {
+                _logger.LogError("Active focus session {SessionId} has null TaskItem - data integrity issue", session.Id);
+                return ApiServerError<FocusSession>("Session data integrity error - missing task reference");
+            }
 
-            session.EndTime = DateTime.UtcNow;
-            session.Status = SessionStatus.Completed;
-            session.IsCompleted = true;
-            
-            // Calculate actual duration in minutes
-            TimeSpan duration = session.EndTime.Value - session.StartTime;
-            session.DurationMinutes = (int)Math.Ceiling(duration.TotalMinutes);
-
-            // Update task's actual time spent (accumulate from all focus sessions)
-            int totalTimeSpent = await _context.FocusSessions
-                .Where(fs => fs.TaskId == task.Id && fs.Status == SessionStatus.Completed)
-                .SumAsync(fs => fs.DurationMinutes);
-            
-            task.ActualTimeSpentMinutes = totalTimeSpent + session.DurationMinutes;
-
-            await _context.SaveChangesAsync();
-
-            // ✅ NEW: Integrate with gamification service for basic session completion
             try
             {
-                var focusReward = await _gamificationService.ProcessFocusSessionCompletionAsync(
-                    userId, 
-                    session.Id, 
-                    session.DurationMinutes, 
-                    true
-                );
+                TaskItem task = session.TaskItem;
+                
+                session.EndTime = DateTime.UtcNow;
+                session.Status = SessionStatus.Completed;
+                session.IsCompleted = true;
+                
+                // Calculate actual duration in minutes
+                TimeSpan duration = session.EndTime.Value - session.StartTime;
+                session.DurationMinutes = (int)Math.Ceiling(duration.TotalMinutes);
 
-                await _gamificationService.ProcessAchievementUnlocksAsync(
-                    userId, 
-                    "focus_session", 
-                    session.Id
-                );
+                // Update task's actual time spent (accumulate from all focus sessions)
+                int totalTimeSpent = await _context.FocusSessions
+                    .Where(fs => fs.TaskId == task.Id && fs.Status == SessionStatus.Completed)
+                    .SumAsync(fs => fs.DurationMinutes);
+                
+                task.ActualTimeSpentMinutes = totalTimeSpent + session.DurationMinutes;
 
-                _logger.LogInformation("Focus session {SessionId} gamification completed: {Points} points, {XP} XP", 
-                    session.Id, focusReward.PointsAwarded, focusReward.CharacterXPAwarded);
+                await _context.SaveChangesAsync();
+
+                // ✅ ENTERPRISE GAMIFICATION: Integrate with gamification service
+                try
+                {
+                    var focusReward = await _gamificationService.ProcessFocusSessionCompletionAsync(
+                        userId, 
+                        session.Id, 
+                        session.DurationMinutes, 
+                        true
+                    );
+
+                    await _gamificationService.ProcessAchievementUnlocksAsync(
+                        userId, 
+                        "focus_session", 
+                        session.Id
+                    );
+
+                    _logger.LogInformation("Focus session {SessionId} gamification completed: {Points} points, {XP} XP", 
+                        session.Id, focusReward.PointsAwarded, focusReward.CharacterXPAwarded);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing focus session gamification for session {SessionId}", session.Id);
+                    // Don't fail the entire operation for gamification errors
+                }
+
+                _logger.LogInformation("Ended current focus session {SessionId} for user {UserId}, duration: {Duration} minutes", 
+                    session.Id, userId, session.DurationMinutes);
+
+                return ApiOk(session);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing focus session gamification for session {SessionId}", session.Id);
+                _logger.LogError(ex, "Failed to end current focus session for user {UserId}", userId);
+                return ApiServerError<FocusSession>("Failed to end focus session");
             }
-
-            return ApiOk(session);
         }
 
         // POST: api/v1/focus/{id}/pause
@@ -499,53 +505,54 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            // ✅ FIXED: Proper Include and null checking to prevent 500 errors
+            FocusSession? session = await _context.FocusSessions
+                .Include(fs => fs.TaskItem) // Explicitly load TaskItem to prevent null reference
                 .Where(fs => fs.Id == id && fs.UserId == userId)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        // Don't include AssignedToName
-                    }
-                })
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
+                _logger.LogWarning("Focus session {SessionId} not found for user {UserId}", id, userId);
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
 
-            FocusSession session = sessionData.Session;
-            session.TaskItem = sessionData.TaskItem;
+            // ✅ ENTERPRISE VALIDATION: Check TaskItem exists
+            if (session.TaskItem == null)
+            {
+                _logger.LogError("Focus session {SessionId} has null TaskItem - data integrity issue", session.Id);
+                return ApiServerError<FocusSession>("Session data integrity error - missing task reference");
+            }
 
+            // ✅ ENTERPRISE VALIDATION: Check session status
             if (session.Status != SessionStatus.InProgress)
             {
+                _logger.LogWarning("Attempted to pause non-active session {SessionId} with status {Status}", id, session.Status);
                 return ApiBadRequest<FocusSession>("Only in-progress sessions can be paused");
             }
 
-            // Calculate and accumulate duration up to this point
-            TimeSpan currentDuration = DateTime.UtcNow - session.StartTime;
-            session.DurationMinutes += (int)Math.Ceiling(currentDuration.TotalMinutes);
-            
-            // Update start time to now (for when we resume)
-            session.StartTime = DateTime.UtcNow;
-            session.Status = SessionStatus.Paused;
-            
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Paused focus session {SessionId} for user {UserId}, accumulated duration: {Duration} minutes", 
-                session.Id, userId, session.DurationMinutes);
-            
-            return ApiOk(session);
+            try
+            {
+                // Calculate and accumulate duration up to this point
+                TimeSpan currentDuration = DateTime.UtcNow - session.StartTime;
+                session.DurationMinutes += (int)Math.Ceiling(currentDuration.TotalMinutes);
+                
+                // Update start time to now (for when we resume)
+                session.StartTime = DateTime.UtcNow;
+                session.Status = SessionStatus.Paused;
+                
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Paused focus session {SessionId} for user {UserId}, accumulated duration: {Duration} minutes", 
+                    session.Id, userId, session.DurationMinutes);
+                
+                return ApiOk(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to pause focus session {SessionId} for user {UserId}", id, userId);
+                return ApiServerError<FocusSession>("Failed to pause focus session");
+            }
         }
 
         // POST: api/v1/focus/current/pause
@@ -554,49 +561,48 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            // ✅ FIXED: Proper Include and null checking to prevent 500 errors
+            FocusSession? session = await _context.FocusSessions
+                .Include(fs => fs.TaskItem) // Explicitly load TaskItem to prevent null reference
                 .Where(fs => fs.UserId == userId && fs.Status == SessionStatus.InProgress)
                 .OrderByDescending(fs => fs.StartTime)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        // Don't include AssignedToName
-                    }
-                })
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
+                _logger.LogInformation("No active focus session found for user {UserId}", userId);
                 return ApiNotFound<FocusSession>("No active focus session found");
             }
 
-            FocusSession session = sessionData.Session;
-            session.TaskItem = sessionData.TaskItem;
+            // ✅ ENTERPRISE VALIDATION: Check TaskItem exists
+            if (session.TaskItem == null)
+            {
+                _logger.LogError("Active focus session {SessionId} has null TaskItem - data integrity issue", session.Id);
+                return ApiServerError<FocusSession>("Session data integrity error - missing task reference");
+            }
 
-            // Calculate and accumulate duration up to this point
-            TimeSpan currentDuration = DateTime.UtcNow - session.StartTime;
-            session.DurationMinutes += (int)Math.Ceiling(currentDuration.TotalMinutes);
-            
-            // Update start time to now (for when we resume)
-            session.StartTime = DateTime.UtcNow;
-            session.Status = SessionStatus.Paused;
-            
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Paused current focus session {SessionId} for user {UserId}, accumulated duration: {Duration} minutes", 
-                session.Id, userId, session.DurationMinutes);
-            
-            return ApiOk(session);
+            try
+            {
+                // Calculate and accumulate duration up to this point
+                TimeSpan currentDuration = DateTime.UtcNow - session.StartTime;
+                session.DurationMinutes += (int)Math.Ceiling(currentDuration.TotalMinutes);
+                
+                // Update start time to now (for when we resume)
+                session.StartTime = DateTime.UtcNow;
+                session.Status = SessionStatus.Paused;
+                
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Paused current focus session {SessionId} for user {UserId}, accumulated duration: {Duration} minutes", 
+                    session.Id, userId, session.DurationMinutes);
+                
+                return ApiOk(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to pause current focus session for user {UserId}", userId);
+                return ApiServerError<FocusSession>("Failed to pause focus session");
+            }
         }
 
         // POST: api/v1/focus/{id}/resume
@@ -605,49 +611,50 @@ namespace TaskTrackerAPI.Controllers.V1
         {
             int userId = GetUserId();
             
-            var sessionData = await _context.FocusSessions
+            // ✅ FIXED: Proper Include and null checking to prevent 500 errors
+            FocusSession? session = await _context.FocusSessions
+                .Include(fs => fs.TaskItem) // Explicitly load TaskItem to prevent null reference
                 .Where(fs => fs.Id == id && fs.UserId == userId)
-                .Select(fs => new {
-                    Session = fs,
-                    TaskItem = new TaskItem {
-                        Id = fs.TaskItem.Id,
-                        Title = fs.TaskItem.Title,
-                        Description = fs.TaskItem.Description,
-                        Status = fs.TaskItem.Status,
-                        DueDate = fs.TaskItem.DueDate,
-                        Priority = fs.TaskItem.Priority,
-                        CreatedAt = fs.TaskItem.CreatedAt,
-                        UpdatedAt = fs.TaskItem.UpdatedAt,
-                        IsCompleted = fs.TaskItem.IsCompleted,
-                        UserId = fs.TaskItem.UserId,
-                        // Don't include AssignedToName
-                    }
-                })
                 .FirstOrDefaultAsync();
 
-            if (sessionData == null)
+            if (session == null)
             {
+                _logger.LogWarning("Focus session {SessionId} not found for user {UserId}", id, userId);
                 return ApiNotFound<FocusSession>("Focus session not found");
             }
 
-            FocusSession session = sessionData.Session;
-            session.TaskItem = sessionData.TaskItem;
+            // ✅ ENTERPRISE VALIDATION: Check TaskItem exists
+            if (session.TaskItem == null)
+            {
+                _logger.LogError("Focus session {SessionId} has null TaskItem - data integrity issue", session.Id);
+                return ApiServerError<FocusSession>("Session data integrity error - missing task reference");
+            }
 
+            // ✅ ENTERPRISE VALIDATION: Check session status
             if (session.Status != SessionStatus.Paused)
             {
+                _logger.LogWarning("Attempted to resume non-paused session {SessionId} with status {Status}", id, session.Status);
                 return ApiBadRequest<FocusSession>("Only paused sessions can be resumed");
             }
 
-            // Reset start time to now for duration calculation
-            session.StartTime = DateTime.UtcNow;
-            session.Status = SessionStatus.InProgress;
-            
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Resumed focus session {SessionId} for user {UserId}, previous accumulated duration: {Duration} minutes", 
-                session.Id, userId, session.DurationMinutes);
-            
-            return ApiOk(session);
+            try
+            {
+                // Reset start time to now for duration calculation
+                session.StartTime = DateTime.UtcNow;
+                session.Status = SessionStatus.InProgress;
+                
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("Resumed focus session {SessionId} for user {UserId}, previous accumulated duration: {Duration} minutes", 
+                    session.Id, userId, session.DurationMinutes);
+                
+                return ApiOk(session);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resume focus session {SessionId} for user {UserId}", id, userId);
+                return ApiServerError<FocusSession>("Failed to resume focus session");
+            }
         }
 
         // GET: api/v1/focus/suggestions
@@ -1314,6 +1321,236 @@ namespace TaskTrackerAPI.Controllers.V1
                 UserId = userId,
                 UserClaims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList()
             });
+        }
+
+        // DELETE: api/v1/focus/{id}
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<ApiResponse<bool>>> DeleteFocusSession(int id)
+        {
+            int userId = GetUserId();
+
+            try
+            {
+                // Verify session exists and belongs to user
+                bool isOwner = await _context.FocusSessions
+                    .AnyAsync(fs => fs.Id == id && fs.UserId == userId);
+                if (!isOwner)
+                {
+                    return ApiNotFound<bool>("Focus session not found or does not belong to you");
+                }
+
+                // Get session details for logging before deletion
+                FocusSession? session = await _context.FocusSessions
+                    .FirstOrDefaultAsync(fs => fs.Id == id);
+                if (session == null)
+                {
+                    return ApiNotFound<bool>("Focus session not found");
+                }
+
+                // Perform deletion with cascade (will delete related distractions)
+                bool deleted = await _context.FocusSessions
+                    .Where(fs => fs.Id == id)
+                    .ExecuteDeleteAsync() > 0;
+                
+                if (!deleted)
+                {
+                    return ApiServerError<bool>("Failed to delete focus session");
+                }
+
+                _logger.LogInformation("Deleted focus session {SessionId} for user {UserId}. Duration: {Duration}min, Task: {TaskId}", 
+                    id, userId, session.DurationMinutes, session.TaskId);
+
+                // TODO: SignalR notification for real-time updates
+                // await _hubContext.Clients.User(userId.ToString()).SendAsync("FocusSessionDeleted", id);
+
+                return ApiOk(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting focus session {SessionId} for user {UserId}", id, userId);
+                return ApiServerError<bool>("Failed to delete focus session");
+            }
+        }
+
+        // DELETE: api/v1/focus/bulk
+        [HttpDelete("bulk")]
+        public async Task<ActionResult<ApiResponse<BulkDeleteResultDto>>> BulkDeleteFocusSessions([FromBody] BulkDeleteRequestDto request)
+        {
+            if (!ModelState.IsValid || request.SessionIds?.Any() != true)
+            {
+                return ApiBadRequest<BulkDeleteResultDto>("Invalid session IDs provided");
+            }
+
+            int userId = GetUserId();
+            BulkDeleteResultDto result = new BulkDeleteResultDto
+            {
+                RequestedCount = request.SessionIds.Count,
+                SuccessfulDeletes = new List<int>(),
+                FailedDeletes = new List<FailedDeleteDto>()
+            };
+
+            try
+            {
+                foreach (int sessionId in request.SessionIds)
+                {
+                    try
+                    {
+                        // Verify ownership
+                        bool isOwner = await _context.FocusSessions
+                            .AnyAsync(fs => fs.Id == sessionId && fs.UserId == userId);
+                        if (!isOwner)
+                        {
+                            result.FailedDeletes.Add(new FailedDeleteDto 
+                            { 
+                                SessionId = sessionId, 
+                                Reason = "Session not found or access denied" 
+                            });
+                            continue;
+                        }
+
+                        // Perform deletion
+                        bool deleted = await _context.FocusSessions
+                            .Where(fs => fs.Id == sessionId)
+                            .ExecuteDeleteAsync() > 0;
+                        if (deleted)
+                        {
+                            result.SuccessfulDeletes.Add(sessionId);
+                        }
+                        else
+                        {
+                            result.FailedDeletes.Add(new FailedDeleteDto 
+                            { 
+                                SessionId = sessionId, 
+                                Reason = "Deletion failed" 
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error deleting session {SessionId} in bulk operation for user {UserId}", sessionId, userId);
+                        result.FailedDeletes.Add(new FailedDeleteDto 
+                        { 
+                            SessionId = sessionId, 
+                            Reason = "Internal error during deletion" 
+                        });
+                    }
+                }
+
+                _logger.LogInformation("Bulk delete completed for user {UserId}. Successful: {SuccessCount}, Failed: {FailCount}", 
+                    userId, result.SuccessfulDeletes.Count, result.FailedDeletes.Count);
+
+                // TODO: SignalR notification for bulk updates
+                // await _hubContext.Clients.User(userId.ToString()).SendAsync("BulkFocusSessionsDeleted", result);
+
+                return ApiOk(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in bulk delete operation for user {UserId}", userId);
+                return ApiServerError<BulkDeleteResultDto>("Bulk delete operation failed");
+            }
+        }
+
+        // DELETE: api/v1/focus/clear-history
+        [HttpDelete("clear-history")]
+        public async Task<ActionResult<ApiResponse<ClearHistoryResultDto>>> ClearFocusHistory([FromQuery] DateTime? beforeDate = null)
+        {
+            int userId = GetUserId();
+
+            try
+            {
+                // Get sessions to delete (with optional date filter)
+                IEnumerable<FocusSession> sessionsToDelete;
+                
+                if (beforeDate.HasValue)
+                {
+                    sessionsToDelete = await _context.FocusSessions
+                        .Where(fs => fs.UserId == userId && fs.StartTime <= beforeDate.Value)
+                        .ToListAsync();
+                }
+                else
+                {
+                    sessionsToDelete = await _context.FocusSessions
+                        .Where(fs => fs.UserId == userId)
+                        .ToListAsync();
+                }
+
+                List<int> sessionIds = sessionsToDelete.Select(s => s.Id).ToList();
+                int totalMinutes = sessionsToDelete.Sum(s => s.DurationMinutes);
+                
+                // Perform bulk deletion
+                int deletedCount = await _context.FocusSessions
+                    .Where(fs => sessionIds.Contains(fs.Id))
+                    .ExecuteDeleteAsync();
+
+                ClearHistoryResultDto result = new ClearHistoryResultDto
+                {
+                    DeletedSessionCount = deletedCount,
+                    TotalMinutesDeleted = totalMinutes,
+                    DateFilter = beforeDate
+                };
+
+                _logger.LogInformation("Cleared focus history for user {UserId}. Deleted {Count} sessions ({Minutes} minutes) before {Date}", 
+                    userId, deletedCount, totalMinutes, beforeDate?.ToString("yyyy-MM-dd") ?? "all time");
+
+                // TODO: SignalR notification
+                // await _hubContext.Clients.User(userId.ToString()).SendAsync("FocusHistoryCleared", result);
+
+                return ApiOk(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing focus history for user {UserId}", userId);
+                return ApiServerError<ClearHistoryResultDto>("Failed to clear focus history");
+            }
+        }
+
+        // GET: api/v1/focus/export
+        [HttpGet("export")]
+        public async Task<ActionResult<ApiResponse<FocusHistoryExportDto>>> ExportFocusHistory(
+            [FromQuery] DateTime? startDate = null, 
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string format = "json")
+        {
+            int userId = GetUserId();
+
+            try
+            {
+                // Default to last 90 days if no dates provided
+                DateTime start = startDate ?? DateTime.UtcNow.AddDays(-90);
+                DateTime end = endDate ?? DateTime.UtcNow;
+
+                IEnumerable<FocusSession> sessions = await _context.FocusSessions
+                    .Where(fs => fs.UserId == userId && fs.StartTime >= start && fs.StartTime <= end)
+                    .ToListAsync();
+                
+                FocusHistoryExportDto export = new FocusHistoryExportDto
+                {
+                    ExportDate = DateTime.UtcNow,
+                    StartDate = start,
+                    EndDate = end,
+                    TotalSessions = sessions.Count(),
+                    TotalMinutes = sessions.Sum(s => s.DurationMinutes),
+                    Sessions = _mapper.Map<List<FocusSessionDTO>>(sessions),
+                    Summary = new FocusExportSummaryDto
+                    {
+                        AverageSessionLength = sessions.Any() ? sessions.Average(s => s.DurationMinutes) : 0,
+                        CompletedSessions = sessions.Count(s => s.Status == SessionStatus.Completed),
+                        InterruptedSessions = sessions.Count(s => s.Status == SessionStatus.Interrupted),
+                        TotalDistractions = sessions.Sum(s => s.Distractions?.Count ?? 0)
+                    }
+                };
+
+                _logger.LogInformation("Exported focus history for user {UserId}. {SessionCount} sessions from {Start} to {End}", 
+                    userId, sessions.Count(), start.ToString("yyyy-MM-dd"), end.ToString("yyyy-MM-dd"));
+
+                return ApiOk(export);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting focus history for user {UserId}", userId);
+                return ApiServerError<FocusHistoryExportDto>("Failed to export focus history");
+            }
         }
     }
 } 

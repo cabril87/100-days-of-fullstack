@@ -3,21 +3,27 @@
  * All rights reserved.
  * 
  * Enterprise Animation Manager
- * High-performance, type-safe animation system with enterprise features
+ * Comprehensive animation system for TaskTracker enterprise features
+ * 
+ * MOBILE-FIRST RESPONSIVE ENHANCEMENTS:
+ * - Device-aware animation quality and performance
+ * - Touch gesture support for animation control
+ * - Battery-aware optimization
+ * - Network connection optimization
  */
 
 import { 
   AnimationConfig, 
-  AnimationSequence, 
+  AnimationSystemConfig,
+  AnimationSequence,
   TextAnimationConfig,
   ParticleConfig,
   CharacterConfig,
-  AnimationMetrics,
-  AnimationSystemConfig,
-  AnimationEvent,
+  Vector2D,
   AnimationQuality,
-  IAnimationManager,
-  Vector2D
+  AnimationMetrics,
+  AnimationEvent,
+  IAnimationManager
 } from '@/lib/types/animations';
 
 import { TextAnimationEngine, TextAnimation } from './engines/TextAnimationEngine';
@@ -25,11 +31,97 @@ import { ParticleEngine, ParticleSystem } from './engines/ParticleEngine';
 import { CharacterEngine, Character } from './engines/CharacterEngine';
 import { PerformanceMonitor } from './utils/PerformanceMonitor';
 import { AnimationSequencer } from './utils/AnimationSequencer';
-// import { PredefinedSequences } from './sequences/PredefinedSequences'; // Commented out until file exists
 
-/**
- * Enterprise-grade animation manager with comprehensive features
- */
+// ================================
+// NETWORK & BATTERY API TYPES
+// ================================
+
+interface NetworkConnection {
+  effectiveType?: '2g' | '3g' | '4g' | 'slow-2g';
+  downlink?: number;
+  downlinkMax?: number;
+  rtt?: number;
+  saveData?: boolean;
+  type?: 'bluetooth' | 'cellular' | 'ethernet' | 'mixed' | 'none' | 'other' | 'unknown' | 'wifi' | 'wimax';
+  addEventListener?: (event: string, handler: () => void) => void;
+  removeEventListener?: (event: string, handler: () => void) => void;
+}
+
+interface BatteryManager {
+  charging: boolean;
+  chargingTime: number;
+  dischargingTime: number;
+  level: number;
+  addEventListener?: (event: string, handler: () => void) => void;
+  removeEventListener?: (event: string, handler: () => void) => void;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkConnection;
+  mozConnection?: NetworkConnection;
+  webkitConnection?: NetworkConnection;
+  getBattery?: () => Promise<BatteryManager>;
+}
+
+interface NetworkObserver {
+  disconnect: () => void;
+}
+
+// ================================
+// MOBILE-FIRST DEVICE TYPES
+// ================================
+
+interface DeviceCapabilities {
+  type: 'mobile' | 'tablet' | 'desktop';
+  width: number;
+  height: number;
+  pixelRatio: number;
+  hasTouch: boolean;
+  orientation: 'portrait' | 'landscape';
+  connection: 'slow' | 'fast' | 'offline';
+  batteryLevel?: number;
+  isLowEndDevice: boolean;
+  maxAnimations: number;
+  preferredQuality: AnimationQuality;
+}
+
+interface ResponsiveAnimationPreset {
+  mobile: {
+    quality: AnimationQuality;
+    maxConcurrent: number;
+    particleCount: number;
+    frameRate: number;
+    enableEffects: boolean;
+  };
+  tablet: {
+    quality: AnimationQuality;
+    maxConcurrent: number;
+    particleCount: number;
+    frameRate: number;
+    enableEffects: boolean;
+  };
+  desktop: {
+    quality: AnimationQuality;
+    maxConcurrent: number;
+    particleCount: number;
+    frameRate: number;
+    enableEffects: boolean;
+  };
+}
+
+interface TouchGestureConfig {
+  enabled: boolean;
+  tapToTrigger: boolean;
+  swipeToMove: boolean;
+  longPressActions: boolean;
+  hapticFeedback: boolean;
+  gestureThreshold: number;
+}
+
+// ================================
+// ENTERPRISE ANIMATION MANAGER
+// ================================
+
 export class EnterpriseAnimationManager implements IAnimationManager {
   private static instance: EnterpriseAnimationManager;
   
@@ -40,7 +132,7 @@ export class EnterpriseAnimationManager implements IAnimationManager {
   private performanceMonitor: PerformanceMonitor;
   private sequencer: AnimationSequencer;
   
-  // Configuration and state
+  // Configuration
   private config: AnimationSystemConfig;
   private container: HTMLElement | null = null;
   private isInitialized = false;
@@ -54,6 +146,18 @@ export class EnterpriseAnimationManager implements IAnimationManager {
   private frameCount = 0;
   private droppedFrames = 0;
   
+  // Mobile-first responsive features - FIXED: No more any types
+  private deviceCapabilities: DeviceCapabilities;
+  private responsivePresets: ResponsiveAnimationPreset;
+  private touchGestureConfig: TouchGestureConfig;
+  private networkObserver: NetworkObserver | null = null;
+  private orientationHandler: (() => void) | null = null;
+  
+  // Touch state for proper handler implementation
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchStartTime = 0;
+  
   private constructor() {
     this.config = this.getDefaultConfig();
     this.textEngine = new TextAnimationEngine();
@@ -62,8 +166,14 @@ export class EnterpriseAnimationManager implements IAnimationManager {
     this.performanceMonitor = new PerformanceMonitor();
     this.sequencer = new AnimationSequencer();
     
+    // Initialize mobile-first responsive features
+    this.deviceCapabilities = this.detectDeviceCapabilities();
+    this.responsivePresets = this.getResponsivePresets();
+    this.touchGestureConfig = this.getDefaultTouchConfig();
+    
     this.bindMethods();
     this.setupPerformanceTracking();
+    this.setupResponsiveFeatures();
   }
 
   public static getInstance(): EnterpriseAnimationManager {
@@ -423,6 +533,15 @@ export class EnterpriseAnimationManager implements IAnimationManager {
     this.characterEngine.destroy();
     this.performanceMonitor.destroy();
     
+    // Clean up touch gestures
+    this.cleanupTouchGestures();
+    
+    // Clean up orientation handler
+    if (this.orientationHandler) {
+      window.removeEventListener('orientationchange', this.orientationHandler);
+      window.removeEventListener('resize', this.orientationHandler);
+    }
+    
     // Clean up container
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
@@ -609,6 +728,344 @@ export class EnterpriseAnimationManager implements IAnimationManager {
       showPerformanceOverlay: false,
       logAnimationEvents: false
     };
+  }
+
+  // ================================
+  // MOBILE-FIRST RESPONSIVE METHODS
+  // ================================
+
+  private detectDeviceCapabilities(): DeviceCapabilities {
+    if (typeof window === 'undefined') {
+      return {
+        type: 'desktop',
+        width: 1920,
+        height: 1080,
+        pixelRatio: 1,
+        hasTouch: false,
+        orientation: 'landscape',
+        connection: 'fast',
+        isLowEndDevice: false,
+        maxAnimations: 20,
+        preferredQuality: 'high'
+      };
+    }
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const pixelRatio = window.devicePixelRatio || 1;
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Device type detection
+    let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+    if (width <= 768 && hasTouch) {
+      deviceType = 'mobile';
+    } else if (width <= 1024 && hasTouch) {
+      deviceType = 'tablet';
+    }
+
+    // Connection speed detection - FIXED: No more any types
+    const navigatorWithConnection = navigator as NavigatorWithConnection;
+    const connection = navigatorWithConnection.connection || navigatorWithConnection.mozConnection || navigatorWithConnection.webkitConnection;
+    let connectionSpeed: 'slow' | 'fast' | 'offline' = 'fast';
+    if (connection) {
+      if (connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g') {
+        connectionSpeed = 'slow';
+      } else if (!navigator.onLine) {
+        connectionSpeed = 'offline';
+      }
+    }
+
+    // Battery level detection - FIXED: No more any types
+    let batteryLevel: number | undefined;
+    if (navigatorWithConnection.getBattery) {
+      navigatorWithConnection.getBattery().then((battery: BatteryManager) => {
+        batteryLevel = battery.level;
+      });
+    }
+
+    // Low-end device detection
+    const isLowEndDevice = pixelRatio < 2 || 
+                          (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+                          connectionSpeed === 'slow';
+
+    return {
+      type: deviceType,
+      width,
+      height,
+      pixelRatio,
+      hasTouch,
+      orientation: width > height ? 'landscape' : 'portrait',
+      connection: connectionSpeed,
+      batteryLevel,
+      isLowEndDevice,
+      maxAnimations: deviceType === 'mobile' ? 5 : deviceType === 'tablet' ? 10 : 20,
+      preferredQuality: isLowEndDevice ? 'low' : deviceType === 'mobile' ? 'medium' : 'high'
+    };
+  }
+
+  private getResponsivePresets(): ResponsiveAnimationPreset {
+    return {
+      mobile: {
+        quality: 'medium',
+        maxConcurrent: 5,
+        particleCount: 30,
+        frameRate: 30,
+        enableEffects: true
+      },
+      tablet: {
+        quality: 'high',
+        maxConcurrent: 10,
+        particleCount: 75,
+        frameRate: 45,
+        enableEffects: true
+      },
+      desktop: {
+        quality: 'ultra',
+        maxConcurrent: 20,
+        particleCount: 120,
+        frameRate: 60,
+        enableEffects: true
+      }
+    };
+  }
+
+  private getDefaultTouchConfig(): TouchGestureConfig {
+    return {
+      enabled: this.deviceCapabilities.hasTouch,
+      tapToTrigger: true,
+      swipeToMove: true,
+      longPressActions: true,
+      hapticFeedback: this.deviceCapabilities.type === 'mobile',
+      gestureThreshold: 10
+    };
+  }
+
+  private setupResponsiveFeatures(): void {
+    if (typeof window === 'undefined') return;
+
+    // Setup orientation change handler
+    this.orientationHandler = () => {
+      this.deviceCapabilities = this.detectDeviceCapabilities();
+      this.adaptToDevice();
+    };
+
+    window.addEventListener('orientationchange', this.orientationHandler);
+    window.addEventListener('resize', this.orientationHandler);
+
+    // Setup network connection monitoring - FIXED: No more any types
+    const navigatorWithConnection = navigator as NavigatorWithConnection;
+    const connection = navigatorWithConnection.connection || navigatorWithConnection.mozConnection || navigatorWithConnection.webkitConnection;
+    
+    if (connection && connection.addEventListener) {
+      const updateConnection = () => {
+        this.deviceCapabilities.connection = 
+          connection.effectiveType === '2g' || connection.effectiveType === 'slow-2g' 
+            ? 'slow' : 'fast';
+        this.adaptToDevice();
+      };
+
+      connection.addEventListener('change', updateConnection);
+      this.networkObserver = {
+        disconnect: () => connection.removeEventListener?.('change', updateConnection)
+      };
+    }
+
+    // Setup battery monitoring - FIXED: No more any types
+    if (navigatorWithConnection.getBattery) {
+      navigatorWithConnection.getBattery().then((battery: BatteryManager) => {
+        const updateBattery = () => {
+          this.deviceCapabilities.batteryLevel = battery.level;
+          if (battery.level < 0.2) {
+            // Switch to power-saving mode
+            this.setQuality('low');
+          }
+        };
+
+        battery.addEventListener?.('levelchange', updateBattery);
+        battery.addEventListener?.('chargingchange', updateBattery);
+      });
+    }
+
+    // Initial device adaptation
+    this.adaptToDevice();
+  }
+
+  private adaptToDevice(): void {
+    const preset = this.responsivePresets[this.deviceCapabilities.type];
+    
+    // Update configuration based on device capabilities
+    this.config.maxConcurrentAnimations = Math.min(
+      preset.maxConcurrent,
+      this.deviceCapabilities.maxAnimations
+    );
+    this.config.targetFrameRate = preset.frameRate;
+    this.config.qualityLevel = this.deviceCapabilities.preferredQuality;
+
+    // Update engines with new settings
+    if (this.isInitialized) {
+      this.setQuality(this.config.qualityLevel);
+      
+      // Notify all engines of device changes
+      this.characterEngine.setQuality(this.config.qualityLevel);
+      
+      if (this.config.debugMode) {
+        console.log('🎮 Adapted to device:', {
+          type: this.deviceCapabilities.type,
+          quality: this.config.qualityLevel,
+          maxAnimations: this.config.maxConcurrentAnimations,
+          frameRate: this.config.targetFrameRate
+        });
+      }
+    }
+  }
+
+  /**
+   * Get current device capabilities
+   */
+  public getDeviceCapabilities(): DeviceCapabilities {
+    return { ...this.deviceCapabilities };
+  }
+
+  /**
+   * Enable/disable touch gestures
+   */
+  public setTouchGestures(enabled: boolean): void {
+    this.touchGestureConfig.enabled = enabled && this.deviceCapabilities.hasTouch;
+    
+    if (this.touchGestureConfig.enabled) {
+      this.setupTouchGestures();
+    }
+  }
+
+  /**
+   * Trigger haptic feedback if available
+   */
+  public triggerHapticFeedback(intensity: 'light' | 'medium' | 'heavy' = 'light'): void {
+    if (!this.touchGestureConfig.hapticFeedback || !this.deviceCapabilities.hasTouch) return;
+
+    if ('vibrate' in navigator) {
+      const patterns = {
+        light: [10],
+        medium: [50],
+        heavy: [100]
+      };
+      navigator.vibrate(patterns[intensity]);
+    }
+  }
+
+  /**
+   * Optimize for battery saving
+   */
+  public setBatterySavingMode(enabled: boolean): void {
+    if (enabled) {
+      this.setQuality('low');
+      this.config.maxConcurrentAnimations = Math.min(3, this.config.maxConcurrentAnimations);
+      this.config.targetFrameRate = 30;
+    } else {
+      this.adaptToDevice(); // Restore device-appropriate settings
+    }
+  }
+
+  private touchStartHandler = (e: TouchEvent): void => {
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchStartTime = Date.now();
+  };
+
+  private touchEndHandler = (e: TouchEvent): void => {
+    const touch = e.changedTouches[0];
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+    const endTime = Date.now();
+    
+    const deltaX = endX - this.touchStartX;
+    const deltaY = endY - this.touchStartY;
+    const deltaTime = endTime - this.touchStartTime;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // Tap detection
+    if (distance < this.touchGestureConfig.gestureThreshold && deltaTime < 300) {
+      if (this.touchGestureConfig.tapToTrigger) {
+        this.handleTapGesture(endX, endY);
+      }
+    }
+    
+    // Long press detection
+    if (distance < this.touchGestureConfig.gestureThreshold && deltaTime > 500) {
+      if (this.touchGestureConfig.longPressActions) {
+        this.handleLongPressGesture(endX, endY);
+      }
+    }
+
+    // Swipe detection
+    if (distance > this.touchGestureConfig.gestureThreshold * 2) {
+      if (this.touchGestureConfig.swipeToMove) {
+        this.handleSwipeGesture(deltaX, deltaY, endX, endY);
+      }
+    }
+  };
+
+  private setupTouchGestures(): void {
+    if (!this.container || !this.touchGestureConfig.enabled) return;
+
+    this.container.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+    this.container.addEventListener('touchend', this.touchEndHandler, { passive: true });
+  }
+
+  private cleanupTouchGestures(): void {
+    if (!this.container) return;
+    
+    this.container.removeEventListener('touchstart', this.touchStartHandler);
+    this.container.removeEventListener('touchend', this.touchEndHandler);
+  }
+
+  private handleTapGesture(x: number, y: number): void {
+    this.triggerHapticFeedback('light');
+    
+    // Find character near tap location and trigger celebration
+    this.activeAnimations.forEach((animation, id) => {
+      if ('type' in animation && animation.type === 'character') {
+        const character = animation as Character;
+        const distance = Math.sqrt(
+          Math.pow(character.position.x - x, 2) + 
+          Math.pow(character.position.y - y, 2)
+        );
+        
+        if (distance < 50) { // 50px tap radius
+          character.play('celebration');
+        }
+      }
+    });
+  }
+
+  private handleLongPressGesture(x: number, y: number): void {
+    this.triggerHapticFeedback('heavy');
+    
+    // Create new character at long press location
+    this.createCharacter({
+      type: 'mascot',
+      size: this.deviceCapabilities.type === 'mobile' ? 32 : 48,
+      position: { x, y },
+      autoAnimate: true,
+      celebrationAnimation: 'dance'
+    });
+  }
+
+  private handleSwipeGesture(deltaX: number, deltaY: number, endX: number, endY: number): void {
+    this.triggerHapticFeedback('medium');
+    
+    // Move characters based on swipe direction
+    this.activeAnimations.forEach((animation, id) => {
+      if ('type' in animation && animation.type === 'character') {
+        const character = animation as Character;
+        const newPosition = {
+          x: Math.max(0, Math.min(this.deviceCapabilities.width - 48, character.position.x + deltaX * 0.5)),
+          y: Math.max(0, Math.min(this.deviceCapabilities.height - 48, character.position.y + deltaY * 0.5))
+        };
+        character.move(newPosition, 500);
+      }
+    });
   }
 }
 

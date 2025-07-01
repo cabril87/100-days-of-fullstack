@@ -230,17 +230,24 @@ const apiCache = new ApiCache();
 // ================================
 
 // Check if this is an expected 404 for family endpoints
-const isExpectedFamilyError = (url: string, error: ApiErrorDetails): boolean => {
+const isExpectedNotFoundError = (url: string, error: ApiErrorDetails): boolean => {
   const statusCode = error?.statusCode || error?.status;
   if (statusCode !== 404) return false;
 
+  // Only treat specific GET endpoints as expected 404s
   const hasExpectedUrl = url.includes('/family/primary') ||
          url.includes('/family/relationships') ||
-         url.includes('/family/stats');
+         url.includes('/family/stats') ||
+         (url.includes('/focus/current') && !url.includes('/focus/start')) ||  // Only GET /focus/current, not POST /focus/start
+         url.includes('/Gamification/progress') ||
+         url.includes('/Gamification/challenges') ||
+         url.includes('/Gamification/family');
          
   const hasExpectedMessage = Boolean(error?.message?.includes('No primary family') ||
-         error?.message?.includes('not found') ||
-         error?.message?.includes('No family found'));
+         error?.message?.includes('No active focus session') ||
+         error?.message?.includes('No family found') ||
+         (error?.message?.includes('not found') && !error?.message?.includes('Task not found')) ||  // Exclude task not found errors
+         error?.message?.includes('Not Found'));
          
   return hasExpectedUrl || hasExpectedMessage;
 };
@@ -275,8 +282,8 @@ export const withRetry = async <T>(
         const errorDetails = error as HttpErrorDetails;
         const url = errorDetails?.url || 'unknown';
         
-        // Don't log expected family 404 errors
-        if (!isExpectedFamilyError(url, errorDetails as ApiErrorDetails)) {
+        // Don't log expected 404 errors (family, focus, gamification endpoints)
+        if (!isExpectedNotFoundError(url, errorDetails as ApiErrorDetails)) {
           console.error(`❌ API Request failed after ${maxAttempts} attempts:`, {
             url,
             status: errorDetails?.statusCode || errorDetails?.status,
@@ -312,6 +319,9 @@ export interface ApiErrorResponse {
   statusCode: number;
   errors?: Record<string, string[]>;
   code?: string;
+  // Backend wrapper format for error responses
+  success?: boolean;
+  data?: null;
 }
 
 export class ApiClientError extends Error {
@@ -354,26 +364,59 @@ export class ApiClient {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           errorData = await response.json();
+          // Only log unexpected errors to reduce console noise
+          if (response.status !== 404 || !response.url.includes('/focus/current')) {
+            console.log('🔍 ApiClient: Parsed error response:', { url: response.url, status: response.status, errorData });
+          }
         }
       } catch {
         // Ignore JSON parsing errors
       }
       
-      // Check if this is an expected 404 for family-related endpoints
+      // Check if this is an expected 404 for family-related, focus, and gamification endpoints
+      // Defensive programming: Handle common "not found" states that are normal application behavior
       const isExpected404 = response.status === 404 && 
         (response.url.includes('/family/primary') || 
          response.url.includes('/family/relationships') ||
          response.url.includes('/family/stats') ||
+         response.url.includes('/focus/current') ||
+         response.url.includes('/Gamification/progress') ||
+         response.url.includes('/Gamification/challenges') ||
+         response.url.includes('/Gamification/family') ||
          errorData?.message?.includes('No primary family') ||
+         errorData?.message?.includes('No active focus session') ||
+         errorData?.message?.includes('No family found') ||
          errorData?.message?.includes('not found') ||
-         errorData?.message?.includes('No family found'));
+         errorData?.message?.includes('Not Found'));
       
-      // Only log errors that aren't expected 404s for primary family
+      // Only log debug info for non-focus endpoints to reduce console noise
+      if (!response.url.includes('/focus/current')) {
+        console.log('🔍 ApiClient: Expected 404 check:', { 
+          status: response.status, 
+          url: response.url, 
+          message: errorData?.message, 
+          isExpected404 
+        });
+      }
+      
+      // Check if backend returned structured error response with success:false (expected application state)
+      const isStructuredError = errorData && typeof errorData === 'object' && 'success' in errorData && errorData.success === false;
+      
+      // Only log errors that aren't expected 404s for family/focus/gamification endpoints
       if (isExpected404) {
         // Suppress expected 404s completely in development to reduce noise
         if (process.env.NODE_ENV !== 'development') {
           console.debug(`🔍 Expected 404: ${response.url.split('?')[0]} - ${errorData?.message || 'Resource not found'}`);
         }
+        // Return null for expected 404s to prevent uncaught promise rejections per .cursorrules
+        return null as T;
+      } else if (isStructuredError && response.status === 404) {
+        // Backend returned success:false with 404 - this is an expected application state
+        // Only log for non-focus endpoints to reduce console noise
+        if (!response.url.includes('/focus/current')) {
+          console.log(`🔍 Backend structured 404: ${response.url.split('?')[0]} - ${errorData?.message || 'Resource not found'}`);
+        }
+        return null as T;
       } else if (response.status === 404) {
         console.debug(`🔍 Resource not found [404]: ${response.url.split('?')[0]}`);
       } else {
