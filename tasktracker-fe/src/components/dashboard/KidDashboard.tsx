@@ -18,14 +18,9 @@ import {
   Crown,
   PartyPopper
 } from 'lucide-react';
-import { DashboardContentProps } from '@/lib/types';
 import { taskService } from '@/lib/services/taskService';
-import { Task } from '@/lib/types/task';
-
-interface KidDashboardProps extends DashboardContentProps {
-  onTaskComplete: (taskId: number) => void;
-  onRequestPermission: (action: string, description: string) => void;
-}
+import { Task } from '@/lib/types/tasks';
+import type { KidDashboardProps } from '@/lib/props/components/dashboard.props';
 
 export default function KidDashboard({ user, initialData, onTaskComplete, onRequestPermission }: KidDashboardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialData?.recentTasks || []);
@@ -368,3 +363,4 @@ export default function KidDashboard({ user, initialData, onTaskComplete, onRequ
     </div>
   );
 } 
+

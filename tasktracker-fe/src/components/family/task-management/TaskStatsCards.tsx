@@ -8,7 +8,7 @@ import {
   Clock,
   UserPlus
 } from 'lucide-react';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
 
 interface TaskStatsCardsProps {
   filteredTasks: FamilyTaskItemDTO[];
@@ -95,3 +95,4 @@ export default function TaskStatsCards({ filteredTasks, isBatchMode }: TaskStats
     </div>
   );
 } 
+

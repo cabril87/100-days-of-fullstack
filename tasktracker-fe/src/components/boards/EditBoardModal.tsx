@@ -15,11 +15,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { UpdateBoardDTO, EditBoardModalProps, BoardColumnDTO } from '../../lib/types/board';
-import { TaskItemStatus } from '../../lib/types/task';
+import { UpdateBoardDTO, EditBoardModalProps, BoardColumnDTO } from '@/lib/types/boards';
+import { TaskItemStatus } from '@/lib/types/tasks';
 
 import { apiClient } from '../../lib/config/api-client';
-import { StatusMappingService } from '../../lib/utils/statusMapping';
+import { StatusMappingService } from '@/lib/helpers/utils/statusMapping';
 import {
   DndContext,
   closestCenter,
@@ -88,7 +88,7 @@ import {
   Zap,
   CheckCircle
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 const editBoardSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
@@ -126,7 +126,10 @@ const COLOR_PALETTE = [
 ];
 
 // Enhanced Sortable Column Item Component
-interface EnhancedSortableColumnItemProps {
+import type { EnhancedSortableColumnItemProps } from '@/lib/props/components/boards.props';
+
+// Props interface moved to lib/props/components/boards.props.ts
+// interface EnhancedSortableColumnItemProps {
   column: BoardColumnDTO;
   isEditing: boolean;
   editData: ColumnEditFormData;
@@ -449,7 +452,8 @@ const EnhancedSortableColumnItem: React.FC<EnhancedSortableColumnItemProps> = ({
 };
 
 // Delete Confirmation Modal
-interface DeleteConfirmationModalProps {
+// Props interface moved to lib/props/components/boards.props.ts
+// interface DeleteConfirmationModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;

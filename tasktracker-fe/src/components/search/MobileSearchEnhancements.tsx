@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Mic, 
   MicOff, 
@@ -17,12 +17,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils';
 import { 
   MobileSearchEnhancementsProps,
   VoiceSearchButtonProps,
   MobileSearchToolbarProps,
 } from '@/lib/types';
+import { triggerHapticFeedback, useVoiceSearch } from '@/lib/helpers/mobile';
+
 
 // Type definitions for Speech Recognition API
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
@@ -67,168 +69,7 @@ declare global {
   }
 }
 
-// MobileSearchEnhancementsProps now imported from lib/types
-
-/**
- * Global haptic feedback function
- */
-export function triggerHapticFeedback(type: 'light' | 'medium' | 'heavy' | 'start' | 'success' | 'error' = 'light') {
-  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-    const patterns = {
-      light: [10],
-      medium: [20],
-      heavy: [30],
-      start: [50, 100, 50],
-      success: [100, 50, 100],
-      error: [200, 100, 200, 100, 200]
-    };
-    
-    navigator.vibrate(patterns[type]);
-  }
-}
-
-/**
- * Voice Search Hook
- */
-export function useVoiceSearch(onResult?: (transcript: string) => void) {
-  const [isListening, setIsListening] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
-  const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Check if Speech Recognition is supported
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      setIsSupported(true);
-      recognitionRef.current = new SpeechRecognition();
-      
-      const recognition = recognitionRef.current;
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        triggerHapticFeedback('start');
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const results = Array.from({ length: event.results.length }, (_, i) => event.results[i]);
-        const currentTranscript = results
-          .map(result => result[0].transcript)
-          .join('');
-        
-        setTranscript(currentTranscript);
-        
-        if (results[results.length - 1].isFinal) {
-          onResult?.(currentTranscript);
-          triggerHapticFeedback('success');
-        }
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        triggerHapticFeedback('error');
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
-      }
-    };
-  }, [onResult]);
-
-  const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
-      setTranscript('');
-      recognitionRef.current.start();
-    }
-  }, [isListening]);
-
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-    }
-  }, [isListening]);
-
-  return {
-    isSupported,
-    isListening,
-    transcript,
-    startListening,
-    stopListening
-  };
-}
-
-/**
- * Touch Gesture Hook
- */
-export function useTouchGestures(onGesture?: (direction: 'up' | 'down' | 'left' | 'right', distance: number) => void) {
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
-
-  const minSwipeDistance = 50;
-
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart({
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY
-    });
-  }, []);
-
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    setTouchEnd({
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY
-    });
-  }, []);
-
-  const onTouchEnd = useCallback(() => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distanceX = touchStart.x - touchEnd.x;
-    const distanceY = touchStart.y - touchEnd.y;
-    const isLeftSwipe = distanceX > minSwipeDistance;
-    const isRightSwipe = distanceX < -minSwipeDistance;
-    const isUpSwipe = distanceY > minSwipeDistance;
-    const isDownSwipe = distanceY < -minSwipeDistance;
-
-    if (isLeftSwipe) {
-      onGesture?.('left', Math.abs(distanceX));
-      triggerHapticFeedback('light');
-    } else if (isRightSwipe) {
-      onGesture?.('right', Math.abs(distanceX));
-      triggerHapticFeedback('light');
-    } else if (isUpSwipe) {
-      onGesture?.('up', Math.abs(distanceY));
-      triggerHapticFeedback('light');
-    } else if (isDownSwipe) {
-      onGesture?.('down', Math.abs(distanceY));
-      triggerHapticFeedback('light');
-    }
-  }, [touchStart, touchEnd, onGesture]);
-
-  return {
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd
-  };
-}
-
-/**
- * Voice Search Button Component
- */
-// VoiceSearchButtonProps now imported from lib/types
+// Voice search hook now imported from lib/helpers/mobile
 
 export function VoiceSearchButton({ onVoiceResult, className, size = 'md' }: VoiceSearchButtonProps) {
   const { isSupported, isListening, transcript, startListening, stopListening } = useVoiceSearch(onVoiceResult);

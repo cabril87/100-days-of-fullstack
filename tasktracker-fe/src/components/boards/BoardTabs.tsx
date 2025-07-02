@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,8 +24,9 @@ import {
 } from 'lucide-react';
 
 // Types and Services
-import { BoardTabsProps, BoardTabType } from '@/lib/types/board-tabs';
-import { BoardDTO } from '@/lib/types/board';
+import { BoardTabsProps } from '@/lib/props/components/boards.props';
+import { BoardTabType } from '@/lib/types/boards/board-tabs';
+import { BoardDTO } from '@/lib/types/boards';
 import { BoardService } from '@/lib/services/boardService';
 
 // Tab Components
@@ -40,7 +41,7 @@ export const BoardTabs: React.FC<BoardTabsProps> = ({
   className
 }) => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<BoardTabType>(initialTab);
+  const [activeTab, setActiveTab] = useState<BoardTabType>((initialTab as BoardTabType) || 'board');
   const [board, setBoard] = useState<BoardDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -246,3 +247,4 @@ export const BoardTabs: React.FC<BoardTabsProps> = ({
     </div>
   );
 }; 
+

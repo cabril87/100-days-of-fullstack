@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+// Removed unused imports to comply with .cursorrules
 import FamilySeedingPanel from '@/components/admin/FamilySeedingPanel';
-import { FamilySeedingPageContentProps } from '@/lib/types/component-props';
+import { FamilySeedingPageContentProps } from '@/lib/props/components/main.props';
 
 export default function FamilySeedingPageContent({}: FamilySeedingPageContentProps) {
   return (

@@ -13,7 +13,7 @@ import {
   UserProfileUpdateDTO, 
   PasswordChangeDTO
 } from '../types/auth';
-import { shouldSkipInitialAuth } from '../utils/authUtils';
+import { shouldSkipInitialAuth } from '@/lib/helpers/utils/authUtils';
 
 // Enhanced Auth Reducer Types for Enterprise State Management
 type AuthAction =

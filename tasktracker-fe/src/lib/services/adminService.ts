@@ -4,7 +4,7 @@ import {
   AdminUserCreateResponse,
   AdminFamilySelection,
   FamilyRole
-} from '../types/admin';
+} from '../types/system';
 
 class AdminService {
 

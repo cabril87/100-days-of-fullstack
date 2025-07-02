@@ -15,8 +15,8 @@ import type {
   CalendarGamificationData,
   AchievementDisplayDTO
 } from '@/lib/types/calendar';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 
 // Services and hooks
 import { calendarService } from '@/lib/services/calendarService';
@@ -571,3 +571,4 @@ export default function CalendarPageWrapper({ user, initialData }: CalendarPageW
     </div>
   );
 } 
+

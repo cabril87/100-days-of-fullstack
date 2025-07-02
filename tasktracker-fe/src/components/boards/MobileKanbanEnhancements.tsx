@@ -44,10 +44,10 @@ import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, useSensor, use
 import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/task';
-import { BoardColumnDTO } from '@/lib/types/board';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
+import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/tasks';
+import { BoardColumnDTO } from '@/lib/types/boards';
+import { FamilyMemberDTO } from '@/lib/types/family';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
 
 // Mobile Kanban Configuration
 export type KanbanViewMode = 'columns' | 'swimlanes' | 'cards' | 'compact';
@@ -70,7 +70,10 @@ export interface MobileKanbanTask extends TaskItemResponseDTO {
   completedSubtasks?: number;
 }
 
-export interface MobileKanbanProps {
+import type { MobileKanbanProps } from '@/lib/props/components/boards.props';
+
+// Props interface moved to lib/props/components/boards.props.ts
+// export interface MobileKanbanProps {
   columns: MobileKanbanColumn[];
   tasks: MobileKanbanTask[];
   familyMembers: FamilyMemberDTO[];
@@ -875,3 +878,4 @@ export default function MobileKanbanEnhancements({
     </TooltipProvider>
   );
 }
+

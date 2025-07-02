@@ -8,7 +8,7 @@ import {
   UserSearchResult, 
   UserAccountInfo, 
   MFADisableResult
-} from '../types/customer-support';
+} from '../types/system';
 
 class CustomerSupportServiceError extends Error {
   constructor(

@@ -15,9 +15,9 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { TaskItemStatus, TaskPriority, CreateTaskItemDTO } from '../../lib/types/task';
-import { CreateTaskModalProps } from '../../lib/types/board';
-import { FamilyDTO, FamilyMemberDTO } from '../../lib/types/family-invitation';
+import { TaskItemStatus, TaskPriority, CreateTaskItemDTO } from '@/lib/types/tasks';
+import { CreateTaskModalProps } from '@/lib/types/boards';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 import { taskService } from '../../lib/services/taskService';
 import { familyInvitationService } from '../../lib/services/familyInvitationService';
 import {
@@ -60,7 +60,7 @@ import {
   Tag,
   Zap
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { format } from 'date-fns';
 
 const createTaskSchema = z.object({

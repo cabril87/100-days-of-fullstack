@@ -30,16 +30,16 @@ import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectio
 import type { 
   BackendGamificationEventDTO,
   BackendTaskCompletionEventDTO
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import { 
   parseGamificationEvent,
   parseTaskCompletionEvent
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import type { 
   FamilyActivityItem, 
-  FamilyActivityStreamProps,
   FamilyActivityApiResponse
-} from '@/lib/types/activity';
+} from '@/lib/types/system/activity';
+import { FamilyActivityStreamProps } from '@/lib/props/widgets/main.props';
 
 export function FamilyActivityStream({ 
   userId, 

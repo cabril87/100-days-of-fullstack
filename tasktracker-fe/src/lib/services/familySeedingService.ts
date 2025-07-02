@@ -6,8 +6,8 @@ import {
   FamilyScenarioInfo,
   FamilySeedingHealthCheck,
   FamilyScenario,
-} from '../types/familySeeding';
-import { FamilyDTO } from '../types/family-invitation';
+} from '../types/family';
+import { FamilyDTO } from '../types/family';
 
 // Define API error response interface matching backend
 interface ApiErrorResponse {

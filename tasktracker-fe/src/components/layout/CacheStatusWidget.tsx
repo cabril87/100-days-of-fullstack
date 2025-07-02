@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  HardDrive, 
+  // HardDrive, // Available for future storage display 
   RefreshCw, 
   Trash2, 
   Settings, 
@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { useCacheMonitor } from '@/lib/hooks/useCacheManager';
 
 // ================================
@@ -212,7 +212,7 @@ export default function CacheStatusWidget() {
                 <div className="space-y-2">
                   {shouldShowClearCacheNotification && (
                     <div className="text-xs text-yellow-600 bg-yellow-50 p-2 rounded border border-yellow-200">
-                      Cache hasn't been cleaned in a while. Consider clearing it.
+                      Cache hasn&apos;t been cleaned in a while. Consider clearing it.
                     </div>
                   )}
                   

@@ -15,9 +15,9 @@ import { familyInvitationService } from '@/lib/services/familyInvitationService'
 import { 
   AdminUserCreateRequest, 
   getAgeGroupLabel
-} from '@/lib/types/admin';
+} from '@/lib/types/system';
 import { FamilyMemberAgeGroup } from '@/lib/types/auth';
-import { FamilyDTO, FamilyRoleDTO } from '@/lib/types/family-invitation';
+import { FamilyDTO, FamilyRoleDTO } from '@/lib/types/family/family-invitation';
 import { 
   adminUserCreationSchema,
   AdminUserCreationFormData
@@ -34,7 +34,7 @@ import {
   Users,
   Home
 } from 'lucide-react';
-import { UserCreationPageContentProps } from '@/lib/types/component-props';
+import { UserCreationPageContentProps } from '@/lib/props/components/main.props';
 
 export default function UserCreationPageContent({}: UserCreationPageContentProps) {
   const router = useRouter();
@@ -95,16 +95,16 @@ export default function UserCreationPageContent({}: UserCreationPageContentProps
 
     try {
       const userData: AdminUserCreateRequest = {
-        username: data.username,
-        email: data.email,
-        password: data.password,
-        confirmPassword: data.confirmPassword,
-        firstName: data.firstName || undefined,
-        lastName: data.lastName || undefined,
-        ageGroup: data.ageGroup,
-        familyId: data.familyId || undefined,
-        familyRoleId: data.familyRoleId || undefined,
-        dateOfBirth: data.dateOfBirth || undefined,
+        username: data.username as string,
+        email: data.email as string,
+        password: data.password as string,
+        confirmPassword: data.confirmPassword as string,
+        firstName: (data.firstName as string) || undefined,
+        lastName: (data.lastName as string) || undefined,
+        ageGroup: data.ageGroup as FamilyMemberAgeGroup,
+        familyId: (data.familyId as number) || undefined,
+        familyRoleId: (data.familyRoleId as number) || undefined,
+        dateOfBirth: (data.dateOfBirth as string) || undefined,
       };
 
       const result = await adminService.createUser(userData);

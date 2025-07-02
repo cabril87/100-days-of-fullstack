@@ -11,7 +11,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ProductivityChartProps } from '@/lib/types/analytics';
+import { ProductivityChartProps } from '@/lib/props/components/analytics.props';
 
 // ============================================================================
 // MAIN COMPONENT

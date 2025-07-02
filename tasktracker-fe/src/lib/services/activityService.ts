@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
-import { FamilyActivityItem, UserProgress, BackendActivityItem, UserProgressApiResponse } from '../types/dashboard';
+import { FamilyActivityItem, UserProgress, BackendActivityItem, UserProgressApiResponse } from '../types/system';
 import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors

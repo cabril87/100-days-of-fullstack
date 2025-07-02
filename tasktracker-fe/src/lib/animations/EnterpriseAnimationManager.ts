@@ -975,33 +975,32 @@ export class EnterpriseAnimationManager implements IAnimationManager {
 
   private touchEndHandler = (e: TouchEvent): void => {
     const touch = e.changedTouches[0];
-    const endX = touch.clientX;
-    const endY = touch.clientY;
     const endTime = Date.now();
+    console.log('Touch end:', { x: touch.clientX, y: touch.clientY, endTime });
     
-    const deltaX = endX - this.touchStartX;
-    const deltaY = endY - this.touchStartY;
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
     const deltaTime = endTime - this.touchStartTime;
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
     // Tap detection
     if (distance < this.touchGestureConfig.gestureThreshold && deltaTime < 300) {
       if (this.touchGestureConfig.tapToTrigger) {
-        this.handleTapGesture(endX, endY);
+        this.handleTapGesture(touch.clientX, touch.clientY);
       }
     }
     
     // Long press detection
     if (distance < this.touchGestureConfig.gestureThreshold && deltaTime > 500) {
       if (this.touchGestureConfig.longPressActions) {
-        this.handleLongPressGesture(endX, endY);
+        this.handleLongPressGesture(touch.clientX, touch.clientY);
       }
     }
 
     // Swipe detection
     if (distance > this.touchGestureConfig.gestureThreshold * 2) {
       if (this.touchGestureConfig.swipeToMove) {
-        this.handleSwipeGesture(deltaX, deltaY, endX, endY);
+        this.handleSwipeGesture(deltaX, deltaY, touch.clientX, touch.clientY);
       }
     }
   };
@@ -1024,7 +1023,8 @@ export class EnterpriseAnimationManager implements IAnimationManager {
     this.triggerHapticFeedback('light');
     
     // Find character near tap location and trigger celebration
-    this.activeAnimations.forEach((animation, id) => {
+    this.activeAnimations.forEach((animation, animationId) => {
+      console.log('Checking animation for tap:', animationId);
       if ('type' in animation && animation.type === 'character') {
         const character = animation as Character;
         const distance = Math.sqrt(
@@ -1052,17 +1052,18 @@ export class EnterpriseAnimationManager implements IAnimationManager {
     });
   }
 
-  private handleSwipeGesture(deltaX: number, deltaY: number, endX: number, endY: number): void {
+  private handleSwipeGesture(deltaX: number, deltaY: number, finalX: number, finalY: number): void {
     this.triggerHapticFeedback('medium');
     
     // Move characters based on swipe direction
-    this.activeAnimations.forEach((animation, id) => {
+    this.activeAnimations.forEach((animation, animationId) => {
+      console.log('Processing swipe for animation:', animationId);
       if ('type' in animation && animation.type === 'character') {
         const character = animation as Character;
-        const newPosition = {
-          x: Math.max(0, Math.min(this.deviceCapabilities.width - 48, character.position.x + deltaX * 0.5)),
-          y: Math.max(0, Math.min(this.deviceCapabilities.height - 48, character.position.y + deltaY * 0.5))
-        };
+        const targetX = Math.max(0, Math.min(this.deviceCapabilities.width - 48, character.position.x + deltaX * 0.5));
+        const targetY = Math.max(0, Math.min(this.deviceCapabilities.height - 48, character.position.y + deltaY * 0.5));
+        const newPosition = { x: targetX, y: targetY };
+        console.log('Moving character to:', { targetX, targetY, finalX, finalY });
         character.move(newPosition, 500);
       }
     });

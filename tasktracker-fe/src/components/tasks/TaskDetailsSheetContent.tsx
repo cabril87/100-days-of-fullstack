@@ -21,8 +21,8 @@ import {
   Save,
   Edit
 } from 'lucide-react';
-import { Task } from '@/lib/types/task';
-import { TaskDetailsSheetContentProps } from '@/lib/types/component-props';
+import { Task } from '@/lib/types/tasks';
+import { TaskDetailsSheetContentProps } from '@/lib/props/components/main.props';
 
 export default function TaskDetailsSheetContent({ 
   task, 
@@ -630,3 +630,4 @@ export default function TaskDetailsSheetContent({
     </div>
   );
 } 
+

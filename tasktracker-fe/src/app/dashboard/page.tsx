@@ -1,6 +1,7 @@
 import { ProtectedPagePattern } from '@/lib/auth/auth-config';
-import { FamilyDTO, DashboardStats } from '@/lib/types';
-import { Task, TaskStats } from '@/lib/types/task';
+import { FamilyDTO } from '@/lib/types';
+import { DashboardStats } from '@/lib/types/system';
+import { Task } from '@/lib/types/tasks';
 import DashboardModeWrapper from '@/components/dashboard/DashboardModeWrapper';
 
 // Force dynamic rendering for cookie-based authentication
@@ -24,17 +25,17 @@ export default async function DashboardPage() {
     totalFamilies: 0
   };
   const recentTasks: Task[] = [];
-  const taskStats: TaskStats = {
+  const taskStats = {
     totalTasks: 0,
     completedTasks: 0,
     activeTasks: 0,
     overdueTasks: 0,
-    tasksCompleted: 0,
-    tasksCompletedThisWeek: 0,
-    activeGoals: 0,
-    focusTimeToday: 0,
+    pendingTasks: 0,
+    completionRate: 0,
+    averageCompletionTime: 0,
     streakDays: 0,
-    totalPoints: 0
+    longestStreak: 0,
+    pointsEarned: 0
   };
 
   // Temporarily disable server-side data fetching to prevent 404s without auth
@@ -44,5 +45,6 @@ export default async function DashboardPage() {
   const initialData = { family, stats, recentTasks, taskStats };
 
   // Pass server-fetched data to client component
-  return <DashboardModeWrapper user={session} initialData={initialData} />;
+  return <DashboardModeWrapper user={session} mode="simple" initialData={initialData} />;
 } 
+

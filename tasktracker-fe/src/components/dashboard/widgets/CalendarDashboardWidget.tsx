@@ -12,7 +12,7 @@ import {
   Target,
   Flame
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // Types following enterprise standards
 import type {
@@ -20,7 +20,7 @@ import type {
   CalendarEventDTO,
   CalendarStatsDTO
 } from '@/lib/types/calendar';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
 
 // Services
 import { calendarService } from '@/lib/services/calendarService';
@@ -406,3 +406,4 @@ export default function CalendarDashboardWidget({
     </div>
   );
 } 
+

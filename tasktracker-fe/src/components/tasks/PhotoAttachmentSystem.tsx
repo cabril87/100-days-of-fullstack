@@ -42,7 +42,7 @@ import {
   Trash2,
   Zap
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 import { toast } from 'sonner';
 
@@ -52,10 +52,10 @@ import type {
   CreatePhotoAttachmentDTO,
   CreatePhotoValidationDTO,
   CreatePhotoShareDTO
-} from '@/lib/types/photo-attachments';
+} from '@/lib/types/media';
 import type {
   PhotoAttachmentSystemProps
-} from '@/lib/types/photo-attachment-components';
+} from '@/lib/types/media/photo-attachment-components';
 
 // Real enterprise service - NO MOCK DATA
 import { photoAttachmentService } from '@/lib/services/photoAttachmentService';
@@ -268,7 +268,7 @@ export default function PhotoAttachmentSystem({
       }
 
       // Haptic feedback for successful upload
-      triggerHapticFeedback('success');
+      triggerHapticFeedback('heavy');
       toast.success(`📸 Photo uploaded successfully! Saved ${createDto.compressionRatio}% space`);
 
       console.log('✅ Photo uploaded to real API:', {
@@ -281,7 +281,7 @@ export default function PhotoAttachmentSystem({
     } catch (error) {
       console.error('❌ Photo upload to real API failed:', error);
       setError('Failed to upload photo. Please try again.');
-      triggerHapticFeedback('error');
+      triggerHapticFeedback('medium');
       toast.error('Failed to upload photo');
     } finally {
       setIsUploading(false);
@@ -308,13 +308,13 @@ export default function PhotoAttachmentSystem({
         onTaskValidated(taskId, validation);
       }
 
-      triggerHapticFeedback('success');
+      triggerHapticFeedback('heavy');
       toast.success(`✅ Photo validated! Score: ${validation.validationScore}/100`);
       console.log('✅ Photo validated via real API:', validation);
 
     } catch (error) {
       console.error('❌ Photo validation via real API failed:', error);
-      triggerHapticFeedback('error');
+      triggerHapticFeedback('medium');
       toast.error('Failed to validate photo');
     } finally {
       setValidationInProgress(null);
@@ -343,13 +343,13 @@ export default function PhotoAttachmentSystem({
         onPhotoShared(shareData);
       }
 
-      triggerHapticFeedback('success');
+      triggerHapticFeedback('heavy');
       toast.success(`📤 Photo shared with ${familyMembers.length} family members!`);
       console.log('✅ Photo shared via real API:', shareData);
 
     } catch (error) {
       console.error('❌ Photo sharing via real API failed:', error);
-      triggerHapticFeedback('error');
+      triggerHapticFeedback('medium');
       toast.error('Failed to share photo');
     }
   }, [familyId, familyMembers, onPhotoShared]);
@@ -371,13 +371,13 @@ export default function PhotoAttachmentSystem({
         if (selectedPhoto?.id === photoId) {
           setSelectedPhoto(null);
         }
-        triggerHapticFeedback('success');
+        triggerHapticFeedback('heavy');
         toast.success('📸 Photo deleted successfully');
         console.log('✅ Photo deleted via real API');
       }
     } catch (error) {
       console.error('❌ Photo deletion via real API failed:', error);
-      triggerHapticFeedback('error');
+      triggerHapticFeedback('medium');
       toast.error('Failed to delete photo');
     }
   }, [familyId, selectedPhoto]);

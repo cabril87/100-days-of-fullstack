@@ -17,22 +17,22 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    Brain,
-    Target,
-    BarChart3,
-    History,
-    Plus,
-    Timer,
-    Trophy,
-    Zap,
-    ChevronLeft,
-    Play,
-    Smartphone,
-    Tablet,
-    Monitor,
-    TrendingUp,
-    Clock,
-    Activity
+  Brain,
+  Target,
+  BarChart3,
+  History,
+  Plus,
+  Timer,
+  Trophy,
+  Zap,
+  ChevronLeft,
+  Play,
+  Smartphone,
+  Tablet,
+  Monitor,
+  TrendingUp,
+  Clock,
+  Activity
 } from 'lucide-react';
 
 import { toast } from 'sonner';
@@ -53,17 +53,17 @@ import FocusHistoryManagement from '@/components/focus/FocusHistoryManagement';
 
 // Enterprise types with explicit interfaces
 import type {
-    FocusSession,
-    FocusSessionState,
-    TaskItem,
-    CreateFocusSessionDTO,
-    FocusSessionStats
+  FocusSession,
+  FocusSessionState,
+  TaskItem,
+  CreateFocusSessionDTO,
+  FocusSessionStats
 } from '@/lib/types/focus';
-import type { 
-    ResponsiveFocusConfig,
-    FocusGamificationTheme,
-    FocusMetricCard,
-    FocusTabConfig
+import type {
+  ResponsiveFocusConfig,
+  FocusGamificationTheme,
+  FocusMetricCard,
+  FocusTabConfig
 } from '@/lib/types/focus-page';
 
 // Enterprise services
@@ -216,11 +216,11 @@ export default function FocusPageClient() {
   // ============================================================================
 
   const handleTabSwipe = useCallback((direction: 'left' | 'right') => {
-    const availableTabs = FOCUS_TABS.filter(tab => 
+    const availableTabs = FOCUS_TABS.filter(tab =>
       !tab.requiresSession || focusState !== 'NO_SESSION'
     );
     const currentIndex = availableTabs.findIndex(tab => tab.id === activeTab);
-    
+
     if (direction === 'left' && currentIndex < availableTabs.length - 1) {
       setActiveTab(availableTabs[currentIndex + 1].id);
     } else if (direction === 'right' && currentIndex > 0) {
@@ -230,10 +230,6 @@ export default function FocusPageClient() {
 
   const {
     attachGestures,
-    isGestureActive,
-    isPullRefreshActive,
-    pullRefreshProgress,
-    triggerHaptic,
   } = useMobileGestures({
     onSwipe: (gesture) => {
       if (gesture.direction === 'left') {
@@ -242,22 +238,11 @@ export default function FocusPageClient() {
         handleTabSwipe('right');
       }
     },
-    onPullRefresh: async () => {
-      await refreshFocusData();
-    },
+
     onTap: () => {
       if (celebrationActive) {
         setCelebrationActive(false);
       }
-    },
-  }, {
-    swipe: {
-      threshold: 50,
-      enabled: responsive.isMobile,
-    },
-    pullRefresh: {
-      threshold: 100,
-      enabled: responsive.isMobile,
     },
   });
 
@@ -288,7 +273,7 @@ export default function FocusPageClient() {
     try {
       const statsResult = await focusService.getUserFocusStats(user.id);
       setFocusStats(statsResult);
-      
+
       // Load focus sessions for history management
       const sessionsResult = await focusService.getFocusHistory();
       setFocusSessions(sessionsResult);
@@ -320,34 +305,34 @@ export default function FocusPageClient() {
 
   const handleSessionStateChange = useCallback((state: FocusSessionState) => {
     console.log('🎯 Focus session state changed to:', state);
-    
+
     if (state === 'IN_PROGRESS') {
       setActiveTab('active');
-      triggerHaptic('light');
+      if ('vibrate' in navigator) navigator.vibrate(10);
     }
-  }, [triggerHaptic]);
+  }, [setActiveTab]);
 
   const handleSessionComplete = useCallback(async (session: FocusSession) => {
     console.log('🎉 Focus session completed:', session);
     setCelebrationActive(true);
-    triggerHaptic('success');
-    
+    if ('vibrate' in navigator) navigator.vibrate(25);
+
     toast.success(`🎉 Great focus session! You focused for ${session.durationMinutes} minutes.`, {
       duration: 5000,
     });
 
     // Refresh data after session completion
     await refreshFocusData();
-    
+
     setTimeout(() => setCelebrationActive(false), 3000);
-  }, [refreshFocusData, triggerHaptic]);
+  }, [refreshFocusData]);
 
   const handleStartNewSession = useCallback(async () => {
     // Check if user has any tasks available first
     try {
       const availableTasks = await taskService.getRecentTasks(1);
       console.log('🔍 FocusPage: Checking available tasks:', availableTasks);
-      
+
       if (availableTasks.length === 0) {
         toast.error('No tasks available for focus sessions', {
           description: 'Create a task first before starting a focus session.',
@@ -358,21 +343,20 @@ export default function FocusPageClient() {
         });
         return;
       }
-      
+
       setShowTaskSelection(true);
-      triggerHaptic('light');
     } catch (error) {
       console.error('Error checking available tasks:', error);
       toast.error('Failed to check available tasks. Please try again.');
     }
-  }, [triggerHaptic]);
+  }, []);
 
   const handleTaskSelect = useCallback(async (task: TaskItem, createDto: CreateFocusSessionDTO) => {
     setIsLoading(true);
     try {
       console.log('🚀 Starting focus session for task:', task.title);
       console.log('📝 Session details:', createDto);
-      
+
       // ✅ Start the session via the persistent store
       const createdSession = await focusService.startSession(createDto);
       console.log('✅ Session created successfully:', createdSession);
@@ -394,12 +378,7 @@ export default function FocusPageClient() {
         description: `Task: ${task.title}${createDto.notes ? ` | Notes: ${createDto.notes}` : ''} | Duration: ${createDto.durationMinutes}min`,
         duration: 4000,
       });
-      
-      triggerHaptic('success');
-      
-      // ✅ Log for debugging
-      console.log('🎯 FocusPage: Session started successfully, triggering FocusSessionManager reload');
-      
+
     } catch (error) {
       console.error('❌ Failed to start focus session:', error);
       toast.error('Failed to start focus session', {
@@ -408,7 +387,7 @@ export default function FocusPageClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [triggerHaptic, refreshFocusData, startSession, user?.id]);
+  }, [refreshFocusData, startSession, user?.id]);
 
   // ============================================================================
   // GAMIFICATION METRICS
@@ -569,8 +548,8 @@ export default function FocusPageClient() {
                     <Trophy className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                                         <h3 className="text-white text-lg font-bold">🎉 Focus Champion!</h3>
-                     <p className="text-white/90 text-sm">You&apos;re building amazing focus habits!</p>
+                    <h3 className="text-white text-lg font-bold">🎉 Focus Champion!</h3>
+                    <p className="text-white/90 text-sm">You&apos;re building amazing focus habits!</p>
                   </div>
                 </div>
                 <div className="text-center">
@@ -578,7 +557,7 @@ export default function FocusPageClient() {
                   <div className="text-white/80 text-xs">Total Focus Time</div>
                 </div>
               </div>
-              
+
               {/* Achievement Progress Bar */}
               <div className="mt-4">
                 <div className="flex items-center justify-between text-white/90 text-xs mb-2">
@@ -586,17 +565,17 @@ export default function FocusPageClient() {
                   <span>{Math.min(Math.round((getTotalMinutes() / 500) * 100), 100)}%</span>
                 </div>
                 <div className="w-full bg-white/20 rounded-full h-2 backdrop-blur-sm">
-                  <div 
+                  <div
                     className="bg-white h-2 rounded-full transition-all duration-1000 ease-out"
                     style={{ width: `${Math.min((getTotalMinutes() / 500) * 100, 100)}%` }}
                   />
                 </div>
               </div>
             </CardContent>
-            
+
             {/* Celebration Particle Effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-pulse" />
-            
+
             {/* ✅ CELEBRATION SPARKLES */}
             <div className="absolute inset-0">
               <div className="absolute top-2 left-4 w-2 h-2 bg-white/60 rounded-full animate-ping" style={{ animationDelay: '0ms' }} />
@@ -612,26 +591,25 @@ export default function FocusPageClient() {
           {responsive.isMobile ? (
             <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
               {focusMetrics.map((metric) => {
-                const isHighPerformer = (typeof metric.value === 'number' && metric.value > 0) || 
-                                       (typeof metric.value === 'string' && metric.value !== '0' && metric.value !== '0m');
+                const isHighPerformer = (typeof metric.value === 'number' && metric.value > 0) ||
+                  (typeof metric.value === 'string' && metric.value !== '0' && metric.value !== '0m');
                 const celebrationClass = isHighPerformer ? 'hover:scale-110 hover:rotate-1' : 'hover:scale-105';
-                
+
                 return (
                   <Card
                     key={metric.id}
-                    className={`flex-shrink-0 w-44 snap-center transition-all duration-500 ${celebrationClass} cursor-pointer shadow-lg group active:scale-95 ${
-                      celebrationActive && metric.id === 'achievements' 
-                        ? `${GAMIFICATION_THEME.animations.achievement} border-2 shadow-xl border-yellow-400`
-                        : 'border-0'
-                    } ${isHighPerformer ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20' : ''}`}
+                    className={`flex-shrink-0 w-44 snap-center transition-all duration-500 ${celebrationClass} cursor-pointer shadow-lg group active:scale-95 ${celebrationActive && metric.id === 'achievements'
+                      ? `${GAMIFICATION_THEME.animations.achievement} border-2 shadow-xl border-yellow-400`
+                      : 'border-0'
+                      } ${isHighPerformer ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20' : ''}`}
                     onClick={() => {
                       if (metric.id === 'achievements' && typeof metric.value === 'number' && metric.value > 0) {
                         setCelebrationActive(true);
-                        triggerHaptic('success');
+                        if ('vibrate' in navigator) navigator.vibrate(25);
                         setTimeout(() => setCelebrationActive(false), 2000);
                         toast.success(`🎉 ${metric.value} achievements unlocked! Amazing work!`, { duration: 4000 });
                       } else if (isHighPerformer) {
-                        triggerHaptic('light');
+                        if ('vibrate' in navigator) navigator.vibrate(10);
                         toast.success(`🔥 Great ${metric.title.toLowerCase()}! Keep it up!`, { duration: 3000 });
                       } else {
                         toast.info(`${metric.title}: Start your focus journey!`);
@@ -640,9 +618,8 @@ export default function FocusPageClient() {
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <div className={`p-2 rounded-lg transition-transform duration-300 ${
-                          isHighPerformer ? 'bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 group-hover:scale-110' : 'bg-gray-100 dark:bg-gray-800'
-                        }`}>
+                        <div className={`p-2 rounded-lg transition-transform duration-300 ${isHighPerformer ? 'bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 group-hover:scale-110' : 'bg-gray-100 dark:bg-gray-800'
+                          }`}>
                           <metric.icon className={`h-5 w-5 ${isHighPerformer ? 'text-purple-600 dark:text-purple-400' : ''}`} style={!isHighPerformer ? { color: metric.color } : {}} />
                         </div>
                         <div className="flex items-center gap-1">
@@ -663,15 +640,14 @@ export default function FocusPageClient() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 relative">
-                      <div className={`text-lg font-bold transition-colors duration-300 ${
-                        isHighPerformer ? 'text-purple-700 dark:text-purple-300' : ''
-                      }`} style={!isHighPerformer ? { color: metric.color } : {}}>
+                      <div className={`text-lg font-bold transition-colors duration-300 ${isHighPerformer ? 'text-purple-700 dark:text-purple-300' : ''
+                        }`} style={!isHighPerformer ? { color: metric.color } : {}}>
                         {metric.value}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 truncate">
                         {metric.description}
                       </p>
-                      
+
                       {/* ✅ CELEBRATION SPARKLES FOR MOBILE */}
                       {isHighPerformer && (
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -687,26 +663,25 @@ export default function FocusPageClient() {
             </div>
           ) : (
             focusMetrics.map((metric) => {
-              const isHighPerformer = (typeof metric.value === 'number' && metric.value > 0) || 
-                                     (typeof metric.value === 'string' && metric.value !== '0' && metric.value !== '0m');
+              const isHighPerformer = (typeof metric.value === 'number' && metric.value > 0) ||
+                (typeof metric.value === 'string' && metric.value !== '0' && metric.value !== '0m');
               const celebrationClass = isHighPerformer ? 'hover:scale-105 hover:shadow-xl' : 'hover:scale-102 hover:shadow-lg';
-              
+
               return (
                 <Card
                   key={metric.id}
-                  className={`transition-all duration-500 ${celebrationClass} cursor-pointer group active:scale-95 ${
-                    celebrationActive && metric.id === 'achievements'
-                      ? `${GAMIFICATION_THEME.animations.sessionComplete} border-2 shadow-xl border-yellow-400`
-                      : 'border-0'
-                  } ${isHighPerformer ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 shadow-lg' : 'shadow-md'}`}
+                  className={`transition-all duration-500 ${celebrationClass} cursor-pointer group active:scale-95 ${celebrationActive && metric.id === 'achievements'
+                    ? `${GAMIFICATION_THEME.animations.sessionComplete} border-2 shadow-xl border-yellow-400`
+                    : 'border-0'
+                    } ${isHighPerformer ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 shadow-lg' : 'shadow-md'}`}
                   onClick={() => {
                     if (metric.id === 'achievements' && typeof metric.value === 'number' && metric.value > 0) {
                       setCelebrationActive(true);
-                      triggerHaptic('success');
+                      if ('vibrate' in navigator) navigator.vibrate(25);
                       setTimeout(() => setCelebrationActive(false), 2000);
                       toast.success(`🎉 ${metric.value} achievements unlocked! You're a focus champion!`, { duration: 4000 });
                     } else if (isHighPerformer) {
-                      triggerHaptic('light');
+                      if ('vibrate' in navigator) navigator.vibrate(10);
                       toast.success(`🔥 Excellent ${metric.title.toLowerCase()}! Keep the momentum going!`, { duration: 3000 });
                     } else {
                       toast.info(`${metric.title}: Ready to start your focus journey!`);
@@ -718,9 +693,8 @@ export default function FocusPageClient() {
                       {metric.title}
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg transition-transform duration-300 ${
-                        isHighPerformer ? 'bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 group-hover:scale-110' : 'bg-gray-100/50 dark:bg-gray-800/50'
-                      }`}>
+                      <div className={`p-2 rounded-lg transition-transform duration-300 ${isHighPerformer ? 'bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 group-hover:scale-110' : 'bg-gray-100/50 dark:bg-gray-800/50'
+                        }`}>
                         <metric.icon className={`h-4 w-4 ${isHighPerformer ? 'text-purple-600 dark:text-purple-400' : ''}`} style={!isHighPerformer ? { color: metric.color } : {}} />
                       </div>
                       <div className="flex items-center gap-1">
@@ -738,15 +712,14 @@ export default function FocusPageClient() {
                     </div>
                   </CardHeader>
                   <CardContent className="relative">
-                    <div className={`text-2xl font-bold transition-colors duration-300 ${
-                      isHighPerformer ? 'text-purple-700 dark:text-purple-300' : ''
-                    }`} style={!isHighPerformer ? { color: metric.color } : {}}>
+                    <div className={`text-2xl font-bold transition-colors duration-300 ${isHighPerformer ? 'text-purple-700 dark:text-purple-300' : ''
+                      }`} style={!isHighPerformer ? { color: metric.color } : {}}>
                       {metric.value}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {metric.description}
                     </p>
-                    
+
                     {/* ✅ CELEBRATION SPARKLES FOR DESKTOP */}
                     {isHighPerformer && (
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -784,24 +757,22 @@ export default function FocusPageClient() {
 
   return (
     <div
-      ref={attachGestures}
-      className={`min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 ${
-        isGestureActive && responsive.isMobile ? 'select-none' : ''
-      }`}
+      ref={(element) => { if (element) attachGestures(element); }}
+      className={`min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 ${responsive.isMobile ? 'select-none' : ''
+        }`}
     >
       {/* Pull-to-Refresh Indicator */}
-      {responsive.isMobile && isPullRefreshActive && (
-        <div 
+      {responsive.isMobile && false && (
+        <div
           className="fixed top-0 left-0 right-0 z-50 bg-primary/10 backdrop-blur-sm"
-          style={{ 
-            height: `${Math.min(pullRefreshProgress * 100, 100)}px`,
-            opacity: Math.min(pullRefreshProgress, 1),
+          style={{
+            height: `${Math.min(0 * 100, 100)}px`,
+            opacity: Math.min(0, 1),
           }}
         >
           <div className="flex items-center justify-center h-full">
-            <div className={`text-primary ${
-              pullRefreshProgress >= 1 ? 'animate-spin' : 'animate-pulse'
-            }`}>
+            <div className={`text-primary ${false ? 'animate-spin' : 'animate-pulse'
+              }`}>
               🔄
             </div>
           </div>
@@ -820,22 +791,21 @@ export default function FocusPageClient() {
 
         {/* ✅ ENTERPRISE GAMIFICATION TABS: Enhanced with celebrations */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${
-            responsive.isMobile ? 'grid-cols-3' : 'grid-cols-3'
-          } ${config.cardPadding} bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-purple-900/20 border-0 shadow-lg p-1`}>
+          <TabsList className={`grid w-full ${responsive.isMobile ? 'grid-cols-3' : 'grid-cols-3'
+            } ${config.cardPadding} bg-gradient-to-r from-purple-50 via-blue-50 to-purple-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-purple-900/20 border-0 shadow-lg p-1`}>
             {FOCUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
-              const hasProgress = (tab.id === 'active' && focusState !== 'NO_SESSION') || 
-                                (tab.id === 'analytics' && focusMetrics.some(m => typeof m.value === 'number' && m.value > 0)) ||
-                                (tab.id === 'history' && focusMetrics.some(m => m.id === 'sessions' && typeof m.value === 'number' && m.value > 0));
-              
+              const hasProgress = (tab.id === 'active' && focusState !== 'NO_SESSION') ||
+                (tab.id === 'analytics' && focusMetrics.some(m => typeof m.value === 'number' && m.value > 0)) ||
+                (tab.id === 'history' && focusMetrics.some(m => m.id === 'sessions' && typeof m.value === 'number' && m.value > 0));
+
               return (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
                   className={`flex items-center gap-2 transition-all duration-500 relative overflow-hidden group
-                    ${isActive 
-                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-xl scale-105 border-0' 
+                    ${isActive
+                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-xl scale-105 border-0'
                       : 'bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-700/80 hover:scale-102 border-0'
                     }
                     ${hasProgress ? 'ring-2 ring-yellow-400/50 ring-offset-1' : ''}
@@ -844,9 +814,9 @@ export default function FocusPageClient() {
                   disabled={tab.requiresSession && focusState === 'NO_SESSION'}
                   onClick={() => {
                     if (GAMIFICATION_THEME.effects.hapticFeedback && responsive.isMobile) {
-                      triggerHaptic('light');
+                      if ('vibrate' in navigator) navigator.vibrate(10);
                     }
-                    
+
                     // ✅ GAMIFICATION CELEBRATION: Tab interactions
                     if (hasProgress) {
                       toast.success(`🎉 Great progress in ${tab.label}!`, { duration: 2000 });
@@ -855,14 +825,13 @@ export default function FocusPageClient() {
                 >
                   {/* ✅ TAB ICON: Enhanced with progress indicators */}
                   <div className={`relative transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
-                    <tab.icon className={`h-4 w-4 ${
-                      isActive 
-                        ? 'text-white drop-shadow-sm' 
-                        : hasProgress 
-                          ? 'text-purple-600 dark:text-purple-400' 
-                          : 'text-gray-600 dark:text-gray-400'
-                    }`} />
-                    
+                    <tab.icon className={`h-4 w-4 ${isActive
+                      ? 'text-white drop-shadow-sm'
+                      : hasProgress
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                      }`} />
+
                     {/* ✅ PROGRESS INDICATOR */}
                     {hasProgress && !isActive && (
                       <div className="absolute -top-1 -right-1">
@@ -871,25 +840,24 @@ export default function FocusPageClient() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* ✅ TAB LABEL: Responsive with achievements */}
-                  {(!responsive.isMobile || responsive.isLandscape) && (
-                    <span className={`font-medium transition-colors duration-300 ${
-                      isActive 
-                        ? 'text-white drop-shadow-sm' 
-                        : hasProgress 
-                          ? 'text-purple-700 dark:text-purple-300' 
-                          : 'text-gray-700 dark:text-gray-300'
-                    }`}>
+                  {(!responsive.isMobile || responsive.width > responsive.height) && (
+                    <span className={`font-medium transition-colors duration-300 ${isActive
+                      ? 'text-white drop-shadow-sm'
+                      : hasProgress
+                        ? 'text-purple-700 dark:text-purple-300'
+                        : 'text-gray-700 dark:text-gray-300'
+                      }`}>
                       {tab.label}
                     </span>
                   )}
-                  
+
                   {/* ✅ ACTIVE TAB SHINE EFFECT */}
                   {isActive && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out rounded-lg" />
                   )}
-                  
+
                   {/* ✅ CELEBRATION SPARKLES */}
                   {hasProgress && (
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -948,7 +916,7 @@ export default function FocusPageClient() {
                           <div className="text-white/80 text-xs">+10 XP per session</div>
                         </div>
                       </div>
-                      
+
                       {/* Shine effect */}
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out rounded-lg" />
                     </Button>
@@ -957,7 +925,7 @@ export default function FocusPageClient() {
                       variant="outline"
                       className="justify-start bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95 group"
                       onClick={() => {
-                        triggerHaptic('light');
+                        if ('vibrate' in navigator) navigator.vibrate(10);
                         toast.info('🍅 Pomodoro Timer: Available during active sessions!', { duration: 3000 });
                       }}
                       size={responsive.isMobile ? 'lg' : 'default'}
@@ -1010,7 +978,7 @@ export default function FocusPageClient() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <FocusAnalyticsView 
+            <FocusAnalyticsView
               userId={user?.id || 0}
               className="w-full"
             />
@@ -1018,7 +986,7 @@ export default function FocusPageClient() {
 
           {/* History Tab */}
           <TabsContent value="history" className="space-y-6">
-            <FocusHistoryManagement 
+            <FocusHistoryManagement
               userId={user?.id || 0}
               className="w-full"
               sessions={focusSessions}
@@ -1036,32 +1004,30 @@ export default function FocusPageClient() {
         {/* ✅ ENTERPRISE GAMIFICATION MOBILE NAVIGATION: Enhanced with celebrations */}
         {responsive.isMobile && (
           <div className="flex justify-center py-4">
-            <div className={`flex items-center gap-3 text-xs transition-all duration-500 bg-gradient-to-r from-purple-50/80 to-blue-50/80 dark:from-purple-900/20 dark:to-blue-900/20 backdrop-blur-sm rounded-full px-4 py-3 shadow-lg border border-purple-200/50 dark:border-purple-700/50 ${
-              isGestureActive ? 'bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 scale-110 shadow-xl' : 'hover:scale-105'
-            }`}>
+            <div className={`flex items-center gap-3 text-xs transition-all duration-500 bg-gradient-to-r from-purple-50/80 to-blue-50/80 dark:from-purple-900/20 dark:to-blue-900/20 backdrop-blur-sm rounded-full px-4 py-3 shadow-lg border border-purple-200/50 dark:border-purple-700/50 ${false ? 'bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-800/30 dark:to-blue-800/30 scale-110 shadow-xl' : 'hover:scale-105'
+              }`}>
               <div className="flex gap-2">
                 {FOCUS_TABS.map((tab) => {
                   const isActive = activeTab === tab.id;
-                  const hasProgress = (tab.id === 'active' && focusState !== 'NO_SESSION') || 
-                                    (tab.id === 'analytics' && focusMetrics.some(m => typeof m.value === 'number' && m.value > 0)) ||
-                                    (tab.id === 'history' && focusMetrics.some(m => m.id === 'sessions' && typeof m.value === 'number' && m.value > 0));
-                  
+                  const hasProgress = (tab.id === 'active' && focusState !== 'NO_SESSION') ||
+                    (tab.id === 'analytics' && focusMetrics.some(m => typeof m.value === 'number' && m.value > 0)) ||
+                    (tab.id === 'history' && focusMetrics.some(m => m.id === 'sessions' && typeof m.value === 'number' && m.value > 0));
+
                   return (
                     <div
                       key={tab.id}
-                      className={`h-2 w-8 rounded-full transition-all duration-500 relative overflow-hidden ${
-                        isActive
-                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg scale-110'
-                          : hasProgress
-                            ? 'bg-gradient-to-r from-yellow-400 to-orange-400 shadow-md'
-                            : 'bg-gray-300 dark:bg-gray-600'
-                      }`}
+                      className={`h-2 w-8 rounded-full transition-all duration-500 relative overflow-hidden ${isActive
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 shadow-lg scale-110'
+                        : hasProgress
+                          ? 'bg-gradient-to-r from-yellow-400 to-orange-400 shadow-md'
+                          : 'bg-gray-300 dark:bg-gray-600'
+                        }`}
                     >
                       {/* ✅ PROGRESS GLOW EFFECT */}
                       {(isActive || hasProgress) && (
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-pulse" />
                       )}
-                      
+
                       {/* ✅ ACHIEVEMENT INDICATOR */}
                       {hasProgress && !isActive && (
                         <div className="absolute -top-0.5 -right-0.5">
@@ -1072,28 +1038,26 @@ export default function FocusPageClient() {
                   );
                 })}
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <div className={`transition-all duration-300 ${isGestureActive ? 'scale-125' : 'scale-100'}`}>
-                  <span className={`${
-                    isGestureActive 
-                      ? 'animate-bounce text-purple-600 dark:text-purple-400' 
-                      : 'animate-pulse text-blue-600 dark:text-blue-400'
-                  }`}>
-                    {isGestureActive ? '✨' : '👆'}
+                <div className={`transition-all duration-300 ${false ? 'scale-125' : 'scale-100'}`}>
+                  <span className={`${false
+                    ? 'animate-bounce text-purple-600 dark:text-purple-400'
+                    : 'animate-pulse text-blue-600 dark:text-blue-400'
+                    }`}>
+                    {false ? '✨' : '👆'}
                   </span>
                 </div>
-                <span className={`font-medium transition-colors duration-300 ${
-                  isGestureActive 
-                    ? 'text-purple-700 dark:text-purple-300' 
-                    : 'text-blue-700 dark:text-blue-300'
-                }`}>
-                  {isGestureActive ? 'Swiping...' : 'Swipe to navigate'}
+                <span className={`font-medium transition-colors duration-300 ${false
+                  ? 'text-purple-700 dark:text-purple-300'
+                  : 'text-blue-700 dark:text-blue-300'
+                  }`}>
+                  {false ? 'Swiping...' : 'Swipe to navigate'}
                 </span>
               </div>
 
               {/* ✅ CELEBRATION SPARKLES */}
-              {isGestureActive && (
+              {false && (
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute top-1 left-2 w-0.5 h-0.5 bg-purple-400 rounded-full animate-ping" style={{ animationDelay: '0ms' }} />
                   <div className="absolute top-2 right-2 w-0.5 h-0.5 bg-blue-400 rounded-full animate-ping" style={{ animationDelay: '200ms' }} />

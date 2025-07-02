@@ -39,7 +39,7 @@ import {
   Target,
   RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // ============================================================================
 // SCHEMAS & VALIDATION
@@ -98,7 +98,10 @@ export interface OptimalTimeSlot {
   reasons: string[];
 }
 
-export interface FamilyAvailabilityManagerProps {
+import type { FamilyAvailabilityManagerProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// export interface FamilyAvailabilityManagerProps {
   currentUserId: number;
   familyMembers: Array<{
     id: number;

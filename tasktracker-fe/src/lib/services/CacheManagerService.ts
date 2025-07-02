@@ -592,7 +592,7 @@ export class CacheManagerService {
     }, 10000); // Every 10 seconds in debug mode
   }
 
-  private updateMetrics(data: any): void {
+  private updateMetrics(data: Partial<CacheMetrics> & { cacheName?: string }): void {
     if (data.cacheName && this.metrics.has(data.cacheName)) {
       const currentMetrics = this.metrics.get(data.cacheName)!;
       this.metrics.set(data.cacheName, {
@@ -603,14 +603,15 @@ export class CacheManagerService {
     }
   }
 
-  private handleCacheError(error: any): void {
+  private handleCacheError(error: Error | unknown): void {
     console.error('Cache error:', error);
     if (this.debugMode) {
-      this.notifyUser(`Cache error: ${error.message}`, 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown cache error';
+      this.notifyUser(`Cache error: ${errorMessage}`, 'error');
     }
   }
 
-  private handleCacheUpdate(data: any): void {
+  private handleCacheUpdate(data: { cacheName: string; [key: string]: unknown }): void {
     this.log(`Cache updated: ${data.cacheName}`);
     if (this.debugMode) {
       this.notifyUser(`Cache updated: ${data.cacheName}`, 'info');
@@ -691,7 +692,7 @@ export class CacheManagerService {
     }, 3000);
   }
 
-  private log(message: string, ...args: any[]): void {
+  private log(message: string, ...args: unknown[]): void {
     if (this.debugMode) {
       console.log(`[Cache Manager] ${message}`, ...args);
     }

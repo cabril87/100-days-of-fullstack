@@ -6,7 +6,7 @@
  * Provides comprehensive audio feedback for TaskTracker Enterprise
  */
 
-import type { EnterpriseSoundEffect } from '@/lib/types/enterprise-celebrations';
+import type { EnterpriseSoundEffect } from '@/lib/types/gamification';
 
 /**
  * Sound effect configuration

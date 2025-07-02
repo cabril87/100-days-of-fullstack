@@ -26,7 +26,10 @@ import {
   ConflictResolutionDTO 
 } from '@/lib/types/calendar';
 
-interface ConflictResolutionModalProps {
+import type { ConflictResolutionModalProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// interface ConflictResolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
   conflicts: ConflictingEventDTO[];

@@ -16,22 +16,12 @@ import type {
   CalendarEventDTO,
   CalendarStatsDTO
 } from '@/lib/types/calendar';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
 
 
-interface CalendarSidebarProps {
-  events: CalendarEventDTO[];
-  tasks: FamilyTaskItemDTO[];
-  stats: CalendarStatsDTO;
-  onCreateEvent: () => void;
-  onToggleSidebar: () => void;
-}
+import type { CalendarSidebarProps } from '@/lib/props/components/calendar.props';
 
-/**
- * Calendar Sidebar Component
- * Shows calendar statistics, upcoming events, and quick actions
- * Follows enterprise design patterns
- */
+
 export default function CalendarSidebar({
   events,
   tasks,
@@ -189,3 +179,4 @@ export default function CalendarSidebar({
     </div>
   );
 } 
+

@@ -1,25 +1,34 @@
 /*
- * Copyright (c) 2025 TaskTracker Enterprise
- * Enterprise Service Worker
- * 
- * BULLETPROOF CACHE MANAGEMENT SYSTEM
- * - Environment-specific caching strategies
- * - Intelligent cache versioning
- * - Background cache updates
- * - Performance monitoring
- * - Zero cache conflicts
+ * Service Worker - Build Information
+ * Generated: 2025-07-03T02:18:49.398Z
+ * Build ID: 1751509129391
+ * Cache Version: v1751509129391
+ * Environment: production
+ * API URL: http://localhost:5000
  */
+
+/*
+ * Copyright (c) 2025 TaskTracker Enterprise
+ * Service Worker Template - Processed at Build Time
+ * 
+ * This template gets processed during build to create the final sw.js
+ * Variables are replaced with actual values during compilation
+ */
+
+// ================================
+// BUILD-TIME VARIABLES (Replaced during build)
+// ================================
+
+const CACHE_VERSION = 'v1751509129391';
+const BUILD_ID = '1751509129391';
+const ENV_MODE = 'production';
+const IS_DEVELOPMENT = ENV_MODE === 'development';
+const API_URL = 'http://localhost:5000';
 
 // ================================
 // ENTERPRISE CACHE CONFIGURATION
 // ================================
 
-const CACHE_VERSION = '1.0.0';
-const BUILD_ID = '{{BUILD_ID}}'; // Replaced during build
-const ENV_MODE = '{{ENV_MODE}}'; // Replaced during build
-const IS_DEVELOPMENT = ENV_MODE === 'development';
-
-// Cache Names with Versioning
 const CACHE_NAMES = {
   PAGES: `tasktracker-pages-${BUILD_ID}`,
   API: `tasktracker-api-${BUILD_ID}`,
@@ -85,7 +94,7 @@ const ROUTE_STRATEGIES = [
   
   // API Routes
   {
-    pattern: /^https?:\/\/[^\/]*\/api\//,
+    pattern: new RegExp(`^${API_URL}/api/`),
     strategy: CACHE_STRATEGIES.NETWORK_FIRST,
     cacheName: CACHE_NAMES.API,
     ttl: CACHE_TTL.API,
@@ -370,8 +379,7 @@ self.addEventListener('install', (event) => {
       caches.open(CACHE_NAMES.STATIC).then(cache => {
         const criticalUrls = [
           '/',
-          '/manifest.json',
-          '/_next/static/css/app.css' // Adjust based on your CSS file structure
+          '/manifest.json'
         ];
         
         return cache.addAll(criticalUrls.filter(url => url)).catch(error => {

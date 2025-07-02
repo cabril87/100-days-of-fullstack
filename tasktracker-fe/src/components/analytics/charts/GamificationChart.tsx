@@ -11,7 +11,7 @@
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { GamificationChartProps } from '@/lib/types/analytics';
+import { GamificationChartProps } from '@/lib/props/components/analytics.props';
 
 export function GamificationChart({ 
   data, 

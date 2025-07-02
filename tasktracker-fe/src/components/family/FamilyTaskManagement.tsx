@@ -12,10 +12,10 @@ import {
   Zap,
   Activity,
 } from 'lucide-react';
-import { FamilyTaskItemDTO, Task } from '@/lib/types/task';
+import { FamilyTaskItemDTO, Task } from '@/lib/types/tasks';
 import { taskService } from '@/lib/services/taskService';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
-import { FamilyTaskManagementProps } from '@/lib/types/component-props';
+import { FamilyTaskManagementProps } from '@/lib/props/components/main.props';
 import TaskStatsCards from './task-management/TaskStatsCards';
 import TaskManagementHeader from './task-management/TaskManagementHeader';
 import TaskFilters from './task-management/TaskFilters';
@@ -330,3 +330,4 @@ export default function FamilyTaskManagement({ user, family, familyMembers }: Fa
     </div>
   );
 } 
+

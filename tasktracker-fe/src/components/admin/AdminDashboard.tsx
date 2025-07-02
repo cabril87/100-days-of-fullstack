@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { familySeedingService } from '@/lib/services/familySeedingService';
-import { FamilyScenario } from '@/lib/types/familySeeding';
-import { AdminDashboardContentProps } from '@/lib/types/admin';
+import { FamilyScenario } from '@/lib/types/family';
+import { AdminDashboardContentProps } from '@/lib/props/components/system.props';
 import { 
   Users, 
   Settings, 
@@ -277,15 +277,15 @@ export default function AdminDashboardContent({ user, initialData }: AdminDashbo
             <div className="text-sm space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Admin Email:</span>
-                <span className="font-medium">{user.email}</span>
+                <span className="font-medium">{user.email as string}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Role:</span>
-                <span className="font-medium">{user.role || 'Global Admin'}</span>
+                <span className="font-medium">{user.role as string || 'Global Admin'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">User ID:</span>
-                <span className="font-medium">{user.id}</span>
+                <span className="font-medium">{user.id as number}</span>
               </div>
             </div>
           </CardContent>

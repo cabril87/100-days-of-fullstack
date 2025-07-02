@@ -15,8 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Check, Loader2, Users, Crown } from 'lucide-react';
-import { PrimaryFamilySelectorProps } from '@/lib/types/component-props';
-import { cn } from '@/lib/utils/utils';
+import { PrimaryFamilySelectorProps } from '@/lib/props/components/main.props';
+import { cn } from '@/lib/helpers/utils/utils';
 
 export function PrimaryFamilySelector({
   families,

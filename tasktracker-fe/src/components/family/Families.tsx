@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 import { 
   FamilyWithMembers
-} from '@/lib/types/family-invitation';
+} from '@/lib/types/family';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { FamiliesContentProps } from '@/lib/types/component-props';
+import type { FamiliesContentProps } from '@/lib/props/components/family.props';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -490,3 +490,4 @@ export default function FamiliesContent({ user }: FamiliesContentProps) {
     </div>
   );
 } 
+

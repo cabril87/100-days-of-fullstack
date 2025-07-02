@@ -2,15 +2,16 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { SkeletonWrapper } from './base-skeleton-wrapper';
 import {
   AchievementBadgeSkeletonProps,
   ProgressBarSkeletonProps,
   GameStatsCardSkeletonProps,
   NotificationBadgeSkeletonProps,
-  BaseSkeletonProps,
-} from '@/lib/types/skeleton';
+  GameStatsGridSkeletonProps,
+  AchievementGridSkeletonProps,
+} from '@/lib/props/ui/skeleton.props';
 
 // ✅ REQUIRED: Achievement Badge Skeleton
 export const AchievementBadgeSkeleton: React.FC<AchievementBadgeSkeletonProps> = ({
@@ -311,7 +312,7 @@ export const NotificationBadgeSkeleton: React.FC<NotificationBadgeSkeletonProps>
 };
 
 // ✅ REQUIRED: Game Stats Grid Skeleton
-interface GameStatsGridSkeletonProps extends BaseSkeletonProps {
+interface GameStatsGridSkeletonProps extends GameStatsGridSkeletonProps {
   statCount: number;
 }
 
@@ -339,7 +340,7 @@ export const GameStatsGridSkeleton: React.FC<GameStatsGridSkeletonProps> = ({
 };
 
 // ✅ REQUIRED: Achievement Grid Skeleton
-interface AchievementGridSkeletonProps extends BaseSkeletonProps {
+interface AchievementGridSkeletonProps extends AchievementGridSkeletonProps {
   achievementCount: number;
   badgeSize?: 'small' | 'medium' | 'large';
 }

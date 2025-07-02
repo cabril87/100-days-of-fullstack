@@ -11,7 +11,7 @@ import {
   PermissionRequestDTO,
   ParentalControlSummaryDTO,
   PermissionRequestStatus 
-} from '../types/parental-control';
+} from '../types/system';
 import { 
   ParentalControlFormData,
   PermissionRequestFormData

@@ -32,6 +32,7 @@ import {
   DurationPresetDTO 
 } from '../../lib/types/calendar-enhancements';
 
+
 // ============================================================================
 // DURATION PRESETS DATA
 // ============================================================================
@@ -47,7 +48,11 @@ const DEFAULT_DURATION_PRESETS: DurationPresetDTO[] = [
 // PULL TO REFRESH COMPONENT
 // ============================================================================
 
-interface PullToRefreshProps {
+import type { PullToRefreshProps } from '@/lib/props/components/mobile.props';
+import type { DurationPresetsProps } from '@/lib/props/components/calendar.props';
+
+// Props interfaces moved to lib/props/components/calendar.props.ts
+// interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
   isEnabled: boolean;
   children: React.ReactNode;
@@ -167,7 +172,8 @@ function PullToRefresh({ onRefresh, isEnabled, children }: PullToRefreshProps) {
 // DURATION PRESETS COMPONENT
 // ============================================================================
 
-interface DurationPresetsProps {
+// Props interface moved to lib/props/components/calendar.props.ts
+// interface DurationPresetsProps {
   onDurationSelect: (minutes: number) => void;
   selectedDuration?: number;
   customPresets?: DurationPresetDTO[];

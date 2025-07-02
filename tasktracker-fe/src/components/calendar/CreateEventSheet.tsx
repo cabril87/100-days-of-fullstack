@@ -24,7 +24,7 @@ import {
   Sparkles,
     AlertTriangle
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
@@ -42,7 +42,7 @@ import type {
     CalendarEventDTO,
     PendingEventData
 } from '@/lib/types/calendar';
-import type { FamilyTaskItemDTO } from '@/lib/types/task';
+import type { FamilyTaskItemDTO } from '@/lib/types/tasks';
 
 // Smart Family Calendar Components
 // import FamilyConflictDetection, { type ConflictData, type ResolutionSuggestion } from './FamilyConflictDetection';
@@ -59,7 +59,7 @@ import { EVENT_COLORS, PRIORITY_OPTIONS } from '@/lib/types/calendar';
 import { eventFormSchema, taskFormSchema, type EventFormData, type TaskFormData } from '@/lib/schemas/calendar';
 
 // Utility functions from lib/utils
-import { getSafeDate } from '@/lib/utils/calendar-helpers';
+import { getSafeDate } from '@/lib/helpers/utils/calendar-helpers';
 
 export default function CreateEventSheet({
     isOpen,
@@ -906,7 +906,7 @@ export default function CreateEventSheet({
                                             <div className="flex gap-3 pt-4 border-t border-blue-200/30 dark:border-blue-700/30">
                                                 <Button
                                                     onClick={() => {
-                                                        if (responsive.hasTouch) {
+                                                        if (responsive.supportsTouch) {
                                                             triggerHapticFeedback('light');
                                                         }
                                                         setActiveTab('create');
@@ -923,8 +923,8 @@ export default function CreateEventSheet({
                                                 <Button
                                                     variant="destructive"
                                                     onClick={() => {
-                                                        if (responsive.hasTouch) {
-                                                            triggerHapticFeedback('warning');
+                                                        if (responsive.supportsTouch) {
+                                                            triggerHapticFeedback('medium', true);
                                                         }
                                                         handleEventDelete(editingEvent.id);
                                                     }}
@@ -1736,3 +1736,4 @@ export default function CreateEventSheet({
         </Sheet>
     );
 } 
+

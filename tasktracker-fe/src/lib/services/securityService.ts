@@ -15,7 +15,7 @@ import {
   UpdateDeviceTrustRequestDTO,
   UserSecurityOverviewDTO,
   ConditionalSecurityService
-} from '../types/session-management';
+} from '../types/auth';
 import { SecuritySettingsFormData } from '../schemas/settings';
 import { apiClient, ApiClientError } from '../config/api-client';
 

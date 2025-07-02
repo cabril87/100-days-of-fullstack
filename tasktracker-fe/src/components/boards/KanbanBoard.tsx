@@ -39,7 +39,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,8 +85,8 @@ import {
   TaskCardProps,
   BoardColumnProps,
   TASK_STYLE_PRESETS
-} from '@/lib/types/board';
-import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/task';
+} from '@/lib/types/boards';
+import { TaskItemResponseDTO, TaskItemStatus } from '@/lib/types/tasks';
 import { BoardService } from '@/lib/services/boardService';
 import { dragDropService } from '@/lib/services/dragDropService';
 import { taskService } from '@/lib/services/taskService';
@@ -102,9 +102,12 @@ import { BoardColumn as EnhancedBoardColumn } from './BoardColumn';
 /**
  * Enhanced Task Card with Gamification
  */
-interface EnhancedTaskCardProps extends TaskCardProps {
-  templateGradient?: { primary: string; secondary: string; accent: string; text: string; border: string };
-}
+import type { EnhancedTaskCardProps, EnhancedBoardColumnProps, SortableColumnProps } from '@/lib/props/components/boards.props';
+
+// Props interfaces moved to lib/props/components/boards.props.ts
+// interface EnhancedTaskCardProps extends TaskCardProps {
+//   templateGradient?: { primary: string; secondary: string; accent: string; text: string; border: string };
+// }
 
 const TaskCard: React.FC<EnhancedTaskCardProps> = ({
   task,
@@ -301,13 +304,15 @@ const TaskCard: React.FC<EnhancedTaskCardProps> = ({
 /**
  * Enhanced Board Column with Gamification Styling
  */
-interface EnhancedBoardColumnProps extends BoardColumnProps {
+// Props interface moved to lib/props/components/boards.props.ts
+// interface EnhancedBoardColumnProps extends BoardColumnProps {
   templateName?: string;
   onTaskDelete?: (task: TaskItemResponseDTO) => void;
 }
 
 // Sortable Column Component for drag and drop
-interface SortableColumnProps extends EnhancedBoardColumnProps {
+// Props interface moved to lib/props/components/boards.props.ts
+// interface SortableColumnProps extends EnhancedBoardColumnProps {
   id: string;
   boardId: number;
   onColumnUpdate?: (columnId: number, updates: { name?: string; color?: string }) => Promise<boolean>;
@@ -1552,3 +1557,4 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     </div>
   );
 }; 
+

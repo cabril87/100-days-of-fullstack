@@ -43,7 +43,7 @@ import {
   GraduationCap,
   Activity
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils';
 
 // Enhanced template categories with gamification
 const TEMPLATE_CATEGORIES = [

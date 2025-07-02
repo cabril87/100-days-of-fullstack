@@ -27,10 +27,11 @@ import {
   Briefcase
 } from 'lucide-react';
 import { enhancedAuthService } from '@/lib/services/enhancedAuthService';
-import { SecurityQuestionFormData } from '@/lib/types/enhanced-auth';
+import { SecurityQuestionFormData } from '@/lib/interfaces/forms/auth-forms.interface';
 import { securityQuestionSchema } from '@/lib/schemas/enhanced-auth';
 
-interface SecurityQuestionSetupFormProps {
+// Props interface moved to lib/props/components/auth.props.ts
+// interface SecurityQuestionSetupFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   showAgeAppropriate?: boolean;

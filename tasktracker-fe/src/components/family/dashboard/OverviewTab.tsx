@@ -13,7 +13,7 @@ import {
   Trophy 
 } from 'lucide-react';
 import { FamilyTaskStats } from '@/lib/types/family-task';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
 import confetti from 'canvas-confetti';
 
 interface OverviewTabProps {

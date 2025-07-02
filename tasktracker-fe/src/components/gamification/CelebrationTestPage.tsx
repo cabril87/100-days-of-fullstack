@@ -45,7 +45,7 @@ import {
 import { useResponsive } from '@/lib/hooks/useResponsive';
 import { useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { TouchFeedback } from '@/components/calendar/MobileCalendarEnhancements';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import EnhancedCelebrationSystem from './EnhancedCelebrationSystem';
 
 // ================================
@@ -275,8 +275,8 @@ export default function CelebrationTestPage() {
       testsPassed: 0,
       totalTests: 6,
       performance: 'excellent',
-      touchSupport: responsive.hasTouch,
-      gesturesWorking: responsive.hasTouch
+              touchSupport: responsive.supportsTouch,
+      gesturesWorking: responsive.supportsTouch
     };
     
     const logMessage = `🧪 Starting ${deviceType} tests...`;
@@ -288,7 +288,7 @@ export default function CelebrationTestPage() {
     testResults.testsPassed++;
     
     // Test 2: Touch gesture simulation (if touch device)
-    if (responsive.hasTouch) {
+    if (responsive.supportsTouch) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       setTestLog(prev => [...prev, '✋ Testing touch gestures...']);
       testResults.testsPassed++;
@@ -364,7 +364,7 @@ export default function CelebrationTestPage() {
   // ================================
 
   const testTouchHandlers = useCallback(async () => {
-    if (!responsive.hasTouch) {
+    if (!responsive.supportsTouch) {
       setTestLog(prev => [...prev, '⚠️ Touch not supported on this device - using mouse event simulation']);
     } else {
       setTestLog(prev => [...prev, '📱 Touch device detected - using native touch events']);
@@ -398,7 +398,7 @@ export default function CelebrationTestPage() {
       setTestLog(prev => [...prev, '🎨 Testing ParticleEngine touch-to-emit...']);
       
       // Simulate touch event on particle system
-      if ('TouchEvent' in window && responsive.hasTouch) {
+      if ('TouchEvent' in window && responsive.supportsTouch) {
         const touchEvent = new TouchEvent('touchstart', {
           touches: [createTestTouch(400, 300)],
           targetTouches: [createTestTouch(400, 300)],
@@ -448,7 +448,7 @@ export default function CelebrationTestPage() {
       setTestLog(prev => [...prev, '💨 Testing ParticleEngine swipe-to-accelerate...']);
       
       // Simulate swipe gesture
-      if ('TouchEvent' in window && responsive.hasTouch) {
+      if ('TouchEvent' in window && responsive.supportsTouch) {
         const touchMove = new TouchEvent('touchmove', {
           touches: [createTestTouch(450, 350)],
           targetTouches: [createTestTouch(450, 350)],
@@ -628,7 +628,7 @@ export default function CelebrationTestPage() {
     const passedTests = results.filter(r => r.passed).length;
     setTestLog(prev => [...prev, `🏁 Touch handler tests completed: ${passedTests}/${results.length} passed`]);
     setIsRunningTouchTests(false);
-  }, [responsive.hasTouch]);
+  }, [responsive.supportsTouch]);
 
   const simulateTouchInteraction = useCallback((type: 'tap' | 'swipe' | 'longpress', x = 400, y = 300) => {
     setTestLog(prev => [...prev, `🖐️ Simulating ${type} at (${x}, ${y})`]);
@@ -653,7 +653,7 @@ export default function CelebrationTestPage() {
 
     try {
       // For devices that support TouchEvent
-      if ('TouchEvent' in window && responsive.hasTouch) {
+      if ('TouchEvent' in window && responsive.supportsTouch) {
         const touchStart = new TouchEvent('touchstart', {
           touches: [createTouch(x, y)],
           targetTouches: [createTouch(x, y)],
@@ -734,7 +734,7 @@ export default function CelebrationTestPage() {
     if (celebrationScenarios.length > 0) {
       triggerCelebration(celebrationScenarios[0]);
     }
-  }, [celebrationScenarios, triggerCelebration, responsive.hasTouch]);
+  }, [celebrationScenarios, triggerCelebration, responsive.supportsTouch]);
 
   // ================================
   // DEVICE STATUS DISPLAY
@@ -797,13 +797,13 @@ export default function CelebrationTestPage() {
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
                       {isClient ? `${responsive.width}×${responsive.height}` : 'Loading...'} • {responsive.orientation} • 
-                      Touch: {responsive.hasTouch ? 'Yes' : 'No'}
+                      Touch: {responsive.supportsTouch ? 'Yes' : 'No'}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={responsive.hasTouch ? 'default' : 'secondary'}>
-                    {responsive.hasTouch ? 'Touch Ready' : 'Mouse/Keyboard'}
+                  <Badge variant={responsive.supportsTouch ? 'default' : 'secondary'}>
+                    {responsive.supportsTouch ? 'Touch Ready' : 'Mouse/Keyboard'}
                   </Badge>
                   <Badge variant="outline">
                     {responsive.breakpoint}
@@ -815,7 +815,7 @@ export default function CelebrationTestPage() {
         </div>
 
         {/* Test Controls */}
-        <Tabs value={activeTestMode} onValueChange={(value) => setActiveTestMode(value as any)} className="mb-8">
+        <Tabs value={activeTestMode} onValueChange={(value) => setActiveTestMode(value as 'manual' | 'automated' | 'stress' | 'touch')} className="mb-8">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="manual" className="flex items-center gap-2">
               <Play className="h-4 w-4" />
@@ -1047,7 +1047,7 @@ export default function CelebrationTestPage() {
                   </Button>
                   
                   <div className="text-sm text-gray-600 dark:text-gray-400">
-                    {responsive.hasTouch ? '✅ Touch device detected - using native touch events' : '🖱️ Non-touch device - using mouse event simulation'}
+                    {responsive.supportsTouch ? '✅ Touch device detected - using native touch events' : '🖱️ Non-touch device - using mouse event simulation'}
                   </div>
                 </div>
 

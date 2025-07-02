@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { SkeletonWrapper } from './base-skeleton-wrapper';
 import {
   DeviceListSkeletonProps,
   SessionTimelineSkeletonProps,
   SecurityDashboardSkeletonProps,
-} from '@/lib/types/skeleton';
+} from '@/lib/types/ui/skeleton';
 
 // ✅ REQUIRED: Device List Skeleton
 export const DeviceListSkeleton: React.FC<DeviceListSkeletonProps> = ({
@@ -21,7 +21,7 @@ export const DeviceListSkeleton: React.FC<DeviceListSkeletonProps> = ({
 }) => {
   return (
     <div className={cn('space-y-4', className)}>
-      {Array.from({ length: deviceCount }).map((_, index) => (
+      {Array.from({ length: deviceCount || 3 }).map((_, index) => (
         <Card key={index} className="w-full">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -145,7 +145,7 @@ export const SessionTimelineSkeleton: React.FC<SessionTimelineSkeletonProps> = (
       <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-muted" />
       
       <div className="space-y-6">
-        {Array.from({ length: eventCount }).map((_, index) => (
+        {Array.from({ length: eventCount || 5 }).map((_, index) => (
           <div key={index} className="relative flex items-start space-x-4">
             {/* Timeline marker */}
             <SkeletonWrapper
@@ -289,7 +289,7 @@ export const SecurityDashboardSkeleton: React.FC<SecurityDashboardSkeletonProps>
       
       {/* Security metrics grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: cardCount }).map((_, index) => (
+        {Array.from({ length: cardCount || 4 }).map((_, index) => (
           <Card key={index}>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">

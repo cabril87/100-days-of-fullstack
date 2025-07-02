@@ -21,15 +21,18 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // Types
 import type { CalendarViewType } from './CalendarControls';
 import type { CalendarEventDTO, CalendarStatsDTO } from '@/lib/types/calendar';
-import type { FamilyTaskItemDTO } from '@/lib/types/task';
-import type { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import type { FamilyTaskItemDTO } from '@/lib/types/tasks';
+import type { FamilyMemberDTO } from '@/lib/types/family';
 
-interface EnterpriseCalendarWrapperProps {
+import type { EnterpriseCalendarWrapperProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// interface EnterpriseCalendarWrapperProps {
   // Core calendar props
   currentDate: Date;
   viewType: CalendarViewType;
@@ -789,3 +792,4 @@ export default function EnterpriseCalendarWrapper({
     </div>
   );
 } 
+

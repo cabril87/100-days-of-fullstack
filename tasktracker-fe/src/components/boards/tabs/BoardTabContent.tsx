@@ -33,9 +33,9 @@ import {
 } from 'lucide-react';
 
 // Types and Services
-import { BoardTabContentProps } from '@/lib/types/board-tabs';
-import { BoardDetailDTO } from '@/lib/types/board';
-import { TaskItemStatus } from '@/lib/types/task';
+import { BoardTabContentProps } from '@/lib/props/components/boards.props';
+import { BoardDetailDTO } from '@/lib/types/boards';
+import { TaskItemStatus } from '@/lib/types/tasks';
 import { BoardService } from '@/lib/services/boardService';
 
 
@@ -60,21 +60,22 @@ export const BoardTabContent: React.FC<BoardTabContentProps> = ({
 
 
   // Load board data
-  const loadBoardData = useCallback(async () => {
+  const loadBoardData = async () => {
+    if (!board?.id) return;
+    
     try {
       setLoading(true);
       setError(null);
-      
+
       const data = await BoardService.getBoardById(board.id);
       setBoardData(data);
     } catch (err) {
       console.error('Failed to load board data:', err);
       setError('Failed to load board data');
-      toast.error('Failed to load board data');
     } finally {
       setLoading(false);
     }
-  }, [board.id]);
+  };
 
   useEffect(() => {
     loadBoardData();
@@ -206,31 +207,38 @@ export const BoardTabContent: React.FC<BoardTabContentProps> = ({
 
       {/* Kanban Board - Use the existing component but without header */}
       <div className="bg-card rounded-lg border border-border overflow-hidden shadow-sm">
-        <KanbanBoard
-          boardId={board.id}
-          className="border-0 shadow-none [&>div:first-child]:hidden" // Hide the header
-          enableAnimations={true}
-          enableGamification={true}
-          theme="gradient"
-        />
+        {board?.id && (
+          <KanbanBoard
+            boardId={board.id}
+            className="border-0 shadow-none [&>div:first-child]:hidden" // Hide the header
+            enableAnimations={true}
+            enableGamification={true}
+            theme="gradient"
+          />
+        )}
       </div>
 
       {/* Modals */}
-      <CreateTaskModal
-        open={showCreateTask}
-        onClose={() => setShowCreateTask(false)}
-        onTaskCreated={handleTaskCreated}
-        defaultStatus={selectedColumnStatus}
-        boardId={board.id}
-      />
+      {board?.id && (
+        <>
+          <CreateTaskModal
+            open={showCreateTask}
+            onClose={() => setShowCreateTask(false)}
+            onTaskCreated={handleTaskCreated}
+            defaultStatus={selectedColumnStatus}
+            boardId={board.id}
+          />
 
-      <QuestSelectionModal
-        open={showQuestSelection}
-        onClose={() => setShowQuestSelection(false)}
-        onTaskCreated={handleTaskCreated}
-        defaultStatus={selectedColumnStatus}
-        boardId={board.id}
-      />
+          <QuestSelectionModal
+            open={showQuestSelection}
+            onClose={() => setShowQuestSelection(false)}
+            onTaskCreated={handleTaskCreated}
+            defaultStatus={selectedColumnStatus}
+            boardId={board.id}
+          />
+        </>
+      )}
     </div>
   );
 }; 
+

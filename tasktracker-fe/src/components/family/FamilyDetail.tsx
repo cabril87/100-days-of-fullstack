@@ -36,14 +36,14 @@ import {
 import { 
   FamilyDTO,
   FamilyMemberDTO
-} from '@/lib/types/family-invitation';
+} from '@/lib/types/family';
 import { FamilyDetailContentProps } from '@/lib/types/auth';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { taskService } from '@/lib/services/taskService';
 import FamilyTaskDashboard from './FamilyTaskDashboard';
 import FamilyTaskManagement from './FamilyTaskManagement';
 import TaskCreationModal from '../tasks/TaskCreationModal';
-import { Task } from '@/lib/types/task';
+import { Task } from '@/lib/types/tasks';
 
 // Import separated components
 import StatisticsCards from './detail/StatisticsCards';
@@ -397,3 +397,4 @@ export default function FamilyDetail({
     </div>
   );
 } 
+

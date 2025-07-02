@@ -20,7 +20,7 @@ import {
   Calendar,
   TrendingUp
 } from 'lucide-react';
-import { RecentAchievementsProps } from '@/lib/types/widget-props';
+import { RecentAchievementsProps } from '@/lib/props/widgets/main.props';
 
 export function RecentAchievements({ 
   userId, 

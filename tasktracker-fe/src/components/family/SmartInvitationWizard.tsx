@@ -32,8 +32,8 @@ import {
 import {
   InvitationWizardState,
   InvitationPreviewData
-} from '../../lib/types/enhanced-family';
-import { FamilyRelationshipType } from '../../lib/types/family-invitation';
+} from '@/lib/types/family';
+import { FamilyRelationshipType } from '@/lib/types/family';
 import { EnhancedFamilyService } from '../../lib/services/enhancedFamilyService';
 
 // Import schemas and types from lib directory - explicit typing
@@ -43,7 +43,7 @@ import {
   type InvitationBasicFormData,
   type InvitationSendingFormData
 } from '../../lib/schemas/enhanced-family';
-import { type SmartInvitationWizardProps } from '../../lib/types/component-props';
+import { type SmartInvitationWizardProps } from '@/lib/props/components/main.props';
 
 export const SmartInvitationWizard: React.FC<SmartInvitationWizardProps> = ({
   familyId,

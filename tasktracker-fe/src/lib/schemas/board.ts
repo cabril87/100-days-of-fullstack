@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { TaskItemStatus } from '../types/task';
+import { TaskItemStatus } from '@/lib/types/tasks';
 
 /**
  * Schema for creating a new board

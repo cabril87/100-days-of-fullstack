@@ -7,11 +7,9 @@ import { Spinner } from '../ui/spinner';
 import { Alert, AlertDescription } from '../ui/alert';
 import { ShieldX } from 'lucide-react';
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-  requiredRole?: string;
-  fallback?: ReactNode;
-}
+import type { ProtectedRouteProps } from '@/lib/props/components/auth.props';
+
+
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,

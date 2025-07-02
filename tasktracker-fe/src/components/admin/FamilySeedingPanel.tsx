@@ -10,8 +10,8 @@ import {
   FamilySeedingResponse,
   getAgeGroupColor,
   getRelationshipDisplayName,
-} from '@/lib/types/familySeeding';
-import { FamilyDTO } from '@/lib/types/family-invitation';
+} from '@/lib/types/family';
+import { FamilyDTO } from '@/lib/types/family';
 import { AlertTriangle, Users, Settings, Trash2, Play, Eye, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 

@@ -16,7 +16,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, Users, TrendingUp, Server, DollarSign, Shield, Activity, UserCheck, Globe, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { AnalyticsCard } from './AnalyticsCard';
-import { AdminAnalyticsDashboardProps } from '@/lib/types/analytics';
+import { AdminAnalyticsDashboardProps } from '@/lib/props/components/analytics.props';
 
 export function AdminAnalyticsDashboard({ 
   analytics,

@@ -7,7 +7,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Star, Crown } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 interface PrimaryFamilyBadgeProps {
   isPrimary: boolean;

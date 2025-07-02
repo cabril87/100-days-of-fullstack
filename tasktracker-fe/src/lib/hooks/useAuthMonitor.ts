@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/providers/AuthProvider';
-import type { AuthHealthStatus, HealthStatusLevel } from '@/lib/types/auth-monitor';
+import type { AuthHealthStatus, HealthStatusLevel } from '@/lib/types/auth/auth-monitor';
 
 interface AuthMonitorOptions {
   enableLogging?: boolean;

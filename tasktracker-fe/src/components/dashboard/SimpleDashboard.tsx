@@ -9,14 +9,15 @@ import {
   CheckCircle, Target, Plus, Crown, Sparkles, 
   Trophy, Flame, Activity
 } from 'lucide-react';
-import { SimpleDashboardProps } from '@/lib/types/component-props';
+import { DashboardProps } from '@/lib/props/components/main.props';
 import TaskCreationModal from '@/components/tasks/TaskCreationModal';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { Task } from '@/lib/types/task';
+import { Task } from '@/lib/types/tasks';
 import { FamilyDTO } from '@/lib/types';
+// DashboardProps import removed - using SimpleDashboardProps directly
 
-export default function SimpleDashboard({ user, initialData, onTaskCreated }: SimpleDashboardProps) {
+export default function SimpleDashboard({ user, mode = 'simple', initialData, onTaskCreated, onModeChange }: DashboardProps) {
   const router = useRouter();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   
@@ -228,7 +229,7 @@ export default function SimpleDashboard({ user, initialData, onTaskCreated }: Si
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Button
           onClick={() => setIsTaskModalOpen(true)}
           size="lg"
@@ -247,6 +248,17 @@ export default function SimpleDashboard({ user, initialData, onTaskCreated }: Si
         >
           <Target className="h-6 w-6 mr-3" />
           View All Tasks
+        </Button>
+
+        {/* Dashboard Mode Toggle */}
+        <Button
+          onClick={() => onModeChange?.(mode === 'simple' ? 'advanced' : 'simple')}
+          variant="outline"
+          size="lg"
+          className="h-16 text-lg border-2 border-blue-300 text-blue-600 hover:bg-blue-50 dark:border-blue-600 dark:text-blue-400 dark:hover:bg-blue-900/20"
+        >
+          <Crown className="h-6 w-6 mr-3" />
+          {mode === 'simple' ? 'Advanced Mode' : 'Simple Mode'}
         </Button>
       </div>
 
@@ -371,3 +383,4 @@ export default function SimpleDashboard({ user, initialData, onTaskCreated }: Si
     </div>
   );
 } 
+

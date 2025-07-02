@@ -35,8 +35,8 @@ import {
 import { useTheme } from '@/lib/providers/ThemeProvider';
 import { useAppearanceSettings } from '@/lib/contexts/AppearanceContext';
 import { appearanceSettingsSchema } from '@/lib/schemas/settings';
-import { AppearanceFormData } from '@/lib/types/forms';
-import { AppearanceSettingsContentProps } from '@/lib/types/settings';
+import { AppearanceFormData } from '@/lib/types/forms/forms';
+import { AppearanceSettingsContentProps } from '@/lib/props/components/settings.props';
 import { spriteAnimationService } from '@/lib/services/spriteAnimationService';
 
 // AppearanceFormData is imported from lib/types/forms

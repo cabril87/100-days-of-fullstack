@@ -19,7 +19,7 @@ import {
   Download,
   Upload
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +33,10 @@ import type { CalendarStatsDTO } from '@/lib/types/calendar';
 
 export type CalendarViewType = 'month' | 'week' | 'day' | 'list';
 
-interface CalendarControlsProps {
+import type { CalendarControlsProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// interface CalendarControlsProps {
   currentDate: Date;
   viewType: CalendarViewType;
   onDateChange: (date: Date) => void;
@@ -66,7 +69,7 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
 
   // Navigation helpers
   const navigatePrevious = () => {
-    if (responsive.hasTouch) {
+    if (responsive.supportsTouch) {
       triggerHapticFeedback('light');
     }
     const newDate = new Date(currentDate);
@@ -88,7 +91,7 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   };
 
   const navigateNext = () => {
-    if (responsive.hasTouch) {
+    if (responsive.supportsTouch) {
       triggerHapticFeedback('light');
     }
     const newDate = new Date(currentDate);
@@ -110,7 +113,7 @@ const CalendarControls: React.FC<CalendarControlsProps> = ({
   };
 
   const goToToday = () => {
-    if (responsive.hasTouch) {
+    if (responsive.supportsTouch) {
       triggerHapticFeedback('medium');
     }
     onDateChange(new Date());

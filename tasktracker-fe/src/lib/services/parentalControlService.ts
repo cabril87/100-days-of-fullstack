@@ -11,7 +11,7 @@ import {
   PermissionRequestResponseDTO,
   BulkPermissionRequestResponseDTO,
   ParentalControlSummaryDTO 
-} from '../types/parental-control';
+} from '../types/system';
 import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors

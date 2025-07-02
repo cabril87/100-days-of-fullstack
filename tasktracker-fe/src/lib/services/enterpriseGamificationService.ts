@@ -19,7 +19,7 @@ import type {
   FamilyRanking,
   GoalReward,
   LeaderboardEntry
-} from '@/lib/types/enterprise-gamification';
+} from '@/lib/types/gamification/enterprise-gamification';
 
 // Additional DTO types for API responses  
 interface AchievementDTO {
@@ -52,7 +52,7 @@ interface BadgeDTO {
   nextLevelRequirement?: string;
   isDisplayed?: boolean;
 }
-import type { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import type { FamilyMemberDTO } from '@/lib/types/family';
 
 // Remove API_BASE_URL since apiClient already has a configured base URL
 // This prevents double URL concatenation issues per .cursorrules defensive programming

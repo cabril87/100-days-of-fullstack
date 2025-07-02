@@ -20,7 +20,7 @@ import {
   Zap,
   MoreHorizontal
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,6 +40,8 @@ import {
 /**
  * Individual Search Result Item Component
  */
+import type { SearchResultItemProps as SearchItemProps, SearchResultGroupProps as SearchGroupProps } from '@/lib/props/components/search.props';
+
 interface SearchResultItemProps {
   result: SearchResultItemDTO;
   onResultClick: (result: SearchResultItemDTO) => void;

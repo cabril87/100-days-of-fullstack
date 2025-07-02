@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
-import { NetworkStatusProps } from '@/lib/types/ui-components';
+import { NetworkStatusProps } from '@/lib/types/ui';
 
 export const NetworkStatus: React.FC<NetworkStatusProps> = ({ 
   className = '',
@@ -81,3 +81,4 @@ export const NetworkStatus: React.FC<NetworkStatusProps> = ({
 };
 
 export default NetworkStatus; 
+

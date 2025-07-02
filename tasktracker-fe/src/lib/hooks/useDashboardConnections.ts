@@ -25,12 +25,12 @@ import {
 import type {
   DashboardConnectionsProps,
   DashboardConnectionsReturn
-} from '@/lib/types/component-props/dashboard-props';
+} from '@/lib/props/widgets/main.props';
 import type {
   UserProgressApiResponse,
   AchievementApiResponse,
   BadgeApiResponse
-} from '@/lib/types/api-responses';
+} from '@/lib/types/api';
 
 // ================================
 // INITIAL STATE

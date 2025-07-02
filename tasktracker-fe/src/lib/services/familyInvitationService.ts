@@ -21,7 +21,7 @@ import {
   getRelationshipDisplayName,
   PrimaryFamilyStatusDTO,
   UserFamilyWithPrimary
-} from '../types/family-invitation';
+} from '../types/family';
 import { FamilyMemberAgeGroup } from '../types/auth';
 import { apiClient } from '../config/api-client';
 

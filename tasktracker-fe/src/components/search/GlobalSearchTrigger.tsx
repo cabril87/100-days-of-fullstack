@@ -8,15 +8,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Command } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Button } from '@/components/ui/button';
 import GlobalSearchModal from './GlobalSearchModal';
-
-interface GlobalSearchTriggerProps {
-  className?: string;
-  variant?: 'button' | 'input-style' | 'icon-only';
-  size?: 'sm' | 'md' | 'lg';
-}
+import type { GlobalSearchTriggerProps } from '@/lib/props/components/search.props';
 
 /**
  * Custom hook for global search functionality

@@ -1,5 +1,6 @@
 import React from 'react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
+import { GamificationCardProps, StatsCardProps, ProgressCardProps } from '@/lib/props/ui/Card.props';
 
 // Standard shadcn/ui Card components
 const Card = React.forwardRef<
@@ -77,28 +78,21 @@ const CardFooter = React.forwardRef<
 CardFooter.displayName = "CardFooter";
 
 // Custom gamification-styled card components
-interface GamificationCardProps {
-  children: React.ReactNode;
-  className?: string;
-  variant?: 'default' | 'gradient' | 'stats';
-  gradient?: string;
-  hover?: boolean;
-  onClick?: () => void;
-}
 
 export const GamificationCard: React.FC<GamificationCardProps> = ({ 
   children, 
   className = '', 
   variant = 'default',
-  gradient,
   hover = true 
 }) => {
   const baseClasses = "rounded-xl border shadow-sm transition-all duration-300";
   
   const variants = {
-    default: "bg-white border-gray-100",
-    gradient: `${gradient || 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white border-transparent`,
-    stats: "bg-white border-gray-100 p-4"
+    default: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
+    gradient: 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-700',
+    stats: 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-700',
+    progress: 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700',
+    achievement: 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-200 dark:border-yellow-700'
   };
 
   const hoverClasses = hover ? "hover:scale-105 hover:shadow-lg cursor-pointer" : "";
@@ -109,16 +103,6 @@ export const GamificationCard: React.FC<GamificationCardProps> = ({
     </div>
   );
 };
-
-interface StatsCardProps {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  bgColor: string;
-  trend?: number;
-  isLoading?: boolean;
-  onClick?: () => void;
-}
 
 export const StatsCard: React.FC<StatsCardProps> = ({ 
   title, 
@@ -165,16 +149,6 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   </GamificationCard>
 );
 
-interface ProgressCardProps {
-  title: string;
-  currentValue: number;
-  maxValue: number;
-  progress: number;
-  icon: React.ReactNode;
-  color?: string;
-  isLoading?: boolean;
-}
-
 export const ProgressCard: React.FC<ProgressCardProps> = ({ 
   title, 
   currentValue, 
@@ -212,7 +186,7 @@ export const ProgressCard: React.FC<ProgressCardProps> = ({
           ></div>
         </div>
         <div className="text-sm text-gray-600">
-          {Math.round(progress)}% Complete
+          {Math.round(progress || 0)}% Complete
         </div>
       </div>
     )}

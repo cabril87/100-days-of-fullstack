@@ -27,8 +27,8 @@ import {
   Clock,
   Download
 } from 'lucide-react';
-import { AnalyticsDashboardWrapperProps } from '@/lib/types/analytics-components';
-import { BackendGamificationEventDTO, BackendTaskCompletionEventDTO } from '@/lib/types/backend-signalr-events';
+import { AnalyticsDashboardWrapperProps } from '@/lib/props/components/analytics.props';
+import { BackendGamificationEventDTO, BackendTaskCompletionEventDTO } from '@/lib/types/signalr';
 
 type TimeRange = '7d' | '30d' | '90d' | '1y';
 type DashboardMode = 'user' | 'family' | 'admin';

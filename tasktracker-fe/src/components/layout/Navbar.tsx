@@ -20,7 +20,7 @@ import {
 import { DecorativeLines } from '@/components/ui/DecorativeLines';
 import { useTheme } from '@/lib/providers/ThemeProvider';
 import { usePathname } from 'next/navigation';
-import { getNavigationMode } from '@/lib/utils/authUtils';
+import { getNavigationMode } from '@/lib/helpers/utils/authUtils';
 
 interface NavbarProps {
   onToggleSidebar?: () => void;

@@ -35,6 +35,7 @@ const deviceMatrix = {
     xl: { width: 2560, height: 1440 },     // 4K displays
   }
 } as const;
+console.log('Device matrix initialized for responsive breakpoints:', deviceMatrix.mobile.small);
 
 // ================================
 // ENTERPRISE PWA TYPES (ENHANCED)
@@ -49,7 +50,7 @@ interface PWAState {
   cacheStatus: 'loading' | 'ready' | 'updating' | 'error';
   serviceWorkerReady: boolean;
   registration: ServiceWorkerRegistration | null;
-  
+
   // ✅ MOBILE-FIRST ADDITIONS
   deviceType: 'mobile' | 'tablet' | 'desktop';
   orientation: 'portrait' | 'landscape';
@@ -72,7 +73,7 @@ interface PWAActions {
   dismissInstallPrompt: () => void;
   getCacheStatus: () => Promise<CacheStatus>;
   optimizeCache: () => Promise<void>;
-  
+
   // ✅ MOBILE-FIRST ACTIONS
   triggerHapticFeedback: (type: 'light' | 'medium' | 'heavy') => void;
   adaptToOrientation: (orientation: 'portrait' | 'landscape') => void;
@@ -81,7 +82,7 @@ interface PWAActions {
   disableLowPowerMode: () => void;
 }
 
-interface PWAContextType extends PWAState, PWAActions {}
+interface PWAContextType extends PWAState, PWAActions { }
 
 interface CacheStatus {
   totalSize: number;
@@ -143,8 +144,8 @@ interface PWAProviderProps {
   enablePerformanceMonitoring?: boolean;
 }
 
-export function PWAProvider({ 
-  children, 
+export function PWAProvider({
+  children,
   enableDebug = false,
   autoUpdate = true,
   cacheCleanupInterval = 60,
@@ -188,6 +189,9 @@ export function PWAProvider({
     loadTime: 0,
     cacheHitRate: 0,
   });
+  
+  // Use performance metrics for monitoring
+  console.log('PWA Performance:', performanceMetrics.fps, 'fps');
 
   // ✅ CACHE VERSION MANAGEMENT
   const CACHE_PREFIX = 'tasktracker-enterprise';
@@ -201,10 +205,10 @@ export function PWAProvider({
 
     const width = window.innerWidth;
     const height = window.innerHeight;
-    
+
     // Determine device type using enhanced detection
     let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
-    
+
     if (width <= 768) {
       deviceType = 'mobile';
     } else if (width <= 1024) {
@@ -219,10 +223,18 @@ export function PWAProvider({
     // Orientation detection
     const orientation = width > height ? 'landscape' : 'portrait';
 
-    // Network status detection
-    const connection = (navigator as any).connection;
+    // Network status detection  
+    interface NetworkConnection {
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+    }
+    interface NavigatorWithConnection extends Navigator {
+      connection?: NetworkConnection;
+    }
+    const connection = (navigator as NavigatorWithConnection).connection;
     let networkStatus: 'online' | 'offline' | 'slow' = 'online';
-    
+
     if (!navigator.onLine) {
       networkStatus = 'offline';
     } else if (connection?.effectiveType === '2g' || connection?.effectiveType === 'slow-2g') {
@@ -258,7 +270,7 @@ export function PWAProvider({
       if ('getBattery' in navigator && navigatorWithBattery.getBattery) {
         const battery = await navigatorWithBattery.getBattery();
         batteryManagerRef.current = battery;
-        
+
         setState(prev => ({
           ...prev,
           batteryLevel: battery.level,
@@ -297,18 +309,25 @@ export function PWAProvider({
 
     let lastTime = performance.now();
     let frameCount = 0;
-    
+
     const measureFPS = () => {
       frameCount++;
       const currentTime = performance.now();
-      
+
       if (currentTime - lastTime >= 1000) {
         const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-        
+
         // Memory usage (if available)
-        const memoryInfo = (performance as any).memory;
+        interface PerformanceWithMemory extends Performance {
+          memory?: {
+            usedJSHeapSize: number;
+            totalJSHeapSize: number;
+            jsHeapSizeLimit: number;
+          };
+        }
+        const memoryInfo = (performance as PerformanceWithMemory).memory;
         const memoryUsage = memoryInfo ? memoryInfo.usedJSHeapSize / 1024 / 1024 : 0;
-        
+
         setPerformanceMetrics(prev => ({
           ...prev,
           fps,
@@ -318,7 +337,7 @@ export function PWAProvider({
         // Optimize for low performance
         if (fps < 30 && state.deviceType === 'mobile') {
           setState(prev => ({ ...prev, isLowPowerMode: true }));
-          
+
           if (enableDebug) {
             console.warn('🐌 Low FPS detected, enabling power save mode:', fps);
           }
@@ -327,7 +346,7 @@ export function PWAProvider({
         frameCount = 0;
         lastTime = currentTime;
       }
-      
+
       requestAnimationFrame(measureFPS);
     };
 
@@ -356,7 +375,7 @@ export function PWAProvider({
   // ✅ ORIENTATION ADAPTATION
   const adaptToOrientation = useCallback((orientation: 'portrait' | 'landscape') => {
     setState(prev => ({ ...prev, orientation }));
-    
+
     // Trigger cache optimization for orientation change
     setTimeout(() => {
       optimizeCache();
@@ -370,12 +389,12 @@ export function PWAProvider({
   // ✅ DEVICE OPTIMIZATION
   const optimizeForDevice = useCallback(() => {
     const { deviceType, batteryLevel, networkStatus } = state;
-    
+
     // Enable low power mode for mobile devices with low battery
     if (deviceType === 'mobile' && batteryLevel < 0.3) {
       setState(prev => ({ ...prev, isLowPowerMode: true }));
     }
-    
+
     // Adjust cache strategy based on network
     if (networkStatus === 'slow') {
       // Implement aggressive caching for slow networks
@@ -391,10 +410,10 @@ export function PWAProvider({
   const getCacheStatus = useCallback(async (): Promise<CacheStatus> => {
     try {
       if (!('caches' in window)) {
-        return { 
-          totalSize: 0, 
-          cacheCount: 0, 
-          oldCacheCount: 0, 
+        return {
+          totalSize: 0,
+          cacheCount: 0,
+          oldCacheCount: 0,
           lastCleanup: null,
           deviceOptimized: false
         };
@@ -402,7 +421,7 @@ export function PWAProvider({
 
       const cacheNames = await caches.keys();
       const ourCaches = cacheNames.filter(name => name.startsWith(CACHE_PREFIX));
-      
+
       let totalSize = 0;
       let oldCacheCount = 0;
       const currentVersion = getCurrentCacheVersion();
@@ -411,10 +430,10 @@ export function PWAProvider({
         try {
           const cache = await caches.open(cacheName);
           const requests = await cache.keys();
-          
+
           // Enhanced size calculation
           totalSize += requests.length * 1024;
-          
+
           if (!cacheName.includes(currentVersion)) {
             oldCacheCount++;
           }
@@ -427,7 +446,7 @@ export function PWAProvider({
 
       const lastCleanup = localStorage.getItem('pwa-last-cleanup');
       const deviceOptimized = localStorage.getItem(`pwa-optimized-${state.deviceType}`) === 'true';
-      
+
       return {
         totalSize,
         cacheCount: ourCaches.length,
@@ -439,10 +458,10 @@ export function PWAProvider({
       if (enableDebug) {
         console.error('Failed to get cache status:', error);
       }
-      return { 
-        totalSize: 0, 
-        cacheCount: 0, 
-        oldCacheCount: 0, 
+      return {
+        totalSize: 0,
+        cacheCount: 0,
+        oldCacheCount: 0,
         lastCleanup: null,
         deviceOptimized: false
       };
@@ -459,25 +478,25 @@ export function PWAProvider({
       const cacheNames = await caches.keys();
       const ourCaches = cacheNames.filter(name => name.startsWith(CACHE_PREFIX));
       const currentVersion = getCurrentCacheVersion();
-      
+
       let deletedCount = 0;
       const { deviceType, isLowPowerMode } = state;
 
       // Device-specific optimization
       for (const cacheName of ourCaches) {
-        const shouldDelete = !cacheName.includes(currentVersion) && 
-                           !cacheName.includes('v' + Date.now().toString().slice(-8));
-        
+        const shouldDelete = !cacheName.includes(currentVersion) &&
+          !cacheName.includes('v' + Date.now().toString().slice(-8));
+
         // More aggressive cleanup for mobile low power mode
-        const isOldMobileCache = deviceType === 'mobile' && 
-                               isLowPowerMode && 
-                               !cacheName.includes(Date.now().toString().slice(-6));
+        const isOldMobileCache = deviceType === 'mobile' &&
+          isLowPowerMode &&
+          !cacheName.includes(Date.now().toString().slice(-6));
 
         if (shouldDelete || isOldMobileCache) {
           try {
             await caches.delete(cacheName);
             deletedCount++;
-            
+
             if (enableDebug) {
               console.log('🗑️ Deleted cache:', cacheName);
             }
@@ -511,6 +530,21 @@ export function PWAProvider({
     }
   }, [getCurrentCacheVersion, enableDebug, state, triggerHapticFeedback]);
 
+  // ✅ POWER MODE MANAGEMENT
+  const enableLowPowerMode = useCallback(() => {
+    setState(prev => ({ ...prev, isLowPowerMode: true }));
+    localStorage.setItem('pwa-low-power-mode', 'true');
+
+    // Trigger aggressive cache cleanup
+    setTimeout(() => {
+      optimizeCache();
+    }, 100);
+
+    if (enableDebug) {
+      console.log('🔋 Low power mode enabled');
+    }
+  }, [optimizeCache, enableDebug]);
+
   // ✅ ENHANCED CACHE CLEARING (MOBILE-OPTIMIZED)
   const clearCache = useCallback(async (): Promise<void> => {
     try {
@@ -521,7 +555,7 @@ export function PWAProvider({
 
       const cacheNames = await caches.keys();
       const ourCaches = cacheNames.filter(name => name.startsWith(CACHE_PREFIX));
-      
+
       let deletedCount = 0;
       for (const cacheName of ourCaches) {
         try {
@@ -550,7 +584,7 @@ export function PWAProvider({
 
       setState(prev => ({ ...prev, cacheStatus: 'ready' }));
       triggerHapticFeedback('heavy');
-      
+
       toast.success(`Cache cleared! Removed ${deletedCount} caches.`);
 
       if (enableDebug) {
@@ -580,8 +614,8 @@ export function PWAProvider({
         updateViaCache: 'none'
       });
 
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         registration,
         serviceWorkerReady: true,
         cacheStatus: 'ready'
@@ -592,7 +626,7 @@ export function PWAProvider({
         const newWorker = registration.installing;
         if (newWorker) {
           setState(prev => ({ ...prev, hasUpdate: true, isUpdateAvailable: true }));
-          
+
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               triggerHapticFeedback('medium');
@@ -631,12 +665,12 @@ export function PWAProvider({
       triggerHapticFeedback('light');
       await installPromptRef.current.prompt();
       const { outcome } = await installPromptRef.current.userChoice;
-      
+
       if (outcome === 'accepted') {
         setState(prev => ({ ...prev, isInstalled: true, isInstallable: false }));
         triggerHapticFeedback('heavy');
         toast.success('App installed successfully!');
-        
+
         // Device-specific post-install optimization
         setTimeout(() => {
           optimizeForDevice();
@@ -681,17 +715,17 @@ export function PWAProvider({
 
     try {
       triggerHapticFeedback('medium');
-      
+
       // Send message to waiting service worker
       state.registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      
+
       // Wait for new service worker to take control
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload();
       });
 
       setState(prev => ({ ...prev, hasUpdate: false, isUpdateAvailable: false }));
-      
+
       if (enableDebug) {
         console.log('🚀 App update initiated');
       }
@@ -704,20 +738,6 @@ export function PWAProvider({
   }, [state.registration, enableDebug, triggerHapticFeedback]);
 
   // ✅ POWER MODE MANAGEMENT
-  const enableLowPowerMode = useCallback(() => {
-    setState(prev => ({ ...prev, isLowPowerMode: true }));
-    localStorage.setItem('pwa-low-power-mode', 'true');
-    
-    // Trigger aggressive cache cleanup
-    setTimeout(() => {
-      optimizeCache();
-    }, 100);
-
-    if (enableDebug) {
-      console.log('🔋 Low power mode enabled');
-    }
-  }, [optimizeCache, enableDebug]);
-
   const disableLowPowerMode = useCallback(() => {
     setState(prev => ({ ...prev, isLowPowerMode: false }));
     localStorage.removeItem('pwa-low-power-mode');
@@ -751,14 +771,17 @@ export function PWAProvider({
 
       // Device capabilities detection
       detectDeviceCapabilities();
-      
+
       // Battery monitoring
       await initializeBatteryMonitoring();
-      
+
       // Check if app is installed
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
       const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
-      const isInstalled = isStandalone || isFullscreen || (window.navigator as any).standalone;
+      interface NavigatorWithStandalone extends Navigator {
+        standalone?: boolean;
+      }
+      const isInstalled = isStandalone || isFullscreen || Boolean((window.navigator as NavigatorWithStandalone).standalone);
 
       setState(prev => ({ ...prev, isInstalled }));
 
@@ -769,11 +792,11 @@ export function PWAProvider({
       const handleBeforeInstallPrompt = (e: Event) => {
         e.preventDefault();
         installPromptRef.current = e as EnhancedBeforeInstallPromptEvent;
-        
+
         const dismissed = localStorage.getItem('pwa-install-dismissed');
         const dismissedTime = dismissed ? parseInt(dismissed) : 0;
         const dayInMs = 24 * 60 * 60 * 1000;
-        
+
         if (!dismissed || Date.now() - dismissedTime > dayInMs) {
           setState(prev => ({ ...prev, isInstallable: true }));
         }
@@ -784,7 +807,7 @@ export function PWAProvider({
         setState(prev => ({ ...prev, isOffline: false, networkStatus: 'online' }));
         optimizeForDevice();
       };
-      
+
       const handleOffline = () => {
         setState(prev => ({ ...prev, isOffline: true, networkStatus: 'offline' }));
       };
@@ -858,8 +881,10 @@ export function PWAProvider({
       if (cacheCleanupIntervalRef.current) {
         clearInterval(cacheCleanupIntervalRef.current);
       }
-      if (performanceMonitorRef.current) {
-        clearInterval(performanceMonitorRef.current);
+      // Copy ref value to avoid stale closure issue
+      const performanceInterval = performanceMonitorRef.current;
+      if (performanceInterval) {
+        clearInterval(performanceInterval);
       }
     };
   }, [
@@ -881,7 +906,7 @@ export function PWAProvider({
   const contextValue: PWAContextType = useMemo(() => ({
     // State
     ...state,
-    
+
     // Actions
     installApp,
     checkForUpdates,
@@ -891,7 +916,7 @@ export function PWAProvider({
     dismissInstallPrompt,
     getCacheStatus,
     optimizeCache,
-    
+
     // Mobile-first actions
     triggerHapticFeedback,
     adaptToOrientation,

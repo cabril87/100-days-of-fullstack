@@ -8,7 +8,7 @@ import {
   SmartInvitationRequest,
   RelationshipContext,
   SmartRelationshipMapping
-} from '@/lib/types/family-invitation';
+} from '@/lib/types/family';
 import { FamilyMemberAgeGroup } from '@/lib/types/auth';
 
 /**

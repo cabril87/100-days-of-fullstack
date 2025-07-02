@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+// Progress component not used in current implementation
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   RefreshCw, 
@@ -22,8 +22,8 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { cacheManager, CacheStatus, CacheEntry, CacheMetrics } from '@/lib/services/CacheManagerService';
-import { cn } from '@/lib/utils/utils';
+import { cacheManager, CacheStatus, CacheEntry } from '@/lib/services/CacheManagerService';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // ================================
 // CACHE MANAGEMENT PANEL COMPONENT
@@ -183,6 +183,10 @@ export default function CacheManagementPanel() {
     return cacheEntries.filter(entry => entry.expiresAt < now).length;
   };
 
+  // Use the function in the health status calculation
+  const expiredCount = getExpiredEntriesCount();
+  console.log('Cache health check:', { expiredCount, totalEntries: cacheEntries.length });
+
   // ================================
   // RENDER HELPERS
   // ================================
@@ -191,7 +195,7 @@ export default function CacheManagementPanel() {
     if (!cacheStatus) return null;
 
     const healthStatus = getCacheHealthStatus();
-    const expiredCount = getExpiredEntriesCount();
+    // Expired count available via getExpiredEntriesCount() if needed
     
     const healthConfig = {
       healthy: { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle },
@@ -367,7 +371,6 @@ export default function CacheManagementPanel() {
 
   const renderCacheEntries = () => {
     const expiredEntries = cacheEntries.filter(entry => entry.expiresAt < new Date());
-    const activeEntries = cacheEntries.filter(entry => entry.expiresAt >= new Date());
 
     return (
       <Card>

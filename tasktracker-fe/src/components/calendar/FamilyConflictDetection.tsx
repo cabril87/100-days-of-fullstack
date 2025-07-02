@@ -31,7 +31,7 @@ import {
   RefreshCw,
   XCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // ============================================================================
 // INTERFACES & TYPES
@@ -97,7 +97,10 @@ export interface FamilyMemberAvailability {
   }>;
 }
 
-export interface FamilyConflictDetectionProps {
+import type { FamilyConflictDetectionProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// export interface FamilyConflictDetectionProps {
   familyId: number;
   eventData: {
     title: string;

@@ -9,7 +9,7 @@ import type {
   ToastContextType, 
   TaskCompletionCelebrationParams,
   CelebrationEvent
-} from '@/lib/types/celebrations';
+} from '@/lib/types/gamification/celebrations';
 
 
 
@@ -39,13 +39,13 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const getSoundText = (type: Toast['type']) => {
     switch (type) {
       case 'achievement':
-        return 'Achievement unlocked!';
+        return '🎉 Achievement Unlocked!';
       case 'celebration':
-        return 'Celebration!';
+        return '🎊 Celebration!';
       case 'success':
-        return 'Success!';
+        return '🔔 Notification';
       default:
-        return 'Notification';
+        return '🔔 Notification';
     }
   };
 
@@ -80,12 +80,44 @@ export function ToastProvider({ children }: ToastProviderProps) {
   }, []);
 
   const playNotificationSound = useCallback((type: Toast['type']) => {
-    // In a real app, you'd play actual sound files
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(getSoundText(type));
-      utterance.volume = 0.1;
-      utterance.rate = 1.5;
-      speechSynthesis.speak(utterance);
+    try {
+      // Create audio context for better mobile support
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Different frequencies for different notification types
+      const frequencies = {
+        success: 800,
+        achievement: 1000,
+        celebration: 1200,
+        error: 400,
+        warning: 600,
+        info: 500
+      };
+
+      const frequency = frequencies[type] || 500;
+      
+      // Create oscillator for the sound
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.1);
+      
+      // Clean up
+      setTimeout(() => {
+        audioContext.close();
+      }, 200);
+    } catch (error) {
+      console.warn('Could not play notification sound:', error);
     }
   }, []);
 
@@ -131,7 +163,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
     };
 
     const handleTaskCompletion = (event: CustomEvent<CelebrationEvent>) => {
-      const { type } = event.detail;
+      const { type, soundType } = event.detail;
       
       if (type === 'confetti') {
         triggerConfetti();
@@ -328,47 +360,28 @@ export const useTaskCompletion = () => {
 
     // Main completion toast
     addToast({
-      type: 'success',
+      type: 'achievement',
       title: 'Task Completed! 🎉',
-      message: `"${taskTitle}" completed! +${pointsEarned} points earned!`,
-      duration: 4000,
-      confetti: pointsEarned >= 25,
+      message: `"${taskTitle}" completed successfully`,
+      duration: 6000,
+      achievementsUnlocked: achievementsUnlocked || [],
+      confetti: true,
       sound: true
     });
 
-    // Achievement toasts
-    if (achievementsUnlocked && achievementsUnlocked.length > 0) {
-      setTimeout(() => {
-        addToast({
-          type: 'achievement',
-          title: 'Achievement Unlocked! 🏆',
-          message: `You've unlocked ${achievementsUnlocked.length} new achievement${achievementsUnlocked.length > 1 ? 's' : ''}!`,
-          achievementsUnlocked,
-          duration: 6000,
-          actionUrl: '/gamification',
-          actionText: 'View Achievements',
-          confetti: true,
-          sound: true
-        });
-      }, 1000);
-    }
-
-    // Level up toast
+    // Level up toast if applicable
     if (levelUp) {
-      setTimeout(() => {
-        addToast({
-          type: 'celebration',
-          title: 'Level Up! ⭐',
-          message: `Congratulations! You've reached Level ${levelUp.newLevel}!`,
-          duration: 5000,
-          actionUrl: '/gamification',
-          actionText: 'View Progress',
-          confetti: true,
-          sound: true
-        });
-      }, achievementsUnlocked?.length ? 2500 : 1500);
+      addToast({
+        type: 'celebration',
+        title: 'Level Up! 🚀',
+        message: `You've reached level ${levelUp.newLevel}!`,
+        duration: 8000,
+        confetti: true,
+        sound: true
+      });
     }
   }, [addToast]);
 
   return { celebrateTaskCompletion };
 }; 
+

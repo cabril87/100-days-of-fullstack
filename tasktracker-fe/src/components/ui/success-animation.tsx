@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, AlertTriangle, Loader2 } from 'lucide-react';
-import { AnimatedStateProps } from '@/lib/types/ui-components';
+import { AnimatedStateProps } from '@/lib/props/components/ui.props';
 
 export const AnimatedState: React.FC<AnimatedStateProps> = ({
   state,
@@ -164,3 +164,4 @@ export const WarningState: React.FC<Omit<AnimatedStateProps, 'state'>> = (props)
 );
 
 export default AnimatedState; 
+

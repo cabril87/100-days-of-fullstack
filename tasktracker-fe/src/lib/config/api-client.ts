@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Carlos Abril Jr
  */
 
-import type { ApiErrorDetails, HttpErrorDetails } from '@/lib/types/api-client';
+import type { ApiErrorDetails, HttpErrorDetails } from '@/lib/types/api';
 
 // ================================
 // API CONFIGURATION

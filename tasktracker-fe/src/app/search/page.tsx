@@ -24,7 +24,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import {
   SearchEntityTypeDTO,
   SearchResultItemDTO,

@@ -3,7 +3,7 @@ import { ProtectedPagePattern, fetchAuthenticatedData } from '@/lib/auth/auth-co
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
 import { MFAStatusResponse } from '@/lib/types/auth';
-import { SecurityDashboardDTO, ExtendedUserSessionDTO, UserDeviceDTO, SecurityLevel } from '@/lib/types/session-management';
+import { SecurityDashboardDTO, ExtendedUserSessionDTO, UserDeviceDTO, SecurityLevel } from '@/lib/types/auth';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 
 export default async function SecuritySettingsPage() {
@@ -90,3 +90,4 @@ export default async function SecuritySettingsPage() {
   // Pass server-fetched data to client component
   return <SecuritySettings user={session} initialData={initialData} />;
 } 
+

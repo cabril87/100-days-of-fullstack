@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ProtectedPagePattern, fetchAuthenticatedData } from '@/lib/auth/auth-config';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 import { FamilyDetailPageProps } from '@/lib/types/auth';
 import FamilyDetail from '@/components/family/FamilyDetail';
 

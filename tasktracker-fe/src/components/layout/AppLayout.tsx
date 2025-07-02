@@ -8,7 +8,7 @@ import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
 import { AppLayoutProps } from '@/lib/types/ui';
-import { shouldShowSidebar } from '@/lib/utils/authUtils';
+import { shouldShowSidebar } from '@/lib/helpers/utils/authUtils';
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();

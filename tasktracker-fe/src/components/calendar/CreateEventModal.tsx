@@ -14,7 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CalendarEventDTO } from '@/lib/types/calendar';
 
-interface CreateEventModalProps {
+import type { CreateEventModalProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEventCreated: (event: CalendarEventDTO) => void;

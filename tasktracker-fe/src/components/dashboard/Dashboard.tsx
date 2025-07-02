@@ -18,10 +18,10 @@ import {
   Timer
 } from 'lucide-react';
 import { taskService } from '@/lib/services/taskService';
-import { priorityIntToString } from '@/lib/utils/priorityMapping';
+import { priorityIntToString } from '@/lib/helpers/utils/priorityMapping';
 import { FamilyDTO, FamilyActivityItem, UserProgress } from '@/lib/types';
-import { Task, FamilyTaskItemDTO } from '@/lib/types/task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { Task, FamilyTaskItemDTO } from '@/lib/types/tasks';
+import { FamilyMemberDTO } from '@/lib/types/family';
 import { FamilyTaskStats } from '@/lib/types/family-task';
 import { FamilyMemberAgeGroup } from '@/lib/types/auth';
 // Import components
@@ -44,7 +44,7 @@ import type {
   DashboardProps, 
   DashboardStats,
   DashboardContentProps 
-} from '@/lib/types/component-props/dashboard-props';
+} from '@/lib/props/widgets/main.props';
 import { Avatar, AvatarFallback } from '@radix-ui/react-avatar';
 import { Alert, AlertDescription } from '../ui/alert';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
@@ -1690,11 +1690,16 @@ export function AgeDashboard({ user, initialData }: DashboardContentProps) {
             },
             recentTasks: initialData?.recentTasks || [],
             taskStats: initialData?.taskStats || {
-              total: 0,
-              completed: 0,
-              pending: 0,
-              inProgress: 0,
-              overdue: 0
+              totalTasks: 0,
+              completedTasks: 0,
+              activeTasks: 0,
+              overdueTasks: 0,
+              pendingTasks: 0,
+              completionRate: 0,
+              averageCompletionTime: 0,
+              streakDays: 0,
+              longestStreak: 0,
+              pointsEarned: 0
             }
           }}
           onTaskComplete={handleTaskComplete}
@@ -1721,11 +1726,16 @@ export function AgeDashboard({ user, initialData }: DashboardContentProps) {
             },
             recentTasks: initialData?.recentTasks || [],
             taskStats: initialData?.taskStats || {
-              total: 0,
-              completed: 0,
-              pending: 0,
-              inProgress: 0,
-              overdue: 0
+              totalTasks: 0,
+              completedTasks: 0,
+              activeTasks: 0,
+              overdueTasks: 0,
+              pendingTasks: 0,
+              completionRate: 0,
+              averageCompletionTime: 0,
+              streakDays: 0,
+              longestStreak: 0,
+              pointsEarned: 0
             }
           }}
           onTaskComplete={handleTaskComplete}
@@ -1738,3 +1748,4 @@ export function AgeDashboard({ user, initialData }: DashboardContentProps) {
       return <Dashboard user={user} initialData={initialData} />;
   }
 } 
+

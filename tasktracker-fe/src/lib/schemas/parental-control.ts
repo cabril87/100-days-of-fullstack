@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { PermissionRequestTypes, PermissionRequestType } from '../types/parental-control';
+import { PermissionRequestTypes, PermissionRequestType } from '../types/auth';
 
 // Time validation helpers
 const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;

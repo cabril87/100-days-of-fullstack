@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
-import type { AnalyticsTab, AnalyticsPageParams } from '@/lib/types/analytics-page';
+import type { AnalyticsTab, AnalyticsPageParams } from '@/lib/types/analytics/analytics-page';
 
 // ============================================================================
 // ANALYTICS URL PARAMETER MANAGEMENT HOOK

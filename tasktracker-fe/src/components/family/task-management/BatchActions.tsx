@@ -9,17 +9,8 @@ import {
   Trophy,
   Trash2
 } from 'lucide-react';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
-
-interface BatchActionsProps {
-  isBatchMode: boolean;
-  selectedTasks: Set<number>;
-  filteredTasks: FamilyTaskItemDTO[];
-  isSelectAllChecked: boolean;
-  onSelectAll: (checked: boolean) => void;
-  onBatchComplete: () => void;
-  onBatchDelete: () => void;
-}
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
+import type { BatchActionsProps } from '@/lib/props/components/family.props';
 
 /**
  * Batch Actions Component - OVERFLOW SAFE
@@ -153,3 +144,4 @@ export default function BatchActions({
     </Card>
   );
 } 
+

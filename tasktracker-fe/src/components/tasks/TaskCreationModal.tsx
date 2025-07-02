@@ -38,9 +38,9 @@ import {
 } from 'lucide-react';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-import { CreateTaskFormData, Task, CreateTaskDTO, UpdateTaskDTO, FlexibleTaskAssignmentDTO } from '@/lib/types/task';
-import { TaskCreationModalProps } from '@/lib/types/component-props';
+import { FamilyMemberDTO } from '@/lib/types/family';
+import { CreateTaskFormData, Task, CreateTaskDTO, UpdateTaskDTO, FlexibleTaskAssignmentDTO } from '@/lib/types/tasks';
+import { TaskCreationModalProps } from '@/lib/props/components/main.props';
 import { taskCreationSchema } from '@/lib/schemas/task';
 
 export default function TaskCreationModal({ user, family, onTaskCreated, trigger, isOpen: externalIsOpen, onOpenChange, editingTask, defaultContext, defaultFamilyId }: TaskCreationModalProps) {
@@ -817,3 +817,4 @@ export default function TaskCreationModal({ user, family, onTaskCreated, trigger
     </Dialog>
   );
 } 
+

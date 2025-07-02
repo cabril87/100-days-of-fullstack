@@ -88,61 +88,18 @@ import {
   CalendarDays,
   Home
 } from 'lucide-react';
-import { Task, TaskItemStatus } from '@/lib/types/task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
+import { Task, TaskItemStatus } from '@/lib/types/tasks';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
 
-// Enterprise Table Configuration
-export type TableViewMode = 'compact' | 'comfortable' | 'spacious';
-export type TableDensity = 'tight' | 'normal' | 'loose';
-export type SortDirection = 'asc' | 'desc' | null;
-export type ColumnKey = 'title' | 'status' | 'priority' | 'assignee' | 'family' | 'dueDate' | 'createdAt' | 'points' | 'tags' | 'category' | 'actions';
-
-export interface TableColumn {
-  key: ColumnKey;
-  label: string;
-  icon: React.ReactNode;
-  sortable: boolean;
-  filterable: boolean;
-  width?: string;
-  minWidth?: string;
-  hiddenOn?: 'mobile' | 'tablet' | 'desktop';
-  sticky?: boolean;
-  align?: 'left' | 'center' | 'right';
-}
-
-export interface TableFilter {
-  column: ColumnKey;
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'in' | 'between' | 'greaterThan' | 'lessThan';
-  value: string | number | string[] | Date | boolean;
-  label: string;
-}
-
-export interface EnterpriseTaskTableProps {
-  tasks: Task[];
-  familyMembers: FamilyMemberDTO[];
-  isLoading?: boolean;
-  enableBatchOperations?: boolean;
-  enableKanbanSync?: boolean;
-  enableAdvancedFilters?: boolean;
-  enableColumnCustomization?: boolean;
-  enableExportImport?: boolean;
-  enableRealTimeUpdates?: boolean;
-  enableDragAndDrop?: boolean;
-  onTaskSelect?: (task: Task) => void;
-  onTaskEdit?: (task: Task) => void;
-  onTaskDelete?: (taskId: number) => void;
-  onTaskStatusChange?: (taskId: number, status: TaskItemStatus) => void;
-  onTaskUpdate?: (taskId: number, updates: Partial<Task>) => void;
-  onTaskReorder?: (tasks: Task[]) => void;
-  onBatchOperation?: (operation: string, taskIds: number[]) => void;
-  onExport?: (format: 'csv' | 'excel' | 'json') => void;
-  onImport?: (file: File) => void;
-  onColumnReorder?: (columns: ColumnKey[]) => void;
-  onFilterChange?: (filters: TableFilter[]) => void;
-  onSortChange?: (column: ColumnKey, direction: SortDirection) => void;
-  className?: string;
-}
+import type { 
+  EnterpriseTaskTableProps,
+  TableViewMode,
+  TableDensity,
+  SortDirection,
+  ColumnKey,
+  TableColumn,
+  TableFilter
+} from '@/lib/props/components/tasks.props';
 
 // Default column configuration
 const DEFAULT_COLUMNS: TableColumn[] = [

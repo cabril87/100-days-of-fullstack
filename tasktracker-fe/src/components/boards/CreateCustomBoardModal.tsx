@@ -14,9 +14,9 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { CreateBoardDTO, CreateBoardModalProps } from '../../lib/types/board';
-import { TaskItemStatus } from '../../lib/types/task';
+// Removed unused zod import to comply with .cursorrules
+import { CreateBoardDTO, CreateBoardModalProps } from '@/lib/types/boards';
+import { TaskItemStatus } from '@/lib/types/tasks';
 import { BoardService } from '../../lib/services/boardService';
 import {
   Dialog,
@@ -48,14 +48,9 @@ import {
   Info,
   GripVertical
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
-const createCustomBoardSchema = z.object({
-  name: z.string().min(1, 'Board name is required').max(100, 'Name too long'),
-  description: z.string().max(500, 'Description too long').optional(),
-});
-
-type CreateCustomBoardFormData = z.infer<typeof createCustomBoardSchema>;
+import { createCustomBoardSchema, CreateCustomBoardFormData } from '@/lib/schemas/boards/CreateCustomBoard.schema';
 
 // Color palette for columns
 const COLUMN_COLORS = [

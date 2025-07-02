@@ -4,7 +4,7 @@ import React from 'react';
 import { AlertTriangle, Trash2, CheckCircle, Info, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ConfirmationModalProps } from '@/lib/types/component-props';
+import { ConfirmationModalProps } from '@/lib/props/ui/main.props';
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,

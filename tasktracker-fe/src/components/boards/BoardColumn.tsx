@@ -14,7 +14,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { BoardColumnProps } from '../../lib/types/board';
+import { BoardColumnProps } from '@/lib/props/components/boards.props';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -29,7 +29,7 @@ import {
   X,
   Trash2
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { TaskCard } from '@/components/boards/TaskCard';
 import {
   DropdownMenu,
@@ -51,11 +51,14 @@ import {
   ContextMenuTrigger,
 } from '../ui/context-menu';
 import { toast } from 'sonner';
-import CookieStorage from '@/lib/utils/cookieStorage';
+import CookieStorage from '@/lib/helpers/utils/cookieStorage';
 
 
 // Extended props for the enhanced column
-interface EnhancedBoardColumnProps extends BoardColumnProps {
+import type { EnhancedBoardColumnProps } from '@/lib/props/components/boards.props';
+
+// Props interface moved to lib/props/components/boards.props.ts
+// interface EnhancedBoardColumnProps extends BoardColumnProps {
   boardId: number;
   onColumnUpdate?: (columnId: number, updates: { name?: string; color?: string }) => void;
   onColumnDelete?: (columnId: number) => void;
@@ -336,7 +339,7 @@ export const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
                         Change Gradient
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={onCreateTask}>
+                      <DropdownMenuItem onClick={() => onCreateTask?.(column.id.toString())}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Quest
                       </DropdownMenuItem>
@@ -361,7 +364,7 @@ export const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onCreateTask}
+                  onClick={() => onCreateTask?.(column.id.toString())}
                   className="w-full justify-start text-xs border-dashed border-white/30 text-white/80 hover:text-white hover:bg-white/10 hover:border-white/50 backdrop-blur-sm bg-white/5 transition-all duration-200 flex-shrink-0"
                 >
                   <Plus className="h-3 w-3 mr-2" />
@@ -434,7 +437,7 @@ export const BoardColumn: React.FC<EnhancedBoardColumnProps> = ({
           Change Gradient
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={onCreateTask}>
+        <ContextMenuItem onClick={() => onCreateTask?.(column.id.toString())}>
           <Plus className="h-4 w-4 mr-2" />
           Add Quest
         </ContextMenuItem>

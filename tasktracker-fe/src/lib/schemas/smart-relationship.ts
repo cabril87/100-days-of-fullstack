@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { FamilyRelationshipType } from '@/lib/types/family-invitation';
+import { FamilyRelationshipType } from '@/lib/types/family';
 
 /**
  * Schema for smart relationship form data

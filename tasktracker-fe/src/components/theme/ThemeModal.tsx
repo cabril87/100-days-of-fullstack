@@ -16,19 +16,7 @@ import { useTheme } from '@/lib/providers/ThemeProvider';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { ThemeConfig } from '@/lib/config/themes';
 
-interface ThemeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-interface ThemePreviewCardProps {
-  theme: ThemeConfig;
-  isOwned: boolean;
-  isActive: boolean;
-  onSelect: (themeId: string) => void;
-  onPurchase: (themeId: string) => void;
-  isAuthenticated: boolean;
-}
+import { ThemeModalProps, ThemePreviewCardProps } from '@/lib/props/components/ThemeModal.props';
 
 function ThemePreviewCard({ 
   theme, 

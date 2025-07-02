@@ -29,16 +29,16 @@ import {
 } from 'lucide-react';
 import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { useSignalRConnectionManagerStub } from '@/lib/hooks/useSignalRConnectionManagerStub';
-import { NotificationStreamProps } from '@/lib/types/widget-props';
+import { NotificationStreamProps } from '@/lib/props/widgets/main.props';
 import type { 
   BackendGamificationEventDTO,
   BackendTaskCompletionEventDTO
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import { 
   parseGamificationEvent,
   parseTaskCompletionEvent
-} from '@/lib/types/backend-signalr-events';
-import type { NotificationItem } from '@/lib/types/activity';
+} from '@/lib/types/signalr';
+import type { NotificationItem } from '@/lib/types/system';
 
 // Using NotificationItem from activity types
 

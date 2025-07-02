@@ -36,7 +36,7 @@ import {
   X,
   Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { useUnifiedSearch } from '@/lib/hooks/useUnifiedSearch';
 import {
@@ -50,17 +50,8 @@ import {
   RecentSearchesProps,
   SavedSearchesProps
 } from '@/lib/types';
-import {
-  VoiceSearchButton,
-  triggerHapticFeedback
-} from './MobileSearchEnhancements';
-
-// GlobalSearchModalProps now imported from lib/types
-
-/**
- * Individual Quick Result Item Component
- */
-// QuickResultProps now imported from lib/types
+import { VoiceSearchButton } from './MobileSearchEnhancements';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
 
 function QuickResult({ result, onSelect, isSelected, isHighlighted }: QuickResultProps) {
   const entityConfig = {

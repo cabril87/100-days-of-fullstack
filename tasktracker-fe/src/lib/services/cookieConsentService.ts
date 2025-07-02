@@ -9,7 +9,7 @@ import {
   CookieConsentPreferences,
   CookieAuditLog,
   CookieComplianceSettings 
-} from '../types/cookie-consent';
+} from '../types/system';
 
 class CookieConsentService {
   private readonly CONSENT_KEY = 'tasktracker_cookie_consent';

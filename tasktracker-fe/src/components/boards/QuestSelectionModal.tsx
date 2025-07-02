@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TaskItemStatus, UpdateTaskDTO, TaskPriority, TaskItemResponseDTO, CreateTaskItemDTO } from '../../lib/types/task';
+import { TaskItemStatus, UpdateTaskDTO, TaskPriority, TaskItemResponseDTO, CreateTaskItemDTO } from '@/lib/types/tasks';
 import { taskService } from '../../lib/services/taskService';
 import {
   Dialog,
@@ -37,7 +37,7 @@ import {
   Copy,
   AlertTriangle
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { format } from 'date-fns';
 import { CreateTaskModal } from './CreateTaskModal';
 import {
@@ -59,13 +59,8 @@ import {
   AlertDialogTitle,
 } from '../ui/alert-dialog';
 
-interface QuestSelectionModalProps {
-  open: boolean;
-  onClose: () => void;
-  onTaskCreated: () => void;
-  defaultStatus?: TaskItemStatus;
-  boardId: number;
-}
+import type { QuestSelectionModalProps } from '@/lib/props/components/boards.props';
+
 
 interface DuplicateTaskInfo {
   task: TaskItemResponseDTO;

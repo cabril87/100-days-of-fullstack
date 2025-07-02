@@ -13,7 +13,7 @@ import {
   FamilyRoleDTO,
   InvitationWithStatus,
   FamilyMemberWithStats
-} from '../types/family-invitation';
+} from '../types/family/family-invitation';
 import {
   InvitationFormData,
   FamilyCreateFormData,

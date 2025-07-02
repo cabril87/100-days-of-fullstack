@@ -38,15 +38,15 @@ import {
   SecurityDashboardDTO,
   AdminDashboardResponseDTO,
   UserSecurityOverviewDTO
-} from '@/lib/types/session-management';
+} from '@/lib/types/auth';
 import { 
   securitySettingsSchema,
   SecuritySettingsFormData
 } from '@/lib/schemas/settings';
-import { SecuritySettingsContentProps } from '@/lib/types/settings';
+import { SecuritySettingsContentProps } from '@/lib/types/system';
 import { securityService, SecurityServiceError } from '@/lib/services/securityService';
 import { cookieConsentService } from '@/lib/services/cookieConsentService';
-import type { CookieConsentPreferences } from '@/lib/types/cookie-consent';
+import type { CookieConsentPreferences } from '@/lib/types/ui';
 
 // Client component that handles search params
 function SecuritySettingsContentInner({ user, initialData }: SecuritySettingsContentProps) {

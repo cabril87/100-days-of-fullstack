@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { BoardDTO } from '../../lib/types/board';
+import { BoardDTO } from '@/lib/types/boards/board.type';
 import { BoardService } from '../../lib/services/boardService';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';

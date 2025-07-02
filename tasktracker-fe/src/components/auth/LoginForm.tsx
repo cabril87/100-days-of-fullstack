@@ -6,10 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../lib/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Checkbox } from '../ui/checkbox';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
@@ -47,15 +47,15 @@ import {
   AccountLockoutStatus,
   PasswordStrengthIndicator,
   LockReason
-} from '../../lib/types/enhanced-auth';
-import { SecurityLevel } from '../../lib/types/session-management';
+} from '@/lib/interfaces/auth/enhanced-auth.interface';
+import { SecurityLevel } from '@/lib/types/auth';
 import {
   validatePasswordStrength,
   loginFormSchema,
   type LoginFormData
 } from '../../lib/schemas/enhanced-auth';
 import { EnhancedAuthService } from '../../lib/services/enhancedAuthService';
-import { type EnhancedLoginFormProps } from '../../lib/types/component-props';
+import { type EnhancedLoginFormProps } from '@/lib/props/auth/enhanced-auth.props';
 
 export const LoginForm: React.FC<EnhancedLoginFormProps> = ({
   onLoginSuccess,

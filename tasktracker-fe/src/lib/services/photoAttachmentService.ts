@@ -7,7 +7,7 @@
  * NO MOCK DATA - Real backend integration only
  */
 
-import { ApiResponse } from '@/lib/types/api-responses';
+import { ApiResponse } from '@/lib/types/api';
 
 // ============================================================================
 // TYPES - MATCHING BACKEND DTOs EXACTLY

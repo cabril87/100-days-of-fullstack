@@ -14,8 +14,8 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TaskPriority } from '../../lib/types/task';
-import { TaskCardProps } from '../../lib/types/board';
+import { TaskPriority } from '@/lib/types/tasks';
+import { TaskCardProps } from '@/lib/types/boards';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 
@@ -34,7 +34,7 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { format } from 'date-fns';
 import {
   DropdownMenu,

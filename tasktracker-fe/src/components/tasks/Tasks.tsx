@@ -10,9 +10,10 @@ import {
   Rocket,
   CheckSquare
 } from 'lucide-react';
-import { TasksPageContentProps, Task, TaskStats, TaskItemStatus } from '@/lib/types/task';
-import { BoardColumnDTO } from '@/lib/types/board';
-import { FamilyMemberDTO, FamilyDTO } from '@/lib/types/family-invitation';
+import { Task, TaskStats, TaskItemStatus } from '@/lib/types/tasks';
+import type { TasksPageContentProps } from '@/lib/props/components/tasks.props';
+import { BoardColumnDTO } from '@/lib/types/boards';
+import { FamilyMemberDTO, FamilyDTO } from '@/lib/types/family';
 import { taskService } from '@/lib/services/taskService';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import { gamificationService } from '@/lib/services/gamificationService';

@@ -4,17 +4,17 @@
  */
 
 import { 
-  PasswordResetFlowState, 
-  PasswordStrengthIndicator, 
+  PasswordResetFlowState,
+  PasswordStrengthIndicator,
   AccountLockoutStatus,
   SessionManagementDashboard,
   LoginAttemptResult,
   DeviceRecognition,
-  PermissionMatrix,
+  AuthPermissionMatrix,
   SecurityAlert,
   LockReason
-} from '../types/enhanced-auth';
-import { SecurityLevel } from '../types/session-management';
+} from '../interfaces/auth/enhanced-auth.interface';
+import { SecurityLevel } from '../types/auth';
 import { 
   EnhancedPasswordResetRequestFormData,
   SecurityQuestionFormData,
@@ -472,7 +472,7 @@ export class EnhancedAuthService {
 
   // === PERMISSION MATRIX MANAGEMENT ===
 
-  async getUserPermissionMatrix(userId: number, familyId?: number): Promise<PermissionMatrix> {
+  async getUserPermissionMatrix(userId: number, familyId?: number): Promise<AuthPermissionMatrix> {
     const token = localStorage.getItem('accessToken');
     const url = new URL(`${API_BASE_URL}/v1/auth/permissions/${userId}`);
     if (familyId) {

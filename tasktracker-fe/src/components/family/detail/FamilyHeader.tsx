@@ -9,7 +9,7 @@ import {
   Home,
   Plus
 } from 'lucide-react';
-import { FamilyDTO } from '@/lib/types/family-invitation';
+import { FamilyDTO } from '@/lib/types/family';
 
 interface FamilyHeaderProps {
   family: FamilyDTO;
@@ -101,3 +101,4 @@ export default function FamilyHeader({
     </div>
   );
 } 
+

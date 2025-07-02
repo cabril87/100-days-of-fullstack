@@ -16,7 +16,7 @@ import {
   Square,
   AlignJustify
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { useResponsive, useTouchOptimized, useResponsiveValue } from '@/lib/hooks/useResponsive';
 import { useCommonGestures, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 

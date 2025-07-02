@@ -21,14 +21,9 @@ import {
   Crown
 } from 'lucide-react';
 
-import { DashboardContentProps } from '@/lib/types';
 import { taskService } from '@/lib/services/taskService';
-import { Task } from '@/lib/types/task';
-
-interface TeenDashboardProps extends DashboardContentProps {
-  onTaskComplete: (taskId: number) => void;
-  onRequestPermission: (action: string, description: string) => void;
-}
+import { Task } from '@/lib/types/tasks';
+import type { TeenDashboardProps } from '@/lib/props/components/dashboard.props';
 
 export default function TeenDashboard({ user, initialData, onTaskComplete, onRequestPermission }: TeenDashboardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialData?.recentTasks || []);
@@ -450,3 +445,4 @@ export default function TeenDashboard({ user, initialData, onTaskComplete, onReq
     </div>
   );
 } 
+

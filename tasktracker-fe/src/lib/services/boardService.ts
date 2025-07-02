@@ -18,7 +18,7 @@ import {
   BoardColumnCreateDTO, 
   BoardColumnUpdateDTO, 
   TaskReorderDTO 
-} from '../types/board';
+} from '../types/boards';
 
 /**
  * Board service for managing Kanban boards

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useResponsive } from './useResponsive';
+import { useEffect, useCallback, useRef } from 'react';
 
 // ================================
 // WEBKIT CSS PROPERTIES INTERFACE

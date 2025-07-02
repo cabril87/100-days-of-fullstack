@@ -29,76 +29,44 @@ import { Button } from '@/components/ui/button';
 import { useSignalRConnectionManager } from '@/lib/hooks/useSignalRConnectionManager';
 import { useResponsive } from '@/lib/hooks/useResponsive';
 import { useTouchOptimized } from '@/lib/hooks/useResponsive';
-import { useMobileGestures } from '@/lib/hooks/useMobileGestures';
+import { useMobileGestures, triggerHapticFeedback, type SwipeGesture } from '@/lib/hooks/useMobileGestures';
 import { TouchFeedback } from '@/components/calendar/MobileCalendarEnhancements';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import type { 
   TaskCompletionEventDTO, 
   FamilyActivityEventDTO, 
   FamilyMilestoneEventDTO 
-} from '@/lib/types/family-events';
+} from '@/lib/types/family/family-events';
 import type { 
   ParsedGamificationEvents
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import type {
   BackendGamificationEventDTO,
   BackendTaskCompletionEventDTO,
   BackendFamilyActivityEventDTO,
   BackendFamilyMilestoneEventDTO
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import {
   parseGamificationEvent,
   parseTaskCompletionEvent,
   parseFamilyActivityEvent,
   parseFamilyMilestoneEvent
-} from '@/lib/types/backend-signalr-events';
+} from '@/lib/types/signalr';
 import type {
   EnterpriseCelebrationNotification,
   EnterpriseCelebrationConfig
-} from '@/lib/types/enterprise-celebrations';
+} from '@/lib/types/gamification';
 import type { 
   EnhancedCelebrationSystemProps 
-} from '@/lib/types/component-props/enterprise-celebration-props';
+} from '@/lib/props/components/main.props';
+import type {
+  ResponsiveConfettiConfig,
+  CelebrationCardGesture
+} from '@/lib/interfaces/components/celebration.interface';
 
 // ================================
-// MOBILE-FIRST RESPONSIVE TYPES
+// MOBILE-FIRST RESPONSIVE TYPES - Moved to lib/interfaces/
 // ================================
-
-interface ResponsiveConfettiConfig {
-  mobile: {
-    particleCount: number;
-    spread: number;
-    startVelocity: number;
-    decay: number;
-    gravity: number;
-    colors: string[];
-  };
-  tablet: {
-    particleCount: number;
-    spread: number;
-    startVelocity: number;
-    decay: number;
-    gravity: number;
-    colors: string[];
-  };
-  desktop: {
-    particleCount: number;
-    spread: number;
-    startVelocity: number;
-    decay: number;
-    gravity: number;
-    colors: string[];
-  };
-}
-
-interface CelebrationCardGesture {
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
-  isDragging: boolean;
-  velocity: number;
-}
 
 export default function EnhancedCelebrationSystem({
   userId,
@@ -121,7 +89,7 @@ export default function EnhancedCelebrationSystem({
   
   // Enterprise gesture handling with proper configuration
   const gestureHandlers = useMemo(() => ({
-    onSwipe: (gesture: any) => {
+    onSwipe: (gesture: SwipeGesture) => {
       // Handle celebration card swipe dismissal
       console.log('Swipe gesture:', gesture);
     },
@@ -135,7 +103,8 @@ export default function EnhancedCelebrationSystem({
     }
   }), []);
   
-  const mobileGestures = useMobileGestures(gestureHandlers, {
+  // Mobile gestures configured but not directly used - handles gesture attachment internally
+  useMobileGestures(gestureHandlers, {
     swipeThreshold: 50,
     enableHaptic: true,
     preventDefault: true
@@ -148,7 +117,10 @@ export default function EnhancedCelebrationSystem({
   
   // Initialize sound service with current settings
   useEffect(() => {
-    soundService.initialize(enableSoundEffects, 0.3, familyMemberAgeGroup);
+    // Map prop values to soundService expected values
+    const soundServiceAgeGroup = familyMemberAgeGroup === 'kid' ? 'Child' : 
+                                 familyMemberAgeGroup === 'teen' ? 'Teen' : 'Adult';
+    soundService.initialize(enableSoundEffects, 0.3, soundServiceAgeGroup);
   }, [enableSoundEffects, familyMemberAgeGroup]);
 
   // ================================
@@ -219,7 +191,7 @@ export default function EnhancedCelebrationSystem({
     const baseConfig = { ...celebrationConfig };
     
     switch (familyMemberAgeGroup) {
-      case 'Child':
+      case 'kid':
         return {
           ...baseConfig,
           confettiSettings: {
@@ -232,7 +204,7 @@ export default function EnhancedCelebrationSystem({
           cardDuration: baseConfig.cardDuration + 2000,
           soundVolume: 0.4
         };
-      case 'Teen':
+      case 'teen':
         return {
           ...baseConfig,
           confettiSettings: {
@@ -339,11 +311,11 @@ export default function EnhancedCelebrationSystem({
     
     setCardGestures(prev => new Map(prev.set(celebrationId, gesture)));
     
-    // Haptic feedback on touch start (commented out due to interface mismatch)
-    if (mobileGestures?.onHaptic) {
-      mobileGestures.onHaptic('light');
+    // Haptic feedback on touch start
+    if (responsive.supportsTouch) {
+      triggerHapticFeedback('light', true);
     }
-  }, [responsive.isMobile, mobileGestures]);
+  }, [responsive.isMobile, responsive.supportsTouch]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent, celebrationId: string) => {
     if (!responsive.isMobile) return;
@@ -360,9 +332,9 @@ export default function EnhancedCelebrationSystem({
     if (distance > 10 && !gesture.isDragging) {
       gesture.isDragging = true;
       
-      // Haptic feedback when drag starts (commented out due to interface mismatch)
-      if (mobileGestures?.triggerHaptic) {
-        mobileGestures.triggerHaptic('medium');
+      // Haptic feedback when drag starts
+      if (responsive.supportsTouch) {
+        triggerHapticFeedback('medium', true);
       }
     }
     
@@ -381,7 +353,7 @@ export default function EnhancedCelebrationSystem({
         cardElement.style.opacity = opacity.toString();
       }
     }
-  }, [responsive.isMobile, cardGestures, mobileGestures]);
+  }, [responsive.isMobile, responsive.supportsTouch, cardGestures]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent, celebrationId: string) => {
     if (!responsive.isMobile) return;
@@ -405,8 +377,8 @@ export default function EnhancedCelebrationSystem({
         }, 300);
         
         // Strong haptic feedback for dismiss
-        if (mobileGestures?.triggerHaptic) {
-          mobileGestures.triggerHaptic('heavy');
+        if (responsive.supportsTouch) {
+          triggerHapticFeedback('heavy', true);
         }
       } else {
         // Snap back
@@ -414,8 +386,8 @@ export default function EnhancedCelebrationSystem({
         cardElement.style.opacity = '1';
         
         // Light haptic feedback for snap back
-        if (mobileGestures?.triggerHaptic) {
-          mobileGestures.triggerHaptic('light');
+        if (responsive.supportsTouch) {
+          triggerHapticFeedback('light', true);
         }
       }
     }
@@ -426,7 +398,20 @@ export default function EnhancedCelebrationSystem({
       newMap.delete(celebrationId);
       return newMap;
     });
-  }, [responsive.hasTouch, cardGestures, mobileGestures]);
+  }, [responsive.isMobile, responsive.supportsTouch, cardGestures]); 
+  // ================================
+  
+  const dismissCelebration = useCallback((celebrationId: string) => {
+    setActiveCelebrations(prev => prev.filter(c => c.id !== celebrationId));
+    celebrationCardsRef.current.delete(celebrationId);
+    
+    // Clean up gesture state
+    setCardGestures(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(celebrationId);
+      return newMap;
+    });
+  }, []);
 
   // ================================
   // ENHANCED CONFETTI TRIGGER
@@ -493,22 +478,6 @@ export default function EnhancedCelebrationSystem({
       }, 600);
     }
   }, [enableConfetti, intensityAdjustedConfig, responsive]);
-
-  // ================================
-  // CELEBRATION CARD MANAGEMENT
-  // ================================
-  
-  const dismissCelebration = useCallback((celebrationId: string) => {
-    setActiveCelebrations(prev => prev.filter(c => c.id !== celebrationId));
-    celebrationCardsRef.current.delete(celebrationId);
-    
-    // Clean up gesture state
-    setCardGestures(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(celebrationId);
-      return newMap;
-    });
-  }, []);
 
   // Enterprise celebration creation
   const createEnterpriseCelebration = useCallback((
@@ -1163,7 +1132,7 @@ export default function EnhancedCelebrationSystem({
               <div>User: {userId || 'None'}</div>
               <div>Family: {familyId || 'None'}</div>
               <div>Device: {responsive.deviceType}</div>
-              <div>Touch: {responsive.hasTouch ? 'Yes' : 'No'}</div>
+              <div>Touch: {responsive.supportsTouch ? 'Yes' : 'No'}</div>
               <div>Age: {familyMemberAgeGroup}</div>
               <div>Intensity: {celebrationIntensity}</div>
               <div>Active: {activeCelebrations.length}</div>
@@ -1179,3 +1148,4 @@ export default function EnhancedCelebrationSystem({
     </div>
   );
 } 
+

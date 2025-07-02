@@ -28,7 +28,7 @@ import type {
 
 // Import existing types and services following architecture patterns
 import { EnhancedFamilyService } from '@/lib/services/enhancedFamilyService';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyMemberDTO } from '@/lib/types/family';
 
 // Default privacy settings for enhanced family structure
 const DEFAULT_PRIVACY_SETTINGS: Omit<FamilyPrivacySettings, 'familyId'> = {
@@ -512,3 +512,4 @@ export default function FamilyPrivacyDashboard({
     </div>
   );
 } 
+

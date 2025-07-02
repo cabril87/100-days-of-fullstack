@@ -22,10 +22,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { TaskDetailProps, TaskDetailData, Task } from '@/lib/types/task';
+import { TaskDetailProps, TaskDetailData, Task } from '@/lib/types/tasks';
 import { taskService } from '@/lib/services/taskService';
-import { priorityIntToString } from '@/lib/utils/priorityMapping';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { priorityIntToString } from '@/lib/helpers/utils/priorityMapping';
+import { FamilyMemberDTO } from '@/lib/types/family';
 import TaskDetailsSheetContent from './TaskDetailsSheetContent';
 
 export default function TaskDetails({ taskId, onTaskUpdated, onTaskDeleted }: TaskDetailProps) {
@@ -866,3 +866,4 @@ export default function TaskDetails({ taskId, onTaskUpdated, onTaskDeleted }: Ta
     </div>
   );
 } 
+

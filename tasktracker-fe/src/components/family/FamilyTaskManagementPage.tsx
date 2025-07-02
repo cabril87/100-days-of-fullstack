@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Home, Target, AlertTriangle } from 'lucide-react';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
 import FamilyTaskManagement from './FamilyTaskManagement';
-import { FamilyTaskManagementPageProps } from '@/lib/types/component-props';
+import { FamilyTaskManagementPageProps } from '@/lib/props/components/main.props';
 
 export default function FamilyTaskManagementPage({ user, familyId }: FamilyTaskManagementPageProps) {
   const router = useRouter();
@@ -147,3 +147,4 @@ export default function FamilyTaskManagementPage({ user, familyId }: FamilyTaskM
     </div>
   );
 } 
+

@@ -2,7 +2,7 @@ import { getServerSession } from '@/lib/auth/auth-config';
 
 // Force dynamic rendering for cookie-based authentication
 export const dynamic = 'force-dynamic';
-import { Task, TaskCategory, TaskStats } from '@/lib/types/task';
+import { Task, TaskCategory, TaskStats } from '@/lib/types/tasks';
 import Tasks from '@/components/tasks/Tasks';
 
 export default async function TasksPage() {
@@ -44,3 +44,4 @@ export default async function TasksPage() {
   // Client component will handle auth validation and redirect if needed
   return <Tasks user={fallbackUser} initialData={initialData} />;
 } 
+

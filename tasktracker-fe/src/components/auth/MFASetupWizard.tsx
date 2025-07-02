@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import {
     MFASetupInitiateDTO,
     MFABackupCodesDTO
-} from '@/lib/types/auth';
+} from '@/lib/types/auth/auth';
 import { mfaSetupCompleteSchema, MFASetupCompleteFormData } from '@/lib/schemas/auth';
 import { authService, AuthServiceError } from '@/lib/services/authService';
 import {
@@ -23,7 +23,10 @@ import {
     BackupCodesGridSkeleton
 } from '@/components/ui/skeletons/mfa-skeletons';
 
-interface MFASetupWizardProps {
+import type { MFASetupProps } from '@/lib/props/components/auth.props';
+
+// Props interface moved to lib/props/components/auth.props.ts
+// interface MFASetupWizardProps {
     onComplete?: () => void;
     onCancel?: () => void;
     className?: string;

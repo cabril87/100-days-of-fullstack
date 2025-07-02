@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Eye, Zap, Smartphone, Monitor } from 'lucide-react';
-import { DashboardProps } from '@/lib/types/widget-props';
-import { DashboardMode } from '@/lib/types/ui-components';
+import { DashboardProps } from '@/lib/props/components/main.props';
+import { DashboardMode } from '@/lib/types/ui';
 import Dashboard from './Dashboard';
 import SimpleDashboard from './SimpleDashboard';
 
@@ -158,8 +158,9 @@ export default function DashboardModeWrapper({ user, initialData }: DashboardPro
 
         {/* Conditional Dashboard Rendering */}
         {dashboardMode === 'simple' ? (
-          <SimpleDashboard 
-            user={user} 
+          <SimpleDashboard
+            user={user}
+            mode="simple"
             initialData={initialData}
             onTaskCreated={() => {
               // Refresh dashboard data when task is created
@@ -173,3 +174,4 @@ export default function DashboardModeWrapper({ user, initialData }: DashboardPro
     </div>
   );
 } 
+

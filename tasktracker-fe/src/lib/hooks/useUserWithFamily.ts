@@ -10,8 +10,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/providers/AuthProvider';
 import { familyInvitationService } from '@/lib/services/familyInvitationService';
-import { UserContextValue, UseUserOptions } from '@/lib/types/user-context';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { UserContextValue, UseUserOptions } from '@/lib/types/auth/user-context';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 
 /**
  * Enhanced user hook that extends AuthProvider with family management

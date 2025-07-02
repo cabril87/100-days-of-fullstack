@@ -234,6 +234,9 @@ export class PerformanceMonitor {
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
     const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : '';
     
+    // Log user agent for device profiling
+    console.log('Device user agent detected:', userAgent.substring(0, 50));
+    
     let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
     if (screenWidth <= 768) {
       deviceType = 'mobile';
@@ -348,6 +351,7 @@ export class PerformanceMonitor {
 
   private async runDeviceBenchmark(): Promise<BenchmarkResults> {
     const startTime = performance.now();
+    console.log('🔍 Frame analysis started at:', startTime);
     let renderScore = 0;
     let memoryScore = 0;
     let cpuScore = 0;

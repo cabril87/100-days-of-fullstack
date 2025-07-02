@@ -15,7 +15,7 @@ import {
   FamilyChallenge,
   FamilyLeaderboard,
   LeaderboardEntry
-} from '@/lib/types/enterprise-gamification';
+} from '@/lib/types/gamification/enterprise-gamification';
 
 interface UseEnterpriseGamificationOptions {
   userId?: number;

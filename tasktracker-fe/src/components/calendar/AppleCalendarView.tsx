@@ -3,7 +3,7 @@
 import { useMemo, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Target } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { useCommonGestures, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
 
@@ -16,7 +16,7 @@ import type {
   CalendarMonthData,
   CalendarGamificationData
 } from '@/lib/types/calendar';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
 
 /**
  * Apple-like Calendar View Component
@@ -904,3 +904,4 @@ function generateListData(
   
   return { days };
 } 
+

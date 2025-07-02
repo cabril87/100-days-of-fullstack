@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNotifications } from '@/lib/hooks/useNotifications';
 import { notificationService } from '@/lib/services/notificationService';
-import { NotificationDTO } from '@/lib/types/notifications';
+import { NotificationDTO } from '@/lib/types/system/notifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

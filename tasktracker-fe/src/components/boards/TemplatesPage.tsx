@@ -13,7 +13,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { BOARD_TEMPLATES, BoardTemplate } from '../../lib/types/board';
+import { BOARD_TEMPLATES, BoardTemplate } from '@/lib/types/boards';
 import { BoardService } from '../../lib/services/boardService';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -43,7 +43,7 @@ import {
   GraduationCap,
   Activity
 } from 'lucide-react';
-import { cn } from '../../lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // Enhanced template categories with gamification
 const TEMPLATE_CATEGORIES = [

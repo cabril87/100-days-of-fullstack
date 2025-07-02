@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { SkeletonWrapper } from './base-skeleton-wrapper';
 import {
   ProfileHeaderSkeletonProps,
@@ -10,7 +10,7 @@ import {
   SettingsMenuSkeletonProps,
   SettingsSectionSkeletonProps,
   FamilyManagementSkeletonProps,
-} from '@/lib/types/skeleton';
+} from '@/lib/types/ui/skeleton';
 
 // ✅ REQUIRED: Profile Header Skeleton
 export const ProfileHeaderSkeleton: React.FC<ProfileHeaderSkeletonProps> = ({
@@ -68,7 +68,7 @@ export const ProfileHeaderSkeleton: React.FC<ProfileHeaderSkeletonProps> = ({
               
               <SkeletonWrapper
                 isLoading={true}
-                variant={variant}
+                variant="default"
                 className="h-5 w-32"
                 aria-label="Loading user role"
               >
@@ -77,7 +77,7 @@ export const ProfileHeaderSkeleton: React.FC<ProfileHeaderSkeletonProps> = ({
               
               <SkeletonWrapper
                 isLoading={true}
-                variant={variant}
+                variant="default"
                 className="h-4 w-64"
                 aria-label="Loading user bio"
               >

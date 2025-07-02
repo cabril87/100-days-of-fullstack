@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Flame, Target } from 'lucide-react';
-import { StreakCounterProps } from '@/lib/types/widget-props';
+import { StreakCounterProps } from '@/lib/props/widgets/main.props';
 
 export function StreakCounter({ 
   userId, 

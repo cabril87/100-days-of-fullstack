@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Eye, EyeOff, CheckCircle2, Shield, Zap, Sparkles, Rocket, Key, XCircle, RotateCcw } from 'lucide-react';
-import { ResetPasswordContentProps, ResetPasswordFormData } from '../../lib/types/auth';
+import { ResetPasswordContentProps, ResetPasswordFormData } from '@/lib/types/auth/auth';
 import { resetPasswordSchema } from '../../lib/schemas';
 import { authService } from '../../lib/services/authService';
 

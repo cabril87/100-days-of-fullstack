@@ -15,7 +15,7 @@ import {
   Sparkles 
 } from 'lucide-react';
 import { FamilyTaskStats } from '@/lib/types/family-task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyMemberDTO } from '@/lib/types/family';
 
 interface LeaderboardTabProps {
   familyStats: FamilyTaskStats;
@@ -280,3 +280,4 @@ export function AchievementsTab({ familyStats }: AchievementsTabProps) {
     </div>
   );
 } 
+

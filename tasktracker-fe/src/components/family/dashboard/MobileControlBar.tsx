@@ -4,8 +4,8 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Smartphone, Volume2, VolumeX, Vibrate, Sparkles } from 'lucide-react';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
-import { cn } from '@/lib/utils/utils';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
+import { cn } from '@/lib/helpers/utils/utils';
 
 interface MobileControlBarProps {
   enableHaptic: boolean;

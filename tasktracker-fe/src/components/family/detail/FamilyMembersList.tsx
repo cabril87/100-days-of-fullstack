@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Crown, Shield } from 'lucide-react';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyMemberDTO } from '@/lib/types/family';
 
 interface FamilyMembersListProps {
   familyMembers: FamilyMemberDTO[];
@@ -118,3 +118,4 @@ export default function FamilyMembersList({ familyMembers, familyName }: FamilyM
     </Card>
   );
 } 
+

@@ -11,7 +11,7 @@
 
 import { Metadata } from 'next';
 import { BoardTabs } from '../../../components/boards/BoardTabs';
-import { BoardPageProps } from '../../../lib/types/board';
+import { BoardPageProps } from '../../../lib/props/boards/board.props';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function generateMetadata({ params }: BoardPageProps): Promise<Metadata> {

@@ -13,7 +13,7 @@ import {
   CreateNotificationDTO,
   NotificationStats,
   NotificationSettingsDTO
-} from '../types/notifications';
+} from '../types/system';
 import { apiClient } from '../config/api-client';
 
 // Custom error class for API errors

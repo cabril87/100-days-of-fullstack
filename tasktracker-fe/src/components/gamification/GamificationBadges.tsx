@@ -7,7 +7,7 @@ import { GamificationBadgesProps } from '@/lib/types/ui';
 import { TouchFeedback } from '@/components/calendar/MobileCalendarEnhancements';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { useMobileGestures, triggerHapticFeedback } from '@/lib/hooks/useMobileGestures';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // Enhanced badge categories with more comprehensive badge types
 const BADGE_CATEGORIES = [
@@ -100,14 +100,9 @@ export function GamificationBadges({ user, streakDays = 0, achievements = 0 }: G
       triggerHapticFeedback('light');
     }, []),
   }, {
-    swipe: {
-      threshold: 50,
-      enabled: true
-    },
-    longPress: {
-      duration: 500,
-      enabled: true
-    }
+    swipeThreshold: 50,
+    longPressTimeout: 500,
+    enableHaptic: true
   });
 
   // Attach gestures to container

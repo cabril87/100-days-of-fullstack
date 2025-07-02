@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Breakpoint } from '../types/mobile-responsive';
+import { Breakpoint } from '@/lib/types/ui/mobile-responsive';
 
 // ================================
 // NAVIGATOR CONNECTION API TYPES

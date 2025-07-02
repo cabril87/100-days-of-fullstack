@@ -3,7 +3,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Zap, Gift } from 'lucide-react';
-import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family-invitation';
+import { FamilyDTO, FamilyMemberDTO } from '@/lib/types/family';
 import { FamilyTaskStats } from '@/lib/types/family-task';
 
 interface DashboardHeaderProps {
@@ -57,3 +57,4 @@ export default function DashboardHeader({
     </div>
   );
 } 
+

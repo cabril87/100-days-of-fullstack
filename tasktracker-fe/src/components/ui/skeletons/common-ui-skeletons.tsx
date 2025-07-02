@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { SkeletonWrapper } from './base-skeleton-wrapper';
 import {
   DashboardCardSkeletonProps,

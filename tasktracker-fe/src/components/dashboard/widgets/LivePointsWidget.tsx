@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Star, TrendingUp, Zap, Crown } from 'lucide-react';
-import { LivePointsWidgetProps } from '@/lib/types/widget-props';
+import { LivePointsWidgetProps } from '@/lib/props/widgets/main.props';
 
 export function LivePointsWidget({ 
   userId, 

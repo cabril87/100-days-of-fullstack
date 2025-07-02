@@ -11,16 +11,8 @@ import {
   CheckCircle,
   Circle
 } from 'lucide-react';
-import { FamilyDTO } from '@/lib/types/family-invitation';
-
-interface TaskManagementHeaderProps {
-  family: FamilyDTO;
-  isLoading: boolean;
-  isBatchMode: boolean;
-  onCreateTask: () => void;
-  onRefreshTasks: () => void;
-  onToggleBatchMode: () => void;
-}
+import { FamilyDTO } from '@/lib/types/family';
+import type { TaskManagementHeaderProps } from '@/lib/props/components/family.props';
 
 /**
  * Task Management Header Component - OVERFLOW SAFE
@@ -149,3 +141,4 @@ export default function TaskManagementHeader({
     </Card>
   );
 } 
+

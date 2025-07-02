@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { cn } from '@/lib/utils/utils';
-import { SpinnerProps } from '@/lib/types/ui-components';
+import { cn } from '@/lib/helpers/utils/utils';
+import { SpinnerProps } from '@/lib/props/components/ui.props';
 
 export function Spinner({ className, size = 'md', color = 'primary' }: SpinnerProps) {
   const sizeClasses = {
@@ -31,3 +31,4 @@ export function Spinner({ className, size = 'md', color = 'primary' }: SpinnerPr
     </div>
   );
 } 
+

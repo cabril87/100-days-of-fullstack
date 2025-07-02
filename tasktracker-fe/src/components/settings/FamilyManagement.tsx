@@ -46,7 +46,7 @@ import {
   TransferOwnershipDTO,
   UserFamilyWithPrimary,
   PrimaryFamilyStatusDTO
-} from '@/lib/types/family-invitation';
+} from '@/lib/types/family';
 
 import { 
   familyCreateSchema,
@@ -1368,3 +1368,4 @@ export default function FamilyManagementContent({ user }: FamilyManagementConten
     </div>
   );
 }
+

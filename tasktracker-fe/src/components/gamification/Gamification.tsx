@@ -8,14 +8,9 @@ import { UseGamificationEventsReturn, AchievementUnlockedEvent } from '@/lib/typ
 import { TouchFeedback } from '@/components/calendar/MobileCalendarEnhancements';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { useMobileGestures } from '@/lib/hooks/useMobileGestures';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
-import { cn } from '@/lib/utils/utils';
-
-interface GamificationProps {
-  user: { id: number; username: string; email: string };
-  gamificationData: UseGamificationEventsReturn;
-  isConnected: boolean;
-}
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
+import { cn } from '@/lib/helpers/utils/utils';
+import type { GamificationProps } from '@/lib/props/components/gamification.props';
 
 // Enhanced gamification card categories for swipe navigation
 const CARD_CATEGORIES = [
@@ -109,7 +104,7 @@ export default function Gamification({ gamificationData, isConnected }: Gamifica
   // Handle achievement unlock celebration
   const handleAchievementCelebration = useCallback((achievement: AchievementUnlockedEvent) => {
     triggerHapticFeedback('heavy');
-    // Additional celebration logic can be added here
+    console.log('Achievement celebration triggered:', achievement.achievementName);
   }, []);
 
   return (

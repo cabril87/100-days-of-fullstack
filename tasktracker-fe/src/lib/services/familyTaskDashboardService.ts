@@ -14,9 +14,9 @@ import {
   SharedGoal,
   FamilyTaskActivity,
   FamilyTaskCollaborationMetrics 
-} from '../types/family-task';
-import { FamilyMemberDTO } from '../types/family-invitation';
-import { FamilyTaskItemDTO } from '../types/task';
+} from '../types/family';
+import { FamilyMemberDTO } from '../types/family';
+import { FamilyTaskItemDTO } from '../types/tasks';
 
 /**
  * Service for family task dashboard data aggregation

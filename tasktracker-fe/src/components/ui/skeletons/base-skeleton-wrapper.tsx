@@ -1,59 +1,135 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils/utils';
-import { BaseSkeletonProps, AccessibleSkeletonProps, ThemedSkeletonProps } from '@/lib/types/skeleton';
+import { cn } from '@/lib/helpers/utils/utils';
 
-// ✅ REQUIRED: Base skeleton wrapper with explicit typing
-interface SkeletonWrapperProps extends BaseSkeletonProps, Partial<AccessibleSkeletonProps>, Partial<ThemedSkeletonProps> {
-  children: React.ReactNode;
-  isLoading: boolean;
-}
+// Import from unified interface location following .cursorrules
+import type { SkeletonWrapperProps } from '@/lib/interfaces/ui/ui-components.interface';
+
+// ================================
+// SKELETON WRAPPER COMPONENT (.cursorrules compliant)
+// ================================
 
 export const SkeletonWrapper: React.FC<SkeletonWrapperProps> = ({
   children,
   isLoading,
-  className = '',
+  fallback,
   variant = 'default',
-  isAnimated = true,
-  accentColor = 'hsl(var(--primary))',
-  animationDuration = 1500,
-  borderRadius = 4,
-  'aria-label': ariaLabel = 'Loading content...',
-  'aria-busy': ariaBusy = true,
-  'aria-live': ariaLive = 'polite',
-  role = 'status',
+  animation = 'pulse',
+  speed = 'normal',
+  theme = 'auto',
+  className = '',
+  delay = 0,
+  'aria-label': ariaLabelProp,
+  ariaLabel,
+  ariaDescription,
+  title,
+  ...rest
 }) => {
+  // Use either prop name for accessibility label
+  const accessibilityLabel = ariaLabelProp || ariaLabel;
+
+  // Delay loading state if specified
+  const [shouldShowSkeleton, setShouldShowSkeleton] = React.useState(delay === 0);
+  
+  React.useEffect(() => {
+    if (delay > 0 && isLoading) {
+      const timer = setTimeout(() => {
+        setShouldShowSkeleton(true);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+  }, [delay, isLoading]);
+
   if (!isLoading) {
     return <>{children}</>;
   }
 
-  const skeletonVariants = {
-    default: 'bg-muted',
-    gamified: 'bg-gradient-to-r from-primary/20 to-secondary/20',
-    'child-friendly': 'bg-gradient-to-r from-pink-200/50 to-purple-200/50 rounded-lg',
+  if (!shouldShowSkeleton) {
+    return null;
+  }
+
+  // Variant-specific styles
+  const getVariantStyles = () => {
+    switch (variant) {
+      case 'gamified':
+        return 'bg-gradient-to-r from-purple-200/50 to-pink-200/50 dark:from-purple-800/30 dark:to-pink-800/30';
+      case 'child':
+        return 'bg-gradient-to-r from-pink-200/60 to-yellow-200/60 dark:from-pink-800/40 dark:to-yellow-800/40';
+      case 'teen':
+        return 'bg-gradient-to-r from-blue-200/60 to-cyan-200/60 dark:from-blue-800/40 dark:to-cyan-800/40';
+      case 'adult':
+        return 'bg-gradient-to-r from-gray-200/60 to-slate-200/60 dark:from-gray-800/40 dark:to-slate-800/40';
+      case 'card':
+        return 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg';
+      case 'text':
+        return 'bg-gray-200 dark:bg-gray-700 rounded';
+      case 'avatar':
+        return 'bg-gray-200 dark:bg-gray-700 rounded-full';
+      case 'button':
+        return 'bg-gray-200 dark:bg-gray-700 rounded-md';
+      case 'pulse':
+        return 'bg-gray-200 dark:bg-gray-700';
+      case 'wave':
+        return 'bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700';
+      default:
+        return 'bg-gray-200 dark:bg-gray-700';
+    }
   };
 
-  const animationClasses = isAnimated ? 'animate-pulse' : '';
+  // Animation styles
+  const getAnimationStyles = () => {
+    const speedClass = {
+      slow: 'animate-pulse-slow',
+      normal: 'animate-pulse',
+      fast: 'animate-pulse-fast'
+    }[speed];
+
+    switch (animation) {
+      case 'wave':
+        return `animate-shimmer ${speedClass}`;
+      case 'pulse':
+        return speedClass;
+      case 'none':
+        return '';
+      default:
+        return speedClass;
+    }
+  };
+
+  const skeletonClasses = cn(
+    'animate-pulse rounded',
+    getVariantStyles(),
+    getAnimationStyles(),
+    className
+  );
+
+  if (fallback) {
+    return (
+      <div 
+        className={skeletonClasses}
+        aria-label={accessibilityLabel}
+        aria-description={ariaDescription}
+        title={title}
+        aria-busy="true"
+        {...rest}
+      >
+        {fallback}
+      </div>
+    );
+  }
 
   return (
-    <Skeleton
-      className={cn(
-        skeletonVariants[variant],
-        animationClasses,
-        className
-      )}
-      style={{
-        animationDuration: `${animationDuration}ms`,
-        borderRadius: `${borderRadius}px`,
-        accentColor,
-      }}
-      aria-label={ariaLabel}
-      aria-busy={ariaBusy}
-      aria-live={ariaLive}
-      role={role}
-    />
+    <div 
+      className={skeletonClasses}
+      aria-label={accessibilityLabel || 'Loading content'}
+      aria-description={ariaDescription}
+      title={title}
+      aria-busy="true"
+      {...rest}
+    >
+      {children}
+    </div>
   );
 };
 
@@ -89,11 +165,13 @@ const SkeletonHOC = <P extends object>(
 export const withSkeleton = SkeletonHOC;
 
 // ✅ REQUIRED: Skeleton container for multiple items
-interface SkeletonContainerProps extends BaseSkeletonProps {
+interface SkeletonContainerProps {
   itemCount: number;
   itemHeight?: number;
   itemSpacing?: number;
   children?: React.ReactNode;
+  variant?: SkeletonWrapperProps['variant'];
+  className?: string;
 }
 
 export const SkeletonContainer: React.FC<SkeletonContainerProps> = ({

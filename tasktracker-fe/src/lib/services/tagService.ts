@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/config/api-client';
-import { TagDto, Task } from '@/lib/types/task';
+import { TagDto, Task } from '@/lib/types/tasks';
 
 export interface CreateTagDTO {
   name: string;

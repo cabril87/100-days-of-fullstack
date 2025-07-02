@@ -44,7 +44,7 @@ import {
   FileText,
   Shield
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 /**
  * Enterprise Focus History Management Component

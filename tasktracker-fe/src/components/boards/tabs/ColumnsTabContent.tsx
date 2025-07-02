@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,8 +31,8 @@ import {
 } from 'lucide-react';
 
 import { ColumnsTabContentProps } from '@/lib/types/board-tabs';
-import { BoardColumnDTO, BoardColumnUpdateDTO } from '@/lib/types/board';
-import { TaskItemStatus } from '@/lib/types/task';
+import { BoardColumnDTO, BoardColumnUpdateDTO } from '@/lib/types/boards';
+import { TaskItemStatus } from '@/lib/types/tasks';
 import { BoardService } from '@/lib/services/boardService';
 
 // Color palette for columns
@@ -361,3 +361,4 @@ export const ColumnsTabContent: React.FC<ColumnsTabContentProps> = ({
     </div>
   );
 }; 
+

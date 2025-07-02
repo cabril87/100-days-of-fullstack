@@ -31,7 +31,7 @@ export const createCustomBoardSchema = z.object({
   tags: z.array(z.string()),
 });
 
-export const createTaskSchema = z.object({
+export const createBoardTaskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
@@ -49,4 +49,4 @@ export const createTaskSchema = z.object({
 export type EditBoardFormData = z.infer<typeof editBoardSchema>;
 export type ColumnEditFormData = z.infer<typeof columnEditSchema>;
 export type CreateCustomBoardFormData = z.infer<typeof createCustomBoardSchema>;
-export type CreateTaskFormData = z.infer<typeof createTaskSchema>;
+export type CreateBoardTaskFormData = z.infer<typeof createBoardTaskSchema>;

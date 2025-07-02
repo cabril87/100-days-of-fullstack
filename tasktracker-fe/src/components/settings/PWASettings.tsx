@@ -29,14 +29,14 @@ import {
   ChevronRight,
   TrendingUp,
   Activity,
-  Globe,
-  Signal
+  // Globe, // Available for network status display
+  // Signal // Available for signal strength display
 } from 'lucide-react';
 import { usePWA } from '@/lib/providers/PWAProvider';
 import { useResponsive, useTouchOptimized } from '@/lib/hooks/useResponsive';
 import { useMobileGestures } from '@/lib/hooks/useMobileGestures';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 
 // ================================
 // CURSORRULES COMPLIANT TYPES
@@ -89,7 +89,7 @@ export function PWASettings() {
   // ✅ TOUCH GESTURE SUPPORT
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentTab, setCurrentTab] = useState(0);
-  const tabs = ['Overview', 'Cache', 'Performance', 'Advanced'];
+  const tabs = useMemo(() => ['Overview', 'Cache', 'Performance', 'Advanced'], []);
 
   // Enhanced mobile gestures with haptic feedback
   const mobileGestures = useMobileGestures({
@@ -198,7 +198,15 @@ export function PWASettings() {
     }
 
     // Network type detection
-    const connection = (navigator as any).connection;
+    interface NetworkConnection {
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+    }
+    interface NavigatorWithConnection extends Navigator {
+      connection?: NetworkConnection;
+    }
+    const connection = (navigator as NavigatorWithConnection).connection;
     const networkType = connection?.effectiveType || 'unknown';
 
     setDeviceInfo({
@@ -389,7 +397,7 @@ export function PWASettings() {
 
   // ✅ MEMOIZED COMPONENTS FOR PERFORMANCE
   const StatusBadge = useMemo(() => {
-    return ({ status, priority }: { status: string; priority?: string }) => {
+    const StatusBadgeComponent = ({ status, priority }: { status: string; priority?: string }) => {
       const statusConfig = {
         active: { icon: CheckCircle, color: 'bg-green-500', text: 'Active' },
         outdated: { icon: AlertCircle, color: 'bg-yellow-500', text: 'Outdated' },
@@ -429,6 +437,8 @@ export function PWASettings() {
         </div>
       );
     };
+    StatusBadgeComponent.displayName = 'StatusBadge';
+    return StatusBadgeComponent;
   }, [touchOptimized.buttonSize]);
 
   // ✅ DEVICE ICON SELECTOR

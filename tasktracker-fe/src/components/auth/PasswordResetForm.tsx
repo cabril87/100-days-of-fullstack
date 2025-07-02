@@ -41,8 +41,8 @@ import {
   PasswordResetFlowState,
   PasswordStrengthIndicator,
   SecurityAlert
-} from '../../lib/types/enhanced-auth';
-import { SecurityLevel } from '../../lib/types/session-management';
+} from '@/lib/interfaces/auth/enhanced-auth.interface';
+import { SecurityLevel } from '@/lib/types/auth';
 import { 
   validatePasswordStrength
 } from '../../lib/schemas/enhanced-auth';
@@ -55,7 +55,7 @@ import {
   type PasswordResetRequestFormData,
   type NewPasswordFormData
 } from '../../lib/schemas/enhanced-auth';
-import { type EnhancedPasswordResetFormProps } from '../../lib/types/component-props';
+import { type EnhancedPasswordResetFormProps } from '@/lib/props/components/main.props';
 
 export const PasswordResetForm: React.FC<EnhancedPasswordResetFormProps> = ({
   onClose,

@@ -8,14 +8,14 @@ import {
   AlertTriangle,
   Rocket
 } from 'lucide-react';
-import { FamilyTaskDashboardProps } from '@/lib/types/component-props';
+import { FamilyTaskDashboardProps } from '@/lib/props/components/main.props';
 import { 
   FamilyTaskStats, 
   FamilyDashboardTab 
 } from '@/lib/types/family-task';
 import { familyTaskDashboardService } from '@/lib/services/familyTaskDashboardService';
 import EnhancedCelebrationSystem from '@/components/gamification/EnhancedCelebrationSystem';
-import { useTouchGestures, triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
+import { useTouchGestures, triggerHapticFeedback } from '@/lib/helpers/mobile';
 
 // Import separated components
 import MobileControlBar from './dashboard/MobileControlBar';
@@ -62,7 +62,7 @@ export default function FamilyTaskDashboard({ family, familyMembers = [] }: Fami
   }, []);
 
   // Touch gesture support for mobile navigation
-  const { onTouchStart, onTouchMove, onTouchEnd } = useTouchGestures((direction) => {
+  const { onTouchStart, onTouchMove, onTouchEnd } = useTouchGestures((direction: string) => {
     if (!isMobile) return;
     
     const tabs: FamilyDashboardTab[] = ['overview', 'leaderboard', 'goals', 'achievements'];

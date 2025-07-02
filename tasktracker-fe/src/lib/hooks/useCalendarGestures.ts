@@ -10,7 +10,7 @@ import {
   TouchGestureEvent,
   HapticFeedbackPattern,
   UseCalendarGesturesReturn
-} from '../types/calendar-enhancements';
+} from '../types/calendar/calendar-enhancements';
 
 // ============================================================================
 // HAPTIC FEEDBACK UTILITY

@@ -3,8 +3,8 @@
 import React from 'react';
 import { BarChart3, Trophy, Target, Award } from 'lucide-react';
 import { FamilyDashboardTab } from '@/lib/types/family-task';
-import { triggerHapticFeedback } from '@/components/search/MobileSearchEnhancements';
-import { cn } from '@/lib/utils/utils';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
+import { cn } from '@/lib/helpers/utils/utils';
 import confetti from 'canvas-confetti';
 
 interface TabNavigationProps {

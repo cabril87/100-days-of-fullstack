@@ -22,10 +22,10 @@ import {
   BatchTaskResult,
   CreateChecklistItem,
   TaskItemStatus
-} from '../types/task';
-import { FamilyTaskStats } from '../types/family-task';
+} from '../types/tasks';
+import { FamilyTaskStats } from '../types/family';
 import { apiClient } from '../config/api-client';
-import { convertTaskDataForBackend } from '../utils/priorityMapping';
+import { convertTaskDataForBackend } from '@/lib/helpers/utils/priorityMapping';
 import { tagService } from './tagService';
 
 // Custom error class for API errors

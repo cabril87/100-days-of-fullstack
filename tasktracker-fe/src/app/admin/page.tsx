@@ -1,5 +1,5 @@
 import { ProtectedPagePattern, fetchAuthenticatedData } from '@/lib/auth/auth-config';
-  import { AdminStats, AdminActivityItem, AdminSystemMetrics } from '@/lib/types/admin';
+  import { AdminStats, AdminActivityItem, AdminSystemMetrics } from '@/lib/types/system';
   import AdminDashboard from '@/components/admin/AdminDashboard';
 
 // Force dynamic rendering for cookie-based authentication

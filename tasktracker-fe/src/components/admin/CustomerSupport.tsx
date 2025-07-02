@@ -3,11 +3,11 @@
 import React, { useState, useCallback } from 'react';
 import { Shield, Search, AlertTriangle, User, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { customerSupportService, CustomerSupportServiceError } from '@/lib/services/customerSupportService';
-import { UserSearchResult, UserAccountInfo, UserSearchFormData, MFADisableFormData } from '@/lib/types/customer-support';
+import { UserSearchResult, UserAccountInfo, UserSearchFormData, MFADisableFormData } from '@/lib/types/system/customer-support';
 import { UserSearchSchema, MFADisableSchema } from '@/lib/schemas/customer-support';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CustomerSupportContentProps } from '@/lib/types/auth';
+import { CustomerSupportContentProps } from '@/lib/props/components/auth.props';
 
 export default function CustomerSupportContent({ user }: CustomerSupportContentProps) {
   const [searchResults, setSearchResults] = useState<UserSearchResult | null>(null);

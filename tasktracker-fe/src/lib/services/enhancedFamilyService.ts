@@ -10,7 +10,7 @@ import {
   RoleChangeImpact,
   ExtendedRoleInfo,
   CompositionChange
-} from '../types/enhanced-family';
+} from '../types/family';
 import { 
   EnhancedInvitationFormData,
   BulkInvitationFormData,
@@ -20,7 +20,7 @@ import {
   validateAgeAppropriateRole,
   validateFamilyComposition
 } from '../schemas/enhanced-family';
-import { InvitationDTO, FamilyDTO, FamilyMemberDTO } from '../types/family-invitation';
+import { InvitationDTO, FamilyDTO, FamilyMemberDTO } from '../types/family';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 

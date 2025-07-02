@@ -11,20 +11,9 @@ import {
   Target,
   Circle
 } from 'lucide-react';
-import { FamilyTaskItemDTO } from '@/lib/types/task';
-import { FamilyMemberDTO } from '@/lib/types/family-invitation';
-
-interface TaskListProps {
-  filteredTasks: FamilyTaskItemDTO[];
-  isBatchMode: boolean;
-  selectedTasks: Set<number>;
-  familyMembers: FamilyMemberDTO[];
-  onSelectTask: (taskId: number, checked: boolean) => void;
-  getPriorityColor: (priority: string) => string;
-  getPriorityIcon: (priority: string) => React.ReactNode;
-  getMemberAvatar: (memberId: number) => FamilyMemberDTO | undefined;
-  formatTaskTitle: (title: string) => string;
-}
+import { FamilyTaskItemDTO } from '@/lib/types/tasks';
+import { FamilyMemberDTO } from '@/lib/types/family';
+import type { FamilyTaskListProps } from '@/lib/props/components/family.props';
 
 /**
  * Task List Component - OVERFLOW SAFE
@@ -48,7 +37,7 @@ export default function TaskList({
   getPriorityIcon,
   getMemberAvatar,
   formatTaskTitle
-}: TaskListProps) {
+}: FamilyTaskListProps) {
   return (
     <CardContent className="p-3 sm:p-4 md:p-6 pt-0 space-y-3 max-w-full overflow-hidden">
       {filteredTasks.length > 0 ? (
@@ -162,3 +151,4 @@ export default function TaskList({
     </CardContent>
   );
 } 
+

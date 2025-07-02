@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FamilyRelationshipType } from '@/lib/types/family-invitation';
+import { FamilyRelationshipType } from '@/lib/types/family';
 import { FamilyMemberAgeGroup } from '@/lib/types/auth';
   
 

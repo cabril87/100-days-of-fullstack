@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronRight, Check } from 'lucide-react';
-import { ProgressiveFormProps } from '@/lib/types/component-props';
+import { ProgressiveFormProps } from '@/lib/props/ui/main.props';
 
 export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
   steps,
@@ -12,13 +12,12 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
   const [formData] = useState<Record<string, unknown>>({});
   const [isAnimating, setIsAnimating] = useState(false);
 
-  const canProceed = () => {
-    const step = steps[currentStep];
-    return step.validation ? step.validation() : true;
+  const isStepValid = (step: { validation?: (data: Record<string, unknown>) => boolean }) => {
+    return step.validation ? step.validation(formData) : true;
   };
 
   const nextStep = () => {
-    if (canProceed() && currentStep < steps.length - 1) {
+    if (isStepValid(steps[currentStep]) && currentStep < steps.length - 1) {
       setIsAnimating(true);
       setTimeout(() => {
         setCompletedSteps(prev => new Set([...prev, currentStep]));
@@ -39,7 +38,7 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
   };
 
   const handleComplete = () => {
-    if (canProceed()) {
+    if (isStepValid(steps[currentStep])) {
       setCompletedSteps(prev => new Set([...prev, currentStep]));
       onComplete(formData);
     }
@@ -49,6 +48,10 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
     if (completedSteps.has(stepIndex)) return 'completed';
     if (stepIndex === currentStep) return 'current';
     return 'pending';
+  };
+
+  const handleStepDataChange = () => {
+    // Implement the logic to handle data change
   };
 
   return (
@@ -114,7 +117,10 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
         </div>
 
         <div className="space-y-6">
-          {steps[currentStep].fields}
+          {React.createElement(steps[currentStep].component, {
+            data: formData,
+            onDataChange: handleStepDataChange
+          })}
         </div>
       </div>
 
@@ -137,10 +143,10 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
         {currentStep === steps.length - 1 ? (
           <button
             onClick={handleComplete}
-            disabled={!canProceed()}
+            disabled={!isStepValid(steps[currentStep])}
             className={`
               px-6 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
-              ${canProceed()
+              ${isStepValid(steps[currentStep])
                 ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }
@@ -152,10 +158,10 @@ export const ProgressiveForm: React.FC<ProgressiveFormProps> = ({
         ) : (
           <button
             onClick={nextStep}
-            disabled={!canProceed()}
+            disabled={!isStepValid(steps[currentStep])}
             className={`
               px-6 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
-              ${canProceed()
+              ${isStepValid(steps[currentStep])
                 ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }

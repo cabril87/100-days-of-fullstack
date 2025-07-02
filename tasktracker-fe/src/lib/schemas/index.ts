@@ -33,4 +33,10 @@ export * from './smart-relationship';
 export * from './customer-support';
 
 // Enterprise celebrations schemas
-export * from './enterprise-celebrations'; 
+export * from './enterprise-celebrations';
+
+export * from './api';
+export * from './forms';
+export * from './components';
+export * from './calendar';
+export * from './boards'; 

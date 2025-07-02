@@ -12,14 +12,14 @@
 import { 
   TaskItemResponseDTO, 
   TaskItemStatus 
-} from '../types/task';
+} from '../types/tasks';
 import { 
   BoardColumnDTO, 
   DragAnimationConfig, 
   DropValidation, 
   DragDropService,
   ColumnConfiguration
-} from '../types/board';
+} from '../types/boards';
 import { taskService } from './taskService';
 import { toast } from 'sonner';
 import { soundService } from './soundService';
@@ -632,4 +632,4 @@ export type {
   DragAnimationConfig,
   DropValidation,
   ColumnConfiguration
-} from '../types/board'; 
+} from '../types/boards'; 

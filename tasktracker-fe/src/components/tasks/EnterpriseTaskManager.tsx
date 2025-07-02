@@ -55,9 +55,9 @@ import {
   FilterPreset,
   TaskManagerState,
   EnterpriseTaskManagerProps
-} from '@/lib/types/task';
+} from '@/lib/types/tasks';
 import EnterpriseTaskTable from './EnterpriseTaskTable';
-import { triggerHapticFeedback } from '../search/MobileSearchEnhancements';
+import { triggerHapticFeedback } from '@/lib/helpers/mobile';
 import TaskDetailsSheetContent from './TaskDetailsSheetContent';
 
 // Filter presets configuration
@@ -854,3 +854,4 @@ export default function EnterpriseTaskManager({
     </TooltipProvider>
   );
 }
+

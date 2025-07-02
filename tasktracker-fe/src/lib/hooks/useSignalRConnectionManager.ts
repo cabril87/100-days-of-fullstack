@@ -17,7 +17,7 @@ import {
   ConnectionState, 
   HubConnectionStatus
 } from '@/lib/types/signalr';
-import { SignalREventHandlers } from '@/lib/types/signalr-events';
+import { SignalREventHandlers } from '@/lib/types/signalr/signalr-events';
 import { useAuth } from '@/lib/providers/AuthProvider';
 
 type ConnectionStateSubscriber = (state: ConnectionState) => void;

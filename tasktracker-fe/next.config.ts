@@ -48,24 +48,20 @@ const withPWA = require('next-pwa')({
   ],
   
   // ✅ ENTERPRISE CACHE VERSIONING: Dynamic cache names with versioning
-  workboxOptions: {
-    cacheId: `${CACHE_PREFIX}-${CACHE_VERSION}`,
-    cleanupOutdatedCaches: true, // Automatic cleanup of old caches
-    
-    // ✅ DEVELOPMENT VS PRODUCTION STRATEGIES
-    ...(isDev ? {
-      // Development: NO CACHING AT ALL
-      clientsClaim: false,
-      skipWaiting: false,
-      mode: 'development',
-      runtimeCaching: []  // ✅ CRITICAL: No runtime caching in dev
-    } : {
-      // Production: Aggressive caching, optimal performance
-      clientsClaim: true,
-      skipWaiting: true,
-      mode: 'production'
-    })
-  },
+  cacheId: `${CACHE_PREFIX}-${CACHE_VERSION}`,
+  cleanupOutdatedCaches: true, // Automatic cleanup of old caches
+  
+  // ✅ DEVELOPMENT VS PRODUCTION STRATEGIES
+  ...(isDev ? {
+    // Development: NO CACHING AT ALL
+    clientsClaim: false,
+    mode: 'development',
+    runtimeCaching: []  // ✅ CRITICAL: No runtime caching in dev
+  } : {
+    // Production: Aggressive caching, optimal performance
+    clientsClaim: true,
+    mode: 'production'
+  }),
   
   // ✅ PRODUCTION-ONLY RUNTIME CACHING: Completely disabled in dev
   runtimeCaching: isDev ? [] : [
@@ -104,7 +100,6 @@ const withPWA = require('next-pwa')({
           maxEntries: 50,
           maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
         },
-        networkTimeoutSeconds: 3,
         cacheableResponse: {
           statuses: [0, 200],
         },

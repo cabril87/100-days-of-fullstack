@@ -56,6 +56,9 @@ interface TouchInteractionConfig {
   enabled: boolean;
   tapToEmit: boolean;
   swipeToAccelerate: boolean;
+  dragToMove: boolean;
+  pinchToScale: boolean;
+  longPressToExplode: boolean;
   hapticFeedback: boolean;
   touchRadius: number;
 }
@@ -63,11 +66,16 @@ interface TouchInteractionConfig {
 interface DeviceCapabilities {
   type: 'mobile' | 'tablet' | 'desktop';
   hasGPU: boolean;
+  gpuTier: 'low' | 'medium' | 'high';
   memoryMB: number;
   batteryLevel: number;
   isLowEnd: boolean;
   supportsTouchscreen: boolean;
   supportsVibration: boolean;
+  supportsDeviceOrientation: boolean;
+  pixelRatio: number;
+  maxTouchPoints: number;
+  networkType: 'wifi' | 'cellular' | 'ethernet' | 'unknown';
 }
 
 interface BatteryManager {
@@ -80,6 +88,16 @@ interface BatteryManager {
 
 interface NavigatorWithBattery extends Navigator {
   getBattery?: () => Promise<BatteryManager>;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: {
+    effectiveType?: string;
+    type?: string;
+    downlink?: number;
+    rtt?: number;
+    addEventListener?: (type: string, listener: EventListener) => void;
+  };
 }
 
 interface PerformanceWithMemory extends Performance {
@@ -135,6 +153,19 @@ export class ParticleEngine {
   private batteryManager: BatteryManager | null = null;
   private performanceScaling = 1.0;
   private lastPerformanceCheck = 0;
+  
+  // Enhanced touch state management (following CharacterEngine patterns)
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchStartTime = 0;
+  private isLongPress = false;
+  private longPressTimer: number | null = null;
+  private dragThreshold = 10;
+  private longPressDelay = 500;
+  
+  // Network-aware optimizations
+  private networkType: 'wifi' | 'cellular' | 'ethernet' | 'unknown' = 'unknown';
+  private effectiveConnectionType: string = '4g';
 
   async initialize(container: HTMLElement, config: AnimationSystemConfig): Promise<void> {
     this.container = container;
@@ -149,6 +180,7 @@ export class ParticleEngine {
     this.injectResponsiveStyles();
     this.setupTouchInteractions();
     this.setupBatteryMonitoring();
+    this.addPerformanceOptimizations();
     
     this.startUpdateLoop();
   }
@@ -297,31 +329,58 @@ export class ParticleEngine {
   // ================================
 
   private async detectDeviceCapabilities(): Promise<void> {
-    // Detect device type based on screen size and user agent
-    const screenWidth = window.innerWidth;
-    const userAgent = navigator.userAgent.toLowerCase();
+         // Enhanced device detection following CharacterEngine patterns
+     const screenWidth = window.innerWidth;
+     const userAgent = navigator.userAgent.toLowerCase();
     
+    // Advanced device type detection
     let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
-    if (screenWidth <= 768) {
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(userAgent);
+    
+    if (isMobile && screenWidth <= 768) {
       deviceType = 'mobile';
-    } else if (screenWidth <= 1024) {
+    } else if (isTablet || (screenWidth > 768 && screenWidth <= 1024)) {
       deviceType = 'tablet';
     }
 
-    // Detect GPU capabilities
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    const hasGPU = !!gl;
+         // Enhanced GPU detection with tier assessment
+     const canvas = document.createElement('canvas');
+     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+     const hasGPU = !!gl;
+     let gpuTier: 'low' | 'medium' | 'high' = 'medium';
+     
+            if (gl && 'getParameter' in gl) {
+         const glContext = gl as WebGLRenderingContext;
+         const renderer = glContext.getParameter(glContext.RENDERER) || '';
+         const rendererLower = renderer.toString().toLowerCase();
+      
+      // GPU tier detection based on common mobile GPUs
+      if (rendererLower.includes('adreno') && (rendererLower.includes('530') || rendererLower.includes('540') || rendererLower.includes('640'))) {
+        gpuTier = 'high';
+      } else if (rendererLower.includes('mali') && rendererLower.includes('g76')) {
+        gpuTier = 'high';
+      } else if (rendererLower.includes('adreno') && rendererLower.includes('4')) {
+        gpuTier = 'low';
+      } else if (rendererLower.includes('mali-4') || rendererLower.includes('powervr sgx')) {
+        gpuTier = 'low';
+      }
+      
+      canvas.remove();
+    }
 
-    // Estimate memory (conservative approach)
-    let memoryMB = 1024; // Default assumption
+    // Enhanced memory detection
+    let memoryMB = 1024;
     const performanceWithMemory = performance as PerformanceWithMemory;
     if ('memory' in performance && performanceWithMemory.memory) {
       const memory = performanceWithMemory.memory;
       memoryMB = Math.round(memory.jsHeapSizeLimit / 1024 / 1024);
     }
 
-    // Detect battery level
+    // Network detection
+    this.detectNetworkCapabilities();
+
+    // Enhanced battery detection
     let batteryLevel = 1.0;
     try {
       const navigatorWithBattery = navigator as NavigatorWithBattery;
@@ -334,23 +393,30 @@ export class ParticleEngine {
       console.warn('Battery API not available:', error);
     }
 
-    // Determine if device is low-end
+    // Enhanced low-end device detection
     const isLowEnd = (
-      deviceType === 'mobile' && 
-      memoryMB < 2048
-    ) || batteryLevel < 0.2;
+      (deviceType === 'mobile' && memoryMB < 2048) ||
+      (gpuTier === 'low') ||
+      (batteryLevel < 0.15) ||
+      (this.networkType === 'cellular' && this.effectiveConnectionType === '2g')
+    );
 
     this.deviceCapabilities = {
       type: deviceType,
       hasGPU,
+      gpuTier,
       memoryMB,
       batteryLevel,
       isLowEnd,
       supportsTouchscreen: 'ontouchstart' in window,
-      supportsVibration: 'vibrate' in navigator
+      supportsVibration: 'vibrate' in navigator,
+      supportsDeviceOrientation: 'DeviceOrientationEvent' in window,
+      pixelRatio: window.devicePixelRatio || 1,
+      maxTouchPoints: navigator.maxTouchPoints || 1,
+      networkType: this.networkType
     };
 
-    console.log('🎮 ParticleEngine Device Capabilities:', this.deviceCapabilities);
+    console.log('🎮 ParticleEngine Enhanced Device Capabilities:', this.deviceCapabilities);
   }
 
   private getResponsiveConfig(): ResponsiveParticleConfig {
@@ -384,10 +450,182 @@ export class ParticleEngine {
       enabled: this.deviceCapabilities.supportsTouchscreen,
       tapToEmit: true,
       swipeToAccelerate: true,
+      dragToMove: this.deviceCapabilities.type !== 'desktop',
+      pinchToScale: this.deviceCapabilities.maxTouchPoints > 1,
+      longPressToExplode: true,
       hapticFeedback: this.deviceCapabilities.supportsVibration,
-      touchRadius: 44 // Minimum 44px touch target
+      touchRadius: this.deviceCapabilities.type === 'mobile' ? 44 : 32
     };
   }
+  
+  // Enhanced network detection method
+  private detectNetworkCapabilities(): void {
+    try {
+      const navigatorWithConnection = navigator as NavigatorWithConnection;
+      if (navigatorWithConnection.connection) {
+        const connection = navigatorWithConnection.connection;
+        this.effectiveConnectionType = connection.effectiveType || '4g';
+        
+        // Determine network type
+        if (connection.type === 'wifi') {
+          this.networkType = 'wifi';
+        } else if (connection.type === 'ethernet') {
+          this.networkType = 'ethernet';
+        } else if (connection.type === 'cellular') {
+          this.networkType = 'cellular';
+        } else {
+          this.networkType = 'unknown';
+        }
+        
+        // Monitor network changes
+        connection.addEventListener?.('change', () => {
+          this.effectiveConnectionType = connection.effectiveType || '4g';
+          this.adjustForNetwork();
+        });
+      }
+    } catch (error) {
+      console.warn('Network detection not available:', error);
+    }
+  }
+  
+  // Network-aware performance adjustment
+  private adjustForNetwork(): void {
+         if (this.networkType === 'cellular' && (this.effectiveConnectionType === '2g' || this.effectiveConnectionType === 'slow-2g')) {
+       this.performanceScaling = Math.min(this.performanceScaling, 0.5);
+       console.log('📡 Reducing performance for slow network connection');
+     }
+   }
+
+   // Enhanced touch event handlers following CharacterEngine patterns
+   private touchEndHandler = (e: TouchEvent): void => {
+     e.preventDefault();
+     const touch = e.changedTouches[0];
+     const rect = this.container!.getBoundingClientRect();
+     const x = touch.clientX - rect.left;
+     const y = touch.clientY - rect.top;
+     
+     // Clear long press timer
+     if (this.longPressTimer) {
+       clearTimeout(this.longPressTimer);
+       this.longPressTimer = null;
+     }
+     
+     // Handle tap if not a long press or drag
+     const deltaX = x - this.touchStartX;
+     const deltaY = y - this.touchStartY;
+     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+     const touchDuration = performance.now() - this.touchStartTime;
+     
+     if (!this.isLongPress && distance < this.dragThreshold && touchDuration < this.longPressDelay) {
+       if (this.touchConfig.tapToEmit) {
+         this.handleTouchEmission(x, y);
+       }
+     }
+     
+     // Reset touch state
+     this.isLongPress = false;
+   };
+
+   private handleLongPress(x: number, y: number): void {
+     if (!this.touchConfig.longPressToExplode) return;
+     
+            // Create explosion effect at long press position
+       const explosionConfig: ParticleConfig = {
+         type: 'sparkles',
+       count: Math.min(25, this.responsiveConfig[this.deviceCapabilities.type].maxParticles / 2),
+       lifetime: 1.5,
+       velocity: {
+         initial: { x: 0, y: 0 },
+         variation: { x: 150, y: 150 }
+       },
+       size: {
+         start: this.getResponsiveParticleSize(6),
+         end: 0,
+         variation: 2
+       },
+       color: {
+         start: { hex: '#FF4500' },
+         end: { hex: '#FFD700' }
+       },
+       emissionArea: { x: 5, y: 5 },
+       emissionShape: 'circle'
+     };
+
+     this.createSystem(explosionConfig).then(system => {
+       // Position explosion at long press point
+       system.particles.forEach((particle, index) => {
+         const angle = (index / system.particles.length) * Math.PI * 2;
+         const radius = Math.random() * 20;
+         particle.position.x = x + Math.cos(angle) * radius;
+         particle.position.y = y + Math.sin(angle) * radius;
+         particle.element.style.left = `${particle.position.x}px`;
+         particle.element.style.top = `${particle.position.y}px`;
+         
+         // Add radial velocity
+         particle.velocity.x = Math.cos(angle) * (50 + Math.random() * 100);
+         particle.velocity.y = Math.sin(angle) * (50 + Math.random() * 100);
+       });
+
+       // Auto-cleanup explosion
+       setTimeout(() => system.destroy(), 3000);
+     }).catch(error => {
+       console.warn('Failed to create explosion system:', error);
+     });
+   }
+
+   private handleDragMove(x: number, y: number, deltaX: number, deltaY: number): void {
+     // Find nearby particles and apply drag force
+     this.activeSystems.forEach(system => {
+       system.particles.forEach(particle => {
+         const dx = particle.position.x - x;
+         const dy = particle.position.y - y;
+         const distance = Math.sqrt(dx * dx + dy * dy);
+         
+         if (distance < this.touchConfig.touchRadius * 2) {
+           const influence = Math.max(0, 1 - distance / (this.touchConfig.touchRadius * 2));
+           particle.position.x += deltaX * influence * 0.5;
+           particle.position.y += deltaY * influence * 0.5;
+           particle.velocity.x += deltaX * influence * 0.1;
+           particle.velocity.y += deltaY * influence * 0.1;
+         }
+       });
+     });
+   }
+
+   // Gesture handlers for pinch-to-scale functionality
+   private gestureStartHandler = (e: Event): void => {
+     e.preventDefault();
+     if (this.touchConfig.hapticFeedback) {
+       this.triggerHapticFeedback('medium');
+     }
+   };
+
+   private gestureChangeHandler = (e: Event): void => {
+     e.preventDefault();
+            const gestureEvent = e as TouchEvent & { scale?: number };
+     if (gestureEvent.scale) {
+       const scale = gestureEvent.scale;
+       this.handlePinchScale(scale);
+     }
+   };
+
+   private gestureEndHandler = (e: Event): void => {
+     e.preventDefault();
+   };
+
+   private handlePinchScale(scale: number): void {
+     // Adjust particle sizes based on pinch gesture
+     const scaleMultiplier = Math.max(0.5, Math.min(2.0, scale));
+     
+     this.activeSystems.forEach(system => {
+       system.particles.forEach(particle => {
+         const newSize = particle.size * scaleMultiplier;
+         particle.size = Math.max(1, Math.min(20, newSize));
+         particle.element.style.width = `${particle.size}px`;
+         particle.element.style.height = `${particle.size}px`;
+       });
+     });
+   }
 
   private adaptConfigForDevice(config: ParticleConfig): ParticleConfig {
     const deviceConfig = this.responsiveConfig[this.deviceCapabilities.type];
@@ -451,6 +689,14 @@ export class ParticleEngine {
 
     this.container.addEventListener('touchstart', this.touchStartHandler, { passive: false });
     this.container.addEventListener('touchmove', this.touchMoveHandler, { passive: false });
+    this.container.addEventListener('touchend', this.touchEndHandler, { passive: false });
+    
+    // Add pinch gesture support for multi-touch devices
+    if (this.touchConfig.pinchToScale) {
+      this.container.addEventListener('gesturestart', this.gestureStartHandler, { passive: false });
+      this.container.addEventListener('gesturechange', this.gestureChangeHandler, { passive: false });
+      this.container.addEventListener('gestureend', this.gestureEndHandler, { passive: false });
+    }
   }
 
   private cleanupTouchInteractions(): void {
@@ -459,6 +705,16 @@ export class ParticleEngine {
     // Remove all touch event listeners using proper cleanup references
     this.container.removeEventListener('touchstart', this.touchStartHandler);
     this.container.removeEventListener('touchmove', this.touchMoveHandler);
+    this.container.removeEventListener('touchend', this.touchEndHandler);
+    this.container.removeEventListener('gesturestart', this.gestureStartHandler);
+    this.container.removeEventListener('gesturechange', this.gestureChangeHandler);
+    this.container.removeEventListener('gestureend', this.gestureEndHandler);
+    
+    // Clear any active timers
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
   }
 
   private touchStartHandler = (e: TouchEvent): void => {
@@ -468,8 +724,21 @@ export class ParticleEngine {
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
     
-    if (this.touchConfig.tapToEmit) {
-      this.handleTouchEmission(x, y);
+    // Store touch start information
+    this.touchStartX = x;
+    this.touchStartY = y;
+    this.touchStartTime = performance.now();
+    this.isLongPress = false;
+    
+    // Setup long press detection
+    if (this.touchConfig.longPressToExplode) {
+      this.longPressTimer = window.setTimeout(() => {
+        this.isLongPress = true;
+        this.handleLongPress(x, y);
+        if (this.touchConfig.hapticFeedback) {
+          this.triggerHapticFeedback('heavy');
+        }
+      }, this.longPressDelay);
     }
     
     if (this.touchConfig.hapticFeedback) {
@@ -479,12 +748,29 @@ export class ParticleEngine {
 
   private touchMoveHandler = (e: TouchEvent): void => {
     e.preventDefault();
+    const touch = e.touches[0];
+    const rect = this.container!.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    // Calculate movement distance
+    const deltaX = x - this.touchStartX;
+    const deltaY = y - this.touchStartY;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Cancel long press if moved beyond threshold
+    if (distance > this.dragThreshold && this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    
+    // Handle drag to move particles
+    if (this.touchConfig.dragToMove && distance > this.dragThreshold) {
+      this.handleDragMove(x, y, deltaX, deltaY);
+    }
+    
+    // Handle swipe acceleration
     if (this.touchConfig.swipeToAccelerate) {
-      const touch = e.touches[0];
-      const rect = this.container!.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      
       this.handleSwipeAcceleration(x, y);
     }
   };
@@ -520,6 +806,13 @@ export class ParticleEngine {
         particle.element.style.left = `${x}px`;
         particle.element.style.top = `${y}px`;
       });
+      
+      // Auto-destroy touch burst after short duration
+      setTimeout(() => {
+        system.destroy();
+      }, 2000);
+    }).catch(error => {
+      console.warn('Failed to create touch burst system:', error);
     });
   }
 
@@ -613,6 +906,35 @@ export class ParticleEngine {
     `;
     
     document.head.appendChild(style);
+  }
+
+  // ================================
+  // ENHANCED PERFORMANCE MONITORING
+  // ================================
+
+  private addPerformanceOptimizations(): void {
+    // Battery level monitoring with dynamic adjustment
+    if (this.deviceCapabilities.batteryLevel < 0.3) {
+      this.responsiveConfig[this.deviceCapabilities.type].maxParticles *= 0.6;
+      console.log('🔋 Low battery detected, reducing particle count by 40%');
+    }
+
+    // Memory pressure monitoring
+    const memoryThreshold = this.deviceCapabilities.memoryMB * 0.8;
+    if (performance && 'memory' in performance) {
+      const performanceWithMemory = performance as PerformanceWithMemory;
+      if (performanceWithMemory.memory && performanceWithMemory.memory.usedJSHeapSize > memoryThreshold * 1024 * 1024) {
+        this.performanceScaling *= 0.7;
+        console.log('💾 Memory pressure detected, reducing performance scaling');
+      }
+    }
+
+    // GPU tier optimizations
+    if (this.deviceCapabilities.gpuTier === 'low') {
+      this.responsiveConfig[this.deviceCapabilities.type].simplifiedPhysics = true;
+      this.responsiveConfig[this.deviceCapabilities.type].enableGPU = false;
+      console.log('🎮 Low-tier GPU detected, enabling simplified physics');
+    }
   }
 
   // ================================
@@ -1045,22 +1367,63 @@ export class ParticleEngine {
     }
   }
 
+  // ================================
+  // ENHANCED PUBLIC API
+  // ================================
+
+  public adaptToDeviceOrientation(orientation: 'portrait' | 'landscape'): void {
+    // Adjust particle emission area based on orientation
+    this.activeSystems.forEach(system => {
+      if (system.config.emissionArea) {
+        if (orientation === 'landscape') {
+          system.config.emissionArea.x *= 1.5;
+          system.config.emissionArea.y *= 0.8;
+        } else {
+          system.config.emissionArea.x *= 0.8;
+          system.config.emissionArea.y *= 1.5;
+        }
+      }
+    });
+    
+    console.log(`🔄 Adapted particle systems to ${orientation} orientation`);
+  }
+
+  public adjustForNetworkCondition(connectionType: string): void {
+    if (connectionType === '2g' || connectionType === 'slow-2g') {
+      this.performanceScaling = Math.min(this.performanceScaling, 0.4);
+      console.log('📡 Slow network detected, minimizing particle animations');
+    } else if (connectionType === '3g') {
+      this.performanceScaling = Math.min(this.performanceScaling, 0.7);
+    } else {
+      // 4g or wifi - full performance
+      this.performanceScaling = Math.min(1.0, this.performanceScaling * 1.2);
+    }
+  }
+
   public getPerformanceMetrics(): {
     deviceType: string;
+    gpuTier: string;
     batteryLevel: number;
+    memoryMB: number;
     performanceScaling: number;
     activeParticles: number;
     maxParticles: number;
+    networkType: string;
+    touchSupport: boolean;
   } {
     const totalParticles = Array.from(this.activeSystems.values())
       .reduce((sum, system) => sum + system.particles.length, 0);
     
     return {
       deviceType: this.deviceCapabilities.type,
+      gpuTier: this.deviceCapabilities.gpuTier,
       batteryLevel: this.deviceCapabilities.batteryLevel,
+      memoryMB: this.deviceCapabilities.memoryMB,
       performanceScaling: this.performanceScaling,
       activeParticles: totalParticles,
-      maxParticles: this.responsiveConfig[this.deviceCapabilities.type].maxParticles
+      maxParticles: this.responsiveConfig[this.deviceCapabilities.type].maxParticles,
+      networkType: this.deviceCapabilities.networkType,
+      touchSupport: this.deviceCapabilities.supportsTouchscreen
     };
   }
 } 

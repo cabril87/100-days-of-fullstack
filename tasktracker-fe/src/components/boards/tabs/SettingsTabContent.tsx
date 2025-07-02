@@ -46,7 +46,7 @@ import {
 } from 'lucide-react';
 
 import { SettingsTabContentProps } from '@/lib/types/board-tabs';
-import { UpdateBoardDTO } from '@/lib/types/board';
+import { UpdateBoardDTO } from '@/lib/types/boards';
 import { BoardService } from '@/lib/services/boardService';
 
 export const SettingsTabContent: React.FC<SettingsTabContentProps> = ({
@@ -430,3 +430,4 @@ export const SettingsTabContent: React.FC<SettingsTabContentProps> = ({
     </div>
   );
 }; 
+

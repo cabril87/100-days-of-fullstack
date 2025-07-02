@@ -18,7 +18,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+// Removed unused zod import to comply with .cursorrules
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,31 +35,14 @@ import {
   RefreshCw,
   Sparkles
 } from 'lucide-react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/helpers/utils/utils';
 import FamilyConflictDetection, { type ConflictData, type ResolutionSuggestion } from './FamilyConflictDetection';
 
 // ============================================================================
 // SCHEMAS & VALIDATION
 // ============================================================================
 
-const smartEventSchema = z.object({
-  title: z.string().min(1, 'Event title is required').max(200),
-  description: z.string().max(1000).optional(),
-  startDate: z.string().min(1, 'Start date is required'),
-  startTime: z.string().min(1, 'Start time is required'),
-  endTime: z.string().min(1, 'End time is required'),
-  location: z.string().max(200).optional(),
-  attendeeIds: z.array(z.number()).min(1, 'At least one family member must be selected'),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']),
-  category: z.string().max(100).optional(),
-  isRecurring: z.boolean(),
-  recurrencePattern: z.string().optional(),
-  reminderMinutes: z.number().min(0).max(10080),
-  allowConflicts: z.boolean(),
-  requireAllAttendees: z.boolean()
-});
-
-type SmartEventFormData = z.infer<typeof smartEventSchema>;
+import { smartEventSchema, SmartEventFormData } from '@/lib/schemas/calendar/SmartFamilyEvent.schema';
 
 // ============================================================================
 // INTERFACES & TYPES
@@ -112,7 +95,10 @@ export interface CreatedEvent {
   status: 'active' | 'cancelled' | 'completed';
 }
 
-export interface SmartFamilyEventCreatorProps {
+import type { SmartFamilyEventCreatorProps } from '@/lib/props/components/calendar.props';
+
+// Props interface moved to lib/props/components/calendar.props.ts
+// export interface SmartFamilyEventCreatorProps {
   familyId: number;
   familyMembers: Array<{
     id: number;

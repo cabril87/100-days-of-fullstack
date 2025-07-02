@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTheme } from '@/lib/providers/ThemeProvider';
-import { DecorativeLinesProps } from '@/lib/types/ui-components';
+import { DecorativeLinesProps } from '@/lib/types/ui';
 
 export function DecorativeLines({ 
   position = 'both', 
@@ -95,3 +95,4 @@ export function GamificationLines(props: Omit<DecorativeLinesProps, 'variant'>) 
 export function ThemeAdaptiveLines(props: Omit<DecorativeLinesProps, 'variant'>) {
   return <DecorativeLines {...props} variant="theme-adaptive" />;
 } 
+

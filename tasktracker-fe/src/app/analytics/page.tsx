@@ -10,9 +10,9 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { EnterpriseAnalyticsPage } from '@/components/analytics/EnterpriseAnalyticsPage';
-import { parseAnalyticsSearchParams } from '@/lib/utils/analytics-server';
-import type { AnalyticsPageServerProps } from '@/lib/types/analytics-components';
-import type { AnalyticsTab } from '@/lib/types/analytics-page';
+import { parseAnalyticsSearchParams } from '@/lib/helpers/utils/analytics-server';
+import type { AnalyticsPageServerProps } from '@/lib/props/components/analytics.props';
+import type { AnalyticsTab } from '@/lib/types/analytics';
 
 export const metadata: Metadata = {
   title: 'Analytics Dashboard | TaskTracker Enterprise',

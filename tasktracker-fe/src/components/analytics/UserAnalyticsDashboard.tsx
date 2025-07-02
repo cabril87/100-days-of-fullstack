@@ -17,7 +17,7 @@ import { ProductivityChart } from './charts/ProductivityChart';
 import { TaskCompletionChart } from './charts/TaskCompletionChart';
 import { GamificationChart } from './charts/GamificationChart';
 import { FamilyCollaborationChart } from './charts/FamilyCollaborationChart';
-import { UserAnalyticsDashboardProps } from '@/lib/types/analytics';
+import { UserAnalyticsDashboardProps } from '@/lib/props/components/analytics.props';
 
 function AnalyticsDashboardSkeleton() {
   return (
